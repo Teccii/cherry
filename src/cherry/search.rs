@@ -569,10 +569,9 @@ fn delta<Node: NodeType>(pos: &Position, piece: Piece, sq: Square, eval: Score, 
 }
 
 fn delta_margin(pos: &Position, piece: Piece, sq: Square, phase: u16) -> Score {
-    let weights = pos.evaluator().weights();
-    let value = piece_value(weights, !pos.stm(), piece, sq);
+    let value = piece_value(!pos.stm(), piece, sq);
 
-    (value + weights.pawn_value * 2).scale(phase)
+    (value + PAWN_VALUE * 2).scale(phase)
 }
 
 /*----------------------------------------------------------------*/

@@ -25,7 +25,7 @@ pub type SquareTable = IndexTable<{Square::NUM}>;
 
 /*----------------------------------------------------------------*/
 
-pub const BISHOP_PAIR: T = T!(21, 71);
+pub const BISHOP_PAIR: T = T(21, 71);
 
 pub const KNIGHT_MOBILITY: IndexTable<9> = table![
     (-62, -81),
@@ -116,28 +116,28 @@ pub const PASSED_PAWN: RankTable = table![
     (0, 0),
 ];
 
-pub const BACKWARDS_PAWN: T = T!(-10, -25);
-pub const ISOLATED_PAWN: T = T!(-5, -20);
-pub const DOUBLED_PAWN: T = T!(-5, -15);
-pub const PHALANX: T = T!(5, 11);
-pub const SUPPORT: T = T!(7, 13);
+pub const BACKWARDS_PAWN: T = T(-10, -25);
+pub const ISOLATED_PAWN: T = T(-5, -20);
+pub const DOUBLED_PAWN: T = T(-5, -15);
+pub const PHALANX: T = T(5, 11);
+pub const SUPPORT: T = T(7, 13);
 
 pub const CONNECTED: [i16; Rank::NUM] = [0, 7, 8, 12, 29, 48, 86, 0];
 
 /*----------------------------------------------------------------*/
 
-pub const PAWN_MINOR_THREAT: T = T!(31, 71);
-pub const PAWN_MAJOR_THREAT: T = T!(46, 92);
-pub const MINOR_MAJOR_THREAT: T = T!(51, 89);
+pub const PAWN_MINOR_THREAT: T = T(31, 71);
+pub const PAWN_MAJOR_THREAT: T = T(46, 92);
+pub const MINOR_MAJOR_THREAT: T = T(51, 89);
 
-pub const SPACE_RESTRICT_PIECE: T = T!(-4, -1);
-pub const SPACE_RESTRICT_EMPTY: T = T!(-4, -2);
-pub const SPACE_CENTER_CONTROL: T = T!(3, 0);
+pub const SPACE_RESTRICT_PIECE: T = T(-4, -1);
+pub const SPACE_RESTRICT_EMPTY: T = T(-4, -2);
+pub const SPACE_CENTER_CONTROL: T = T(3, 0);
 
-pub const KNIGHT_ATTACK: T = T!(6, 7);
-pub const BISHOP_ATTACK: T = T!(5, 17);
-pub const ROOK_ATTACK: T = T!(16, 3);
-pub const QUEEN_ATTACK: T = T!(1, 21);
+pub const KNIGHT_ATTACK: T = T(6, 7);
+pub const BISHOP_ATTACK: T = T(5, 17);
+pub const ROOK_ATTACK: T = T(16, 3);
+pub const QUEEN_ATTACK: T = T(1, 21);
 
 /*----------------------------------------------------------------*/
 
@@ -184,11 +184,11 @@ pub const QUEEN_SEMIOPEN_FILE: FileTable = table![
 
 /*----------------------------------------------------------------*/
 
-pub const PAWN_VALUE: T = T!(124, 206);
-pub const KNIGHT_VALUE: T = T!(781, 854);
-pub const BISHOP_VALUE: T = T!(825, 915);
-pub const ROOK_VALUE: T = T!(1276, 1380);
-pub const QUEEN_VALUE: T = T!(2538, 2682);
+pub const PAWN_VALUE: T = T(124, 206);
+pub const KNIGHT_VALUE: T = T(781, 854);
+pub const BISHOP_VALUE: T = T(825, 915);
+pub const ROOK_VALUE: T = T(1276, 1380);
+pub const QUEEN_VALUE: T = T(2538, 2682);
 
 pub const PAWN_PSQT: SquareTable = table! [
     (0, 0),     (0, 0),     (0, 0),     (0, 0),     (0, 0),     (0, 0),     (0, 0),     (0, 0),
@@ -262,7 +262,7 @@ pub const fn calc_piece_table(table: SquareTable, value: T) -> SquareTable {
     let mut i = 0;
     
     while i < Square::NUM {
-        result.0[i] = T!(value.0 + result.0[i].0, value.1 + result.0[i].1);
+        result.0[i] = T(value.0 + result.0[i].0, value.1 + result.0[i].1);
         i += 1;
     }
     

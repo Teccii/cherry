@@ -14,7 +14,7 @@ pub enum UciCommand {
     Position(Board, Vec<Move>),
     Go(Vec<SearchLimit>),
     SetOption(String, String),
-    DataGen(String, u16, u8),
+    #[cfg(feature = "trace")] ParseData(String),
     Display,
     Eval,
     Stop,
@@ -35,23 +35,13 @@ impl FromStr for UciCommand {
         let token = reader.next().ok_or(UciParseError::InvalidCommand)?;
         
         match token {
-            "datagen" => {
-                reader.next().filter(|&s| s == "threads").ok_or(UciParseError::InvalidArguments)?;
-                let threads = reader.next().and_then(|s| s.parse::<u16>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                reader.next().filter(|&s| s == "depth").ok_or(UciParseError::InvalidArguments)?;
-                let depth = reader.next().and_then(|s| s.parse::<u8>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                reader.next().filter(|&s| s == "path").ok_or(UciParseError::InvalidArguments)?;
-                let path = reader.remainder().ok_or(UciParseError::InvalidArguments)?.to_owned();
-                
-                Ok(UciCommand::DataGen(path, threads, depth))
-            },
             "uci" => Ok(UciCommand::Uci),
             "ucinewgame" | "newgame" => Ok(UciCommand::NewGame),
             "isready" => Ok(UciCommand::IsReady),
             "eval" => Ok(UciCommand::Eval),
             "stop" => Ok(UciCommand::Stop),
             "quit" | "q" => Ok(UciCommand::Quit),
-            "d" => Ok(UciCommand::Display),
+            "d" | "display" | "print" => Ok(UciCommand::Display),
             "ponderhit" => Ok(UciCommand::PonderHit),
             "position" | "pos" => {
                 let board_kind = reader.next().ok_or(UciParseError::InvalidArguments)?;
@@ -158,6 +148,11 @@ impl FromStr for UciCommand {
                 let value = reader.remainder().ok_or(UciParseError::InvalidArguments)?.to_owned();
                 
                 Ok(UciCommand::SetOption(name, value))
+            },
+            #[cfg(feature = "trace")] "parse" => {
+                let path = reader.next().ok_or(UciParseError::InvalidArguments)?.to_owned();
+                
+                Ok(UciCommand::ParseData(path))
             },
             _ => Err(UciParseError::InvalidCommand),
         }

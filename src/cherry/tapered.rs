@@ -4,12 +4,9 @@ use super::*;
 /*----------------------------------------------------------------*/
 
 #[macro_export]
-macro_rules! T { ($mg:expr, $eg:expr) => { T($mg, $eg) }; }
-
-#[macro_export]
 macro_rules! table {
     ($(($mg:expr, $eg:expr),)*) => {
-        IndexTable::new([$(T!($mg, $eg),)*])
+        IndexTable::new([$(T($mg, $eg),)*])
     }
 }
 
@@ -32,6 +29,7 @@ impl T {
 
     #[inline(always)]
     pub fn scale(self, phase: u16) -> Score {
+        let phase = (phase * TAPER_SCALE + TOTAL_PHASE / 2) / TOTAL_PHASE;
         let score = (self.0 as i32 * (TAPER_SCALE - phase) as i32 + self.1 as i32 * phase as i32) / TAPER_SCALE as i32;
 
         Score(score as i16)
@@ -136,7 +134,7 @@ impl_tapered_i16_assign_ops! {
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct IndexTable<const COUNT: usize>(pub(crate) [T; COUNT]);
+pub struct IndexTable<const COUNT: usize>(pub [T; COUNT]);
 
 impl<const COUNT: usize> IndexTable<COUNT> {
     #[inline(always)]
@@ -173,7 +171,7 @@ macro_rules! impl_table_ops {
                 let mut i = 0;
                 
                 while i < COUNT {
-                    result.0[i] = T!(self.0[i].0.$fn(rhs.0[i].0), self.0[i].1.$fn(rhs.0[i].1));
+                    result.0[i] = T(self.0[i].0.$fn(rhs.0[i].0), self.0[i].1.$fn(rhs.0[i].1));
                     i += 1;
                 }
                 
@@ -190,7 +188,7 @@ macro_rules! impl_table_assign_ops {
                 let mut i = 0;
                 
                 while i < COUNT {
-                    self.0[i] = T!(self.0[i].0.$op(rhs.0[i].0), self.0[i].1.$op(rhs.0[i].1));
+                    self.0[i] = T(self.0[i].0.$op(rhs.0[i].0), self.0[i].1.$op(rhs.0[i].1));
                     i += 1;
                 }
             }
@@ -208,7 +206,7 @@ macro_rules! impl_table_tapered_ops {
                 let mut i = 0;
                 
                 while i < COUNT {
-                    result[i] = T!(self.0[i].0.$fn(rhs.0), self.0[i].1.$fn(rhs.1));
+                    result[i] = T(self.0[i].0.$fn(rhs.0), self.0[i].1.$fn(rhs.1));
                     i += 1;
                 }
                 
@@ -225,7 +223,7 @@ macro_rules! impl_table_tapered_assign_ops {
                 let mut i = 0;
                 
                 while i < COUNT {
-                    self.0[i] = T!(self.0[i].0.$op(rhs.0), self.0[i].1.$op(rhs.1));
+                    self.0[i] = T(self.0[i].0.$op(rhs.0), self.0[i].1.$op(rhs.1));
                     i += 1;
                 }
             }
@@ -244,7 +242,7 @@ macro_rules! impl_table_i16_ops {
                 let mut i = 0;
                 
                 while i < COUNT {
-                    result.0[i] = T!(self.0[i].0.$fn(rhs), self.0[i].1.$fn(rhs));
+                    result.0[i] = T(self.0[i].0.$fn(rhs), self.0[i].1.$fn(rhs));
                     i += 1;
                 }
                 
@@ -261,7 +259,7 @@ macro_rules! impl_table_i16_assign_ops {
                 let mut i = 0;
                 
                 while i < COUNT {
-                    self.0[i] = T!(self.0[i].0.$op(rhs), self.0[i].1.$op(rhs));
+                    self.0[i] = T(self.0[i].0.$op(rhs), self.0[i].1.$op(rhs));
                     i += 1;
                 }
             }

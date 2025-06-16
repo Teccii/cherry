@@ -2,14 +2,19 @@
 
 mod cherry;
 
+#[cfg(feature = "trace")] use pgn_reader::{Outcome, Visitor};
 use std::{
+    fs::OpenOptions,
     sync::{Arc, Mutex},
     sync::mpsc::*,
     fmt::Write,
     io
 };
 use cozy_chess::*;
+use pgn_reader::{RawTag, SanPlus, Skip};
 use cherry::*;
+
+/*----------------------------------------------------------------*/
 
 const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -144,8 +149,8 @@ fn main() -> Result<()> {
 
                 println!("+-----------------+");
                 println!("FEN: {}", board);
-            }
-            UciCommand::DataGen(path, threads, depth) => gen_games(path.as_str(), threads, depth),
+            },
+            #[cfg(feature="trace")] UciCommand::ParseData(path) => parse_data(path),
             UciCommand::Eval => {
                 let searcher = searcher.lock().unwrap();
                 println!("{}", searcher.pos.eval(0));
@@ -161,4 +166,72 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/*----------------------------------------------------------------*/
+
+#[cfg(feature="trace")]
+struct PgnParser {
+    current: Board,
+    boards: Vec<Board>,
+    outcome: Option<Outcome>
+}
+
+#[cfg(feature="trace")]
+impl Visitor for PgnParser {
+    type Result = Option<(Vec<Board>, f32)>;
+
+    fn begin_game(&mut self) {
+        self.boards.clear();
+        self.current = Board::default();
+    }
+    
+    fn tag(&mut self, name: &[u8], value: RawTag<'_>) {
+        if name == b"FEN" {
+            self.boards.clear();
+            self.current = str::from_utf8(value.as_bytes()).unwrap().parse::<Board>().unwrap();
+        }
+    }
+
+    fn begin_variation(&mut self) -> Skip {
+        Skip(true)
+    }
+
+    fn san(&mut self, san: SanPlus) {
+        let mut san_str = String::new();
+        san.append_to_string(&mut san_str);
+        
+        let mv = cozy_chess::util::parse_san_move(&self.current, &san_str).unwrap();
+        self.boards.push(self.current.clone());
+        self.current.play_unchecked(mv);
+    }
+
+    fn outcome(&mut self, outcome: Option<Outcome>) {
+        self.outcome = outcome;
+    }
+
+    fn end_game(&mut self) -> Self::Result {
+        if let Some(outcome) = self.outcome {
+            let mut boards = self.boards.clone();
+            boards.push(self.current.clone());
+            
+            let result = match outcome {
+                Outcome::Decisive { winner } => match winner as usize {
+                    0 => 1.0,
+                    1 => 0.0,
+                    _ => 0.5
+                },
+                Outcome::Draw => 0.5,
+            };
+            
+            return Some((boards, result));
+        }
+        
+        None
+    }
+}
+
+#[cfg(feature = "trace")]
+fn parse_data(path: String) {
+    
 }

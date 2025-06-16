@@ -4,110 +4,6 @@ use super::*;
 
 /*----------------------------------------------------------------*/
 
-macro_rules! weights {
-    ($($name:ident: $ty:ty = $default:expr,)*) => {
-        #[derive(Debug, Copy, Clone)]
-        pub struct EvalWeights {
-            $(pub $name: $ty),*
-        }
-
-        impl EvalWeights {
-            #[inline(always)]
-            pub fn new($($name: $ty),*) -> EvalWeights {
-                EvalWeights { $($name),* }
-            }
-        }
-        
-        impl Default for EvalWeights {
-            #[inline(always)]
-            fn default() -> Self {
-                EvalWeights {
-                    $($name: $default),*
-                }
-            }
-        }
-    }
-}
-
-weights! {
-    bishop_pair: T = BISHOP_PAIR,
-    
-    knight_mobility: IndexTable<9> = KNIGHT_MOBILITY,
-    bishop_mobility: IndexTable<14> = BISHOP_MOBILITY,
-    rook_mobility: IndexTable<15> = ROOK_MOBILITY,
-    queen_mobility: IndexTable<28> = QUEEN_MOBILITY,
-    
-    passed_pawn: RankTable = PASSED_PAWN,
-    backwards_pawn: T = BACKWARDS_PAWN,
-    isolated_pawn: T = ISOLATED_PAWN,
-    doubled_pawn: T = DOUBLED_PAWN,
-    phalanx: T = PHALANX,
-    support: T = SUPPORT,
-    
-    pawn_minor_threat: T = PAWN_MINOR_THREAT,
-    pawn_major_threat: T = PAWN_MAJOR_THREAT,
-    minor_major_threat: T = MINOR_MAJOR_THREAT,
-    
-    space_restrict_piece: T = SPACE_RESTRICT_PIECE,
-    space_restrict_empty: T = SPACE_RESTRICT_EMPTY,
-    space_center_control: T = SPACE_CENTER_CONTROL,
-
-    knight_attack: T = KNIGHT_ATTACK,
-    bishop_attack: T = BISHOP_ATTACK,
-    rook_attack: T = ROOK_ATTACK,
-    queen_attack: T = QUEEN_ATTACK,
-    
-    rook_open_file: FileTable = ROOK_OPEN_FILE,
-    rook_semiopen_file: FileTable = ROOK_SEMIOPEN_FILE,
-    queen_open_file: FileTable = QUEEN_OPEN_FILE,
-    queen_semiopen_file: FileTable = QUEEN_SEMIOPEN_FILE,
-    
-    pawn_value: T = PAWN_VALUE,
-    knight_value: T = KNIGHT_VALUE,
-    bishop_value: T = BISHOP_VALUE,
-    rook_value: T = ROOK_VALUE,
-    queen_value: T = QUEEN_VALUE,
-    
-    pawn_psqt: SquareTable = PAWN_PSQT,
-    knight_psqt: SquareTable = KNIGHT_PSQT,
-    bishop_psqt: SquareTable = BISHOP_PSQT,
-    rook_psqt: SquareTable = ROOK_PSQT,
-    queen_psqt: SquareTable = QUEEN_PSQT,
-    king_psqt: SquareTable = KING_PSQT,
-}
-
-impl EvalWeights {
-    #[inline(always)]
-    pub fn pawn_table(&self) -> SquareTable {
-        calc_piece_table(self.pawn_psqt, self.pawn_value)
-    }
-
-    #[inline(always)]
-    pub fn knight_table(&self) -> SquareTable {
-        calc_piece_table(self.knight_psqt, self.knight_value)
-    }
-
-    #[inline(always)]
-    pub fn bishop_table(&self) -> SquareTable {
-        calc_piece_table(self.bishop_psqt, self.bishop_value)
-    }
-
-    #[inline(always)]
-    pub fn rook_table(&self) -> SquareTable {
-        calc_piece_table(self.rook_psqt, self.rook_value)
-    }
-
-    #[inline(always)]
-    pub fn queen_table(&self) -> SquareTable {
-        calc_piece_table(self.queen_psqt, self.queen_value)
-    }
-
-    #[inline(always)]
-    pub fn king_table(&self) -> SquareTable {
-        self.king_psqt
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct EvalData {
     king_zone: [BitBoard; Color::NUM],
@@ -353,15 +249,27 @@ macro_rules! trace {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
-pub struct BitboardPair {
+pub struct FilePair {
+    pub white: BitBoard,
+    pub black: BitBoard,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub struct RankPair {
+    pub white: BitBoard,
+    pub black: BitBoard,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub struct SquarePair {
     pub white: BitBoard,
     pub black: BitBoard,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct IndicesPair<const COUNT: usize, const SIZE: usize> {
-    pub white: ArrayVec<usize, COUNT>,
-    pub black: ArrayVec<usize, COUNT>
+pub struct IndicesPair<const MAX: usize, const SIZE: usize> {
+    pub white: ArrayVec<usize, MAX>,
+    pub black: ArrayVec<usize, MAX>
 }
 
 #[cfg(feature = "trace")]
@@ -377,22 +285,22 @@ pub struct EvalTrace {
     pub queen_value: i16,
     pub bishop_pair: i16,
     
-    pub pawn_psqt: BitboardPair,
-    pub knight_psqt: BitboardPair,
-    pub bishop_psqt: BitboardPair,
-    pub rook_psqt: BitboardPair,
-    pub queen_psqt: BitboardPair,
-    pub king_psqt: BitboardPair,
+    pub pawn_psqt: SquarePair,
+    pub knight_psqt: SquarePair,
+    pub bishop_psqt: SquarePair,
+    pub rook_psqt: SquarePair,
+    pub queen_psqt: SquarePair,
+    pub king_psqt: SquarePair,
     
     pub knight_mobility: IndicesPair<{Square::NUM}, 9>,
     pub bishop_mobility: IndicesPair<{Square::NUM}, 14>,
     pub rook_mobility: IndicesPair<{Square::NUM}, 15>,
     pub queen_mobility: IndicesPair<{Square::NUM}, 28>,
     
-    pub rook_open_file: BitboardPair,
-    pub rook_semiopen_file: BitboardPair,
-    pub queen_open_file: BitboardPair,
-    pub queen_semiopen_file: BitboardPair,
+    pub rook_open_file: FilePair,
+    pub rook_semiopen_file: FilePair,
+    pub queen_open_file: FilePair,
+    pub queen_semiopen_file: FilePair,
     
     pub knight_attack: i16,
     pub bishop_attack: i16,
@@ -403,7 +311,7 @@ pub struct EvalTrace {
     pub pawn_major_threat: i16,
     pub minor_major_threat: i16,
 
-    pub passed_pawn: BitboardPair,
+    pub passed_pawn: RankPair,
     pub backwards_pawn: i16,
     pub isolated_pawn: i16,
     pub doubled_pawn: i16,
@@ -417,22 +325,11 @@ pub struct EvalTrace {
 
 #[derive(Debug, Clone)]
 pub struct Evaluator {
-    weights: EvalWeights,
     #[cfg(feature="trace")] trace: EvalTrace,
     data: EvalData
 }
 
 impl Evaluator {
-    pub fn set_weights(&mut self, weights: EvalWeights) {
-        self.weights = weights;
-    }
-
-    pub fn weights(&self) -> &EvalWeights {
-        &self.weights
-    }
-
-    /*----------------------------------------------------------------*/
-
     pub fn eval(&mut self, pos: &Position, ply: u16) -> Score {
         if pos.is_checkmate() {
             return Score::new_mated(ply);
@@ -468,6 +365,10 @@ impl Evaluator {
         });
 
         stm * score.scale(phase)
+    }
+    
+    pub fn trace(&self) -> EvalTrace {
+        self.trace.clone()
     }
 
     /*----------------------------------------------------------------*/
@@ -512,12 +413,12 @@ impl Evaluator {
             }
         }
 
-        eval_pieces!(Piece::Pawn, self.trace.pawn_value, self.trace.pawn_psqt, self.weights.pawn_table());
-        eval_pieces!(Piece::Knight, self.trace.knight_value, self.trace.knight_psqt, self.weights.knight_table());
-        eval_pieces!(Piece::Bishop, self.trace.bishop_value, self.trace.bishop_psqt, self.weights.bishop_table());
-        eval_pieces!(Piece::Rook, self.trace.rook_value, self.trace.rook_psqt, self.weights.rook_table());
-        eval_pieces!(Piece::Queen, self.trace.queen_value, self.trace.queen_psqt, self.weights.queen_table());
-        eval_pieces!(Piece::King, self.trace.king_psqt, self.weights.king_table());
+        eval_pieces!(Piece::Pawn, self.trace.pawn_value, self.trace.pawn_psqt, PAWN_TABLE);
+        eval_pieces!(Piece::Knight, self.trace.knight_value, self.trace.knight_psqt, KNIGHT_TABLE);
+        eval_pieces!(Piece::Bishop, self.trace.bishop_value, self.trace.bishop_psqt, BISHOP_TABLE);
+        eval_pieces!(Piece::Rook, self.trace.rook_value, self.trace.rook_psqt, ROOK_TABLE);
+        eval_pieces!(Piece::Queen, self.trace.queen_value, self.trace.queen_psqt, QUEEN_TABLE);
+        eval_pieces!(Piece::King, self.trace.king_psqt, KING_TABLE);
 
         score
     }
@@ -530,7 +431,7 @@ impl Evaluator {
         let b_bishops = board.colored_pieces(Color::Black, Piece::Bishop);
 
         if w_bishops.len() >= 2 && !(w_bishops.is_subset(BitBoard::LIGHT_SQUARES) || w_bishops.is_subset(BitBoard::DARK_SQUARES)) {
-            score += self.weights.bishop_pair;
+            score += BISHOP_PAIR;
             
             trace!({
                 self.trace.bishop_pair += 1;
@@ -538,7 +439,7 @@ impl Evaluator {
         }
 
         if b_bishops.len() >= 2 && !(b_bishops.is_subset(BitBoard::LIGHT_SQUARES) || b_bishops.is_subset(BitBoard::DARK_SQUARES)) {
-            score -= self.weights.bishop_pair;
+            score -= BISHOP_PAIR;
 
             trace!({
                 self.trace.bishop_pair -= 1;
@@ -590,8 +491,8 @@ impl Evaluator {
             }
         }
 
-        eval_pieces!(Piece::Rook, self.trace.rook_open_file, self.trace.rook_semiopen_file, self.weights.rook_open_file, self.weights.rook_semiopen_file);
-        eval_pieces!(Piece::Queen, self.trace.queen_open_file, self.trace.queen_semiopen_file, self.weights.queen_open_file, self.weights.queen_semiopen_file);
+        eval_pieces!(Piece::Rook, self.trace.rook_open_file, self.trace.rook_semiopen_file, ROOK_OPEN_FILE, ROOK_SEMIOPEN_FILE);
+        eval_pieces!(Piece::Queen, self.trace.queen_open_file, self.trace.queen_semiopen_file, QUEEN_OPEN_FILE, QUEEN_SEMIOPEN_FILE);
 
         score
     }
@@ -677,10 +578,10 @@ impl Evaluator {
             }
         }
 
-        eval_pieces!(Piece::Knight, self.trace.knight_mobility, get_knight_moves, self.weights.knight_mobility);
-        eval_sliders!(Piece::Bishop, self.trace.bishop_mobility, get_bishop_moves, self.data.not_diag_sliders, self.weights.bishop_mobility);
-        eval_sliders!(Piece::Rook, self.trace.rook_mobility, get_rook_moves, self.data.not_orth_sliders, self.weights.rook_mobility);
-        eval_sliders!(Piece::Queen, self.trace.queen_mobility, get_bishop_moves, get_rook_moves, self.data.not_diag_sliders, self.data.not_orth_sliders, self.weights.queen_mobility);
+        eval_pieces!(Piece::Knight, self.trace.knight_mobility, get_knight_moves, KNIGHT_MOBILITY);
+        eval_sliders!(Piece::Bishop, self.trace.bishop_mobility, get_bishop_moves, self.data.not_diag_sliders, BISHOP_MOBILITY);
+        eval_sliders!(Piece::Rook, self.trace.rook_mobility, get_rook_moves, self.data.not_orth_sliders, ROOK_MOBILITY);
+        eval_sliders!(Piece::Queen, self.trace.queen_mobility, get_bishop_moves, get_rook_moves, self.data.not_diag_sliders, self.data.not_orth_sliders, QUEEN_MOBILITY);
         
         score
     }
@@ -717,8 +618,8 @@ impl Evaluator {
             }
         }
         
-        pawn_threats!(w_minors, b_minors, self.trace.pawn_minor_threat, self.weights.pawn_minor_threat);
-        pawn_threats!(w_majors, b_majors, self.trace.pawn_major_threat, self.weights.pawn_major_threat);
+        pawn_threats!(w_minors, b_minors, self.trace.pawn_minor_threat, PAWN_MINOR_THREAT);
+        pawn_threats!(w_majors, b_majors, self.trace.pawn_major_threat, PAWN_MAJOR_THREAT);
 
         macro_rules! eval_minors {
             ($piece:expr, $trace_major:expr, $trace_king:expr, $attack_fn:ident, $attack_units:expr) => {
@@ -727,7 +628,7 @@ impl Evaluator {
                     let major_threats = (moves & b_majors).len() as i16;
                     let king_threats = (moves & b_king).len() as i16;
 
-                    score += major_threats * self.weights.minor_major_threat;
+                    score += major_threats * MINOR_MAJOR_THREAT;
                     score += king_threats * $attack_units;
                     
                     trace!({
@@ -741,7 +642,7 @@ impl Evaluator {
                     let major_threats = (moves & b_majors).len() as i16;
                     let king_threats = (moves & w_king).len() as i16;
 
-                    score -= major_threats * self.weights.minor_major_threat;
+                    score -= major_threats * MINOR_MAJOR_THREAT;
                     score -= king_threats * $attack_units;
                     
                     trace!({
@@ -757,7 +658,7 @@ impl Evaluator {
                     let major_threats = (moves & b_majors).len() as i16;
                     let king_threats = (moves & b_king).len() as i16;
 
-                    score += major_threats * self.weights.minor_major_threat;
+                    score += major_threats * MINOR_MAJOR_THREAT;
                     score += king_threats * $attack_units;
                     
                     trace!({
@@ -771,7 +672,7 @@ impl Evaluator {
                     let major_threats = (moves & b_majors).len() as i16;
                     let king_threats = (moves & w_king).len() as i16;
 
-                    score -= major_threats * self.weights.minor_major_threat;
+                    score -= major_threats * MINOR_MAJOR_THREAT;
                     score -= king_threats * $attack_units;
                     
                     trace!({
@@ -832,10 +733,10 @@ impl Evaluator {
             }
         }
 
-        eval_minors!(Piece::Knight, self.trace.minor_major_threat, self.trace.knight_attack, get_knight_moves, self.weights.knight_attack);
-        eval_minors!(Piece::Bishop, self.trace.minor_major_threat, self.trace.bishop_attack, get_bishop_moves, self.data.not_diag_sliders, self.weights.bishop_attack);
-        eval_majors!(Piece::Rook, self.trace.rook_attack, get_rook_moves, self.data.not_orth_sliders, self.weights.rook_attack);
-        eval_majors!(Piece::Queen, self.trace.queen_attack, get_bishop_moves, get_rook_moves, self.data.not_diag_sliders, self.data.not_orth_sliders, self.weights.queen_attack);
+        eval_minors!(Piece::Knight, self.trace.minor_major_threat, self.trace.knight_attack, get_knight_moves, KNIGHT_ATTACK);
+        eval_minors!(Piece::Bishop, self.trace.minor_major_threat, self.trace.bishop_attack, get_bishop_moves, self.data.not_diag_sliders, BISHOP_ATTACK);
+        eval_majors!(Piece::Rook, self.trace.rook_attack, get_rook_moves, self.data.not_orth_sliders, ROOK_ATTACK);
+        eval_majors!(Piece::Queen, self.trace.queen_attack, get_bishop_moves, get_rook_moves, self.data.not_diag_sliders, self.data.not_orth_sliders, QUEEN_ATTACK);
 
         score
     }
@@ -874,16 +775,16 @@ impl Evaluator {
             }
         }
         
-        space_restrict!(blockers, self.trace.space_restrict_piece, self.weights.space_restrict_piece);
-        space_restrict!(!blockers, self.trace.space_restrict_empty, self.weights.space_restrict_empty);
+        space_restrict!(blockers, self.trace.space_restrict_piece, SPACE_RESTRICT_PIECE);
+        space_restrict!(!blockers, self.trace.space_restrict_empty, SPACE_RESTRICT_EMPTY);
 
         const CENTER: BitBoard = BitBoard(0x3C3C3C3C0000);
 
         let w_uncontested = !self.data.attacks(Color::Black) & (self.data.attacks(Color::White) | board.colors(Color::White)) & CENTER;
         let b_uncontested = !self.data.attacks(Color::White) & (self.data.attacks(Color::Black) | board.colors(Color::Black)) & CENTER;
         
-        score += w_uncontested.len() as i16 * self.weights.space_center_control;
-        score -= b_uncontested.len() as i16 * self.weights.space_center_control;
+        score += w_uncontested.len() as i16 * SPACE_CENTER_CONTROL;
+        score -= b_uncontested.len() as i16 * SPACE_CENTER_CONTROL;
         
         trace!({
             self.trace.space_center_control += w_uncontested.len() as i16;
@@ -915,28 +816,28 @@ impl Evaluator {
             let support = (w_pawns & get_pawn_attacks(pawn, Color::Black)).len() as i16;
 
             if doubled {
-                score += self.weights.doubled_pawn;
+                score += DOUBLED_PAWN;
                 
                 trace!({
                     self.trace.doubled_pawn += 1;
                 });
             }
             if passed {
-                score += self.weights.passed_pawn[rank as usize];
+                score += PASSED_PAWN[rank as usize];
 
                 trace!({
                     self.trace.passed_pawn.white |= pawn.bitboard();
                 });
             }
             if backwards {
-                score += self.weights.backwards_pawn;
+                score += BACKWARDS_PAWN;
 
                 trace!({
                     self.trace.backwards_pawn += 1;
                 });
             }
             if isolated {
-                score += self.weights.isolated_pawn;
+                score += ISOLATED_PAWN;
 
                 trace!({
                     self.trace.isolated_pawn += 1;
@@ -967,28 +868,28 @@ impl Evaluator {
             let support = (b_pawns & get_pawn_attacks(pawn, Color::White)).len() as i16;
 
             if doubled {
-                score -= self.weights.doubled_pawn;
+                score -= DOUBLED_PAWN;
 
                 trace!({
                     self.trace.doubled_pawn -= 1;
                 });
             }
             if passed {
-                score -= self.weights.passed_pawn[rank.flip() as usize];
+                score -= PASSED_PAWN[rank.flip() as usize];
                 
                 trace!({
                     self.trace.passed_pawn.black |= pawn.bitboard();
                 });
             }
             if backwards {
-                score -= self.weights.backwards_pawn;
+                score -= BACKWARDS_PAWN;
                 
                 trace!({
                     self.trace.backwards_pawn -= 1;
                 });
             }
             if isolated {
-                score -= self.weights.isolated_pawn;
+                score -= ISOLATED_PAWN;
                 
                 trace!({
                     self.trace.backwards_pawn -= 1;
@@ -1013,8 +914,7 @@ impl Default for Evaluator {
     #[inline(always)]
     fn default() -> Self {
         Evaluator {
-            weights: EvalWeights::default(),
-            trace: EvalTrace::default(),
+            #[cfg(feature="trace")] trace: EvalTrace::default(),
             data: EvalData::default(),
         }
     }
@@ -1031,18 +931,18 @@ pub fn calc_phase(board: &Board) -> u16 {
     phase -= board.pieces(Piece::Rook).len() as u16 * ROOK_PHASE;
     phase -= board.pieces(Piece::Queen).len() as u16 * QUEEN_PHASE;
 
-    (phase * TAPER_SCALE + TOTAL_PHASE / 2) / TOTAL_PHASE
+    phase
 }
 
-pub fn piece_value(params: &EvalWeights, stm: Color, piece: Piece, sq: Square) -> T {
+pub fn piece_value(stm: Color, piece: Piece, sq: Square) -> T {
     let i = sq.relative_to(stm) as usize;
     
     match piece {
-        Piece::Pawn => params.pawn_table()[i],
-        Piece::Knight => params.knight_table()[i],
-        Piece::Bishop => params.bishop_table()[i],
-        Piece::Rook => params.rook_table()[i],
-        Piece::Queen => params.queen_table()[i],
-        Piece::King => params.king_table()[i],
+        Piece::Pawn => PAWN_TABLE[i],
+        Piece::Knight => KNIGHT_TABLE[i],
+        Piece::Bishop => BISHOP_TABLE[i],
+        Piece::Rook => ROOK_TABLE[i],
+        Piece::Queen => QUEEN_TABLE[i],
+        Piece::King => KING_TABLE[i],
     }
 }

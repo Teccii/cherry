@@ -1,4 +1,3 @@
-pub mod datagen;
 pub mod eval;
 pub mod eval_consts;
 pub mod history;
@@ -17,7 +16,6 @@ pub mod uci;
 pub mod util;
 pub mod window;
 
-pub use datagen::*;
 pub use eval::*;
 pub use eval_consts::*;
 pub use history::*;

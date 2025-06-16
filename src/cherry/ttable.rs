@@ -2,6 +2,8 @@ use std::sync::atomic::*;
 use cozy_chess::*;
 use super::*;
 
+/*----------------------------------------------------------------*/
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TTFlag {
     None,
@@ -21,6 +23,8 @@ impl TTFlag {
         }
     }
 }
+
+/*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
 pub struct TTData {
@@ -88,6 +92,8 @@ impl TTData {
     }
 }
 
+/*----------------------------------------------------------------*/
+
 #[derive(Debug)]
 pub struct TTEntry {
     key: AtomicU64,
@@ -118,6 +124,8 @@ impl TTEntry {
     }
 }
 
+/*----------------------------------------------------------------*/
+
 #[derive(Debug)]
 pub struct TTable {
     entries: Box<[TTEntry]>,
@@ -134,7 +142,9 @@ impl TTable {
             size: size as u64
         }
     }
-    
+
+    /*----------------------------------------------------------------*/
+
     pub fn get(&self, board: &Board) -> Option<TTData> {
         let hash = board.hash();
         let index = self.index(hash);
@@ -181,11 +191,12 @@ impl TTable {
         }
     }
     
-    #[inline(always)]
     pub fn clean(&self) {
         self.entries.iter().for_each(|e| e.reset());
     }
-    
+
+    /*----------------------------------------------------------------*/
+
     #[inline(always)]
     fn replace(new_data: TTData, old_data: TTData) -> bool {
         let new_priority = new_data.depth + new_data.flag.bonus();
