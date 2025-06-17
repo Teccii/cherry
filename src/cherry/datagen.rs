@@ -88,6 +88,8 @@ fn gen_many(duration: Duration, move_time: u64) -> Vec<(Board, f32)> {
 }
 
 pub fn datagen(out_path: &str, threads: u16, move_time: u64) {
+    let mut total = 0;
+    
     loop {
         let (tx, rx) = mpsc::channel();
         let mut join_handlers = Vec::new();
@@ -111,6 +113,8 @@ pub fn datagen(out_path: &str, threads: u16, move_time: u64) {
             output += &format!("{} | {:.1}\n", board, wdl);
             count += 1;
         }
+        
+        total += count;
 
         let mut file = OpenOptions::new()
             .append(true)
@@ -120,6 +124,6 @@ pub fn datagen(out_path: &str, threads: u16, move_time: u64) {
 
         write!(&mut file, "{}", output).unwrap();
 
-        println!("Wrote {} positions to {}", count, out_path);
+        println!("Wrote {} positions to {} (total: {})", count, out_path, total);
     }
 }
