@@ -148,7 +148,7 @@ fn main() -> Result<()> {
                 println!("+-----------------+");
                 println!("FEN: {}", board);
             },
-            #[cfg(feature="tune")] UciCommand::Tune(data_path, out_path) => todo!(),
+            #[cfg(feature="tune")] UciCommand::Tune(data_path, out_path) => tune::tune(&data_path, &out_path),
             #[cfg(feature = "tune")] UciCommand::DataGen(out_path, threads, move_time) => datagen::datagen(&out_path, threads, move_time),
             UciCommand::Eval => {
                 let searcher = searcher.lock().unwrap();

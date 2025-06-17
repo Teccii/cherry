@@ -3,6 +3,8 @@ use std::{
     fmt::Write as _,
     io::Write,
 };
+use std::collections::HashMap;
+use std::io::Read;
 use cozy_chess::*;
 use super::*;
 
@@ -119,7 +121,31 @@ macro_rules! texel {
     )*}
 }
 
-pub fn tune(data: &[TrainingData], out_path: &str) {
+pub fn tune(data_path: &str, out_path: &str) {
+    let mut board_map: HashMap<Board, (f32, usize)> = HashMap::new();
+    let mut data_file = std::fs::read_to_string(data_path).unwrap();
+    
+    for mut reader in data_file.lines().map(|s| s.split('|')) {
+        let board = reader.next().and_then(|s| s.parse::<Board>().ok()).unwrap();
+        let result = reader.next().and_then(|s| s.parse::<f32>().ok()).unwrap();
+        
+        if let Some(data) = board_map.get_mut(&board) {
+            data.0 += result;
+            data.1 += 1;
+        } else {
+            board_map.insert(board, (result, 1));
+        }
+    }
+    
+    let data: Vec<TrainingData> = board_map.iter().map(|(board, (result, count))| TrainingData {
+        board: board.clone(),
+        result: *result / *count as f32,
+    }).collect();
+    
+    texel_tune(&data, out_path);
+}
+
+pub fn texel_tune(data: &[TrainingData], out_path: &str) {
     let mut out_file = OpenOptions::new()
         .append(true)
         .create(true)
