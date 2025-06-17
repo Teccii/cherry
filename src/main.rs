@@ -3,20 +3,10 @@
 mod cherry;
 
 use std::{
-    fs::OpenOptions,
     sync::{Arc, Mutex},
     sync::mpsc::*,
     fmt::Write,
     io
-};
-use std::collections::HashMap;
-#[cfg(feature = "trace")] use pgn_reader::{
-    BufferedReader,
-    Outcome,
-    RawTag,
-    SanPlus,
-    Skip,
-    Visitor
 };
 use cozy_chess::*;
 
@@ -158,7 +148,8 @@ fn main() -> Result<()> {
                 println!("+-----------------+");
                 println!("FEN: {}", board);
             },
-            #[cfg(feature="trace")] UciCommand::Tune(data_path, out_path, max_games) => tune(data_path, out_path, max_games),
+            #[cfg(feature="tune")] UciCommand::Tune(data_path, out_path) => todo!(),
+            #[cfg(feature = "tune")] UciCommand::DataGen(out_path, threads, move_time) => datagen::datagen(&out_path, threads, move_time),
             UciCommand::Eval => {
                 let searcher = searcher.lock().unwrap();
                 println!("{}", searcher.pos.eval(0));
@@ -174,129 +165,4 @@ fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-/*----------------------------------------------------------------*/
-
-#[cfg(feature="trace")]
-struct PgnParser {
-    current: Board,
-    boards: Vec<Board>,
-    outcome: Option<Outcome>
-}
-
-#[cfg(feature="trace")]
-impl Visitor for PgnParser {
-    type Result = Option<(Vec<Board>, f32)>;
-
-    fn begin_game(&mut self) {
-        self.boards.clear();
-        self.current = Board::default();
-    }
-    
-    fn tag(&mut self, name: &[u8], value: RawTag<'_>) {
-        if name == b"FEN" {
-            self.boards.clear();
-            self.current = str::from_utf8(value.as_bytes()).unwrap().parse::<Board>().unwrap();
-        }
-    }
-
-    fn begin_variation(&mut self) -> Skip {
-        Skip(true)
-    }
-
-    fn san(&mut self, san: SanPlus) {
-        let mut san_str = String::new();
-        san.append_to_string(&mut san_str);
-        
-        let mv = cozy_chess::util::parse_san_move(&self.current, &san_str).unwrap();
-        self.boards.push(self.current.clone());
-        self.current.play_unchecked(mv);
-    }
-
-    fn outcome(&mut self, outcome: Option<Outcome>) {
-        self.outcome = outcome;
-    }
-
-    fn end_game(&mut self) -> Self::Result {
-        if let Some(outcome) = self.outcome {
-            let mut boards = self.boards.clone();
-            boards.push(self.current.clone());
-            
-            let result = match outcome {
-                Outcome::Decisive { winner } => match winner as usize {
-                    0 => 1.0,
-                    1 => 0.0,
-                    _ => 0.5
-                },
-                Outcome::Draw => 0.5,
-            };
-            
-            return Some((boards, result));
-        }
-        
-        None
-    }
-}
-
-#[cfg(feature = "trace")]
-fn tune(data_path: String, out_path: String, max_games: u64) {
-    let file = OpenOptions::new()
-        .read(true)
-        .open(data_path)
-        .unwrap();
-    
-    let mut trace_map: HashMap<EvalTrace, (f32, u64)> = HashMap::new();
-    let mut evaluator = Evaluator::default();
-    let mut reader = BufferedReader::new(file);
-    let mut parser = PgnParser {
-        current: Board::default(),
-        boards: Vec::new(),
-        outcome: None
-    };
-    
-    println!("Parsing data...");
-    
-    let mut i = 0;
-    while let Some((boards, result)) = reader.read_game(&mut parser).unwrap().flatten() {
-        for board in boards.iter().skip(20).cloned() {
-            let pos = Position::new(board);
-            if pos.is_checkmate() || pos.is_draw(0) {
-                continue;
-            }
-            
-            //quiescence search
-            
-            evaluator.eval(&pos, 0);
-            let trace = evaluator.trace();
-            
-            if let Some(data) = trace_map.get_mut(&trace) {
-                data.0 += result;
-                data.1 += 1;
-            } else {
-                trace_map.insert(trace, (result, 1));
-            }
-        }
-        
-        i += 1;
-        
-        if i % 1000 == 0 {
-            println!("Found and parsed {} games so far", i);
-        }
-        
-        if i >= max_games {
-            break;
-        }
-    }
-    
-    println!("Found and parsed a total of {} games", i);
-    
-    let data: Vec<TrainingData> = trace_map.iter().map(|(trace, (result, count))| TrainingData {
-        trace: trace.clone(),
-        result: *result / *count as f32,
-    }).collect();
-    
-    println!("Unique Position Count: {}", data.len());
-    
-    tune::tune(&out_path, &data, 100_000_000, 100_000)
 }

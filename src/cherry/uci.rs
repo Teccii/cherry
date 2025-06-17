@@ -14,7 +14,8 @@ pub enum UciCommand {
     Position(Board, Vec<Move>),
     Go(Vec<SearchLimit>),
     SetOption(String, String),
-    #[cfg(feature = "trace")] Tune(String, String, u64),
+    #[cfg(feature = "tune")] Tune(String, String),
+    #[cfg(feature = "tune")] DataGen(String, u16, u64),
     Display,
     Eval,
     Stop,
@@ -149,15 +150,23 @@ impl FromStr for UciCommand {
                 
                 Ok(UciCommand::SetOption(name, value))
             },
-            #[cfg(feature = "trace")] "tune" => {
+            #[cfg(feature = "tune")] "tune" => {
                 reader.next().filter(|&s| s == "data").ok_or(UciParseError::InvalidArguments)?;
                 let data_path = reader.next().ok_or(UciParseError::InvalidArguments)?.to_owned();
-                reader.next().filter(|&s| s == "games").ok_or(UciParseError::InvalidArguments)?;
-                let max_games = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
                 reader.next().filter(|&s| s == "out").ok_or(UciParseError::InvalidArguments)?;
                 let out_path = reader.next().ok_or(UciParseError::InvalidArguments)?.to_owned();
 
-                Ok(UciCommand::Tune(data_path, out_path, max_games))
+                Ok(UciCommand::Tune(data_path, out_path))
+            },
+            #[cfg(feature = "tune")] "datagen" => {
+                reader.next().filter(|&s| s == "threads").ok_or(UciParseError::InvalidArguments)?;
+                let threads = reader.next().and_then(|s| s.parse::<u16>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                reader.next().filter(|&s| s == "movetime").ok_or(UciParseError::InvalidArguments)?;
+                let move_time = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                reader.next().filter(|&s| s == "out").ok_or(UciParseError::InvalidArguments)?;
+                let out_path = reader.next().ok_or(UciParseError::InvalidArguments)?.to_owned();
+
+                Ok(UciCommand::DataGen(out_path, threads, move_time))
             },
             _ => Err(UciParseError::InvalidCommand),
         }

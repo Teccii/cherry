@@ -316,20 +316,25 @@ pub struct EvalTrace {
     pub isolated_pawn: i16,
     pub doubled_pawn: i16,
     pub phalanx: RankPair,
-    pub support: IndicesPair<{Square::NUM}, 3>,
-
-    pub space_restrict_piece: i16,
-    pub space_restrict_empty: i16,
-    pub space_center_control: i16,
+    pub support: i16,
+    
+    pub center_control: i16,
 }
 
 #[derive(Debug, Clone)]
 pub struct Evaluator {
     #[cfg(feature="trace")] trace: EvalTrace,
+    weights: EvalWeights,
     data: EvalData
 }
 
 impl Evaluator {
+    pub fn with_weights(weights: EvalWeights) -> Self {
+        let mut evaluator = Evaluator::default();
+        evaluator.weights = weights;
+        evaluator
+    }
+    
     pub fn eval(&mut self, pos: &Position, ply: u16) -> Score {
         if pos.is_checkmate() {
             return Score::new_mated(ply);
@@ -379,16 +384,16 @@ impl Evaluator {
         let white = board.colors(Color::White);
 
         macro_rules! eval_pieces {
-            ($piece:expr, $trace_value:expr, $trace_psqt:expr, $table:expr) => {
+            ($piece:expr, $trace_value:expr, $trace_psqt:expr, $value:expr, $table:expr) => {
                 for sq in board.pieces($piece) {
                     if white.has(sq) {
-                        score += $table[sq as usize];
+                        score += $value + $table[sq as usize];
                         trace!({
                             $trace_value += 1;
                             $trace_psqt.white |= sq.bitboard();
                         });
                     } else {
-                        score -= $table[sq.flip_rank() as usize];
+                        score -= $value + $table[sq.flip_rank() as usize];
                         trace!({
                             $trace_value -= 1;
                             $trace_psqt.black |= sq.bitboard();
@@ -414,12 +419,12 @@ impl Evaluator {
             }
         }
 
-        eval_pieces!(Piece::Pawn, self.trace.pawn_value, self.trace.pawn_psqt, PAWN_TABLE);
-        eval_pieces!(Piece::Knight, self.trace.knight_value, self.trace.knight_psqt, KNIGHT_TABLE);
-        eval_pieces!(Piece::Bishop, self.trace.bishop_value, self.trace.bishop_psqt, BISHOP_TABLE);
-        eval_pieces!(Piece::Rook, self.trace.rook_value, self.trace.rook_psqt, ROOK_TABLE);
-        eval_pieces!(Piece::Queen, self.trace.queen_value, self.trace.queen_psqt, QUEEN_TABLE);
-        eval_pieces!(Piece::King, self.trace.king_psqt, KING_TABLE);
+        eval_pieces!(Piece::Pawn, self.trace.pawn_value, self.trace.pawn_psqt, self.weights.pawn_value, self.weights.pawn_psqt);
+        eval_pieces!(Piece::Knight, self.trace.knight_value, self.trace.knight_psqt, self.weights.knight_value, self.weights.knight_psqt);
+        eval_pieces!(Piece::Bishop, self.trace.bishop_value, self.trace.bishop_psqt, self.weights.bishop_value, self.weights.bishop_psqt);
+        eval_pieces!(Piece::Rook, self.trace.rook_value, self.trace.rook_psqt, self.weights.rook_value, self.weights.rook_psqt);
+        eval_pieces!(Piece::Queen, self.trace.queen_value, self.trace.queen_psqt, self.weights.queen_value, self.weights.queen_psqt);
+        eval_pieces!(Piece::King, self.trace.king_psqt, self.weights.king_psqt);
 
         score
     }
@@ -432,7 +437,7 @@ impl Evaluator {
         let b_bishops = board.colored_pieces(Color::Black, Piece::Bishop);
 
         if w_bishops.len() >= 2 && !(w_bishops.is_subset(BitBoard::LIGHT_SQUARES) || w_bishops.is_subset(BitBoard::DARK_SQUARES)) {
-            score += BISHOP_PAIR;
+            score += self.weights.bishop_pair;
             
             trace!({
                 self.trace.bishop_pair += 1;
@@ -440,7 +445,7 @@ impl Evaluator {
         }
 
         if b_bishops.len() >= 2 && !(b_bishops.is_subset(BitBoard::LIGHT_SQUARES) || b_bishops.is_subset(BitBoard::DARK_SQUARES)) {
-            score -= BISHOP_PAIR;
+            score -= self.weights.bishop_pair;
 
             trace!({
                 self.trace.bishop_pair -= 1;
@@ -492,8 +497,8 @@ impl Evaluator {
             }
         }
 
-        eval_pieces!(Piece::Rook, self.trace.rook_open_file, self.trace.rook_semiopen_file, ROOK_OPEN_FILE, ROOK_SEMIOPEN_FILE);
-        eval_pieces!(Piece::Queen, self.trace.queen_open_file, self.trace.queen_semiopen_file, QUEEN_OPEN_FILE, QUEEN_SEMIOPEN_FILE);
+        eval_pieces!(Piece::Rook, self.trace.rook_open_file, self.trace.rook_semiopen_file, self.weights.rook_open_file, self.weights.rook_semiopen_file);
+        eval_pieces!(Piece::Queen, self.trace.queen_open_file, self.trace.queen_semiopen_file, self.weights.queen_open_file, self.weights.queen_semiopen_file);
 
         score
     }
@@ -579,10 +584,10 @@ impl Evaluator {
             }
         }
 
-        eval_pieces!(Piece::Knight, self.trace.knight_mobility, get_knight_moves, KNIGHT_MOBILITY);
-        eval_sliders!(Piece::Bishop, self.trace.bishop_mobility, get_bishop_moves, self.data.not_diag_sliders, BISHOP_MOBILITY);
-        eval_sliders!(Piece::Rook, self.trace.rook_mobility, get_rook_moves, self.data.not_orth_sliders, ROOK_MOBILITY);
-        eval_sliders!(Piece::Queen, self.trace.queen_mobility, get_bishop_moves, get_rook_moves, self.data.not_diag_sliders, self.data.not_orth_sliders, QUEEN_MOBILITY);
+        eval_pieces!(Piece::Knight, self.trace.knight_mobility, get_knight_moves, self.weights.knight_mobility);
+        eval_sliders!(Piece::Bishop, self.trace.bishop_mobility, get_bishop_moves, self.data.not_diag_sliders, self.weights.bishop_mobility);
+        eval_sliders!(Piece::Rook, self.trace.rook_mobility, get_rook_moves, self.data.not_orth_sliders, self.weights.rook_mobility);
+        eval_sliders!(Piece::Queen, self.trace.queen_mobility, get_bishop_moves, get_rook_moves, self.data.not_diag_sliders, self.data.not_orth_sliders, self.weights.queen_mobility);
         
         score
     }
@@ -619,8 +624,8 @@ impl Evaluator {
             }
         }
         
-        pawn_threats!(w_minors, b_minors, self.trace.pawn_minor_threat, PAWN_MINOR_THREAT);
-        pawn_threats!(w_majors, b_majors, self.trace.pawn_major_threat, PAWN_MAJOR_THREAT);
+        pawn_threats!(w_minors, b_minors, self.trace.pawn_minor_threat, self.weights.pawn_minor_threat);
+        pawn_threats!(w_majors, b_majors, self.trace.pawn_major_threat, self.weights.pawn_major_threat);
 
         macro_rules! eval_minors {
             ($piece:expr, $trace_major:expr, $trace_king:expr, $attack_fn:ident, $attack_units:expr) => {
@@ -629,7 +634,7 @@ impl Evaluator {
                     let major_threats = (moves & b_majors).len() as i16;
                     let king_threats = (moves & b_king).len() as i16;
 
-                    score += major_threats * MINOR_MAJOR_THREAT;
+                    score += major_threats * self.weights.minor_major_threat;
                     score += king_threats * $attack_units;
                     
                     trace!({
@@ -643,7 +648,7 @@ impl Evaluator {
                     let major_threats = (moves & b_majors).len() as i16;
                     let king_threats = (moves & w_king).len() as i16;
 
-                    score -= major_threats * MINOR_MAJOR_THREAT;
+                    score -= major_threats * self.weights.minor_major_threat;
                     score -= king_threats * $attack_units;
                     
                     trace!({
@@ -659,7 +664,7 @@ impl Evaluator {
                     let major_threats = (moves & b_majors).len() as i16;
                     let king_threats = (moves & b_king).len() as i16;
 
-                    score += major_threats * MINOR_MAJOR_THREAT;
+                    score += major_threats * self.weights.minor_major_threat;
                     score += king_threats * $attack_units;
                     
                     trace!({
@@ -673,7 +678,7 @@ impl Evaluator {
                     let major_threats = (moves & b_majors).len() as i16;
                     let king_threats = (moves & w_king).len() as i16;
 
-                    score -= major_threats * MINOR_MAJOR_THREAT;
+                    score -= major_threats * self.weights.minor_major_threat;
                     score -= king_threats * $attack_units;
                     
                     trace!({
@@ -734,10 +739,10 @@ impl Evaluator {
             }
         }
 
-        eval_minors!(Piece::Knight, self.trace.minor_major_threat, self.trace.knight_attack, get_knight_moves, KNIGHT_ATTACK);
-        eval_minors!(Piece::Bishop, self.trace.minor_major_threat, self.trace.bishop_attack, get_bishop_moves, self.data.not_diag_sliders, BISHOP_ATTACK);
-        eval_majors!(Piece::Rook, self.trace.rook_attack, get_rook_moves, self.data.not_orth_sliders, ROOK_ATTACK);
-        eval_majors!(Piece::Queen, self.trace.queen_attack, get_bishop_moves, get_rook_moves, self.data.not_diag_sliders, self.data.not_orth_sliders, QUEEN_ATTACK);
+        eval_minors!(Piece::Knight, self.trace.minor_major_threat, self.trace.knight_attack, get_knight_moves, self.weights.knight_attack);
+        eval_minors!(Piece::Bishop, self.trace.minor_major_threat, self.trace.bishop_attack, get_bishop_moves, self.data.not_diag_sliders, self.weights.bishop_attack);
+        eval_majors!(Piece::Rook, self.trace.rook_attack, get_rook_moves, self.data.not_orth_sliders, self.weights.rook_attack);
+        eval_majors!(Piece::Queen, self.trace.queen_attack, get_bishop_moves, get_rook_moves, self.data.not_diag_sliders, self.data.not_orth_sliders, self.weights.queen_attack);
 
         score
     }
@@ -746,50 +751,18 @@ impl Evaluator {
 
     fn eval_space(&mut self, board: &Board) -> T {
         let mut score = T::ZERO;
-        let blockers = board.occupied();
-
-        let w_uncontrolled = self.data.double_attacks(Color::Black)
-            & self.data.attacks(Color::White)
-            & !self.data.double_attacks(Color::White)
-            & !board.pawn_attacks(Color::White);
-
-        let b_uncontrolled = self.data.double_attacks(Color::White)
-            & self.data.attacks(Color::Black)
-            & !self.data.double_attacks(Color::Black)
-            & !board.pawn_attacks(Color::Black);
         
-        macro_rules! space_restrict {
-            ($blockers:expr, $trace:expr, $weight:expr) => {
-                let amount = (b_uncontrolled & $blockers).len() as i16;
-                score += amount * $weight;
-                
-                trace!({
-                    $trace += amount;
-                });
-                
-                let amount = (w_uncontrolled & $blockers).len() as i16;
-                score -= amount * $weight;
-                
-                trace!({
-                    $trace -= amount;
-                });
-            }
-        }
-        
-        space_restrict!(blockers, self.trace.space_restrict_piece, SPACE_RESTRICT_PIECE);
-        space_restrict!(!blockers, self.trace.space_restrict_empty, SPACE_RESTRICT_EMPTY);
-
         const CENTER: BitBoard = BitBoard(0x3C3C3C3C0000);
 
         let w_uncontested = !self.data.attacks(Color::Black) & (self.data.attacks(Color::White) | board.colors(Color::White)) & CENTER;
         let b_uncontested = !self.data.attacks(Color::White) & (self.data.attacks(Color::Black) | board.colors(Color::Black)) & CENTER;
         
-        score += w_uncontested.len() as i16 * SPACE_CENTER_CONTROL;
-        score -= b_uncontested.len() as i16 * SPACE_CENTER_CONTROL;
+        score += w_uncontested.len() as i16 * self.weights.center_control;
+        score -= b_uncontested.len() as i16 * self.weights.center_control;
         
         trace!({
-            self.trace.space_center_control += w_uncontested.len() as i16;
-            self.trace.space_center_control -= b_uncontested.len() as i16;
+            self.trace.center_control += w_uncontested.len() as i16;
+            self.trace.center_control -= b_uncontested.len() as i16;
         });
 
         score
@@ -817,28 +790,28 @@ impl Evaluator {
             let support = (w_pawns & get_pawn_attacks(pawn, Color::Black)).len() as i16;
 
             if doubled {
-                score += DOUBLED_PAWN;
+                score += self.weights.doubled_pawn;
                 
                 trace!({
                     self.trace.doubled_pawn += 1;
                 });
             }
             if passed {
-                score += PASSED_PAWN[rank as usize];
+                score += self.weights.passed_pawn[rank as usize];
 
                 trace!({
                     self.trace.passed_pawn.white |= pawn.bitboard();
                 });
             }
             if backwards {
-                score += BACKWARDS_PAWN;
+                score += self.weights.backwards_pawn;
 
                 trace!({
                     self.trace.backwards_pawn += 1;
                 });
             }
             if isolated {
-                score += ISOLATED_PAWN;
+                score += self.weights.isolated_pawn;
 
                 trace!({
                     self.trace.isolated_pawn += 1;
@@ -846,12 +819,12 @@ impl Evaluator {
             }
 
             if phalanx || support > 0 {
-                score += PHALANX[rank as usize];
-                score += SUPPORT[support as usize];
+                score += self.weights.phalanx[rank as usize];
+                score += support * self.weights.support;
                 
                 trace!({
                     self.trace.phalanx.white |= pawn.bitboard();
-                    self.trace.support.white.push(support as usize);
+                    self.trace.support += support;
                 });
             }
         }
@@ -870,28 +843,28 @@ impl Evaluator {
             let support = (b_pawns & get_pawn_attacks(pawn, Color::White)).len() as i16;
 
             if doubled {
-                score -= DOUBLED_PAWN;
+                score -= self.weights.doubled_pawn;
 
                 trace!({
                     self.trace.doubled_pawn -= 1;
                 });
             }
             if passed {
-                score -= PASSED_PAWN[rank.flip() as usize];
+                score -= self.weights.passed_pawn[rank.flip() as usize];
                 
                 trace!({
                     self.trace.passed_pawn.black |= pawn.bitboard();
                 });
             }
             if backwards {
-                score -= BACKWARDS_PAWN;
+                score -= self.weights.backwards_pawn;
                 
                 trace!({
                     self.trace.backwards_pawn -= 1;
                 });
             }
             if isolated {
-                score -= ISOLATED_PAWN;
+                score -= self.weights.isolated_pawn;
                 
                 trace!({
                     self.trace.backwards_pawn -= 1;
@@ -899,12 +872,12 @@ impl Evaluator {
             }
 
             if phalanx || support > 0 {
-                score -= PHALANX[rank.flip() as usize];
-                score -= SUPPORT[support as usize];
+                score -= self.weights.phalanx[rank.flip() as usize];
+                score -= support * self.weights.support;
 
                 trace!({
                     self.trace.phalanx.black |= pawn.bitboard();
-                    self.trace.support.black.push(support as usize);
+                    self.trace.support -= support;
                 });
             }
         }
@@ -918,6 +891,7 @@ impl Default for Evaluator {
     fn default() -> Self {
         Evaluator {
             #[cfg(feature="trace")] trace: EvalTrace::default(),
+            weights: EvalWeights::default(),
             data: EvalData::default(),
         }
     }

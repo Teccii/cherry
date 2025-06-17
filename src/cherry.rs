@@ -1,5 +1,6 @@
+#[cfg(feature="tune")] pub mod datagen;
 pub mod eval;
-pub mod eval_consts;
+pub mod eval_weights;
 pub mod history;
 pub mod killers;
 pub mod move_picker;
@@ -11,13 +12,15 @@ pub mod searcher;
 pub mod tapered;
 pub mod time;
 pub mod ttable;
-#[cfg(feature="trace")] pub mod tune;
+#[cfg(feature="tune")] pub mod tune;
 pub mod uci;
 pub mod util;
 pub mod window;
 
+
+#[cfg(feature = "tune")] pub use datagen::*;
 pub use eval::*;
-pub use eval_consts::*;
+pub use eval_weights::*;
 pub use history::*;
 pub use killers::*;
 pub use move_picker::*;
@@ -29,7 +32,7 @@ pub use searcher::*;
 pub use tapered::*;
 pub use time::*;
 pub use ttable::*;
-#[cfg(feature="trace")] pub use tune::*;
+#[cfg(feature="tune")]  pub use tune::*;
 pub use uci::*;
 pub use util::*;
 pub use window::*;
