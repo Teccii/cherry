@@ -248,32 +248,32 @@ macro_rules! trace {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct FilePair {
     pub white: BitBoard,
     pub black: BitBoard,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct RankPair {
     pub white: BitBoard,
     pub black: BitBoard,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct SquarePair {
     pub white: BitBoard,
     pub black: BitBoard,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct IndicesPair<const MAX: usize, const SIZE: usize> {
     pub white: ArrayVec<usize, MAX>,
     pub black: ArrayVec<usize, MAX>
 }
 
 #[cfg(feature = "trace")]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct EvalTrace {
     pub phase: u16,
     pub stm: i16,
@@ -315,8 +315,8 @@ pub struct EvalTrace {
     pub backwards_pawn: i16,
     pub isolated_pawn: i16,
     pub doubled_pawn: i16,
-    pub phalanx: i16,
-    pub support: i16,
+    pub phalanx: RankPair,
+    pub support: IndicesPair<{Square::NUM}, 3>,
 
     pub space_restrict_piece: i16,
     pub space_restrict_empty: i16,
@@ -367,6 +367,7 @@ impl Evaluator {
         stm * score.scale(phase)
     }
     
+    #[cfg(feature="trace")]
     pub fn trace(&self) -> EvalTrace {
         self.trace.clone()
     }
@@ -845,11 +846,12 @@ impl Evaluator {
             }
 
             if phalanx || support > 0 {
-                score += CONNECTED[rank as usize] * PHALANX + SUPPORT * support;
+                score += PHALANX[rank as usize];
+                score += SUPPORT[support as usize];
                 
                 trace!({
-                    self.trace.phalanx += CONNECTED[rank as usize];
-                    self.trace.support += support;
+                    self.trace.phalanx.white |= pawn.bitboard();
+                    self.trace.support.white.push(support as usize);
                 });
             }
         }
@@ -897,12 +899,13 @@ impl Evaluator {
             }
 
             if phalanx || support > 0 {
-                score -= CONNECTED[rank as usize] * PHALANX + SUPPORT * support;
-                
+                score -= PHALANX[rank.flip() as usize];
+                score -= SUPPORT[support as usize];
+
                 trace!({
-                    self.trace.phalanx -= CONNECTED[rank as usize];
-                    self.trace.support -= support;
-                })
+                    self.trace.phalanx.black |= pawn.bitboard();
+                    self.trace.support.black.push(support as usize);
+                });
             }
         }
 

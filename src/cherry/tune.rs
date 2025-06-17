@@ -5,6 +5,7 @@ use std::{
     ops::*
 };
 use rand::Rng;
+use rand::rngs::ThreadRng;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -19,9 +20,15 @@ impl T_f32 {
     }
 }
 
+impl From<T> for T_f32 {
+    fn from(v: T) -> Self {
+        T_f32(v.0 as f32, v.1 as f32)
+    }
+}
+
 impl fmt::Display for T_f32 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "T({}, {}", self.0.round() as i16, self.1.round() as i16)
+        write!(f, "T({}, {})", self.0.round() as i16, self.1.round() as i16)
     }
 }
 
@@ -198,6 +205,18 @@ impl<const COUNT: usize> IndexTable_f32<COUNT> {
     #[inline(always)]
     pub const fn new(table: [T_f32; COUNT]) -> Self {
         Self(table)
+    }
+}
+
+impl<const COUNT: usize> From<IndexTable<COUNT>> for IndexTable_f32<COUNT> {
+    fn from(table: IndexTable<COUNT>) -> Self {
+        let mut result = Self::new([T_f32::default(); COUNT]);
+        
+        for i in 0..COUNT {
+            result[i] = T_f32::from(table[i]);
+        }
+        
+        result
     }
 }
 
@@ -396,7 +415,7 @@ impl<const MAX: usize, const SIZE: usize> Mul<IndicesPair<MAX, SIZE>> for IndexT
 /*----------------------------------------------------------------*/
 
 macro_rules! def_special_tables {
-    ($($name:ident, $count:expr;)*) => {$(
+    ($($name:ident, $original:ident, $count:expr;)*) => {$(
         #[derive(Debug, Copy, Clone)]
         pub struct $name(pub [T_f32; $count]);
 
@@ -404,6 +423,18 @@ macro_rules! def_special_tables {
             #[inline(always)]
             pub const fn new(table: [T_f32; $count]) -> Self {
                 Self(table)
+            }
+        }
+        
+        impl From<$original> for $name {
+            fn from(value: $original) -> Self {
+                let mut result = Self::new([T_f32::default(); $count]);
+                
+                for i in 0..$count {
+                    result[i] = T_f32::from(value[i]);
+                }
+                
+                result
             }
         }
         
@@ -714,9 +745,9 @@ macro_rules! impl_special_table_f32_assign_ops {
 /*----------------------------------------------------------------*/
 
 def_special_tables! {
-    FileTable_f32, File::NUM;
-    RankTable_f32, Rank::NUM;
-    SquareTable_f32, Square::NUM;
+    FileTable_f32, FileTable, File::NUM;
+    RankTable_f32, RankTable, Rank::NUM;
+    SquareTable_f32, SquareTable, Square::NUM;
 }
 
 impl_special_table_ops! {
@@ -833,8 +864,8 @@ fn sigmoid(x: f32, k: f32) -> f32 {
 }
 
 macro_rules! tuner {
-    ($($elem:ident: $ty_f32:ty,)*) => {
-        #[derive(Debug, Copy, Clone, Default)]
+    ($($elem:ident: $ty_f32:ty = $default:expr,)*) => {
+        #[derive(Debug, Copy, Clone)]
         pub struct Weights {
             $(pub $elem: $ty_f32),*
         }
@@ -849,6 +880,16 @@ macro_rules! tuner {
             pub fn apply(&self, trace: &EvalTrace) -> f32 {
                 let score: T_f32 = apply_weights!(self, trace, $($elem),*);
                 score.scale(trace.phase as f32)
+            }
+            
+            pub fn zero() -> Weights {
+                Weights { ..Default::default() }
+            }
+        }
+        
+        impl Default for Weights {
+            fn default() -> Self {
+                Weights { $($elem: $default.into()),* }
             }
         }
 
@@ -912,7 +953,7 @@ macro_rules! tuner {
             pub fn new(learning_rate: f32, regression_factor: f32, decay_factor: f32) -> Tuner {
                 Tuner {
                     weights: Weights::default(),
-                    gradient: Weights::default(),
+                    gradient: Weights::zero(),
                     learning_rate,
                     regression_factor,
                     decay_factor
@@ -921,28 +962,25 @@ macro_rules! tuner {
             
             pub fn error(&self, training_data: &[TrainingData]) -> f32 {
                 let mut error = 0.0;
-                let mut sum = 0.0;
                 
                 for data in training_data {
                     let pred = sigmoid(self.feed_forward(&data.trace), self.regression_factor);
                     let diff = data.result - pred;
                     
-                    error += data.weight * diff * diff;
-                    sum += data.weight;
+                    error += diff * diff;
                 }
                 
-                error / sum
+                error / training_data.len() as f32
             }
             
             pub fn back_prop(&mut self, data: &TrainingData) {
                 let pred = sigmoid(self.feed_forward(&data.trace), self.regression_factor);
                 let grad = pred - data.result;
-                let sig_grad = data.weight * grad * pred * (1.0 - pred) * self.learning_rate * self.regression_factor;
                 
                 let mg = data.trace.phase as f32 / TOTAL_PHASE as f32;
                 let eg = 1.0 - mg;
                 
-                let tune = T_f32(mg * sig_grad, eg * sig_grad);
+                let tune = T_f32(mg * grad, eg * grad);
                 let delta = Weights::new($(tune * data.trace.$elem.clone()),*);
                 self.gradient = self.gradient * self.decay_factor - delta * self.learning_rate;
                 self.weights += self.gradient;
@@ -965,57 +1003,63 @@ macro_rules! tuner {
 pub struct TrainingData {
     pub trace: EvalTrace,
     pub result: f32,
-    pub weight: f32,
 }
 
 tuner! {
-    bishop_pair: T_f32,
-    knight_mobility: IndexTable_f32<9>,
-    bishop_mobility: IndexTable_f32<14>,
-    rook_mobility: IndexTable_f32<15>,
-    queen_mobility: IndexTable_f32<28>,
+    bishop_pair: T_f32 = BISHOP_PAIR,
+    knight_mobility: IndexTable_f32<9> = KNIGHT_MOBILITY,
+    bishop_mobility: IndexTable_f32<14> = BISHOP_MOBILITY,
+    rook_mobility: IndexTable_f32<15> = ROOK_MOBILITY,
+    queen_mobility: IndexTable_f32<28> = QUEEN_MOBILITY,
 
-    passed_pawn: RankTable_f32,
-    backwards_pawn: T_f32,
-    isolated_pawn: T_f32,
-    doubled_pawn: T_f32,
-    phalanx: T_f32,
-    support: T_f32,
+    passed_pawn: RankTable_f32 = PASSED_PAWN,
+    backwards_pawn: T_f32 = BACKWARDS_PAWN,
+    isolated_pawn: T_f32 = ISOLATED_PAWN,
+    doubled_pawn: T_f32 = DOUBLED_PAWN,
+    phalanx: RankTable_f32 = PHALANX,
+    support: IndexTable_f32<3> = SUPPORT,
 
-    pawn_minor_threat: T_f32,
-    pawn_major_threat: T_f32,
-    minor_major_threat: T_f32,
+    pawn_minor_threat: T_f32 = PAWN_MINOR_THREAT,
+    pawn_major_threat: T_f32 = PAWN_MAJOR_THREAT,
+    minor_major_threat: T_f32 = MINOR_MAJOR_THREAT,
 
-    space_restrict_piece: T_f32,
-    space_restrict_empty: T_f32,
-    space_center_control: T_f32,
+    space_restrict_piece: T_f32 = SPACE_RESTRICT_PIECE,
+    space_restrict_empty: T_f32 = SPACE_RESTRICT_EMPTY,
+    space_center_control: T_f32 = SPACE_CENTER_CONTROL,
 
-    knight_attack: T_f32,
-    bishop_attack: T_f32,
-    rook_attack: T_f32,
-    queen_attack: T_f32,
+    knight_attack: T_f32 = KNIGHT_ATTACK,
+    bishop_attack: T_f32 = BISHOP_ATTACK,
+    rook_attack: T_f32 = ROOK_ATTACK,
+    queen_attack: T_f32 = QUEEN_ATTACK,
 
-    rook_open_file: FileTable_f32,
-    rook_semiopen_file: FileTable_f32,
-    queen_open_file: FileTable_f32,
-    queen_semiopen_file: FileTable_f32,
+    rook_open_file: FileTable_f32 = ROOK_OPEN_FILE,
+    rook_semiopen_file: FileTable_f32 = ROOK_SEMIOPEN_FILE,
+    queen_open_file: FileTable_f32 = QUEEN_OPEN_FILE,
+    queen_semiopen_file: FileTable_f32 = QUEEN_SEMIOPEN_FILE,
 
-    pawn_value: T_f32,
-    knight_value: T_f32,
-    bishop_value: T_f32,
-    rook_value: T_f32,
-    queen_value: T_f32,
+    pawn_value: T_f32 = PAWN_VALUE,
+    knight_value: T_f32 = KNIGHT_VALUE,
+    bishop_value: T_f32 = BISHOP_VALUE,
+    rook_value: T_f32 = ROOK_VALUE,
+    queen_value: T_f32 = QUEEN_VALUE,
 
-    pawn_psqt: SquareTable_f32,
-    knight_psqt: SquareTable_f32,
-    bishop_psqt: SquareTable_f32,
-    rook_psqt: SquareTable_f32,
-    queen_psqt: SquareTable_f32,
-    king_psqt: SquareTable_f32,
+    pawn_psqt: SquareTable_f32 = PAWN_PSQT,
+    knight_psqt: SquareTable_f32 = KNIGHT_PSQT,
+    bishop_psqt: SquareTable_f32 = BISHOP_PSQT,
+    rook_psqt: SquareTable_f32 = ROOK_PSQT,
+    queen_psqt: SquareTable_f32 = QUEEN_PSQT,
+    king_psqt: SquareTable_f32 = KING_PSQT,
 }
 
 pub fn tune(out_path: &str, training_data: &[TrainingData], iters: u64, batch_size: u64) {
-    let mut tuner = Box::new(Tuner::new(0.005, 1.0, 0.3));
+    let mut tuner = Box::new(Tuner::new(0.00005, 0.008, 0.2));
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(out_path)
+        .unwrap();
+
+    writeln!(&mut file, "Training Data Amount: {}", training_data.len()).unwrap();
 
     for i in 0..(iters / batch_size) {
         let mut rng = rand::rng();
@@ -1026,18 +1070,11 @@ pub fn tune(out_path: &str, training_data: &[TrainingData], iters: u64, batch_si
             tuner.back_prop(data);
         }
 
-        let mut file = OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(out_path)
-            .unwrap();
-
         let mut out = String::new();
-        
         writeln!(&mut out, "--------------------------------").unwrap();
         writeln!(&mut out, "{}", tuner).unwrap();
         writeln!(&mut out, "Error: {}", tuner.error(training_data)).unwrap();
-        writeln!(&mut out, "Iteration: {}", i * batch_size).unwrap();
+        writeln!(&mut out, "Iteration: {}", (i + 1) * batch_size).unwrap();
 
         print!("{}", out);
         write!(&mut file, "{}", out).unwrap();
