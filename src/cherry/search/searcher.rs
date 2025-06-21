@@ -1,12 +1,17 @@
 use std::{fmt::Write, sync::Arc};
 use cozy_chess::*;
-use super::*;
+use cozy_chess::util::display_uci_move;
+use crate::*;
+
+/*----------------------------------------------------------------*/
 
 #[derive(Clone)]
 pub struct SharedContext {
     pub t_table: Arc<TTable>,
     pub time_man: Arc<TimeManager>,
 }
+
+/*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone)]
 pub struct ThreadContext {
@@ -31,6 +36,7 @@ impl ThreadContext {
         self.search_stack = vec![
             SearchStack {
                 eval: -Score::INFINITE,
+                move_played: None,
                 skip_move: None,
                 killers: Killers::new(),
                 pv: [None; MAX_PLY as usize + 1],
@@ -56,9 +62,43 @@ impl ThreadContext {
     }
 }
 
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone)]
+pub struct MoveData {
+    pub piece: Piece,
+    pub victim: Option<Piece>,
+    pub from: Square,
+    pub to: Square,
+    pub promotion: Option<Piece>,
+}
+
+impl MoveData {
+    pub fn new(board: &Board, mv: Move) -> MoveData {
+        MoveData {
+            piece: board.piece_on(mv.from).unwrap(),
+            victim: board.capture_piece(mv),
+            from: mv.from,
+            to: mv.to,
+            promotion: mv.promotion,
+        }
+    }
+    
+    pub fn is_capture(&self) -> bool {
+        self.victim.is_some()
+    }
+    
+    pub fn is_promotion(&self) -> bool {
+        self.promotion.is_some()
+    }
+}
+
+/*----------------------------------------------------------------*/
+
 #[derive(Debug, Clone)]
 pub struct SearchStack {
     pub eval: Score,
+    pub move_played: Option<MoveData>,
     pub skip_move: Option<Move>,
     pub killers: Killers,
     pub pv: [Option<Move>; MAX_PLY as usize + 1],
@@ -85,6 +125,7 @@ pub struct Searcher {
 }
 
 impl Searcher {
+    #[inline(always)]
     pub fn new(board: Board, time_man: Arc<TimeManager>) -> Searcher {
         Searcher {
             pos: Position::new(board),
@@ -100,6 +141,7 @@ impl Searcher {
                 search_stack: vec![
                     SearchStack {
                         eval: -Score::INFINITE,
+                        move_played: None,
                         skip_move: None,
                         killers: Killers::new(),
                         pv: [None; MAX_PLY as usize + 1],
@@ -119,9 +161,7 @@ impl Searcher {
 
     pub fn search(&mut self, limits: &[SearchLimit], uci_info: bool) -> (Move, Option<Move>, Score, u8, u64) {
         self.main_ctx.reset();
-        self.shared_ctx
-            .time_man
-            .init(&self.pos, limits);
+        self.shared_ctx.time_man.init(&mut self.pos, limits);
 
         let mut join_handlers = Vec::new();
         for i in 0..(self.threads - 1) {
@@ -155,18 +195,22 @@ impl Searcher {
         (best_move.unwrap(), ponder_move, best_score, depth, self.main_ctx.nodes.global())
     }
 
+    #[inline(always)]
     pub fn resize_ttable(&mut self, mb: usize) {
         self.shared_ctx.t_table = Arc::new(TTable::new(mb));
     }
 
+    #[inline(always)]
     pub fn clean_ttable(&mut self) {
         self.shared_ctx.t_table.clean();
     }
 
+    #[inline(always)]
     pub fn set_threads(&mut self, count: u16) {
         self.threads = count.max(1)
     }
 
+    #[inline(always)]
     pub fn set_chess960(&mut self, value: bool) {
         self.chess960 = value;
     }
@@ -333,13 +377,17 @@ fn info(
         }
 
         if let Some(mv) = mv {
-            let display_mv = convert_move(&board, mv, chess960);
-
+            let uci_display = display_uci_move(&board, mv);
+            
             if board.try_play(mv).is_err() || i == MAX_DEPTH {
                 break;
             }
 
-            write!(info, "{} ", display_mv).unwrap();
+            if chess960 {
+                write!(info, "{}", mv).unwrap();
+            } else {
+                write!(info, "{} ", uci_display).unwrap();
+            }
         } else {
             break;
         }

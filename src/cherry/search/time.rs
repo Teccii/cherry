@@ -5,7 +5,7 @@ use std::{
 };
 use atomic_time::AtomicInstant;
 use cozy_chess::*;
-use super::*;
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
@@ -78,7 +78,7 @@ impl TimeManager {
 
     /*----------------------------------------------------------------*/
 
-    pub fn init(&self, pos: &Position, limits: &[SearchLimit]) {
+    pub fn init(&self, pos: &mut Position, limits: &[SearchLimit]) {
         *self.prev_move.lock().unwrap() = None;
         self.move_stability.store(0, Ordering::Relaxed);
         self.abort_now.store(false, Ordering::Relaxed);

@@ -11,6 +11,7 @@ pub struct Position {
 }
 
 impl Position {
+    #[inline(always)]
     pub fn new(board: Board) -> Position {
         let w_pawns = board.colored_pieces(Color::White, Piece::Pawn);
         let b_pawns = board.colored_pieces(Color::Black, Piece::Pawn);
@@ -24,13 +25,7 @@ impl Position {
         }
     }
     
-    pub fn with_evaluator(board: Board, evaluator: Evaluator) -> Position {
-        let mut pos = Position::new(board);
-        pos.evaluator = evaluator;
-        
-        pos
-    }
-    
+    #[inline(always)]
     pub fn reset(&mut self, board: Board) {
         let w_pawns = board.colored_pieces(Color::White, Piece::Pawn);
         let b_pawns = board.colored_pieces(Color::Black, Piece::Pawn);
@@ -57,6 +52,7 @@ impl Position {
 
     /*----------------------------------------------------------------*/
 
+    #[inline(always)]
     pub fn make_move(&mut self, mv: Move) {
         let w_pawns = self.board.colored_pieces(Color::White, Piece::Pawn);
         let b_pawns = self.board.colored_pieces(Color::Black, Piece::Pawn);
@@ -71,6 +67,7 @@ impl Position {
         );
     }
 
+    #[inline(always)]
     pub fn null_move(&mut self) -> bool {
         if let Some(new_board) = self.board.null_move() {
             self.board_history.push(self.board.clone());
@@ -90,13 +87,31 @@ impl Position {
         self.pawn_zobrist.unmake_move();
         self.move_history.pop();
     }
+    
+    #[inline(always)]
+    pub fn unmake_null_move(&mut self) {
+        self.board = self.board_history.pop().unwrap();
+        self.pawn_zobrist.unmake_move();
+        
+        debug_assert!(self.move_history.pop().unwrap().is_none());
+    }
 
     /*----------------------------------------------------------------*/
 
-    pub fn eval(&self, ply: u16) -> Score {
-        self.evaluator.clone().eval(&self, ply)
+    #[inline(always)]
+    pub fn eval(&mut self, ply: u16) -> Score {
+        if self.is_checkmate() {
+            return Score::new_mated(ply);
+        }
+
+        if self.is_draw(ply) {
+            return Score::ZERO;
+        }
+        
+        self.evaluator.eval(&self.board().clone(), ply)
     }
     
+    #[inline(always)]
     pub fn evaluator(&self) -> &Evaluator { &self.evaluator }
     
     /*----------------------------------------------------------------*/
@@ -182,6 +197,7 @@ impl PawnZobrist {
         }
     }
 
+    #[inline(always)]
     pub fn reset(&mut self, w_pawns: BitBoard, b_pawns: BitBoard) {
         self.hash = 0;
         self.history.clear();

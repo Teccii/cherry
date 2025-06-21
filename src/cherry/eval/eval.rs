@@ -1,5 +1,5 @@
-use arrayvec::ArrayVec;
 use cozy_chess::*;
+use crate::*;
 use super::*;
 
 /*----------------------------------------------------------------*/
@@ -248,79 +248,6 @@ macro_rules! trace {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
-pub struct FilePair {
-    pub white: BitBoard,
-    pub black: BitBoard,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
-pub struct RankPair {
-    pub white: BitBoard,
-    pub black: BitBoard,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
-pub struct SquarePair {
-    pub white: BitBoard,
-    pub black: BitBoard,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
-pub struct IndicesPair<const MAX: usize, const SIZE: usize> {
-    pub white: ArrayVec<usize, MAX>,
-    pub black: ArrayVec<usize, MAX>
-}
-
-#[cfg(feature = "trace")]
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
-pub struct EvalTrace {
-    pub phase: u16,
-    pub stm: i16,
-    
-    pub pawn_value: i16,
-    pub knight_value: i16,
-    pub bishop_value: i16,
-    pub rook_value: i16,
-    pub queen_value: i16,
-    pub bishop_pair: i16,
-    
-    pub pawn_psqt: SquarePair,
-    pub knight_psqt: SquarePair,
-    pub bishop_psqt: SquarePair,
-    pub rook_psqt: SquarePair,
-    pub queen_psqt: SquarePair,
-    pub king_psqt: SquarePair,
-    
-    pub knight_mobility: IndicesPair<{Square::NUM}, 9>,
-    pub bishop_mobility: IndicesPair<{Square::NUM}, 14>,
-    pub rook_mobility: IndicesPair<{Square::NUM}, 15>,
-    pub queen_mobility: IndicesPair<{Square::NUM}, 28>,
-    
-    pub rook_open_file: FilePair,
-    pub rook_semiopen_file: FilePair,
-    pub queen_open_file: FilePair,
-    pub queen_semiopen_file: FilePair,
-    
-    pub knight_attack: i16,
-    pub bishop_attack: i16,
-    pub rook_attack: i16,
-    pub queen_attack: i16,
-    
-    pub pawn_minor_threat: i16,
-    pub pawn_major_threat: i16,
-    pub minor_major_threat: i16,
-
-    pub passed_pawn: RankPair,
-    pub backwards_pawn: i16,
-    pub isolated_pawn: i16,
-    pub doubled_pawn: i16,
-    pub phalanx: RankPair,
-    pub support: i16,
-    
-    pub center_control: i16,
-}
-
 #[derive(Debug, Clone)]
 pub struct Evaluator {
     #[cfg(feature="trace")] trace: EvalTrace,
@@ -335,20 +262,11 @@ impl Evaluator {
         evaluator
     }
     
-    pub fn eval(&mut self, pos: &Position, ply: u16) -> Score {
-        if pos.is_checkmate() {
-            return Score::new_mated(ply);
-        }
-
-        if pos.is_draw(ply) {
-            return Score::ZERO;
-        }
-        
+    pub fn eval(&mut self, board: &Board, ply: u16) -> Score {
         trace!({
             self.trace = EvalTrace::default();
         });
 
-        let board = pos.board();
         let phase = calc_phase(board);
         let stm = match board.side_to_move() {
             Color::White => 1,

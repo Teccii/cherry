@@ -1,6 +1,6 @@
 use cozy_chess::Move;
 
-pub const KILLER_COUNT: usize = 3;
+pub const KILLER_COUNT: usize = 2;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Killers {
@@ -40,7 +40,6 @@ impl Killers {
             return;
         }
         
-        self.moves[2] = self.moves[1];
         self.moves[1] = self.moves[0];
         self.moves[0] = Some(mv);
     }

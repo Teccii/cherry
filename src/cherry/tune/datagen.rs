@@ -4,10 +4,11 @@ use std::{
     sync::{mpsc, Arc},
     time::*
 };
+use std::io::BufWriter;
 use arrayvec::ArrayVec;
 use cozy_chess::*;
 use rand::Rng;
-use super::*;
+use crate::cherry::*;
 
 fn gen_single(
     searcher: &mut Searcher,
@@ -46,7 +47,7 @@ fn gen_single(
             let mv = moves[rng.random_range(0..moves.len())];
             searcher.pos.make_move(mv);
         } else {
-            time_man.init(&searcher.pos, limits);
+            time_man.init(&mut searcher.pos, limits);
     
             let (mv, _, score, _, _) = searcher.search(limits, false);
             let turn = match searcher.pos.board().side_to_move() {
@@ -67,13 +68,14 @@ fn gen_single(
         .collect()
 }
 
-fn gen_many(duration: Duration, move_time: u64) -> Vec<(Board, f32)> {
-    let start = Instant::now();
+fn gen_many(count: usize, move_time: u64) -> Vec<(Board, f32)> {
     let time_man = Arc::new(TimeManager::new());
     let mut searcher = Searcher::new(Board::default(), time_man.clone());
     let mut boards = Vec::new();
     
-    while start.elapsed() < duration {
+    searcher.resize_ttable(2048);
+    
+    for _ in 0..count {
         boards.append(&mut gen_single(
             &mut searcher,
             &time_man,
@@ -88,9 +90,12 @@ fn gen_many(duration: Duration, move_time: u64) -> Vec<(Board, f32)> {
 }
 
 pub fn datagen(out_path: &str, threads: u16, move_time: u64) {
+    let start = Instant::now();
     let mut total = 0;
     
     loop {
+        let iter_start = Instant::now();
+        
         let (tx, rx) = mpsc::channel();
         let mut join_handlers = Vec::new();
 
@@ -98,7 +103,7 @@ pub fn datagen(out_path: &str, threads: u16, move_time: u64) {
             let tx = tx.clone();
 
             join_handlers.push(std::thread::spawn(move || {
-                tx.send(gen_many(Duration::from_secs(60), move_time)).unwrap()
+                tx.send(gen_many(100, move_time)).unwrap()
             }));
         }
 
@@ -107,6 +112,8 @@ pub fn datagen(out_path: &str, threads: u16, move_time: u64) {
         }
 
         drop(tx);
+        
+        let write_start = Instant::now();
         let mut output = String::new();
         let mut count: u64 = 0;
         for (board, wdl) in rx.iter().flatten() {
@@ -124,6 +131,7 @@ pub fn datagen(out_path: &str, threads: u16, move_time: u64) {
 
         write!(&mut file, "{}", output).unwrap();
 
-        println!("Wrote {} positions to {} (total: {})", count, out_path, total);
+        println!("Wrote {} positions to {} (total: {} total_time: {:?} iter_time {:?} write_time {:?})",
+                 count, out_path, total, start.elapsed(), iter_start.elapsed(), write_start.elapsed());
     }
 }

@@ -1,6 +1,6 @@
 use std::sync::atomic::*;
 use cozy_chess::*;
-use super::*;
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
@@ -10,18 +10,6 @@ pub enum TTFlag {
     UpperBound,
     LowerBound,
     Exact
-}
-
-impl TTFlag {
-    #[inline(always)]
-    pub fn bonus(self) -> u8 {
-        match self {
-            TTFlag::None => 0,
-            TTFlag::UpperBound => 1,
-            TTFlag::LowerBound => 2,
-            TTFlag::Exact => 3,
-        }
-    }
 }
 
 /*----------------------------------------------------------------*/
@@ -199,8 +187,8 @@ impl TTable {
 
     #[inline(always)]
     fn replace(new_data: TTData, old_data: TTData) -> bool {
-        let new_priority = new_data.depth + new_data.flag.bonus();
-        let old_priority = old_data.depth + old_data.flag.bonus();
+        let new_priority = new_data.depth + new_data.flag as u8;
+        let old_priority = old_data.depth + old_data.flag as u8;
         
         old_data.flag == TTFlag::None || new_priority >= old_priority
     }

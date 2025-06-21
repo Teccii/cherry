@@ -402,33 +402,10 @@ impl BoardUtil for Board {
 
     #[inline(always)]
     fn is_check(&self, mv: Move) -> bool {
-        let mut blockers = self.occupied() ^ mv.from.bitboard() ^ mv.to.bitboard();
-        let mut rooks = self.pieces(Piece::Rook) & blockers;
+        let mut board = self.clone();
+        board.play_unchecked(mv);
         
-        if self.is_castles(mv) {
-            let back_rank = Rank::First.relative_to(self.side_to_move());
-            let (king, rook) = if mv.from.file() < mv.to.file() {
-                (File::G, File::F)
-            } else {
-                (File::C, File::D)
-            };
-
-            blockers ^= Square::new(king, back_rank).bitboard();
-            blockers ^= Square::new(rook, back_rank).bitboard();
-            rooks ^= Square::new(rook, back_rank).bitboard();
-        } else if self.is_en_passant(mv) {
-            blockers ^= mv.to.shift_rel::<Down>(self.side_to_move()).unwrap().bitboard();
-        }
-        
-        let not_stm = !self.side_to_move();
-        let king = self.king(not_stm);
-        
-        let attackers = get_knight_moves(king) & blockers & self.pieces(Piece::Knight)
-            | get_bishop_moves(king, blockers) & blockers & self.diag_sliders()
-            | get_rook_moves(king, blockers) & blockers & (rooks | self.pieces(Piece::Queen))
-            | get_pawn_attacks(king, not_stm) & blockers & self.colored_pieces(not_stm, Piece::Pawn);
-        
-        !attackers.is_empty()
+        board.in_check()
     }
     
     #[inline(always)]
@@ -689,6 +666,86 @@ fn test_board_util() {
     
     assert_eq!(board.pawn_attacks(Color::White), BitBoard(0xA7980000000));
     assert_eq!(board.pawn_attacks(Color::Black), BitBoard(0x147240000000));
+
+    let board = "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2".parse::<Board>().unwrap();
+    let e4d5 = Move {
+        from: Square::E4,
+        to: Square::D5,
+        promotion: None
+    };
+     
+
+    assert_eq!(board.is_capture(e4d5), true);
+    assert_eq!(board.is_quiet_capture(e4d5), true);
+    assert_eq!(board.is_check(e4d5), false);
+    assert_eq!(board.is_en_passant(e4d5), false);
+    assert_eq!(board.is_castles(e4d5), false);
+    assert_eq!(board.is_quiet(e4d5), false);
+
+    let board = "rnbqkbnr/ppp2ppp/8/3Pp3/8/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 3".parse::<Board>().unwrap();
+    let d5e6 = Move {
+        from: Square::D5,
+        to: Square::E6,
+        promotion: None
+    };
+
+    assert_eq!(board.is_capture(d5e6), true);
+    assert_eq!(board.is_quiet_capture(d5e6), true);
+    assert_eq!(board.is_check(d5e6), false);
+    assert_eq!(board.is_en_passant(d5e6), true);
+    assert_eq!(board.is_castles(d5e6), false);
+
+    let board = "r1bqkbnr/pp1n1pp1/2p1P2p/8/8/2N2Q2/PPPP1PPP/R1B1KBNR w KQkq - 2 6".parse::<Board>().unwrap();
+    let e6d7 = Move {
+        from: Square::E6,
+        to: Square::D7,
+        promotion: None
+    };
+
+    assert_eq!(board.is_capture(e6d7), true);
+    assert_eq!(board.is_quiet_capture(e6d7), false);
+    assert_eq!(board.is_check(e6d7), true);
+    assert_eq!(board.is_en_passant(e6d7), false);
+    assert_eq!(board.is_castles(e6d7), false);
+
+    let board = "r1q1kb1r/pp1bnpp1/2p4p/8/8/2NB1Q1N/PPPP1PPP/R1B1K2R w KQkq - 4 9".parse::<Board>().unwrap();
+    let e1h1 = Move {
+        from: Square::E1,
+        to: Square::H1,
+        promotion: None
+    };
+
+    assert_eq!(board.is_capture(e1h1), false);
+    assert_eq!(board.is_quiet_capture(e1h1), false);
+    assert_eq!(board.is_check(e1h1), false);
+    assert_eq!(board.is_en_passant(e1h1), false);
+    assert_eq!(board.is_castles(e1h1), true);
+
+    let board = "r2k1bnr/ppq2b2/2p2ppp/8/2B5/1PN2QPN/PBP2P1P/R3K2R w KQ - 4 17".parse::<Board>().unwrap();
+    let e1a1 = Move {
+        from: Square::E1,
+        to: Square::A1,
+        promotion: None
+    };
+
+    assert_eq!(board.is_capture(e1a1), false);
+    assert_eq!(board.is_quiet_capture(e1a1), false);
+    assert_eq!(board.is_check(e1a1), true);
+    assert_eq!(board.is_en_passant(e1a1), false);
+    assert_eq!(board.is_castles(e1a1), true);
+
+    let board = "r1bqkbnr/p4ppp/npp5/3pP3/8/2N5/PPPPQPPP/R1B1KBNR w KQkq d6 0 5".parse::<Board>().unwrap();
+    let e5d6 = Move {
+        from: Square::E5,
+        to: Square::D6,
+        promotion: None
+    };
+    
+    assert_eq!(board.is_capture(e5d6), true);
+    assert_eq!(board.is_quiet_capture(e5d6), false);
+    assert_eq!(board.is_check(e5d6), true);
+    assert_eq!(board.is_en_passant(e5d6), true);
+    assert_eq!(board.is_castles(e5d6), false);
 }
 
 #[test]

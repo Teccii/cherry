@@ -1,4 +1,4 @@
-use super::Score;
+use crate::Score;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Window {

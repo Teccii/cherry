@@ -1,38 +1,63 @@
-#[cfg(feature="tune")] pub mod datagen;
-pub mod eval;
-pub mod eval_weights;
-pub mod history;
-pub mod killers;
-pub mod move_picker;
-pub mod nnue;
-pub mod position;
-pub mod score;
-pub mod search;
-pub mod searcher;
-pub mod tapered;
-pub mod time;
-pub mod ttable;
-#[cfg(feature="tune")] pub mod tune;
-pub mod uci;
-pub mod util;
-pub mod window;
+mod eval {
+    mod eval;
+    mod eval_weights;
+    
+    pub use eval::*;
+    pub use eval_weights::*;
+}
 
+#[cfg(feature="nnue")] mod nnue {
+    mod accumulator;
+    mod features;
+    mod layers;
+    mod network;
+    mod simd;
+    mod util;
+    
+    pub use accumulator::*;
+    pub use features::*;
+    pub use layers::*; 
+    pub use network::*;
+    pub use util::*;
+}
 
-#[cfg(feature = "tune")] pub use datagen::*;
+mod search {
+    mod history;
+    mod killers;
+    mod move_picker;
+    mod search;
+    mod searcher;
+    mod time;
+    mod ttable;
+    mod window;
+
+    pub use history::*;
+    pub use killers::*;
+    pub use move_picker::*;
+    pub use search::*;
+    pub use searcher::*;
+    pub use time::*;
+    pub use ttable::*;
+    pub use window::*;
+}
+
+#[cfg(feature="tune")] mod tune {
+    mod datagen;
+    mod tune;
+    
+    pub use datagen::*;
+    pub use tune::*;
+}
+
+mod position;
+mod score;
+mod uci;
+mod util;
+
 pub use eval::*;
-pub use eval_weights::*;
-pub use history::*;
-pub use killers::*;
-pub use move_picker::*;
-pub use nnue::*;
 pub use position::*;
 pub use score::*;
 pub use search::*;
-pub use searcher::*;
-pub use tapered::*;
-pub use time::*;
-pub use ttable::*;
-#[cfg(feature="tune")]  pub use tune::*;
+#[cfg(feature="tune")] pub use tune::*;
 pub use uci::*;
 pub use util::*;
-pub use window::*;

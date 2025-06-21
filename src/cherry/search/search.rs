@@ -1,41 +1,6 @@
 use arrayvec::ArrayVec;
 use cozy_chess::*;
-use super::*;
-
-/*----------------------------------------------------------------*/
-
-macro_rules! params {
-    ($($name:ident: $ty:ty = $default:expr,)*) => {
-        #[derive(Debug, Copy, Clone)]
-        pub struct SearchParams {
-            $(pub $name: $ty),*
-        }
-        
-        impl SearchParams {
-            #[inline(always)]
-            pub fn new($($name: $ty),*) -> SearchParams {
-                SearchParams { $($name),* }
-            }
-        }
-        
-        impl Default for SearchParams {
-            #[inline(always)]
-            fn default() -> Self {
-                SearchParams {
-                    $($name: $default),*
-                }
-            }
-        }
-    }
-}
-
-params! {
-    razor_margin: i16 = 257,
-    rev_futile_margin_depth: i16 = 71,
-    rev_futile_margin_improving: i16 = 43,
-    double_margin: i16 = 47,
-    triple_margin: i16 = 147,
-}
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
@@ -82,31 +47,57 @@ fn razor<Node: NodeType>(depth: u8, eval: Score, alpha: Score) -> bool {
 
 #[inline(always)]
 fn razor_margin(depth: u8) -> i16 {
-    257 * depth as i16
+    486 + 325 * (depth as i16 * depth as i16)
+}
+
+/*----------------------------------------------------------------*/
+
+#[inline(always)]
+fn rev_futile<Node: NodeType>(
+    entry: Option<TTData>,
+    depth: u8,
+    eval: Score,
+    alpha: Score,
+    beta: Score,
+    improving: bool,
+    opponent_worsening: bool
+) -> bool {
+    !Node::PV
+        && depth < 14
+        && !alpha.is_mate()
+        && eval > beta + rev_futile_margin(entry, depth, improving, opponent_worsening)
 }
 
 #[inline(always)]
-fn rev_futile<Node: NodeType>(depth: u8, eval: Score, alpha: Score, beta: Score, improving: bool) -> bool {
-    !Node::PV && !alpha.is_mate() && eval > beta + rev_futile_margin(depth, improving)
+fn rev_futile_margin(entry: Option<TTData>, depth: u8, improving: bool, opponent_worsening: bool) -> i16 {
+    let mult = 93 - 20 * entry.is_some() as i16;
+
+    depth as i16 * mult
+        - improving as i16 * mult * 2
+        - opponent_worsening as i16 * mult / 3
 }
 
-#[inline(always)]
-fn rev_futile_margin(depth: u8, improving: bool) -> i16 {
-    depth as i16 * 71 - improving as i16 * 43
-}
+/*----------------------------------------------------------------*/
 
 #[inline(always)]
 fn nmp<Node: NodeType>(board: &Board, depth: u8, eval: Score, beta: Score) -> bool {
     Node::NMP
         && depth > 4
-        && eval >= beta
+        && eval >= beta - nmp_margin(depth)
         && board.occupied() != (board.pieces(Piece::Pawn) | board.pieces(Piece::King))
+}
+
+#[inline(always)]
+fn nmp_margin(depth: u8) -> i16 {
+    389 + 19 * depth as i16
 }
 
 #[inline(always)]
 fn nmp_depth(depth: u8) -> u8 {
     depth.saturating_sub(4 + depth / 3).max(1)
 }
+
+/*----------------------------------------------------------------*/
 
 #[inline(always)]
 fn iir<Node: NodeType>(entry: TTData, depth: u8) -> i16 {
@@ -116,6 +107,8 @@ fn iir<Node: NodeType>(entry: TTData, depth: u8) -> i16 {
     
     0
 }
+
+/*----------------------------------------------------------------*/
 
 #[inline(always)]
 fn singular(entry: TTData, mv: Move, depth: u8, ply: u16) -> bool {
@@ -127,8 +120,17 @@ fn singular(entry: TTData, mv: Move, depth: u8, ply: u16) -> bool {
         && !entry.score.is_mate()
 }
 
-const DOUBLE_MARGIN: i16 = 51;
-const TRIPLE_MARGIN: i16 = 147;
+#[inline(always)]
+fn double_margin<Node: NodeType>() -> i16 {
+    -4 + 244 * Node::PV as i16
+}
+
+#[inline(always)]
+fn triple_margin<Node: NodeType>() -> i16 {
+    84 + 269 * Node::PV as i16
+}
+
+/*----------------------------------------------------------------*/
 
 #[inline(always)]
 fn lmr<Node: NodeType>(board: &Board, mv: Move, depth: u8, moves_seen: u8) -> i16 {
@@ -277,14 +279,20 @@ pub fn search<Node: NodeType>(
         2.. => Some(ctx.search_stack[ply as usize - 2].eval),
         _ => None
     };
-    let improving = prev_eval.is_some_and(|e| in_check && static_eval > e);
+    let opponent_eval = match ply {
+        1.. => Some(ctx.search_stack[ply as usize - 1].eval),
+        _ => None
+    };
+
+    let improving = prev_eval.is_some_and(|e| !in_check && static_eval > e);
+    let opponent_worsening = opponent_eval.is_some_and(|e| static_eval > -e);
 
     if !in_check && skip_move.is_none() && !alpha.is_mate() && !beta.is_mate(){
         /*
         Reverse Futility Pruning: Similar to Razoring, if the static evaluation of the position is *above*
         beta by a significant margin, we can assume that we can reach at least beta.
         */
-        if rev_futile::<Node>(depth, static_eval, alpha, beta, improving) {
+        if rev_futile::<Node>(tt_entry, depth, static_eval, alpha, beta, improving, opponent_worsening) {
             return (static_eval + beta) / 2
         }
 
@@ -311,6 +319,9 @@ pub fn search<Node: NodeType>(
         */
         if nmp::<Node>(pos.board(), depth, static_eval, beta) && pos.null_move() {
             let nmp_depth = nmp_depth(depth);
+
+            ctx.search_stack[ply as usize].move_played = None;
+
             let mut score = -search::<Node::Alt>(
                 pos,
                 ctx,
@@ -321,14 +332,14 @@ pub fn search<Node: NodeType>(
                 -beta + 1
             );
 
-            pos.unmake_move();
+            pos.unmake_null_move();
 
             if score >= beta && !score.is_mate() {
                 if depth < 12 {
                     return score;
                 }
 
-                score = search::<Node::Alt>(
+                let v_score = search::<Node::Alt>(
                     pos,
                     ctx,
                     shared_ctx,
@@ -338,7 +349,7 @@ pub fn search<Node: NodeType>(
                     beta,
                 );
 
-                if score >= beta {
+                if v_score >= beta {
                     return score;
                 }
             }
@@ -354,7 +365,16 @@ pub fn search<Node: NodeType>(
     let mut captures: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
     let mut move_picker = MovePicker::new(best_move, ctx.search_stack[ply as usize].killers);
     let mut moves_seen = 0;
-
+    
+    let counter_move = match ply {
+        1.. => ctx.search_stack[ply as usize - 1].move_played,
+        _ => None
+    };
+    let follow_up = match ply {
+        2.. => ctx.search_stack[ply as usize - 2].move_played,
+        _ => None
+    };
+    
     ctx.search_stack[ply as usize + 1].killers.clear();
 
     while let Some(mv) = move_picker.next(pos, &ctx.history) {
@@ -364,6 +384,15 @@ pub fn search<Node: NodeType>(
 
         let is_capture = pos.board().is_capture(mv);
         let nodes = ctx.nodes.local();
+        let stat_score = if is_capture {
+            ctx.history.get_capture(pos.board(), mv)
+        } else {
+            ctx.history.get_quiet(pos.board(), mv)
+            + ctx.history.get_counter_move(pos.board(), mv, counter_move).unwrap_or_default()
+            + ctx.history.get_follow_up(pos.board(), mv, follow_up).unwrap_or_default()
+        };
+        
+        todo!("futility pruning and shit");
         
         let mut extension: i16 = 0;
         let mut reduction: i16 = 0;
@@ -394,11 +423,11 @@ pub fn search<Node: NodeType>(
             if s_score < s_beta {
                 extension += 1;
 
-                if !Node::PV && s_score < s_beta - DOUBLE_MARGIN {
+                if s_score < s_beta - double_margin::<Node>() {
                     extension += 1;
                 }
 
-                if !Node::PV && !is_capture && s_score < s_beta - TRIPLE_MARGIN {
+                if s_score < s_beta - triple_margin::<Node>() {
                     extension += 1;
                 }
 
@@ -413,7 +442,9 @@ pub fn search<Node: NodeType>(
         Late Move Reduction (LMR): Reduce the depth of moves ordered near the end.
         */
         reduction += lmr::<Node>(pos.board(), mv, depth, moves_seen);
+
         pos.make_move(mv);
+        ctx.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
 
         /*
         Check Extension: Extend the search if we give check.
@@ -496,13 +527,15 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             if !ctx.abort_now {
-                if pos.board().is_quiet(mv) {
+                if !is_capture {
                     ctx.search_stack[ply as usize].killers.push(mv);
                 }
 
                 ctx.history.update(
                     pos.board(),
                     mv,
+                    counter_move,
+                    follow_up,
                     &quiets,
                     &captures,
                     depth
@@ -708,4 +741,45 @@ pub fn q_search<Node: NodeType>(
     }
 
     best_score.unwrap_or(alpha)
+}
+
+pub fn det_q_search(pos: &mut Position, ply: u16, mut alpha: Score, beta: Score) -> Score {
+    let static_eval = pos.eval(ply);
+    
+    if ply >= MAX_PLY || static_eval >= beta {
+        return static_eval;
+    }
+    
+    if static_eval > alpha {
+        alpha = static_eval;
+    }
+
+    let mut moves = Vec::new();
+    pos.board().generate_moves(|piece_moves| {
+        for mv in piece_moves {
+            if !pos.board().is_quiet_capture(mv) {
+                continue;
+            }
+
+            moves.push(mv);
+        }
+
+        false
+    });
+
+    for mv in moves {
+        pos.make_move(mv);
+        let score = -det_q_search(pos, ply + 1, -beta, -alpha);
+        pos.unmake_move();
+
+        if score >= beta {
+            return score;
+        }
+
+        if score > alpha {
+            alpha = score;
+        }
+    }
+
+    alpha
 }

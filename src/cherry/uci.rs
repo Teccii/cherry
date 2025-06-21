@@ -15,9 +15,11 @@ pub enum UciCommand {
     Go(Vec<SearchLimit>),
     SetOption(String, String),
     #[cfg(feature = "tune")] Tune(String, String),
+    #[cfg(feature = "parse")] Parse(String, String),
     #[cfg(feature = "tune")] DataGen(String, u16, u64),
     Display,
     Eval,
+    #[cfg(feature = "trace")] Trace,
     Stop,
     Quit
 }
@@ -78,7 +80,7 @@ impl FromStr for UciCommand {
 
                     while let Some(mv_token) = reader.next() {
                         let mv = parse_uci_move(&board_copy, mv_token).map_err(|_| UciParseError::InvalidArguments)?;
-
+                        
                         if board_copy.try_play(mv).is_err() {
                             break;
                         }
@@ -158,6 +160,14 @@ impl FromStr for UciCommand {
 
                 Ok(UciCommand::Tune(data_path, out_path))
             },
+            #[cfg(feature = "parse")] "parse" => {
+                reader.next().filter(|&s| s == "data").ok_or(UciParseError::InvalidArguments)?;
+                let data_path = reader.next().ok_or(UciParseError::InvalidArguments)?.to_owned();
+                reader.next().filter(|&s| s == "out").ok_or(UciParseError::InvalidArguments)?;
+                let out_path = reader.next().ok_or(UciParseError::InvalidArguments)?.to_owned();
+
+                Ok(UciCommand::Parse(data_path, out_path))
+            },
             #[cfg(feature = "tune")] "datagen" => {
                 reader.next().filter(|&s| s == "threads").ok_or(UciParseError::InvalidArguments)?;
                 let threads = reader.next().and_then(|s| s.parse::<u16>().ok()).ok_or(UciParseError::InvalidArguments)?;
@@ -168,32 +178,8 @@ impl FromStr for UciCommand {
 
                 Ok(UciCommand::DataGen(out_path, threads, move_time))
             },
+            #[cfg(feature = "trace")] "trace" => Ok(UciCommand::Trace),
             _ => Err(UciParseError::InvalidCommand),
         }
     }
-}
-
-pub fn convert_move(board: &Board, mut mv: Move, chess960: bool) -> Move {
-    if !chess960 {
-        let first_rank = Rank::First.relative_to(board.side_to_move());
-        let uci_castle_start = Square::new(File::E, first_rank);
-        let uci_castle_short = Square::new(File::G, first_rank);
-        let uci_castle_long = Square::new(File::C, first_rank);
-        let rights = board.castle_rights(board.side_to_move());
-
-        if board.king(board.side_to_move()) == mv.from && mv.from == uci_castle_start {
-            if mv.to == uci_castle_short {
-                if let Some(rook_file) = rights.short {
-                    mv.to = Square::new(rook_file, first_rank);
-                }
-            }
-            if mv.to == uci_castle_long {
-                if let Some(rook_file) = rights.long {
-                    mv.to = Square::new(rook_file, first_rank);
-                }
-            }
-        }
-    }
-    
-    mv
 }

@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 use cozy_chess::*;
-use super::*;
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
@@ -57,6 +57,14 @@ impl MovePicker {
 
     /*----------------------------------------------------------------*/
 
+    #[inline(always)]
+    pub fn skip_quiets(&mut self) {
+        self.phase = match self.phase {
+            Phase::YieldKillers | Phase::GenQuiets | Phase::YieldQuiets => Phase::YieldBadCaptures,
+            _ => self.phase
+        }
+    }
+    
     pub fn next(&mut self, pos: &mut Position, history: &History) -> Option<Move> {
         if self.phase == Phase::HashMove {
             self.phase = Phase::GenPieceMoves;

@@ -1,15 +1,18 @@
 #![feature(str_split_whitespace_remainder)]
-
 mod cherry;
 
 use std::{
+    collections::HashMap,
+    fs::OpenOptions,
     sync::{Arc, Mutex},
     sync::mpsc::*,
-    fmt::Write,
+    fmt::Write as _,
+    io::{BufWriter, Write},
     io
 };
+#[cfg(feature = "parse")] use pgn_reader::{BufferedReader, Outcome, RawTag, SanPlus, Skip, Visitor};
 use cozy_chess::*;
-
+use cozy_chess::util::display_uci_move;
 use cherry::*;
 
 /*----------------------------------------------------------------*/
@@ -40,7 +43,12 @@ fn main() -> Result<()> {
                     let mut output = String::new();
                     
                     let (mv, ponder, _, _, _) = searcher.search(&limits, true);
-                    write!(output, "bestmove {}", convert_move(searcher.pos.board(), mv, chess960)).unwrap();
+                    
+                    if chess960 {
+                        write!(output, "bestmove {}", mv).unwrap();
+                    } else {
+                        write!(output, "bestmove {}", display_uci_move(&searcher.pos.board(), mv)).unwrap();
+                    }
 
                     if let Some(ponder) = ponder {
                         write!(output, " ponder {}", ponder).unwrap();
@@ -59,7 +67,8 @@ fn main() -> Result<()> {
                 Ok(cmd) => cmd,
                 Err(e) => {
                     buffer.clear();
-                    return Err(e);
+                    println!("{:?}", e);
+                    continue;
                 }
             }
         };
@@ -88,9 +97,7 @@ fn main() -> Result<()> {
                 let mut searcher = searcher.lock().unwrap();
                 searcher.pos.reset(board);
 
-                for mut mv in moves {
-                    mv = convert_move(searcher.pos.board(), mv, chess960);
-                    
+                for mv in moves {
                     searcher.pos.make_move(mv);
                 }
             },
@@ -148,12 +155,17 @@ fn main() -> Result<()> {
                 println!("+-----------------+");
                 println!("FEN: {}", board);
             },
-            #[cfg(feature="tune")] UciCommand::Tune(data_path, out_path) => tune::tune(&data_path, &out_path),
-            #[cfg(feature = "tune")] UciCommand::DataGen(out_path, threads, move_time) => datagen::datagen(&out_path, threads, move_time),
+            #[cfg(feature="tune")] UciCommand::Tune(data_path, out_path) => tune(&data_path, &out_path),
+            #[cfg(feature="tune")] UciCommand::Parse(data_path, out_path) => parse(&data_path, &out_path),
+            #[cfg(feature="tune")] UciCommand::DataGen(out_path, threads, move_time) => datagen(&out_path, threads, move_time),
             UciCommand::Eval => {
-                let searcher = searcher.lock().unwrap();
+                let mut searcher = searcher.lock().unwrap();
                 println!("{}", searcher.pos.eval(0));
             },
+            #[cfg(feature = "trace")] UciCommand::Trace => {
+                let searcher = searcher.lock().unwrap();
+                println!("{}", searcher.pos.evaluator().trace());
+            }
             UciCommand::Stop => time_man.abort_now(),
             UciCommand::Quit => {
                 tx.send(ThreadCommand::Quit).map_err(|_| UciParseError::InvalidArguments)?;
@@ -165,4 +177,148 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/*----------------------------------------------------------------*/
+
+#[cfg(feature="parse")]
+struct PgnParser {
+    current: Board,
+    boards: Vec<Board>,
+    outcome: Option<Outcome>
+}
+
+#[cfg(feature="parse")]
+impl Visitor for PgnParser {
+    type Result = Option<(Vec<Board>, f32)>;
+
+    fn begin_game(&mut self) {
+        self.boards.clear();
+        self.current = Board::default();
+    }
+
+    fn tag(&mut self, name: &[u8], value: RawTag<'_>) {
+        if name == b"FEN" {
+            self.boards.clear();
+            self.current = str::from_utf8(value.as_bytes()).unwrap().parse::<Board>().unwrap();
+        }
+    }
+
+    fn begin_variation(&mut self) -> Skip {
+        Skip(true)
+    }
+
+    fn san(&mut self, san: SanPlus) {
+        let mut san_str = String::new();
+        san.append_to_string(&mut san_str);
+
+        let mv = cozy_chess::util::parse_san_move(&self.current, &san_str).unwrap();
+        self.boards.push(self.current.clone());
+        self.current.play_unchecked(mv);
+    }
+
+    fn outcome(&mut self, outcome: Option<Outcome>) {
+        self.outcome = outcome;
+    }
+
+    fn end_game(&mut self) -> Self::Result {
+        if let Some(outcome) = self.outcome {
+            let mut boards = self.boards.clone();
+            boards.push(self.current.clone());
+
+            let result = match outcome {
+                Outcome::Decisive { winner } => match winner as usize {
+                    0 => 1.0,
+                    1 => 0.0,
+                    _ => 0.5
+                },
+                Outcome::Draw => 0.5,
+            };
+
+            return Some((boards, result));
+        }
+
+        None
+    }
+}
+
+#[cfg(feature="parse")]
+fn parse(data_path: &str, out_path: &str) {
+    let data_file = OpenOptions::new()
+        .read(true)
+        .open(data_path)
+        .unwrap();
+    
+    let mut board_map: HashMap<Board, (f32, u64)> = HashMap::new();
+    let mut reader = BufferedReader::new(data_file);
+    let mut parser = PgnParser {
+        current: Board::default(),
+        boards: Vec::new(),
+        outcome: None
+    };
+    
+    println!("Parsing data...");
+    
+    let mut i = 0;
+    while let Some((boards, result)) = reader.read_game(&mut parser).unwrap().flatten() {
+        for board in boards.iter().skip(24).cloned().filter(|b| !b.in_check()) {
+            let pos = Position::new(board.clone());
+            
+            if pos.is_checkmate() || pos.is_draw(0) {
+                continue;
+            }
+            
+            let data = board_map.entry(board).or_default();
+            data.0 += result;
+            data.1 += 1;
+        }
+        
+        i += 1;
+        
+        if i % 1000 == 0 {
+            println!("Found and parsed {} games so far", i);
+        }
+        
+        if i % 80000 == 0 {
+            println!("Writing to file...");
+
+            let out_file = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(out_path)
+                .unwrap();
+            let mut writer = BufWriter::new(out_file);
+            let len = board_map.len();
+
+            for (board, (result, count)) in board_map.iter() {
+                writeln!(writer, "{} | {}", board, *result / *count as f32).unwrap();
+            }
+            
+            println!("Wrote {} unique positions to file", len);
+            
+            board_map.clear();
+        }
+    }
+    
+    if board_map.is_empty() {
+        return;
+    }
+
+    println!("Writing final games to file...");
+
+    let out_file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(out_path)
+        .unwrap();
+    
+    let mut writer = BufWriter::new(out_file);
+    let len = board_map.len();
+
+    for (board, (result, count)) in board_map.iter() {
+        writeln!(writer, "{} | {}", board, *result / *count as f32).unwrap();
+    }
+
+    println!("Wrote {} unique positions to file", len);
+    println!("Parsed a total of {} games from file", i);
 }
