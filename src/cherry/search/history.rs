@@ -3,7 +3,7 @@ use crate::BoardUtil;
 use crate::cherry::MoveData;
 /*----------------------------------------------------------------*/
 
-pub const MAX_HISTORY: i16 = 1024;
+pub const MAX_HISTORY: i16 = 4096;
 
 /*----------------------------------------------------------------*/
 
@@ -18,24 +18,25 @@ const fn piece_to<T: Copy>(default: T) -> PieceTo<T> {
 pub type MoveTo<T> = [[T; Square::NUM]; Square::NUM];
 pub type PieceTo<T> = [[T; Square::NUM]; Piece::NUM];
 pub type ButterflyTable = [MoveTo<i16>; Color::NUM];
+pub type PieceToTable = [PieceTo<i16>; Color::NUM];
 pub type ContinuationTable = [PieceTo<PieceTo<i16>>; Color::NUM];
 
 #[derive(Debug, Clone)]
 pub struct History {
-    quiets: ButterflyTable,
-    captures: [PieceTo<i16>; Color::NUM],
-    counter_move: ContinuationTable,
-    follow_up: ContinuationTable,
+    quiets: Box<ButterflyTable>,
+    captures: Box<PieceToTable>,
+    counter_move: Box<ContinuationTable>,
+    follow_up: Box<ContinuationTable>,
 }
 
 impl History {
     #[inline(always)]
     pub fn new() -> History {
         History {
-            quiets: [move_to(0); Color::NUM],
-            captures: [piece_to(0); Color::NUM],
-            counter_move: [piece_to(piece_to(0)); Color::NUM],
-            follow_up: [piece_to(piece_to(0)); Color::NUM],
+            quiets: Box::new([move_to(0); Color::NUM]),
+            captures: Box::new([piece_to(0); Color::NUM]),
+            counter_move: Box::new([piece_to(piece_to(0)); Color::NUM]),
+            follow_up: Box::new([piece_to(piece_to(0)); Color::NUM]),
         }
     }
 
@@ -129,8 +130,8 @@ impl History {
 
     #[inline(always)]
     pub fn reset(&mut self) {
-        self.quiets = [move_to(0); Color::NUM];
-        self.captures = [piece_to(0); Color::NUM];
+        self.quiets = Box::new([move_to(0); Color::NUM]);
+        self.captures = Box::new([piece_to(0); Color::NUM]);
     }
     
     pub fn update(

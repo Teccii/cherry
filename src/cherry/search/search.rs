@@ -47,7 +47,7 @@ fn razor<Node: NodeType>(depth: u8, eval: Score, alpha: Score) -> bool {
 
 #[inline(always)]
 fn razor_margin(depth: u8) -> i16 {
-    486 + 325 * (depth as i16 * depth as i16)
+    337 * depth as i16
 }
 
 /*----------------------------------------------------------------*/
@@ -63,7 +63,6 @@ fn rev_futile<Node: NodeType>(
     opponent_worsening: bool
 ) -> bool {
     !Node::PV
-        && depth < 14
         && !alpha.is_mate()
         && eval > beta + rev_futile_margin(entry, depth, improving, opponent_worsening)
 }
@@ -80,21 +79,21 @@ fn rev_futile_margin(entry: Option<TTData>, depth: u8, improving: bool, opponent
 /*----------------------------------------------------------------*/
 
 #[inline(always)]
-fn nmp<Node: NodeType>(board: &Board, depth: u8, eval: Score, beta: Score) -> bool {
+fn nmp<Node: NodeType>(board: &Board, depth: u8, eval: Score, beta: Score, improving: bool) -> bool {
     Node::NMP
-        && depth > 4
-        && eval >= beta - nmp_margin(depth)
+        && depth > 3
+        && eval >= beta - nmp_margin(depth, improving)
         && board.occupied() != (board.pieces(Piece::Pawn) | board.pieces(Piece::King))
 }
 
 #[inline(always)]
-fn nmp_margin(depth: u8) -> i16 {
-    389 + 19 * depth as i16
+fn nmp_margin(depth: u8, improving: bool) -> i16 {
+    389 + 19 * depth as i16 + 55 * improving as i16
 }
 
 #[inline(always)]
 fn nmp_depth(depth: u8) -> u8 {
-    depth.saturating_sub(4 + depth / 3).max(1)
+    depth.saturating_sub(3 + depth / 3).clamp(1, MAX_DEPTH)
 }
 
 /*----------------------------------------------------------------*/
@@ -106,6 +105,37 @@ fn iir<Node: NodeType>(entry: TTData, depth: u8) -> i16 {
     }
     
     0
+}
+
+/*----------------------------------------------------------------*/
+
+#[inline(always)]
+fn shallow<Node: NodeType>(board: &Board, ply: u16, alpha: Score) -> bool {
+    !Node::PV
+        && ply != 0
+        && !alpha.is_mate()
+        && board.occupied() != (board.pieces(Piece::King) | board.pieces(Piece::Pawn))
+}
+
+/*----------------------------------------------------------------*/
+
+#[inline(always)]
+fn lmp(depth: u8, moves_seen: u16, improving: bool, opponent_worsening: bool) -> bool {
+    let margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16) * (3 + opponent_worsening as u16) / 3;
+    
+    moves_seen >= margin
+}
+
+/*----------------------------------------------------------------*/
+
+#[inline(always)]
+fn futile(board: &Board, lmr_depth: u8, eval: Score, alpha: Score, improving: bool) -> bool {
+    !board.in_check() && lmr_depth < 12 && eval <= alpha - futile_margin(lmr_depth, improving)
+}
+
+#[inline(always)]
+fn futile_margin(lmr_depth: u8, improving: bool) -> i16 {
+    46 + 107 * lmr_depth as i16 + 102 * improving as i16
 }
 
 /*----------------------------------------------------------------*/
@@ -133,7 +163,7 @@ fn triple_margin<Node: NodeType>() -> i16 {
 /*----------------------------------------------------------------*/
 
 #[inline(always)]
-fn lmr<Node: NodeType>(board: &Board, mv: Move, depth: u8, moves_seen: u8) -> i16 {
+fn lmr<Node: NodeType>(board: &Board, mv: Move, depth: u8, moves_seen: u16) -> i16 {
     if Node::PV || depth < 3 {
         return 0;
     }
@@ -317,12 +347,12 @@ pub fn search<Node: NodeType>(
         If a reduced search after a null move fails high, we can be quite confident that the best legal move
         would also fail high. This can make the engine blind to zugzwang, so we do an additional verification search.
         */
-        if nmp::<Node>(pos.board(), depth, static_eval, beta) && pos.null_move() {
+        if nmp::<Node>(pos.board(), depth, static_eval, beta, improving) && pos.null_move() {
             let nmp_depth = nmp_depth(depth);
 
             ctx.search_stack[ply as usize].move_played = None;
 
-            let mut score = -search::<Node::Alt>(
+            let score = -search::<Node::Alt>(
                 pos,
                 ctx,
                 shared_ctx,
@@ -366,18 +396,12 @@ pub fn search<Node: NodeType>(
     let mut move_picker = MovePicker::new(best_move, ctx.search_stack[ply as usize].killers);
     let mut moves_seen = 0;
     
-    let counter_move = match ply {
-        1.. => ctx.search_stack[ply as usize - 1].move_played,
-        _ => None
-    };
-    let follow_up = match ply {
-        2.. => ctx.search_stack[ply as usize - 2].move_played,
-        _ => None
-    };
+    let counter_move = (ply >= 1).then(|| ctx.search_stack[ply as usize - 1].move_played).flatten();
+    let follow_up = (ply >= 2).then(|| ctx.search_stack[ply as usize - 2].move_played).flatten();
     
     ctx.search_stack[ply as usize + 1].killers.clear();
 
-    while let Some(mv) = move_picker.next(pos, &ctx.history) {
+    while let Some(mv) = move_picker.next(pos, &ctx.history, counter_move, follow_up) {
         if skip_move == Some(mv) {
             continue;
         }
@@ -392,7 +416,21 @@ pub fn search<Node: NodeType>(
             + ctx.history.get_follow_up(pos.board(), mv, follow_up).unwrap_or_default()
         };
         
-        todo!("futility pruning and shit");
+
+        if shallow::<Node>(pos.board(), ply, alpha) {
+            //Late Move Pruning
+            if lmp(depth, moves_seen, improving, opponent_worsening) {
+                move_picker.skip_quiets();
+            }
+
+            let lmr = lmr::<Node>(pos.board(), mv, depth, moves_seen);
+            let lmr_depth = (depth as i16).saturating_sub(lmr).clamp(1, MAX_DEPTH as i16) as u8;
+
+            //Futility Pruning
+            if futile(pos.board(), lmr_depth, static_eval, alpha, improving) {
+                move_picker.skip_quiets();
+            }
+        }
         
         let mut extension: i16 = 0;
         let mut reduction: i16 = 0;
@@ -443,8 +481,8 @@ pub fn search<Node: NodeType>(
         */
         reduction += lmr::<Node>(pos.board(), mv, depth, moves_seen);
 
-        pos.make_move(mv);
         ctx.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
+        pos.make_move(mv);
 
         /*
         Check Extension: Extend the search if we give check.

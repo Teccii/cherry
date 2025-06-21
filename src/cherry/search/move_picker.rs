@@ -65,7 +65,14 @@ impl MovePicker {
         }
     }
     
-    pub fn next(&mut self, pos: &mut Position, history: &History) -> Option<Move> {
+    pub fn next(
+        &mut self,
+        pos: &mut Position,
+        history: &History,
+        counter_move: Option<MoveData>,
+        follow_up: Option<MoveData>
+    ) -> Option<Move> {
+        
         if self.phase == Phase::HashMove {
             self.phase = Phase::GenPieceMoves;
             
@@ -91,13 +98,10 @@ impl MovePicker {
             self.phase = Phase::YieldCaptures;
             
             let board = pos.board();
-            let mask = board.colors(!board.side_to_move());
-
-            for mut moves in self.piece_moves.iter().copied() {
-                moves.to &= mask;
-                
+            
+            for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
-                    if self.hash_move == Some(mv) {
+                    if self.hash_move == Some(mv) || !board.is_capture(mv) {
                         continue;
                     }
                     
@@ -150,11 +154,13 @@ impl MovePicker {
 
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
-                    if self.hash_move == Some(mv) || self.killers.contains(mv) {
+                    if self.hash_move == Some(mv) || self.killers.contains(mv) || board.is_capture(mv) {
                         continue;
                     }
                     
-                    let score = history.get_quiet(board, mv);
+                    let score = history.get_quiet(board, mv)
+                        + history.get_counter_move(board, mv, counter_move).unwrap_or_default()
+                        + history.get_follow_up(board, mv, follow_up).unwrap_or_default();
 
                     self.quiets.push(ScoredMove(mv, score));
                 }

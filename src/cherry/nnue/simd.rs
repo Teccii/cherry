@@ -15,8 +15,7 @@ macro_rules! simd_wrapper {
     ) => {
         #[cfg(target_feature = $target)]
         mod $name {
-            use std::arch::x86_64::_mm256_shldi_epi16;
-use $import::*;
+            use $import::*;
             
             pub const I16_CHUNK: usize = size_of::<$vec>() / size_of::<i16>();
             
