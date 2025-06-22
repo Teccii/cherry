@@ -132,6 +132,8 @@ impl History {
     pub fn reset(&mut self) {
         self.quiets = Box::new([move_to(0); Color::NUM]);
         self.captures = Box::new([piece_to(0); Color::NUM]);
+        self.counter_move = Box::new([piece_to(piece_to(0)); Color::NUM]);
+        self.follow_up = Box::new([piece_to(piece_to(0)); Color::NUM]);
     }
     
     pub fn update(

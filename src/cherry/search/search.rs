@@ -129,13 +129,24 @@ fn lmp(depth: u8, moves_seen: u16, improving: bool, opponent_worsening: bool) ->
 /*----------------------------------------------------------------*/
 
 #[inline(always)]
-fn futile(board: &Board, lmr_depth: u8, eval: Score, alpha: Score, improving: bool) -> bool {
-    !board.in_check() && lmr_depth < 12 && eval <= alpha - futile_margin(lmr_depth, improving)
+fn futile(
+    board: &Board,
+    lmr_depth: u8,
+    eval: Score,
+    alpha: Score,
+    improving: bool,
+    opponent_worsening: bool
+) -> bool {
+    !board.in_check()
+        && lmr_depth < 12
+        && eval <= alpha - futile_margin(lmr_depth, improving, opponent_worsening)
 }
 
 #[inline(always)]
-fn futile_margin(lmr_depth: u8, improving: bool) -> i16 {
-    46 + 107 * lmr_depth as i16 + 102 * improving as i16
+fn futile_margin(lmr_depth: u8, improving: bool, opponent_worsening: bool) -> i16 {
+    46 + 107 * lmr_depth as i16
+        + 102 * improving as i16
+        + 87 * opponent_worsening as i16
 }
 
 /*----------------------------------------------------------------*/
@@ -217,10 +228,6 @@ pub fn search<Node: NodeType>(
     mut alpha: Score,
     mut beta: Score,
 ) -> Score {
-    if Node::PV {
-        ctx.search_stack[ply as usize].pv_len = 0;
-    }
-    
     if ply != 0 && (ctx.abort_now || shared_ctx.time_man.abort_search(ctx.nodes.global())) {
         ctx.abort_now();
         return Score::INFINITE;
@@ -406,6 +413,10 @@ pub fn search<Node: NodeType>(
             continue;
         }
 
+        if Node::PV {
+            ctx.search_stack[ply as usize + 1].pv_len = 0;
+        }
+
         let is_capture = pos.board().is_capture(mv);
         let nodes = ctx.nodes.local();
         let stat_score = if is_capture {
@@ -427,7 +438,7 @@ pub fn search<Node: NodeType>(
             let lmr_depth = (depth as i16).saturating_sub(lmr).clamp(1, MAX_DEPTH as i16) as u8;
 
             //Futility Pruning
-            if futile(pos.board(), lmr_depth, static_eval, alpha, improving) {
+            if futile(pos.board(), lmr_depth, static_eval, alpha, improving, opponent_worsening) {
                 move_picker.skip_quiets();
             }
         }

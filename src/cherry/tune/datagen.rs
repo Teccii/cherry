@@ -49,7 +49,7 @@ fn gen_single(
         } else {
             time_man.init(&mut searcher.pos, limits);
     
-            let (mv, _, score, _, _) = searcher.search(limits, false);
+            let (mv, _, score, _, _) = searcher.search(limits);
             let turn = match searcher.pos.board().side_to_move() {
                 Color::White => 1,
                 Color::Black => -1,

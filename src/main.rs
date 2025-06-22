@@ -42,7 +42,7 @@ fn main() -> Result<()> {
                     let mut searcher = searcher.lock().unwrap();
                     let mut output = String::new();
                     
-                    let (mv, ponder, _, _, _) = searcher.search(&limits, true);
+                    let (mv, ponder, _, _, _) = searcher.search(&limits);
                     
                     if chess960 {
                         write!(output, "bestmove {}", mv).unwrap();

@@ -159,34 +159,45 @@ impl Searcher {
         }
     }
 
-    pub fn search(&mut self, limits: &[SearchLimit], uci_info: bool) -> (Move, Option<Move>, Score, u8, u64) {
+    pub fn search(&mut self, limits: &[SearchLimit]) -> (Move, Option<Move>, Score, u8, u64) {
         self.main_ctx.reset();
         self.shared_ctx.time_man.init(&mut self.pos, limits);
 
-        let mut join_handlers = Vec::new();
-        for i in 0..(self.threads - 1) {
-            join_handlers.push(std::thread::spawn(search_worker(
-                self.pos.clone(),
-                self.main_ctx.clone(),
-                self.shared_ctx.clone(),
-                i + 1,
-                self.chess960,
-                uci_info
-            )));
-        }
+        let mut result = (None, None, Score::ZERO, 0);
 
-        let (best_move, ponder_move, best_score, depth) = search_worker(
-            self.pos.clone(),
-            self.main_ctx.clone(),
-            self.shared_ctx.clone(),
-            0,
-            self.chess960,
-            uci_info
-        )();
+        rayon::scope(|s| {
+            let chess960 = self.chess960;
 
-        for join_handler in join_handlers {
-            join_handler.join().unwrap();
-        }
+            for i in 1..self.threads {
+                let pos = self.pos.clone();
+                let main_ctx = self.main_ctx.clone();
+                let shared_ctx = self.shared_ctx.clone();
+
+                s.spawn(move |_| {
+                    let _ = search_worker(
+                        pos,
+                        main_ctx,
+                        shared_ctx,
+                        i + 1,
+                        chess960,
+                    )();
+                });
+            }
+
+            let pos = self.pos.clone();
+            let main_ctx = self.main_ctx.clone();
+            let shared_ctx = self.shared_ctx.clone();
+
+            result = search_worker(
+                pos,
+                main_ctx,
+                shared_ctx,
+                0,
+                chess960,
+            )();
+        });
+
+        let (best_move, ponder_move, best_score, depth) = result;
 
         if best_move.is_none() {
             panic!("Search failed!");
@@ -207,7 +218,7 @@ impl Searcher {
 
     #[inline(always)]
     pub fn set_threads(&mut self, count: u16) {
-        self.threads = count.max(1)
+        self.threads = count.max(1);
     }
 
     #[inline(always)]
@@ -222,14 +233,13 @@ fn search_worker(
     shared_ctx: SharedContext,
     thread: u16,
     chess960: bool,
-    uci_info: bool,
 ) -> impl FnMut() -> (Option<Move>, Option<Move>, Score, u8) {
     move || {
         let mut window = Window::new(10);
         let mut best_move: Option<Move> = None;
         let mut ponder_move: Option<Move> = None;
         let mut eval: Option<Score> = None;
-        let mut depth = 1;
+        let mut depth = 1 + (thread % 2 == 1) as u8;
 
         'id: loop {
             window.reset();
@@ -268,7 +278,7 @@ fn search_worker(
                     if score.is_mate() {
                         ponder_move = None;
 
-                        if thread == 0 && uci_info {
+                        if thread == 0 {
                             info(
                                 pos.board(),
                                 &ctx,
@@ -296,7 +306,7 @@ fn search_worker(
                 }
             }
 
-            if thread == 0 && uci_info {
+            if thread == 0 {
                 info(
                     pos.board(),
                     &ctx,
@@ -363,8 +373,7 @@ fn info(
         tt_hits,
         tt_misses,
         (tt_hits as f64 / total_tt_probes as f64) * 100.0
-    )
-        .unwrap();
+    ).unwrap();
 
     let root_stack = &ctx.search_stack[0];
     let mut board = board.clone();
