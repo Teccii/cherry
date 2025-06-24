@@ -1,3 +1,4 @@
+use std::num::NonZeroU16;
 use crate::{Bitboard, Piece, Rank, Square};
 
 /*----------------------------------------------------------------*/
@@ -7,10 +8,10 @@ Bit Layout:
 bits 0-5: Source square
 bits 6-11: Target square
 bits 12-13: Promotion Piece - 2
-bits 14: 15: Special Flag: Promotion (1), En Passant (2), Castling (3)
+bits 14-15: Special Flag: Normal (0), Promotion (1), En Passant (2), Castling (3)
 */
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Move { bits: u16 }
+pub struct Move { bits: NonZeroU16 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum MoveFlag {
@@ -53,7 +54,7 @@ impl Move {
         bits |= (to as u16) << 6;
         bits |= (flag as u16) << 14;
 
-        Move { bits }
+        Move { bits: NonZeroU16::new(bits).unwrap() }
     }
 
     #[inline(always)]
@@ -65,25 +66,25 @@ impl Move {
         bits |= (piece as u16 - Piece::Knight as u16) << 12;
         bits |= (MoveFlag::Promotion as u16) << 14;
 
-        Move { bits }
+        Move { bits: NonZeroU16::new(bits).unwrap() }
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline(always)]
     pub const fn from(self) -> Square {
-        Square::index((self.bits & 0b111111) as usize)
+        Square::index((self.bits.get() & 0b111111) as usize)
     }
 
     #[inline(always)]
     pub const fn to(self) -> Square {
-        Square::index(((self.bits >> 6) & 0b111111) as usize)
+        Square::index(((self.bits.get() >> 6) & 0b111111) as usize)
     }
 
     #[inline(always)]
     pub const fn promotion(self) -> Option<Piece> {
         match self.flag() {
-            MoveFlag::Promotion => Some(Piece::index(Piece::Knight as usize + ((self.bits >> 12) & 0b11) as usize)),
+            MoveFlag::Promotion => Some(Piece::index(Piece::Knight as usize + ((self.bits.get() >> 12) & 0b11) as usize)),
             _ => None
         }
     }
@@ -92,7 +93,7 @@ impl Move {
 
     #[inline(always)]
     pub const fn flag(self) -> MoveFlag {
-        MoveFlag::index(((self.bits << 14) & 0b11) as usize)
+        MoveFlag::index(((self.bits.get() << 14) & 0b11) as usize)
     }
 
     #[inline(always)]
@@ -118,7 +119,7 @@ pub struct PieceMoves {
     pub piece: Piece,
     pub from: Square,
     pub to: Bitboard,
-    en_passant: Option<Square>,
+    pub en_passant: bool,
 }
 
 impl PieceMoves {
@@ -152,6 +153,19 @@ impl PieceMoves {
     #[inline(always)]
     pub const fn is_empty(self) -> bool {
         self.to.is_empty()
+    }
+}
+
+impl IntoIterator for PieceMoves {
+    type Item = Move;
+    type IntoIter = PieceMovesIter;
+    
+    #[inline(always)]
+    fn into_iter(self) -> Self::IntoIter {
+        PieceMovesIter {
+            moves: self,
+            promotion: 0,
+        }
     }
 }
 
@@ -191,7 +205,7 @@ impl Iterator for PieceMovesIter {
 
             let flag = match () {
                 _ if self.moves.piece == Piece::King && from.dist(to) > 1 => MoveFlag::Castling,
-                _ if self.moves.piece == Piece::Pawn && Some(to) == self.moves.en_passant => MoveFlag::EnPassant,
+                _ if self.moves.piece == Piece::Pawn && self.moves.en_passant => MoveFlag::EnPassant,
                 _ => MoveFlag::Normal
             };
 

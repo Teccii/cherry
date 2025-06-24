@@ -32,7 +32,7 @@ impl Square {
             5 => Square::F1,
             6 => Square::G1,
             7 => Square::H1,
-            
+
             8 => Square::A2,
             9 => Square::B2,
             10 => Square::C2,
@@ -41,7 +41,7 @@ impl Square {
             13 => Square::F2,
             14 => Square::G2,
             15 => Square::H2,
-            
+
             16 => Square::A3,
             17 => Square::B3,
             18 => Square::C3,
@@ -50,7 +50,7 @@ impl Square {
             21 => Square::F3,
             22 => Square::G3,
             23 => Square::H3,
-            
+
             24 => Square::A4,
             25 => Square::B4,
             26 => Square::C4,
@@ -59,7 +59,7 @@ impl Square {
             29 => Square::F4,
             30 => Square::G4,
             31 => Square::H4,
-            
+
             32 => Square::A5,
             33 => Square::B5,
             34 => Square::C5,
@@ -68,7 +68,7 @@ impl Square {
             37 => Square::F5,
             38 => Square::G5,
             39 => Square::H5,
-            
+
             40 => Square::A6,
             41 => Square::B6,
             42 => Square::C6,
@@ -77,7 +77,7 @@ impl Square {
             45 => Square::F6,
             46 => Square::G6,
             47 => Square::H6,
-            
+
             48 => Square::A7,
             49 => Square::B7,
             50 => Square::C7,
@@ -86,7 +86,7 @@ impl Square {
             53 => Square::F7,
             54 => Square::G7,
             55 => Square::H7,
-            
+
             56 => Square::A8,
             57 => Square::B8,
             58 => Square::C8,
@@ -95,7 +95,7 @@ impl Square {
             61 => Square::F8,
             62 => Square::G8,
             63 => Square::H8,
-            
+
             _ => panic!("Square::index(): Index out of bounds")
         }
     }

@@ -75,7 +75,7 @@ impl Bitboard {
     
     #[inline(always)]
     pub const fn has(self, sq: Square) -> bool {
-        self.is_disjoint(sq.bitboard())
+        !self.is_disjoint(sq.bitboard())
     }
 
     #[inline(always)]
@@ -88,6 +88,13 @@ impl Bitboard {
         self.0 == 0
     }
 
+    /*----------------------------------------------------------------*/
+
+    #[inline(always)]
+    pub const fn iter(self) -> BitboardIter {
+        BitboardIter(self)
+    }
+    
     /*----------------------------------------------------------------*/
 
     pub const EMPTY: Bitboard = Bitboard(0);
@@ -120,6 +127,16 @@ impl DerefMut for Bitboard {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl IntoIterator for Bitboard {
+    type Item = Square;
+    type IntoIter = BitboardIter;
+
+    #[inline(always)]
+    fn into_iter(self) -> Self::IntoIter {
+        BitboardIter(self)
     }
 }
 

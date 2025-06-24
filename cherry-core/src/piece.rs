@@ -1,3 +1,6 @@
+use std::num::NonZeroU8;
+use crate::Color;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Piece {
     Pawn,
@@ -80,5 +83,40 @@ impl From<Piece> for char {
             Piece::Queen => 'q',
             Piece::King => 'k'
         }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+/*
+Bit Layout:
+1-3: Piece (Pawn = 0, Knight = 1, King = 5)
+4: Color (White = 0, Black = 1)
+*/
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ColorPiece {
+    bits: NonZeroU8
+}
+
+impl ColorPiece {
+    #[inline(always)]
+    pub const fn new(piece: Piece, color: Color) -> ColorPiece {
+        let mut bits = 0;
+        bits |= piece as u8;
+        bits |= (color as u8) << 3;
+        
+        ColorPiece { bits: NonZeroU8::new(bits).unwrap() }
+    }
+
+    /*----------------------------------------------------------------*/
+    
+    #[inline(always)]
+    pub const fn piece(self) -> Piece {
+        Piece::index((self.bits.get() as u8 & 0b111) as usize)
+    }
+    
+    #[inline(always)]
+    pub const fn color(self) -> Color {
+        Color::index((((self.bits.get() as u8) >> 3) & 0b1) as usize)
     }
 }
