@@ -154,14 +154,11 @@ impl TimeManager {
                 Color::Black => (b_time, w_time, b_inc),
             };
             
-            let flag_factor = if otime < 15000
-                && time > 2 * otime
-                && pos.eval(0) >= 0 { 5 } else { 1 };
+            let flag_factor = 1 + (otime < 15000 && time > 2 * otime && pos.eval(0) >= 0) as u64;
             let move_overhead = self.move_overhead.load(Ordering::Relaxed);
             
-            let total_time = time + inc;
-            let target_time = total_time / moves_to_go as u64 / flag_factor - move_overhead;
-            let max_time = (target_time * 7 / 2).min(total_time);
+            let target_time = (time + inc) / moves_to_go as u64 / flag_factor - move_overhead;
+            let max_time = (target_time * 7 / 2).min(time - move_overhead);
             
             self.base_time.store(target_time, Ordering::Relaxed);
             self.target_time.store(target_time, Ordering::Relaxed);

@@ -106,7 +106,7 @@ impl MovePicker {
                     }
                     
                     let see = see(board, mv);
-                    let score = see + history.get_capture(board, mv);
+                    let score = history.get_capture(board, mv);
                     
                     if see >= 0  {
                         self.captures.push(ScoredMove(mv, score));
@@ -203,10 +203,10 @@ pub enum QPhase {
     GenPieceMoves,
     GenEvasions,
     YieldEvasions,
-    GenChecks,
-    YieldChecks,
     GenCaptures,
     YieldCaptures,
+    GenChecks,
+    YieldChecks,
     Finished,
 }
 
@@ -227,22 +227,29 @@ impl QMovePicker {
             piece_moves: ArrayVec::new(),
             evasions: ArrayVec::new(),
             captures: ArrayVec::new(),
-            checks: ArrayVec::new()
+            checks: ArrayVec::new(),
         }
     }
 
-    pub fn next(&mut self, pos: &mut Position, qply: u16, history: &History) -> Option<Move> {
+    pub fn next(
+        &mut self,
+        pos: &mut Position,
+        qply: u16,
+        history: &History,
+        counter_move: Option<MoveData>,
+        follow_up: Option<MoveData>,
+    ) -> Option<Move> {
         if self.phase == QPhase::GenPieceMoves {
             pos.board().generate_moves(|moves| {
                 self.piece_moves.push(moves);
                 false
             });
             
-            self.phase = if pos.in_check() {
-                QPhase::GenEvasions
+            if pos.in_check() {
+                self.phase = QPhase::GenEvasions;
             } else {
-                QPhase::GenCaptures
-            };
+                self.phase = QPhase::GenCaptures;
+            }
         }
         
         if self.phase == QPhase::GenEvasions {
@@ -250,14 +257,12 @@ impl QMovePicker {
 
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
-                    if board.is_check(mv) {
-                        continue;
-                    }
-                    
                     let score = if board.is_capture(mv) {
-                        see(board, mv) + history.get_capture(board, mv)
+                        history.get_capture(board, mv)
                     } else {
                         history.get_quiet(board, mv)
+                            + history.get_counter_move(board, mv, counter_move).unwrap_or_default()
+                            + history.get_follow_up(board, mv, follow_up).unwrap_or_default()
                     };
 
                     self.evasions.push(ScoredMove(mv, score));
@@ -267,50 +272,15 @@ impl QMovePicker {
             self.evasions.sort_by_key(|mv| mv.1);
             self.phase = QPhase::YieldEvasions;
         }
-
+        
         if self.phase == QPhase::YieldEvasions {
             if let Some(mv) = self.evasions.pop() {
                 return Some(mv.0);
             }
-
-            self.phase = if qply < 4 {
-                QPhase::GenChecks
-            } else {
-                QPhase::GenCaptures
-            };
+            
+            self.phase = QPhase::Finished;
         }
-
-        if self.phase == QPhase::GenChecks {
-            let board = pos.board();
-
-            for moves in self.piece_moves.iter().copied() {
-                for mv in moves {
-                    if !board.is_check(mv) {
-                        continue;
-                    }
-
-                    let score = if board.is_capture(mv) {
-                        see(board, mv) + history.get_capture(board, mv)
-                    } else {
-                        history.get_quiet(board, mv)
-                    };
-
-                    self.checks.push(ScoredMove(mv, score));
-                }
-            }
-
-            self.checks.sort_by_key(|mv| mv.1);
-            self.phase = QPhase::YieldChecks;
-        }
-
-        if self.phase == QPhase::YieldChecks {
-            if let Some(mv) = self.checks.pop() {
-                return Some(mv.0);
-            }
-
-            self.phase = QPhase::GenCaptures;
-        }
-
+        
         if self.phase == QPhase::GenCaptures {
             let board = pos.board();
 
@@ -321,7 +291,7 @@ impl QMovePicker {
                     }
 
                     let see = see(board, mv);
-                    let score = see + history.get_capture(board, mv);
+                    let score = history.get_capture(board, mv);
 
                     if see >= 0 {
                         self.captures.push(ScoredMove(mv, score));
@@ -337,6 +307,43 @@ impl QMovePicker {
 
         if self.phase == QPhase::YieldCaptures {
             if let Some(mv) = self.captures.pop() {
+                return Some(mv.0);
+            }
+            
+            if qply < 6 {
+                self.phase = QPhase::GenChecks;
+            } else {
+                self.phase = QPhase::Finished;
+            }
+        }
+        
+        if self.phase == QPhase::GenChecks {
+            let board = pos.board();
+
+            for moves in self.piece_moves.iter().copied() {
+                for mv in moves {
+                    if !board.is_check(mv) {
+                        continue;
+                    }
+
+                    let score = if board.is_capture(mv) {
+                        history.get_capture(board, mv)
+                    } else {
+                        history.get_quiet(board, mv)
+                            + history.get_counter_move(board, mv, counter_move).unwrap_or_default()
+                            + history.get_follow_up(board, mv, follow_up).unwrap_or_default()
+                    };
+                    
+                    self.checks.push(ScoredMove(mv, score));
+                }
+            }
+
+            self.checks.sort_by_key(|mv| mv.1);
+            self.phase = QPhase::YieldChecks;
+        }
+        
+        if self.phase == QPhase::YieldChecks {
+            if let Some(mv) = self.checks.pop() {
                 return Some(mv.0);
             }
             

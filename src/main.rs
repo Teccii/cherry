@@ -2,13 +2,16 @@
 mod cherry;
 
 use std::{
-    collections::HashMap,
-    fs::OpenOptions,
     sync::{Arc, Mutex},
     sync::mpsc::*,
     fmt::Write as _,
-    io::{BufWriter, Write},
+    io::Write,
     io
+};
+#[cfg(feature="parse")] use std::{
+    collections::HashMap,
+    fs::OpenOptions,
+    io::BufWriter,
 };
 #[cfg(feature = "parse")] use pgn_reader::{BufferedReader, Outcome, RawTag, SanPlus, Skip, Visitor};
 use cozy_chess::*;
@@ -32,6 +35,7 @@ fn main() -> Result<()> {
         Arc::clone(&time_man),
     )));
     let mut chess960 = false;
+    let mut debug = false;
 
     let (tx, rx): (Sender<ThreadCommand>, Receiver<ThreadCommand>) = channel();
 
@@ -42,7 +46,11 @@ fn main() -> Result<()> {
                     let mut searcher = searcher.lock().unwrap();
                     let mut output = String::new();
                     
-                    let (mv, ponder, _, _, _) = searcher.search(&limits);
+                    let (mv, ponder, _, _, _) = if debug {
+                        searcher.search::<FullInfo>(&limits)
+                    } else {
+                        searcher.search::<UciOnly>(&limits)
+                    };
                     
                     if chess960 {
                         write!(output, "bestmove {}", mv).unwrap();
@@ -81,6 +89,8 @@ fn main() -> Result<()> {
                 println!("option name Threads type spin default 1 min 1 max 65535");
                 println!("option name Move Overhead type spin default 30 min 0 max 65535");
                 println!("option name UCI_Chess960 type check default false");
+                println!("option name SyzygyPath type string default <empty>");
+                println!("option name SyzygyProbeDepth type spin default 1 min 1 max 128");
                 println!("uciok");
             },
             UciCommand::NewGame => {
@@ -124,9 +134,21 @@ fn main() -> Result<()> {
                         let mut searcher = searcher.lock().unwrap();
                         searcher.set_chess960(value.parse::<bool>().unwrap());
                         chess960 = true;
+                    },
+                    "SyzygyPath" => {
+                        let mut searcher = searcher.lock().unwrap();
+                        searcher.set_syzygy_path(&value);
+                    },
+                    "SyzygyProbeDepth" => {
+                        let mut searcher = searcher.lock().unwrap();
+                        searcher.set_syzygy_depth(value.parse::<u8>().unwrap());
                     }
                     _ => {}
                 }
+            },
+            UciCommand::Debug(value) => {
+                time_man.abort_now();
+                debug = value;
             },
             UciCommand::Display => {
                 let searcher = searcher.lock().unwrap();

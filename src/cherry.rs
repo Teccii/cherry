@@ -51,6 +51,7 @@ mod search {
 
 mod position;
 mod score;
+mod syzygy;
 mod uci;
 mod util;
 
@@ -58,6 +59,7 @@ pub use eval::*;
 pub use position::*;
 pub use score::*;
 pub use search::*;
+pub use syzygy::*;
 #[cfg(feature="tune")] pub use tune::*;
 pub use uci::*;
 pub use util::*;
