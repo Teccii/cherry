@@ -78,7 +78,7 @@ impl TimeManager {
 
     /*----------------------------------------------------------------*/
 
-    pub fn init(&self, pos: &mut Position, limits: &[SearchLimit]) {
+    pub fn init(&self, stm: Color, limits: &[SearchLimit]) {
         *self.prev_move.lock().unwrap() = None;
         self.move_stability.store(0, Ordering::Relaxed);
         self.abort_now.store(false, Ordering::Relaxed);
@@ -149,15 +149,23 @@ impl TimeManager {
             self.target_time.store(time, Ordering::Relaxed);
             self.max_time.store(time, Ordering::Relaxed);
         } else {
-            let (time, otime, inc) = match pos.board().side_to_move() {
+            let (time, otime, inc) = match stm {
                 Color::White => (w_time, b_time, w_inc),
                 Color::Black => (b_time, w_time, b_inc),
             };
             
-            let flag_factor = 1 + (otime < 15000 && time > 2 * otime && pos.eval(0) >= 0) as u64;
+            let mut flag_factor = 2;
+            flag_factor += (otime < 20000) as u64;
+            flag_factor += 2 * (otime < 10000) as u64;
+            flag_factor += 2 * (otime < 5000) as u64;
+
+            if time < 30000 {
+                flag_factor = 2;
+            }
+
             let move_overhead = self.move_overhead.load(Ordering::Relaxed);
             
-            let target_time = (time + inc) / moves_to_go as u64 / flag_factor - move_overhead;
+            let target_time = (time + inc) / moves_to_go as u64 * 2 / flag_factor - move_overhead;
             let max_time = (target_time * 7 / 2).min(time - move_overhead);
             
             self.base_time.store(target_time, Ordering::Relaxed);

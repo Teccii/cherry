@@ -170,7 +170,7 @@ impl Searcher {
 
     pub fn search<Info: SearchInfo>(&mut self, limits: &[SearchLimit]) -> (Move, Option<Move>, Score, u8, u64) {
         self.main_ctx.reset();
-        self.shared_ctx.time_man.init(&mut self.pos, limits);
+        self.shared_ctx.time_man.init(self.pos.stm(), limits);
 
         let mut result = (None, None, Score::ZERO, 0);
 
@@ -270,7 +270,7 @@ fn search_worker<Info: SearchInfo>(
                     && fails < 10 {
                     window.get()
                 } else {
-                    (-Score::INFINITE, Score::INFINITE)
+                    (-Score::MAX_MATE, Score::MAX_MATE)
                 };
 
                 ctx.sel_depth = 0;
@@ -413,28 +413,28 @@ impl SearchInfo for FullInfo {
         let mut i = 0;
 
         write!(info, "pv ").unwrap();
-        for &mv in &root_stack.pv[..root_stack.pv_len] {
-            if i == depth - 1 {
+        for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
+            if i as u8 == depth || i as u8 == MAX_DEPTH {
                 break;
             }
 
             if let Some(mv) = mv {
                 let uci_display = display_uci_move(&board, mv);
 
-                if board.try_play(mv).is_err() || i == MAX_DEPTH {
+                if !board.is_legal(mv) {
                     break;
                 }
 
                 if chess960 {
-                    write!(info, "{}", mv).unwrap();
+                    write!(info, "{} ", mv).unwrap();
                 } else {
                     write!(info, "{} ", uci_display).unwrap();
                 }
+                
+                board.play_unchecked(mv);
             } else {
                 break;
             }
-
-            i += 1;
         }
 
         println!("{}", info);
@@ -481,28 +481,28 @@ impl SearchInfo for UciOnly {
         let mut i = 0;
 
         write!(info, "pv ").unwrap();
-        for &mv in &root_stack.pv[..root_stack.pv_len] {
-            if i == depth - 1 {
+        for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
+            if i as u8 == depth || i as u8 == MAX_DEPTH {
                 break;
             }
 
             if let Some(mv) = mv {
                 let uci_display = display_uci_move(&board, mv);
 
-                if board.try_play(mv).is_err() || i == MAX_DEPTH {
+                if !board.is_legal(mv) {
                     break;
                 }
 
                 if chess960 {
-                    write!(info, "{}", mv).unwrap();
+                    write!(info, "{} ", mv).unwrap();
                 } else {
                     write!(info, "{} ", uci_display).unwrap();
                 }
+
+                board.play_unchecked(mv);
             } else {
                 break;
             }
-
-            i += 1;
         }
 
         println!("{}", info);

@@ -257,13 +257,7 @@ impl QMovePicker {
 
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
-                    let score = if board.is_capture(mv) {
-                        history.get_capture(board, mv)
-                    } else {
-                        history.get_quiet(board, mv)
-                            + history.get_counter_move(board, mv, counter_move).unwrap_or_default()
-                            + history.get_follow_up(board, mv, follow_up).unwrap_or_default()
-                    };
+                    let score = history.get_move(board, mv, counter_move, follow_up);
 
                     self.evasions.push(ScoredMove(mv, score));
                 }
@@ -326,13 +320,7 @@ impl QMovePicker {
                         continue;
                     }
 
-                    let score = if board.is_capture(mv) {
-                        history.get_capture(board, mv)
-                    } else {
-                        history.get_quiet(board, mv)
-                            + history.get_counter_move(board, mv, counter_move).unwrap_or_default()
-                            + history.get_follow_up(board, mv, follow_up).unwrap_or_default()
-                    };
+                    let score = history.get_move(board, mv, counter_move, follow_up);
                     
                     self.checks.push(ScoredMove(mv, score));
                 }
@@ -381,14 +369,14 @@ pub fn see(board: &Board, mv: Move) -> i16 {
     let mut target_piece = board.piece_on(mv.from).unwrap();
     let mut stm = !board.side_to_move();
     let mut gains: ArrayVec<i16, 32> = ArrayVec::new();
-    gains.push(see_value(first_capture));
+    gains.push(piece_value(first_capture));
 
     'see: loop {
         for &piece in Piece::ALL.iter() {
             let stm_attackers = attackers & board.colored_pieces(stm, piece);
             
             if let Some(sq) = stm_attackers.next_square() {
-                gains.push(see_value(target_piece));
+                gains.push(piece_value(target_piece));
                 
                 if target_piece == Piece::King {
                     break;
@@ -433,18 +421,6 @@ pub fn cmp_see(board: &Board, mv: Move, threshold: i16) -> bool {
     true
 }
 
-#[inline(always)]
-const fn see_value(piece: Piece) -> i16 {
-    match piece {
-        Piece::Pawn => 100,
-        Piece::Knight => 320,
-        Piece::Bishop => 330,
-        Piece::Rook => 500,
-        Piece::Queen => 900,
-        Piece::King => 0,
-    }
-}
-
 #[test]
 fn test_see() {
     use cozy_chess::Square;
@@ -455,8 +431,8 @@ fn test_see() {
         "8/8/b7/1q6/2b5/3Q3K/4B3/7k w - - 0 1",
     ];
     let expected = &[
-        see_value(Piece::Knight),
-        see_value(Piece::Knight) - see_value(Piece::Rook),
+        piece_value(Piece::Knight),
+        piece_value(Piece::Knight) - piece_value(Piece::Rook),
         0,
         0,
     ];

@@ -30,7 +30,7 @@ fn gen_single(
             break;
         }
 
-        if searcher.pos.is_draw(ply) {
+        if searcher.pos.is_draw() {
             result = 0.5f32;
             break;
         }

@@ -56,6 +56,7 @@ mod uci;
 mod util;
 
 pub use eval::*;
+#[cfg(feature = "nnue")] pub use nnue::*;
 pub use position::*;
 pub use score::*;
 pub use search::*;

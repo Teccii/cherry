@@ -82,7 +82,13 @@ fn rev_futile_margin(entry: Option<TTData>, depth: u8, improving: bool, opponent
 /*----------------------------------------------------------------*/
 
 #[inline(always)]
-fn nmp<Node: NodeType>(board: &Board, depth: u8, eval: Score, beta: Score, improving: bool) -> bool {
+fn nmp<Node: NodeType>(
+    board: &Board,
+    depth: u8,
+    eval: Score,
+    beta: Score,
+    improving: bool
+) -> bool {
     Node::NMP
         && depth > 4
         && eval >= beta - nmp_margin(depth, improving)
@@ -113,23 +119,25 @@ fn iir<Node: NodeType>(entry: TTData, depth: u8) -> i16 {
 /*----------------------------------------------------------------*/
 
 #[inline(always)]
-fn shallow<Node: NodeType>(board: &Board, ply: u16, alpha: Score) -> bool {
+fn shallow_quiet<Node: NodeType>(board: &Board, ply: u16, is_capture: bool, best_score: Option<Score>) -> bool {
     !Node::PV
         && ply != 0
-        && !alpha.is_decisive()
+        && !is_capture
+        && best_score.map_or(false, |s| !s.is_decisive())
         && board.occupied() != (board.pieces(Piece::King) | board.pieces(Piece::Pawn))
 }
 
-/*----------------------------------------------------------------*/
-
 #[inline(always)]
-fn lmp(depth: u8, moves_seen: u16, improving: bool, opponent_worsening: bool) -> bool {
-    let margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16) * (3 + opponent_worsening as u16) / 3;
+fn lmp(depth: u8, moves_seen: u16, improving: bool) -> bool {
+    let margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16);
     
     moves_seen >= margin
 }
 
-/*----------------------------------------------------------------*/
+#[inline(always)]
+fn hist_margin(depth: u8) -> i16 {
+    -4300 * depth as i16
+}
 
 #[inline(always)]
 fn futile(
@@ -146,7 +154,11 @@ fn futile(
 }
 
 #[inline(always)]
-fn futile_margin(lmr_depth: u8, improving: bool, opponent_worsening: bool) -> i16 {
+fn futile_margin(
+    lmr_depth: u8,
+    improving: bool,
+    opponent_worsening: bool
+) -> i16 {
     46 + 107 * lmr_depth as i16
         + 102 * improving as i16
         + 87 * opponent_worsening as i16
@@ -239,7 +251,7 @@ pub fn search<Node: NodeType>(
     ctx.nodes.inc();
     ctx.update_sel_depth(ply);
 
-    if ply != 0 && pos.is_draw(ply) {
+    if ply != 0 && pos.is_draw() {
         return Score::ZERO;
     }
 
@@ -356,7 +368,7 @@ pub fn search<Node: NodeType>(
     let in_check = pos.in_check();
     let static_eval = match skip_move {
         Some(_) => ctx.search_stack[ply as usize].eval,
-        None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(ply))
+        None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
     };
     ctx.search_stack[ply as usize].eval = static_eval;
     
@@ -477,21 +489,6 @@ pub fn search<Node: NodeType>(
                 + ctx.history.get_follow_up(pos.board(), mv, follow_up).unwrap_or_default()
         };
         
-        if shallow::<Node>(pos.board(), ply, alpha) {
-            //Late Move Pruning
-            if lmp(depth, moves_seen, improving, opponent_worsening) {
-                move_picker.skip_quiets();
-            }
-
-            let lmr = lmr::<Node>(pos.board(), mv, depth, moves_seen);
-            let lmr_depth = (depth as i16).saturating_sub(lmr).clamp(1, MAX_DEPTH as i16) as u8;
-
-            //Futility Pruning
-            if futile(pos.board(), lmr_depth, static_eval, alpha, improving, opponent_worsening) {
-                move_picker.skip_quiets();
-            }
-        }
-        
         let mut extension: i16 = 0;
         let mut reduction: i16 = 0;
         let mut score;
@@ -551,6 +548,35 @@ pub fn search<Node: NodeType>(
         reduction += lmr::<Node>(pos.board(), mv, depth, moves_seen);
         reduction += !Node::PV as i16 + !improving as i16;
         reduction -= ctx.search_stack[ply as usize].killers.contains(mv) as i16;
+
+        if shallow_quiet::<Node>(pos.board(), ply, is_capture, best_score) {
+            //Late Move Pruning
+            if lmp(depth, moves_seen, improving) {
+                move_picker.skip_quiets();
+                continue;
+            }
+
+            let r_depth = (depth as i16).saturating_sub(reduction).clamp(1, MAX_DEPTH as i16) as u8;
+
+            //History Pruning
+            if stat_score < hist_margin(r_depth) {
+                move_picker.skip_quiets();
+                continue;
+            }
+
+            //Futility Pruning
+            if futile(
+                pos.board(),
+                r_depth,
+                static_eval,
+                alpha,
+                improving,
+                opponent_worsening
+            ) {
+                move_picker.skip_quiets();
+                continue;
+            }
+        }
 
         ctx.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv);
@@ -701,19 +727,15 @@ pub fn search<Node: NodeType>(
 
 /*----------------------------------------------------------------*/
 
-fn delta<Node: NodeType>(pos: &Position, piece: Piece, sq: Square, eval: Score, alpha: Score) -> bool {
-    let phase = calc_phase(pos.board());
-
+fn delta<Node: NodeType>(board: &Board, piece: Piece, eval: Score, alpha: Score) -> bool {
     !Node::PV
-        && phase < TAPER_SCALE * 3 / 4
-        && !pos.in_check()
-        && eval < alpha - delta_margin(pos, piece, sq, phase)
+        && !board.in_check()
+        && calc_phase(board) < TOTAL_PHASE * 3 / 4
+        && eval < alpha - delta_margin(piece)
 }
 
-fn delta_margin(pos: &Position, piece: Piece, sq: Square, phase: u16) -> Score {
-    let value = piece_value(!pos.stm(), piece, sq);
-
-    (value + PAWN_VALUE * 2).scale(phase)
+fn delta_margin(piece: Piece) -> i16 {
+    piece_value(piece) + 2 * PAWN_VALUE.0
 }
 
 /*----------------------------------------------------------------*/
@@ -737,7 +759,7 @@ pub fn q_search<Node: NodeType>(
     ctx.nodes.inc();
     ctx.update_sel_depth(ply);
 
-    if pos.is_draw(ply) {
+    if pos.is_draw() {
         return Score::ZERO;
     }
     
@@ -762,7 +784,7 @@ pub fn q_search<Node: NodeType>(
         ctx.tt_misses.inc();
     }
 
-    let static_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(ply));
+    let static_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval());
 
     if ply >= MAX_PLY {
         return static_eval;
@@ -797,9 +819,8 @@ pub fn q_search<Node: NodeType>(
         apply this in the late endgame.
         */
         if let Some(target) = pos.board().capture_piece(mv) && delta::<Node>(
-            pos,
+            pos.board(),
             target,
-            pos.board().capture_square(mv).unwrap(),
             static_eval,
             alpha
         ) {
@@ -833,30 +854,30 @@ pub fn q_search<Node: NodeType>(
         }
     }
 
-    if !ctx.abort_now {
-        if let Some(best_score) = best_score{
-            let flag = match () {
-                _ if best_score <= initial_alpha => TTFlag::UpperBound,
-                _ if best_score >= beta => TTFlag::LowerBound,
-                _ => TTFlag::Exact,
-            };
+    if !ctx.abort_now && let Some(best_score) = best_score {
+        let flag = match () {
+            _ if best_score <= initial_alpha => TTFlag::UpperBound,
+            _ if best_score >= beta => TTFlag::LowerBound,
+            _ => TTFlag::Exact,
+        };
 
-            shared_ctx.t_table.store(
-                pos.board(),
-                0,
-                best_score,
-                Some(static_eval),
-                best_move,
-                flag
-            );
-        }
+        shared_ctx.t_table.store(
+            pos.board(),
+            0,
+            best_score,
+            Some(static_eval),
+            best_move,
+            flag
+        );
     }
 
     best_score.unwrap_or(alpha)
 }
 
+/*----------------------------------------------------------------*/
+
 pub fn det_q_search(pos: &mut Position, ply: u16, mut alpha: Score, beta: Score) -> Score {
-    let static_eval = pos.eval(ply);
+    let static_eval = pos.eval();
     
     if ply >= MAX_PLY || static_eval >= beta {
         return static_eval;

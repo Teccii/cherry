@@ -4,9 +4,11 @@ use super::*;
 #[derive(Debug, Clone)]
 pub struct Position {
     board: Board,
+    repetition: u8,
     pawn_zobrist: PawnZobrist,
     board_history: Vec<Board>,
     move_history: Vec<Option<Move>>,
+    repetition_history: Vec<u8>,
     evaluator: Evaluator,
 }
 
@@ -15,12 +17,15 @@ impl Position {
     pub fn new(board: Board) -> Position {
         let w_pawns = board.colored_pieces(Color::White, Piece::Pawn);
         let b_pawns = board.colored_pieces(Color::Black, Piece::Pawn);
-        
+        let repetition = board.halfmove_clock();
+
         Position {
             board,
+            repetition,
             pawn_zobrist: PawnZobrist::new(w_pawns, b_pawns),
             board_history: Vec::new(),
             move_history: Vec::new(),
+            repetition_history: Vec::new(),
             evaluator: Evaluator::default(),
         }
     }
@@ -29,11 +34,13 @@ impl Position {
     pub fn reset(&mut self, board: Board) {
         let w_pawns = board.colored_pieces(Color::White, Piece::Pawn);
         let b_pawns = board.colored_pieces(Color::Black, Piece::Pawn);
-        
+
         self.board = board;
+        self.repetition = self.board.halfmove_clock();
         self.pawn_zobrist.reset(w_pawns, b_pawns);
         self.board_history.clear();
         self.move_history.clear();
+        self.repetition_history.clear();
     }
 
     /*----------------------------------------------------------------*/
@@ -58,9 +65,11 @@ impl Position {
         let b_pawns = self.board.colored_pieces(Color::Black, Piece::Pawn);
         
         self.board_history.push(self.board.clone());
+        self.repetition_history.push(self.repetition);
         self.move_history.push(Some(mv));
+        self.update_repetition(mv);
+
         self.board.play_unchecked(mv);
-        
         self.pawn_zobrist.make_move(
             w_pawns ^ self.board.colored_pieces(Color::White, Piece::Pawn),
             b_pawns ^ self.board.colored_pieces(Color::Black, Piece::Pawn),
@@ -71,9 +80,11 @@ impl Position {
     pub fn null_move(&mut self) -> bool {
         if let Some(new_board) = self.board.null_move() {
             self.board_history.push(self.board.clone());
+            self.repetition_history.push(self.repetition);
             self.move_history.push(None);
             self.pawn_zobrist.null_move();
             self.board = new_board;
+            self.repetition = 0;
 
             return true;
         }
@@ -84,6 +95,7 @@ impl Position {
     #[inline(always)]
     pub fn unmake_move(&mut self) {
         self.board = self.board_history.pop().unwrap();
+        self.repetition = self.repetition_history.pop().unwrap();
         self.pawn_zobrist.unmake_move();
         self.move_history.pop();
     }
@@ -91,24 +103,61 @@ impl Position {
     #[inline(always)]
     pub fn unmake_null_move(&mut self) {
         self.board = self.board_history.pop().unwrap();
+        self.repetition = self.repetition_history.pop().unwrap();
         self.pawn_zobrist.unmake_move();
         
         debug_assert!(self.move_history.pop().unwrap().is_none());
     }
 
+    #[inline(always)]
+    fn update_repetition(&mut self, mv: Move) {
+        let piece = self.board.piece_on(mv.from).unwrap();
+        let victim = self.board.capture_piece(mv);
+
+        if piece == Piece::Pawn || victim.is_some() {
+            self.repetition = 0;
+        } else {
+            self.repetition += 1;
+        }
+
+        if self.board.is_castles(mv) {
+            self.repetition = 0;
+        } else {
+            if victim.is_some() && mv.to.rank() == Rank::Eighth.relative_to(self.stm()) {
+                let rights = self.board.castle_rights(self.stm());
+                let file = mv.to.file();
+
+                if rights.short == Some(file) || rights.long == Some(file) {
+                    self.repetition = 0;
+                }
+            }
+
+            match piece {
+                Piece::Rook => {
+                    let rights = self.board.castle_rights(self.stm());
+                    let file = mv.from.file();
+
+                    if rights.short == Some(file) || rights.long == Some(file) {
+                        self.repetition = 0;
+                    }
+                },
+                Piece::King => {
+                    let rights = self.board.castle_rights(self.stm());
+
+                    if rights.short.is_some() || rights.long.is_some() {
+                        self.repetition = 0;
+                    }
+                }
+                _ => ()
+            }
+        }
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline(always)]
-    pub fn eval(&mut self, ply: u16) -> Score {
-        if self.is_checkmate() {
-            return Score::new_mated(ply);
-        }
-
-        if self.is_draw(ply) {
-            return Score::ZERO;
-        }
-        
-        self.evaluator.eval(&self.board().clone(), ply)
+    pub fn eval(&mut self) -> Score {
+        self.evaluator.eval(&self.board().clone())
     }
     
     #[inline(always)]
@@ -127,10 +176,10 @@ impl Position {
     }
     
     #[inline(always)]
-    pub fn is_draw(&self, ply: u16) -> bool {
+    pub fn is_draw(&self) -> bool {
         self.board.status() == GameStatus::Drawn
         || self.insufficient_material()
-        || self.repetition(ply)
+        || self.repetition()
     }
 
     /*----------------------------------------------------------------*/
@@ -152,22 +201,16 @@ impl Position {
         }
     }
     
-    fn repetition(&self, ply: u16) -> bool {
+    fn repetition(&self) -> bool {
         let hash = self.hash();
-        
-        let twofold = self.board_history.iter()
+
+        self.board_history.iter()
             .rev()
-            .take(ply as usize)
-            .any(|b| b.hash() == hash);
-        
-        let threefold = self.board_history.iter()
-            .rev()
+            .take(self.repetition as usize)
             .skip(1)
             .step_by(2)
             .filter(|b| b.hash() == hash)
-            .count() >= 2;
-        
-        twofold || threefold
+            .count() >= 2
     }
 }
 

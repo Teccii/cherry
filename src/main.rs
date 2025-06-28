@@ -1,4 +1,6 @@
 #![feature(str_split_whitespace_remainder)]
+#![feature(generic_const_exprs)]
+
 mod cherry;
 
 use std::{
@@ -182,7 +184,7 @@ fn main() -> Result<()> {
             #[cfg(feature="tune")] UciCommand::DataGen(out_path, threads, move_time) => datagen(&out_path, threads, move_time),
             UciCommand::Eval => {
                 let mut searcher = searcher.lock().unwrap();
-                println!("{}", searcher.pos.eval(0));
+                println!("{}", searcher.pos.eval());
             },
             #[cfg(feature = "trace")] UciCommand::Trace => {
                 let searcher = searcher.lock().unwrap();
@@ -286,7 +288,7 @@ fn parse(data_path: &str, out_path: &str) {
         for board in boards.iter().skip(24).cloned().filter(|b| !b.in_check()) {
             let pos = Position::new(board.clone());
             
-            if pos.is_checkmate() || pos.is_draw(0) {
+            if pos.is_checkmate() || pos.is_draw() {
                 continue;
             }
             

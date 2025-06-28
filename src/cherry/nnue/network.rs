@@ -5,10 +5,12 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 pub const INPUT: usize = 768;
-pub const L1: usize = 1024;
+pub const HL: usize = 1024;
+pub const L1: usize = HL * 2;
 pub const L2: usize = 32;
 pub const L3: usize = 32;
 
+pub const SCALE: i16 = 400;
 pub const QA: i16 = 255;
 pub const QB: i16 = 64;
 
@@ -17,14 +19,14 @@ pub const QB: i16 = 64;
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct NetworkWeights {
-    pub feature_weights: Align64<[i16; INPUT * L1]>,
-    pub feature_bias: Align64<[i16; L1]>,
+    pub feature_weights: Align64<[i16; INPUT * HL]>,
+    pub feature_bias: Align64<[i16; HL]>,
     pub l1_weights: Align64<[i16; L1 * L2]>,
     pub l1_bias: Align64<[i16; L2]>,
     pub l2_weights: Align64<[i16; L2 * L3]>,
     pub l2_bias: Align64<[i16; L3]>,
     pub l3_weights: Align64<[i16; L3]>,
-    pub l3_bias: Align64<[i16; L3]>,
+    pub l3_bias: i16,
 }
 
 /*----------------------------------------------------------------*/
@@ -52,9 +54,9 @@ impl Nnue {
             
             update.move_piece(Piece::King, color, mv.from, Square::new(king, back_rank));
             update.move_piece(Piece::Rook, color, mv.to, Square::new(rook, back_rank));
-        } else if mv.promotion.is_some() {
+        } else if let Some(promotion) = mv.promotion{
             update.remove_piece(piece, color, mv.from);
-            update.add_piece(mv.promotion.unwrap(), color, mv.to);
+            update.add_piece(promotion, color, mv.to);
             
             if board.is_capture(mv) {
                 update.remove_piece(board.piece_on(mv.to).unwrap(), !color, mv.to); 
@@ -69,9 +71,8 @@ impl Nnue {
         }
         
         self.acc_mut().update = update;
-        
         self.acc_index += 1;
-        self.acc_mut().dirty = [false; Color::NUM];
+        self.acc_mut().dirty = [true; Color::NUM];
     }
     
     pub fn unmake_move(&mut self) {
@@ -80,16 +81,19 @@ impl Nnue {
     
     pub fn eval(&self, weights: &NetworkWeights, stm: Color) -> i16 {
         let acc = self.acc();
-        let (stm, nstm) = match stm {
-            Color::White => (&acc.white, &acc.black),
-            Color::Black => (&acc.black, &acc.white),
-        };
+        let (us, them) = (acc.select(stm), acc.select(!stm));
         
-        let mut l1_outputs = Align64([0; L2]);
-        let mut l2_outputs = Align64([0; L3]);
+        let mut ft_output = Align64([0u8; L1]);
+        let mut l1_output = Align64([0u8; L2]);
+        let mut l2_output = Align64([0u8; L3]);
         let mut l3_output = 0;
-        
-        l3_output
+
+        activate_ft(us, them, &mut ft_output);
+        propagate(&ft_output, &weights.l1_weights, &weights.l1_bias, &mut l1_output);
+        propagate(&l1_output, &weights.l2_weights, &weights.l2_bias, &mut l2_output);
+        propagate_one(&l2_output, &weights.l3_weights, weights.l3_bias, &mut l3_output);
+
+        (l3_output as i32 / QA as i32 * SCALE as i32 / (QA as i32 * QB as i32)) as i16
     }
     
     /*----------------------------------------------------------------*/

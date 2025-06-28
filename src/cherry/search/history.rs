@@ -3,7 +3,7 @@ use crate::BoardUtil;
 use crate::cherry::MoveData;
 /*----------------------------------------------------------------*/
 
-pub const MAX_HISTORY: i16 = 4096;
+pub const MAX_HISTORY: i16 = 8192;
 
 /*----------------------------------------------------------------*/
 
@@ -124,6 +124,25 @@ impl History {
         Some(&mut self.follow_up[board.side_to_move() as usize]
             [prev_mv.piece as usize][prev_mv.to as usize]
             [board.piece_on(mv.from).unwrap() as usize][mv.to as usize])
+    }
+
+    /*----------------------------------------------------------------*/
+    
+    #[inline(always)]
+    pub fn get_move(
+        &self,
+        board: &Board,
+        mv: Move,
+        counter_move: Option<MoveData>,
+        follow_up: Option<MoveData>
+    ) -> i16 {
+        if board.is_capture(mv) {
+            self.get_capture(board, mv)
+        } else {
+            self.get_quiet(board, mv)
+                + self.get_counter_move(board, mv, counter_move).unwrap_or_default()
+                + self.get_follow_up(board, mv, follow_up).unwrap_or_default()
+        }
     }
 
     /*----------------------------------------------------------------*/
