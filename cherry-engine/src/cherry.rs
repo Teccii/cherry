@@ -43,21 +43,26 @@ mod search {
 
 #[cfg(feature="tune")] mod tune {
     mod datagen;
-    mod tune;
+    mod tune_hce;
+    mod tune_nnue;
     
     pub use datagen::*;
-    pub use tune::*;
+    pub use tune_hce::*;
+    pub use tune_nnue::*;
 }
 
 mod position;
 mod score;
+mod syzygy;
 mod uci;
 mod util;
 
 pub use eval::*;
+#[cfg(feature = "nnue")] pub use nnue::*;
 pub use position::*;
 pub use score::*;
 pub use search::*;
+pub use syzygy::*;
 #[cfg(feature="tune")] pub use tune::*;
 pub use uci::*;
 pub use util::*;

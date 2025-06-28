@@ -18,7 +18,7 @@ pub enum TTFlag {
 pub struct TTData {
     pub depth: u8,
     pub score: Score,
-    pub eval: Score,
+    pub eval: Option<Score>,
     pub table_mv: Option<Move>,
     pub flag: TTFlag,
 }
@@ -38,7 +38,7 @@ impl TTData {
     pub fn new(
         depth: u8,
         score: Score,
-        eval: Score,
+        eval: Option<Score>,
         table_mv: Option<Move>,
         flag: TTFlag,
     ) -> TTData {
@@ -60,7 +60,7 @@ impl TTData {
         TTData {
             depth: packed.depth,
             score: packed.score,
-            eval: packed.eval,
+            eval: Some(packed.eval).filter(|s| !s.is_infinite()),
             table_mv: packed.table_mv.unpack(),
             flag: packed.flag,
         }
@@ -72,7 +72,7 @@ impl TTData {
             std::mem::transmute::<TTPackedData, u64>(TTPackedData {
                 depth: self.depth,
                 score: self.score,
-                eval: self.eval,
+                eval: self.eval.unwrap_or(Score::INFINITE),
                 table_mv: BitMove::pack(self.table_mv),
                 flag: self.flag
             })
@@ -133,7 +133,7 @@ impl TTable {
 
     /*----------------------------------------------------------------*/
 
-    pub fn get(&self, board: &Board) -> Option<TTData> {
+    pub fn probe(&self, board: &Board) -> Option<TTData> {
         let hash = board.hash();
         let index = self.index(hash);
         
@@ -147,12 +147,12 @@ impl TTable {
         None
     }
     
-    pub fn set(
+    pub fn store(
         &self,
         board: &Board,
         depth: u8,
         score: Score,
-        eval: Score,
+        eval: Option<Score>,
         table_mv: Option<Move>,
         flag: TTFlag,
     ) {

@@ -18,6 +18,18 @@ impl Score {
     }
 
     #[inline(always)]
+    pub fn new_tb_win(ply: u16) -> Score {
+        Score::MAX_TB_WIN - ply as i16
+    }
+
+    #[inline(always)]
+    pub fn new_tb_loss(ply: u16) -> Score {
+        -Score::MAX_TB_WIN + ply as i16
+    }
+
+    /*----------------------------------------------------------------*/
+    
+    #[inline(always)]
     pub fn is_mate(self) -> bool {
         let abs_score = self.abs();
 
@@ -34,6 +46,30 @@ impl Score {
         }
 
         None
+    }
+    
+    #[inline(always)]
+    pub fn is_tb(self) -> bool {
+        let abs_score = self.abs();
+        
+        abs_score >= Score::MIN_TB_WIN && abs_score <= Score::MAX_TB_WIN
+    }
+    
+    #[inline(always)]
+    pub fn tb_in(self) -> Option<i16> {
+        if self.is_tb() {
+            let abs_score = self.abs();
+            let sign = self.0.signum();
+
+            return Some(sign * (Score::MAX_TB_WIN.0 - abs_score.0));
+        }
+
+        None
+    }
+    
+    #[inline(always)]
+    pub fn is_decisive(self) -> bool {
+        self.is_mate() || self.is_tb()
     }
     
     #[inline(always)]
@@ -59,6 +95,9 @@ impl Score {
 
     pub const MIN_MATE: Score = Score(i16::MAX - (2 * MAX_PLY) as i16);
     pub const MAX_MATE: Score = Score(i16::MAX - MAX_PLY as i16);
+    pub const MAX_TB_WIN: Score = Score(i16::MAX - (2 * MAX_PLY + 1) as i16);
+    pub const MIN_TB_WIN: Score = Score(i16::MAX - (3 * MAX_PLY + 1) as i16);
+    
     pub const ZERO: Score = Score(0);
     pub const INFINITE: Score = Score(i16::MAX - (MAX_PLY as i16 / 2));
 }

@@ -1,5 +1,5 @@
 [package]
-name = "cherry-engine"
+name = "cherry"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,8 +10,8 @@ tune = ["parse", "trace", "dep:rand", "dep:rand_distr"]
 nnue = []
 
 [dependencies]
-cherry-core = { version = "0.1.0", path = "../cherry-core" }
 cozy-chess = "0.3.4"
+pyrrhic-rs = "0.2.0"
 arrayvec = "0.7.6"
 atomic-time = "0.1.5"
 pgn-reader = { version = "0.27.0", optional = true }

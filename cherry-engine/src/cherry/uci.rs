@@ -17,6 +17,7 @@ pub enum UciCommand {
     #[cfg(feature = "tune")] Tune(String, String),
     #[cfg(feature = "parse")] Parse(String, String),
     #[cfg(feature = "tune")] DataGen(String, u16, u64),
+    Debug(bool),
     Display,
     Eval,
     #[cfg(feature = "trace")] Trace,
@@ -152,6 +153,11 @@ impl FromStr for UciCommand {
                 
                 Ok(UciCommand::SetOption(name, value))
             },
+            "debug" => {
+                let value = reader.next().is_some_and(|s| s == "on");
+                
+                Ok(UciCommand::Debug(value))
+            }
             #[cfg(feature = "tune")] "tune" => {
                 reader.next().filter(|&s| s == "data").ok_or(UciParseError::InvalidArguments)?;
                 let data_path = reader.next().ok_or(UciParseError::InvalidArguments)?.to_owned();

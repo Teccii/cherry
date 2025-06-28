@@ -262,7 +262,7 @@ impl Evaluator {
         evaluator
     }
     
-    pub fn eval(&mut self, board: &Board, ply: u16) -> Score {
+    pub fn eval(&mut self, board: &Board) -> Score {
         trace!({
             self.trace = EvalTrace::default();
         });
@@ -829,15 +829,13 @@ pub fn calc_phase(board: &Board) -> u16 {
     phase
 }
 
-pub fn piece_value(stm: Color, piece: Piece, sq: Square) -> T {
-    let i = sq.relative_to(stm) as usize;
-    
+pub fn piece_value(piece: Piece) -> i16 {
     match piece {
-        Piece::Pawn => PAWN_TABLE[i],
-        Piece::Knight => KNIGHT_TABLE[i],
-        Piece::Bishop => BISHOP_TABLE[i],
-        Piece::Rook => ROOK_TABLE[i],
-        Piece::Queen => QUEEN_TABLE[i],
-        Piece::King => KING_TABLE[i],
+        Piece::Pawn => PAWN_VALUE.0,
+        Piece::Knight => KNIGHT_VALUE.0,
+        Piece::Bishop => BISHOP_VALUE.0,
+        Piece::Rook => ROOK_VALUE.0,
+        Piece::Queen => QUEEN_VALUE.0,
+        Piece::King => i16::MAX,
     }
 }

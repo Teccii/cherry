@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use cozy_chess::*;
 use super::*;
 use crate::*;
@@ -5,26 +6,71 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 pub const INPUT: usize = 768;
-pub const L1: usize = 1024;
-pub const L2: usize = 32;
-pub const L3: usize = 32;
+pub const HL: usize = 1024;
+pub const L1: usize = HL * 2;
 
+pub const SCALE: i16 = 400;
 pub const QA: i16 = 255;
 pub const QB: i16 = 64;
 
 /*----------------------------------------------------------------*/
 
+const NNUE_BYTES: &[u8] = /*include_bytes!("../../data/cherry_nnue.bin");*/ &[0];
+
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct NetworkWeights {
-    pub feature_weights: Align64<[i16; INPUT * L1]>,
-    pub feature_bias: Align64<[i16; L1]>,
-    pub l1_weights: Align64<[i16; L1 * L2]>,
-    pub l1_bias: Align64<[i16; L2]>,
-    pub l2_weights: Align64<[i16; L2 * L3]>,
-    pub l2_bias: Align64<[i16; L3]>,
-    pub l3_weights: Align64<[i16; L3]>,
-    pub l3_bias: Align64<[i16; L3]>,
+    pub ft_weights: Align64<[i16; INPUT * HL]>,
+    pub ft_bias: Align64<[i16; HL]>,
+    pub out_weights: Align64<[i16; L1]>,
+    pub out_bias: i16
+}
+
+impl NetworkWeights {
+    pub fn new(mut bytes: &[u8]) -> NetworkWeights {
+        const I16_SIZE: usize = size_of::<i16>();
+
+        debug_assert!(bytes.len() == I16_SIZE * (
+            INPUT * HL
+                + HL
+                + L1
+                + 1
+        ));
+        
+        let ft_weights = Self::aligned_from_bytes::<{INPUT * HL}>(bytes);
+        bytes = &bytes[(INPUT * HL * I16_SIZE)..];
+        let ft_bias = Self::aligned_from_bytes::<HL>(bytes);
+        bytes = &bytes[(HL * I16_SIZE)..];
+        let out_weights = Self::aligned_from_bytes::<L1>(bytes);
+        bytes = &bytes[(L1 * I16_SIZE)..];
+        let out_bias = i16::from_le_bytes([bytes[0], bytes[1]]);
+
+        NetworkWeights {
+            ft_weights,
+            ft_bias,
+            out_weights,
+            out_bias,
+        }
+    }
+
+    fn aligned_from_bytes<const N: usize>(bytes: &[u8]) -> Align64<[i16; N]> {
+        let mut values = Align64([0; N]);
+
+        for (chunk, value) in bytes.chunks_exact(2)
+            .zip(&mut values.0)
+            .take(N) {
+            *value = i16::from_le_bytes([chunk[0], chunk[1]]);
+        }
+
+        values
+    }
+}
+
+impl Default for NetworkWeights {
+    #[inline(always)]
+    fn default() -> Self {
+        Self::new(NNUE_BYTES)
+    }
 }
 
 /*----------------------------------------------------------------*/
@@ -36,6 +82,46 @@ pub struct Nnue {
 }
 
 impl Nnue {
+    pub fn new(board: &Board, weights: &NetworkWeights) -> Nnue {
+        let mut nnue = Nnue {
+            acc_stack: std::array::from_fn(|_| Accumulator {
+                white: Align64([0; HL]),
+                black: Align64([0; HL]),
+                update: UpdateBuffer::default(),
+                dirty: [false; Color::NUM],
+            }),
+            acc_index: 0,
+        };
+
+        nnue.reset(board, weights);
+        nnue
+    }
+
+    pub fn reset(&mut self, board: &Board, weights: &NetworkWeights) {
+        for acc in &mut self.acc_stack {
+            acc.white = weights.ft_bias.clone();
+            acc.black = weights.ft_bias.clone();
+        }
+
+        let mut adds = ArrayVec::<_, 64>::new();
+        for sq in board.occupied() {
+            let piece = board.piece_on(sq).unwrap();
+            let color = board.color_on(sq).unwrap();
+
+            adds.push(FeatureUpdate { piece, color, sq });
+        }
+
+        let (w_add, b_add): (Vec<_>, Vec<_>) = adds.iter()
+            .map(|f| (f.to_index(Color::White), f.to_index(Color::Black)))
+            .unzip();
+
+        self.acc_index = 0;
+        let acc = self.acc_mut();
+        vec_add_inplace(acc.select_mut(Color::White), weights, &w_add);
+        vec_add_inplace(acc.select_mut(Color::Black), weights, &b_add);
+        acc.dirty = [false; Color::NUM];
+    }
+
     pub fn make_move(&mut self, board: &Board, mv: Move) {
         let mut update = UpdateBuffer::default();
         let piece = board.piece_on(mv.from).unwrap();
@@ -52,9 +138,9 @@ impl Nnue {
             
             update.move_piece(Piece::King, color, mv.from, Square::new(king, back_rank));
             update.move_piece(Piece::Rook, color, mv.to, Square::new(rook, back_rank));
-        } else if mv.promotion.is_some() {
+        } else if let Some(promotion) = mv.promotion{
             update.remove_piece(piece, color, mv.from);
-            update.add_piece(mv.promotion.unwrap(), color, mv.to);
+            update.add_piece(promotion, color, mv.to);
             
             if board.is_capture(mv) {
                 update.remove_piece(board.piece_on(mv.to).unwrap(), !color, mv.to); 
@@ -69,27 +155,26 @@ impl Nnue {
         }
         
         self.acc_mut().update = update;
-        
         self.acc_index += 1;
-        self.acc_mut().dirty = [false; Color::NUM];
+        self.acc_mut().dirty = [true; Color::NUM];
     }
-    
+
+    #[inline(always)]
     pub fn unmake_move(&mut self) {
         self.acc_index -= 1;
     }
     
     pub fn eval(&self, weights: &NetworkWeights, stm: Color) -> i16 {
         let acc = self.acc();
-        let (stm, nstm) = match stm {
-            Color::White => (&acc.white, &acc.black),
-            Color::Black => (&acc.black, &acc.white),
-        };
-        
-        let mut l1_outputs = Align64([0; L2]);
-        let mut l2_outputs = Align64([0; L3]);
-        let mut l3_output = 0;
-        
-        l3_output
+        let (us, them) = (acc.select(stm), acc.select(!stm));
+
+        let mut ft_output = Align64([0u8; L1]);
+        let mut output = 0;
+
+        activate_ft(us, them, &mut ft_output);
+        propagate_out(&ft_output, &weights.out_weights, weights.out_bias, &mut output);
+
+        (output as i32 / QA as i32 * SCALE as i32 / (QA as i32 * QB as i32)) as i16
     }
     
     /*----------------------------------------------------------------*/
@@ -117,9 +202,9 @@ impl Nnue {
             }
         }
     }
-    
+
     pub fn force_updates(&mut self, weights: &NetworkWeights) {
-        for &color in Color::ALL.iter() {
+        for &color in &Color::ALL {
             if self.acc().dirty[color as usize] {
                 self.apply_updates(weights, color);
             }

@@ -1,6 +1,8 @@
 use std::{fmt::Write, sync::Arc};
+use std::sync::atomic::{AtomicU8, Ordering};
 use cozy_chess::*;
 use cozy_chess::util::display_uci_move;
+use pyrrhic_rs::TableBases;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -8,6 +10,8 @@ use crate::*;
 #[derive(Clone)]
 pub struct SharedContext {
     pub t_table: Arc<TTable>,
+    pub syzygy: Arc<Option<TableBases<SyzygyAdapter>>>,
+    pub syzygy_depth: Arc<AtomicU8>,
     pub time_man: Arc<TimeManager>,
 }
 
@@ -19,6 +23,7 @@ pub struct ThreadContext {
     pub nodes: BatchedAtomicCounter,
     pub tt_hits: BatchedAtomicCounter,
     pub tt_misses: BatchedAtomicCounter,
+    pub tb_hits: BatchedAtomicCounter,
     pub search_stack: Vec<SearchStack>,
     pub move_nodes: [[u64; Square::NUM]; Square::NUM],
     pub history: History,
@@ -33,6 +38,7 @@ impl ThreadContext {
         self.nodes.reset();
         self.tt_hits.reset();
         self.tt_misses.reset();
+        self.tb_hits.reset();
         self.search_stack = vec![
             SearchStack {
                 eval: -Score::INFINITE,
@@ -131,6 +137,8 @@ impl Searcher {
             pos: Position::new(board),
             shared_ctx: SharedContext {
                 t_table: Arc::new(TTable::new(256)),
+                syzygy: Arc::new(None),
+                syzygy_depth: Arc::new(AtomicU8::new(1)),
                 time_man,
             },
             main_ctx: ThreadContext {
@@ -138,6 +146,7 @@ impl Searcher {
                 nodes: BatchedAtomicCounter::new(),
                 tt_hits: BatchedAtomicCounter::new(),
                 tt_misses: BatchedAtomicCounter::new(),
+                tb_hits: BatchedAtomicCounter::new(),
                 search_stack: vec![
                     SearchStack {
                         eval: -Score::INFINITE,
@@ -159,9 +168,9 @@ impl Searcher {
         }
     }
 
-    pub fn search(&mut self, limits: &[SearchLimit]) -> (Move, Option<Move>, Score, u8, u64) {
+    pub fn search<Info: SearchInfo>(&mut self, limits: &[SearchLimit]) -> (Move, Option<Move>, Score, u8, u64) {
         self.main_ctx.reset();
-        self.shared_ctx.time_man.init(&mut self.pos, limits);
+        self.shared_ctx.time_man.init(self.pos.stm(), limits);
 
         let mut result = (None, None, Score::ZERO, 0);
 
@@ -174,7 +183,7 @@ impl Searcher {
                 let shared_ctx = self.shared_ctx.clone();
 
                 s.spawn(move |_| {
-                    let _ = search_worker(
+                    let _ = search_worker::<Info>(
                         pos,
                         main_ctx,
                         shared_ctx,
@@ -188,7 +197,7 @@ impl Searcher {
             let main_ctx = self.main_ctx.clone();
             let shared_ctx = self.shared_ctx.clone();
 
-            result = search_worker(
+            result = search_worker::<Info>(
                 pos,
                 main_ctx,
                 shared_ctx,
@@ -225,9 +234,19 @@ impl Searcher {
     pub fn set_chess960(&mut self, value: bool) {
         self.chess960 = value;
     }
+
+    #[inline(always)]
+    pub fn set_syzygy_path(&mut self, path: &str) {
+        self.shared_ctx.syzygy = Arc::new(Some(TableBases::<SyzygyAdapter>::new(path).unwrap()));
+    }
+    
+    #[inline(always)]
+    pub fn set_syzygy_depth(&mut self, depth: u8) {
+        self.shared_ctx.syzygy_depth.store(depth, Ordering::Relaxed);
+    }
 }
 
-fn search_worker(
+fn search_worker<Info: SearchInfo>(
     mut pos: Position,
     mut ctx: ThreadContext,
     shared_ctx: SharedContext,
@@ -251,13 +270,13 @@ fn search_worker(
                     && fails < 10 {
                     window.get()
                 } else {
-                    (-Score::INFINITE, Score::INFINITE)
+                    (-Score::MAX_MATE, Score::MAX_MATE)
                 };
 
                 ctx.sel_depth = 0;
                 let score = search::<PV>(&mut pos, &mut ctx, &shared_ctx, depth, 0, alpha, beta);
 
-                if ctx.abort_now {
+                if depth > 1 && ctx.abort_now {
                     break 'id;
                 }
 
@@ -272,14 +291,14 @@ fn search_worker(
                     root_move,
                 );
 
-                if (score > alpha && score < beta) || score.is_mate() {
+                if (score > alpha && score < beta) || score.is_decisive() {
                     best_move = Some(root_move);
                     eval = Some(score);
-                    if score.is_mate() {
+                    if score.is_decisive() {
                         ponder_move = None;
 
                         if thread == 0 {
-                            info(
+                            Info::push(
                                 pos.board(),
                                 &ctx,
                                 &shared_ctx,
@@ -307,7 +326,7 @@ fn search_worker(
             }
 
             if thread == 0 {
-                info(
+                Info::push(
                     pos.board(),
                     &ctx,
                     &shared_ctx,
@@ -331,78 +350,165 @@ fn search_worker(
     }
 }
 
-fn info(
-    board: &Board,
-    ctx: &ThreadContext,
-    shared_ctx: &SharedContext,
-    depth: u8,
-    eval: Option<Score>,
-    chess960: bool,
-) {
-    let mut info = format!("info depth {} seldepth {} ", depth, ctx.sel_depth);
+/*----------------------------------------------------------------*/
 
-    if let Some(mut eval) = eval {
-        eval = eval * match board.side_to_move() {
-            Color::White => 1,
-            Color::Black => -1,
-        };
+pub trait SearchInfo {
+    fn push(
+        board: &Board,
+        ctx: &ThreadContext,
+        shared_ctx: &SharedContext,
+        depth: u8,
+        eval: Option<Score>,
+        chess960: bool,
+    );
+}
 
-        if let Some(ply) = eval.mate_in() {
-            write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
-        } else {
-            write!(info, "score cp {} ", eval.0).unwrap();
-        }
-    }
+pub struct FullInfo;
+pub struct UciOnly;
+pub struct NoInfo;
 
-    let nodes = ctx.nodes.global();
-    let qnodes = ctx.qnodes.global();
-    let millis = shared_ctx.time_man.start_time().elapsed().as_millis() as u64;
-    write!(info, "nodes {} qnodes {} qratio {:.1}% time {} ", nodes, qnodes, (qnodes as f64 / nodes as f64) * 100.0, millis).unwrap();
+impl SearchInfo for FullInfo {
+    fn push(
+        board: &Board,
+        ctx: &ThreadContext,
+        shared_ctx: &SharedContext,
+        depth: u8,
+        eval: Option<Score>,
+        chess960: bool,
+    ) {
+        let mut info = format!("info depth {} seldepth {} ", depth, ctx.sel_depth);
 
-    if millis != 0 {
-        write!(info, "nps {} ", (nodes / millis) * 1000).unwrap();
-    }
+        if let Some(mut eval) = eval {
+            eval = eval * match board.side_to_move() {
+                Color::White => 1,
+                Color::Black => -1,
+            };
 
-    let tt_hits = ctx.tt_hits.global();
-    let tt_misses = ctx.tt_misses.global();
-    let total_tt_probes = tt_hits + tt_misses;
-
-    write!(
-        info,
-        "tthits {} ttmisses {} ttratio {:.1}% ",
-        tt_hits,
-        tt_misses,
-        (tt_hits as f64 / total_tt_probes as f64) * 100.0
-    ).unwrap();
-
-    let root_stack = &ctx.search_stack[0];
-    let mut board = board.clone();
-    let mut i = 0;
-
-    write!(info, "pv ").unwrap();
-    for &mv in &root_stack.pv[..root_stack.pv_len] {
-        if i == depth - 1 {
-            break;
+            if let Some(ply) = eval.mate_in() {
+                write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
+            } else {
+                write!(info, "score cp {} ", eval.0).unwrap();
+            }
         }
 
-        if let Some(mv) = mv {
-            let uci_display = display_uci_move(&board, mv);
-            
-            if board.try_play(mv).is_err() || i == MAX_DEPTH {
+        let nodes = ctx.nodes.global();
+        let qnodes = ctx.qnodes.global();
+        let millis = shared_ctx.time_man.start_time().elapsed().as_millis() as u64;
+        write!(info, "nodes {} qnodes {} time {} ", nodes, qnodes, millis).unwrap();
+
+        if millis != 0 {
+            write!(info, "nps {} ", (nodes / millis) * 1000).unwrap();
+        }
+
+        write!(
+            info,
+            "tthits {} ttmisses {} tbhits {}",
+            ctx.tt_hits.global(),
+            ctx.tt_misses.global(),
+            ctx.tb_hits.global(),
+        ).unwrap();
+
+        let root_stack = &ctx.search_stack[0];
+        let mut board = board.clone();
+        let mut i = 0;
+
+        write!(info, "pv ").unwrap();
+        for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
+            if i as u8 == depth || i as u8 == MAX_DEPTH {
                 break;
             }
 
-            if chess960 {
-                write!(info, "{}", mv).unwrap();
+            if let Some(mv) = mv {
+                let uci_display = display_uci_move(&board, mv);
+
+                if !board.is_legal(mv) {
+                    break;
+                }
+
+                if chess960 {
+                    write!(info, "{} ", mv).unwrap();
+                } else {
+                    write!(info, "{} ", uci_display).unwrap();
+                }
+                
+                board.play_unchecked(mv);
             } else {
-                write!(info, "{} ", uci_display).unwrap();
+                break;
             }
-        } else {
-            break;
         }
 
-        i += 1;
+        println!("{}", info);
     }
+}
 
-    println!("{}", info);
+impl SearchInfo for UciOnly {
+    fn push(
+        board: &Board,
+        ctx: &ThreadContext,
+        shared_ctx: &SharedContext,
+        depth: u8,
+        eval: Option<Score>,
+        chess960: bool,
+    ) {
+        let mut info = format!("info depth {} seldepth {} ", depth, ctx.sel_depth);
+
+        if let Some(mut eval) = eval {
+            eval = eval * match board.side_to_move() {
+                Color::White => 1,
+                Color::Black => -1,
+            };
+
+            if let Some(ply) = eval.mate_in() {
+                write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
+            } else {
+                write!(info, "score cp {} ", eval.0).unwrap();
+            }
+        }
+
+        let nodes = ctx.nodes.global();
+        let millis = shared_ctx.time_man.start_time().elapsed().as_millis() as u64;
+        
+        write!(info, "nodes {} time {} ", nodes, millis).unwrap();
+
+        if millis != 0 {
+            write!(info, "nps {} ", (nodes / millis) * 1000).unwrap();
+        }
+
+        write!(info, "tbhits {} ", ctx.tb_hits.global(), ).unwrap();
+
+        let root_stack = &ctx.search_stack[0];
+        let mut board = board.clone();
+        let mut i = 0;
+
+        write!(info, "pv ").unwrap();
+        for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
+            if i as u8 == depth || i as u8 == MAX_DEPTH {
+                break;
+            }
+
+            if let Some(mv) = mv {
+                let uci_display = display_uci_move(&board, mv);
+
+                if !board.is_legal(mv) {
+                    break;
+                }
+
+                if chess960 {
+                    write!(info, "{} ", mv).unwrap();
+                } else {
+                    write!(info, "{} ", uci_display).unwrap();
+                }
+
+                board.play_unchecked(mv);
+            } else {
+                break;
+            }
+        }
+
+        println!("{}", info);
+    }
+}
+
+impl SearchInfo for NoInfo {
+    fn push(_: &Board, _: &ThreadContext, _: &SharedContext, _: u8, _: Option<Score>, _: bool) { }
 }

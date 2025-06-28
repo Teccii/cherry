@@ -120,13 +120,13 @@ impl Xorshift64 {
     pub const fn new(state: u64) -> Xorshift64 {
         Xorshift64 { state }
     }
-
+    
     #[inline(always)]
     pub const fn next(&mut self) -> u64 {
         self.state ^= self.state << 13;
         self.state ^= self.state >> 17;
         self.state ^= self.state << 5;
-
+        
         self.state
     }
 }

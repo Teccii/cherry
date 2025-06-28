@@ -1,5 +1,7 @@
+use std::sync::atomic::Ordering;
 use arrayvec::ArrayVec;
 use cozy_chess::*;
+use pyrrhic_rs::WdlProbeResult;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -42,7 +44,7 @@ impl NodeType for NoNMP {
 
 #[inline(always)]
 fn razor<Node: NodeType>(depth: u8, eval: Score, alpha: Score) -> bool {
-    !Node::PV && eval < alpha - razor_margin(depth)
+    !Node::PV && depth < 4 && eval < alpha - razor_margin(depth)
 }
 
 #[inline(always)]
@@ -63,7 +65,8 @@ fn rev_futile<Node: NodeType>(
     opponent_worsening: bool
 ) -> bool {
     !Node::PV
-        && !alpha.is_mate()
+        && depth < 12
+        && !alpha.is_decisive()
         && eval > beta + rev_futile_margin(entry, depth, improving, opponent_worsening)
 }
 
@@ -79,9 +82,15 @@ fn rev_futile_margin(entry: Option<TTData>, depth: u8, improving: bool, opponent
 /*----------------------------------------------------------------*/
 
 #[inline(always)]
-fn nmp<Node: NodeType>(board: &Board, depth: u8, eval: Score, beta: Score, improving: bool) -> bool {
+fn nmp<Node: NodeType>(
+    board: &Board,
+    depth: u8,
+    eval: Score,
+    beta: Score,
+    improving: bool
+) -> bool {
     Node::NMP
-        && depth > 3
+        && depth > 4
         && eval >= beta - nmp_margin(depth, improving)
         && board.occupied() != (board.pieces(Piece::Pawn) | board.pieces(Piece::King))
 }
@@ -100,7 +109,7 @@ fn nmp_depth(depth: u8) -> u8 {
 
 #[inline(always)]
 fn iir<Node: NodeType>(entry: TTData, depth: u8) -> i16 {
-    if Node::PV && depth > 5 && entry.table_mv.is_none() {
+    if Node::PV && depth > 6 && entry.table_mv.is_none() {
         return 1 + (entry.depth >= depth) as i16;
     }
     
@@ -110,23 +119,25 @@ fn iir<Node: NodeType>(entry: TTData, depth: u8) -> i16 {
 /*----------------------------------------------------------------*/
 
 #[inline(always)]
-fn shallow<Node: NodeType>(board: &Board, ply: u16, alpha: Score) -> bool {
+fn shallow_quiet<Node: NodeType>(board: &Board, ply: u16, is_capture: bool, best_score: Option<Score>) -> bool {
     !Node::PV
         && ply != 0
-        && !alpha.is_mate()
+        && !is_capture
+        && best_score.map_or(false, |s| !s.is_decisive())
         && board.occupied() != (board.pieces(Piece::King) | board.pieces(Piece::Pawn))
 }
 
-/*----------------------------------------------------------------*/
-
 #[inline(always)]
-fn lmp(depth: u8, moves_seen: u16, improving: bool, opponent_worsening: bool) -> bool {
-    let margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16) * (3 + opponent_worsening as u16) / 3;
+fn lmp(depth: u8, moves_seen: u16, improving: bool) -> bool {
+    let margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16);
     
     moves_seen >= margin
 }
 
-/*----------------------------------------------------------------*/
+#[inline(always)]
+fn hist_margin(depth: u8) -> i16 {
+    -4300 * depth as i16
+}
 
 #[inline(always)]
 fn futile(
@@ -143,7 +154,11 @@ fn futile(
 }
 
 #[inline(always)]
-fn futile_margin(lmr_depth: u8, improving: bool, opponent_worsening: bool) -> i16 {
+fn futile_margin(
+    lmr_depth: u8,
+    improving: bool,
+    opponent_worsening: bool
+) -> i16 {
     46 + 107 * lmr_depth as i16
         + 102 * improving as i16
         + 87 * opponent_worsening as i16
@@ -158,7 +173,7 @@ fn singular(entry: TTData, mv: Move, depth: u8, ply: u16) -> bool {
         && entry.table_mv == Some(mv)
         && entry.depth >= depth - 3
         && matches!(entry.flag, TTFlag::Exact | TTFlag::LowerBound)
-        && !entry.score.is_mate()
+        && !entry.score.is_decisive()
 }
 
 #[inline(always)]
@@ -236,7 +251,7 @@ pub fn search<Node: NodeType>(
     ctx.nodes.inc();
     ctx.update_sel_depth(ply);
 
-    if ply != 0 && pos.is_draw(ply) {
+    if ply != 0 && pos.is_draw() {
         return Score::ZERO;
     }
 
@@ -272,7 +287,7 @@ pub fn search<Node: NodeType>(
     let initial_alpha = alpha;
 
     let skip_move = ctx.search_stack[ply as usize].skip_move;
-    let mut tt_entry = skip_move.and_then(|_| shared_ctx.t_table.get(pos.board()));
+    let mut tt_entry = skip_move.and_then(|_| shared_ctx.t_table.probe(pos.board()));
 
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
@@ -304,11 +319,56 @@ pub fn search<Node: NodeType>(
     } else {
         ctx.tt_misses.inc();
     }
+    
+    let (mut syzygy_max, mut syzygy_min) = (Score::MAX_MATE, -Score::MAX_MATE);
+    if ply != 0
+        && skip_move.is_none()
+        && depth >= shared_ctx.syzygy_depth.load(Ordering::Relaxed)
+        && shared_ctx.syzygy.is_some()
+        && let Some(wdl) = Option::as_ref(&shared_ctx.syzygy).and_then(|tb| probe_wdl(tb, pos.board())) {
+        ctx.tb_hits.inc();
+        
+        let tb_score = match wdl {
+            WdlProbeResult::Win => Score::new_tb_win(ply),
+            WdlProbeResult::Loss => Score::new_tb_loss(ply),
+            _ => Score::ZERO
+        };
+        
+        let tb_bound = match wdl {
+            WdlProbeResult::Win => TTFlag::LowerBound,
+            WdlProbeResult::Loss => TTFlag::UpperBound,
+            _ => TTFlag::Exact,
+        };
+        
+        if tb_bound == TTFlag::Exact
+            || (tb_bound == TTFlag::LowerBound && tb_score >= beta)
+            || (tb_bound == TTFlag::UpperBound && tb_score <= alpha) {
+            shared_ctx.t_table.store(
+                pos.board(),
+                depth,
+                tb_score,
+                None,
+                None,
+                tb_bound
+            );
+            
+            return tb_score;
+        }
+        
+        if Node::PV && tb_bound == TTFlag::LowerBound {
+            alpha = alpha.max(tb_score);
+            syzygy_min = tb_score;
+        }
+        
+        if Node::PV && tb_bound == TTFlag::UpperBound {
+            syzygy_max = tb_score;
+        }
+    }
 
     let in_check = pos.in_check();
     let static_eval = match skip_move {
         Some(_) => ctx.search_stack[ply as usize].eval,
-        None => tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(ply))
+        None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
     };
     ctx.search_stack[ply as usize].eval = static_eval;
     
@@ -321,10 +381,10 @@ pub fn search<Node: NodeType>(
         _ => None
     };
 
-    let improving = prev_eval.is_some_and(|e| !in_check && static_eval > e);
+    let mut improving = prev_eval.is_some_and(|e| !in_check && static_eval > e);
     let opponent_worsening = opponent_eval.is_some_and(|e| static_eval > -e);
 
-    if !in_check && skip_move.is_none() && !alpha.is_mate() && !beta.is_mate(){
+    if !in_check && skip_move.is_none() && !alpha.is_decisive() && !beta.is_decisive(){
         /*
         Reverse Futility Pruning: Similar to Razoring, if the static evaluation of the position is *above*
         beta by a significant margin, we can assume that we can reach at least beta.
@@ -371,7 +431,7 @@ pub fn search<Node: NodeType>(
 
             pos.unmake_null_move();
 
-            if score >= beta && !score.is_mate() {
+            if score >= beta && !score.is_decisive() {
                 if depth < 12 {
                     return score;
                 }
@@ -392,6 +452,8 @@ pub fn search<Node: NodeType>(
             }
         }
     }
+    
+    improving |= static_eval >= beta + 94;
     
     if let Some(entry) = tt_entry {
         depth = (depth as i16 - iir::<Node>(entry, depth)) as u8;
@@ -423,30 +485,14 @@ pub fn search<Node: NodeType>(
             ctx.history.get_capture(pos.board(), mv)
         } else {
             ctx.history.get_quiet(pos.board(), mv)
-            + ctx.history.get_counter_move(pos.board(), mv, counter_move).unwrap_or_default()
-            + ctx.history.get_follow_up(pos.board(), mv, follow_up).unwrap_or_default()
+                + ctx.history.get_counter_move(pos.board(), mv, counter_move).unwrap_or_default()
+                + ctx.history.get_follow_up(pos.board(), mv, follow_up).unwrap_or_default()
         };
-        
-
-        if shallow::<Node>(pos.board(), ply, alpha) {
-            //Late Move Pruning
-            if lmp(depth, moves_seen, improving, opponent_worsening) {
-                move_picker.skip_quiets();
-            }
-
-            let lmr = lmr::<Node>(pos.board(), mv, depth, moves_seen);
-            let lmr_depth = (depth as i16).saturating_sub(lmr).clamp(1, MAX_DEPTH as i16) as u8;
-
-            //Futility Pruning
-            if futile(pos.board(), lmr_depth, static_eval, alpha, improving, opponent_worsening) {
-                move_picker.skip_quiets();
-            }
-        }
         
         let mut extension: i16 = 0;
         let mut reduction: i16 = 0;
         let mut score;
-
+        
         /*
         Singular Extensions: If all moves but one fail low and just one fails high,
         then that move is singular and should be extended.
@@ -479,8 +525,17 @@ pub fn search<Node: NodeType>(
                 if s_score < s_beta - triple_margin::<Node>() {
                     extension += 1;
                 }
-
-            } else if s_score >= beta && !s_score.is_mate() {
+                
+                ctx.history.update(
+                    pos.board(),
+                    mv,
+                    counter_move,
+                    follow_up,
+                    &[],
+                    &[],
+                    depth
+                );
+            } else if s_score >= beta && !s_score.is_decisive() {
                 return s_score;
             } else if entry.score >= beta {
                 extension = -2;
@@ -491,6 +546,37 @@ pub fn search<Node: NodeType>(
         Late Move Reduction (LMR): Reduce the depth of moves ordered near the end.
         */
         reduction += lmr::<Node>(pos.board(), mv, depth, moves_seen);
+        reduction += !Node::PV as i16 + !improving as i16;
+        reduction -= ctx.search_stack[ply as usize].killers.contains(mv) as i16;
+
+        if shallow_quiet::<Node>(pos.board(), ply, is_capture, best_score) {
+            //Late Move Pruning
+            if lmp(depth, moves_seen, improving) {
+                move_picker.skip_quiets();
+                continue;
+            }
+
+            let r_depth = (depth as i16).saturating_sub(reduction).clamp(1, MAX_DEPTH as i16) as u8;
+
+            //History Pruning
+            if stat_score < hist_margin(r_depth) {
+                move_picker.skip_quiets();
+                continue;
+            }
+
+            //Futility Pruning
+            if futile(
+                pos.board(),
+                r_depth,
+                static_eval,
+                alpha,
+                improving,
+                opponent_worsening
+            ) {
+                move_picker.skip_quiets();
+                continue;
+            }
+        }
 
         ctx.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv);
@@ -617,7 +703,7 @@ pub fn search<Node: NodeType>(
         ctx.tt_misses.flush();
     }
 
-    let best_score = best_score.unwrap();
+    let best_score = best_score.unwrap().clamp(syzygy_min, syzygy_max);
     
     if skip_move.is_none() && !ctx.abort_now {
         let flag = match () {
@@ -626,11 +712,11 @@ pub fn search<Node: NodeType>(
             _ => TTFlag::Exact,
         };
 
-        shared_ctx.t_table.set(
+        shared_ctx.t_table.store(
             pos.board(),
             depth,
             best_score,
-            static_eval,
+            Some(static_eval),
             best_move,
             flag
         );
@@ -641,19 +727,17 @@ pub fn search<Node: NodeType>(
 
 /*----------------------------------------------------------------*/
 
-fn delta<Node: NodeType>(pos: &Position, piece: Piece, sq: Square, eval: Score, alpha: Score) -> bool {
-    let phase = calc_phase(pos.board());
-
+#[inline(always)]
+fn delta<Node: NodeType>(board: &Board, piece: Piece, eval: Score, alpha: Score) -> bool {
     !Node::PV
-        && phase < TAPER_SCALE * 3 / 4
-        && !pos.in_check()
-        && eval < alpha - delta_margin(pos, piece, sq, phase)
+        && !board.in_check()
+        && calc_phase(board) < TOTAL_PHASE * 3 / 4
+        && eval < alpha - delta_margin(piece)
 }
 
-fn delta_margin(pos: &Position, piece: Piece, sq: Square, phase: u16) -> Score {
-    let value = piece_value(!pos.stm(), piece, sq);
-
-    (value + PAWN_VALUE * 2).scale(phase)
+#[inline(always)]
+fn delta_margin(piece: Piece) -> i16 {
+    piece_value(piece) + 2 * PAWN_VALUE.0
 }
 
 /*----------------------------------------------------------------*/
@@ -677,13 +761,13 @@ pub fn q_search<Node: NodeType>(
     ctx.nodes.inc();
     ctx.update_sel_depth(ply);
 
-    if pos.is_draw(ply) {
+    if pos.is_draw() {
         return Score::ZERO;
     }
     
     let initial_alpha = alpha;
 
-    let tt_entry = shared_ctx.t_table.get(pos.board());
+    let tt_entry = shared_ctx.t_table.probe(pos.board());
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
 
@@ -702,7 +786,7 @@ pub fn q_search<Node: NodeType>(
         ctx.tt_misses.inc();
     }
 
-    let static_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(ply));
+    let static_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval());
 
     if ply >= MAX_PLY {
         return static_eval;
@@ -723,7 +807,10 @@ pub fn q_search<Node: NodeType>(
     let mut move_picker = QMovePicker::new();
     let mut moves_seen = 0;
 
-    while let Some(mv) = move_picker.next(pos, qply, &ctx.history) {
+    let counter_move = (ply >= 1).then(|| ctx.search_stack[ply as usize - 1].move_played).flatten();
+    let follow_up = (ply >= 2).then(|| ctx.search_stack[ply as usize - 2].move_played).flatten();
+
+    while let Some(mv) = move_picker.next(pos, qply, &ctx.history, counter_move, follow_up) {
         /*
         Delta Pruning: Similar to Futility Pruning, but only in Quiescence Search .
         We test whether the captured piece + a safety margin (around 200 centipawns)
@@ -734,9 +821,8 @@ pub fn q_search<Node: NodeType>(
         apply this in the late endgame.
         */
         if let Some(target) = pos.board().capture_piece(mv) && delta::<Node>(
-            pos,
+            pos.board(),
             target,
-            pos.board().capture_square(mv).unwrap(),
             static_eval,
             alpha
         ) {
@@ -770,30 +856,30 @@ pub fn q_search<Node: NodeType>(
         }
     }
 
-    if !ctx.abort_now {
-        if let Some(best_score) = best_score{
-            let flag = match () {
-                _ if best_score <= initial_alpha => TTFlag::UpperBound,
-                _ if best_score >= beta => TTFlag::LowerBound,
-                _ => TTFlag::Exact,
-            };
+    if !ctx.abort_now && let Some(best_score) = best_score {
+        let flag = match () {
+            _ if best_score <= initial_alpha => TTFlag::UpperBound,
+            _ if best_score >= beta => TTFlag::LowerBound,
+            _ => TTFlag::Exact,
+        };
 
-            shared_ctx.t_table.set(
-                pos.board(),
-                0,
-                best_score,
-                static_eval,
-                best_move,
-                flag
-            );
-        }
+        shared_ctx.t_table.store(
+            pos.board(),
+            0,
+            best_score,
+            Some(static_eval),
+            best_move,
+            flag
+        );
     }
 
     best_score.unwrap_or(alpha)
 }
 
+/*----------------------------------------------------------------*/
+
 pub fn det_q_search(pos: &mut Position, ply: u16, mut alpha: Score, beta: Score) -> Score {
-    let static_eval = pos.eval(ply);
+    let static_eval = pos.eval();
     
     if ply >= MAX_PLY || static_eval >= beta {
         return static_eval;
