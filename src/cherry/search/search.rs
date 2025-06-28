@@ -727,6 +727,7 @@ pub fn search<Node: NodeType>(
 
 /*----------------------------------------------------------------*/
 
+#[inline(always)]
 fn delta<Node: NodeType>(board: &Board, piece: Piece, eval: Score, alpha: Score) -> bool {
     !Node::PV
         && !board.in_check()
@@ -734,6 +735,7 @@ fn delta<Node: NodeType>(board: &Board, piece: Piece, eval: Score, alpha: Score)
         && eval < alpha - delta_margin(piece)
 }
 
+#[inline(always)]
 fn delta_margin(piece: Piece) -> i16 {
     piece_value(piece) + 2 * PAWN_VALUE.0
 }

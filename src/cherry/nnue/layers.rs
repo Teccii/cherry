@@ -29,7 +29,7 @@ pub fn propagate<const L: usize, const NL: usize>(
     screlu(&values, &mut output[..])
 }
 
-pub fn propagate_one<const L: usize>(
+pub fn propagate_out<const L: usize>(
     input: &Align64<[u8; L]>,
     weights: &Align64<[i16; L]>,
     bias: i16,

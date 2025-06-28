@@ -43,10 +43,12 @@ mod search {
 
 #[cfg(feature="tune")] mod tune {
     mod datagen;
-    mod tune;
+    mod tune_hce;
+    mod tune_nnue;
     
     pub use datagen::*;
-    pub use tune::*;
+    pub use tune_hce::*;
+    pub use tune_nnue::*;
 }
 
 mod position;
