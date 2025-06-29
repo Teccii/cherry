@@ -2,6 +2,8 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
+include!(concat!(env!("OUT_DIR"), "/slider_moves.rs"));
+
 #[inline(always)]
 pub const fn pawn_quiets(sq: Square, color: Color, blockers: Bitboard) -> Bitboard {
     let up = color.sign() as i8;
@@ -139,7 +141,7 @@ pub const fn king_moves(sq: Square) -> Bitboard {
 
 #[inline(always)]
 pub const fn bishop_moves(sq: Square, blockers: Bitboard) -> Bitboard {
-    todo!()
+    SLIDER_MOVES[bishop_magic_index(sq, blockers)]
 }
 
 #[inline(always)]
@@ -176,7 +178,7 @@ pub const fn bishop_rays(sq: Square) -> Bitboard {
 
 #[inline(always)]
 pub const fn rook_moves(sq: Square, blockers: Bitboard) -> Bitboard {
-    todo!()
+    SLIDER_MOVES[rook_magic_index(sq, blockers)]
 }
 
 #[inline(always)]

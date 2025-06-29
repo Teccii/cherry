@@ -115,6 +115,15 @@ impl Bitboard {
     pub const fn iter(self) -> BitboardIter {
         BitboardIter(self)
     }
+
+    #[inline(always)]
+    pub const fn iter_subsets(self) -> BitboardSubsetIter {
+        BitboardSubsetIter {
+            set: self,
+            subset: Bitboard::EMPTY,
+            finished: false,
+        }
+    }
     
     /*----------------------------------------------------------------*/
 
@@ -329,5 +338,29 @@ impl Iterator for BitboardIter {
         }
         
         sq
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+pub struct BitboardSubsetIter {
+    set: Bitboard,
+    subset: Bitboard,
+    finished: bool
+}
+
+impl Iterator for BitboardSubsetIter {
+    type Item = Bitboard;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+        let current = self.subset;
+        self.subset.0 = self.subset.0.wrapping_sub(self.set.0) & self.set.0;
+        self.finished = self.subset.is_empty();
+
+        Some(current)
     }
 }

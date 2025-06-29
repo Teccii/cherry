@@ -1,4 +1,4 @@
-use crate::{Color, File, Piece, Square};
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
@@ -34,8 +34,46 @@ pub struct Zobrist {
 }
 
 impl Zobrist {
+    pub const fn new(seed: u64) -> Zobrist {
+        let mut zobrist = Zobrist::empty();
+        let mut rng = Xorshift64::new(seed);
+        let mut i = 0;
+        while i < Color::COUNT {
+            let mut j = 0;
+            while j < Piece::COUNT {
+                let mut k = 0;
+                while k < Square::COUNT {
+                    zobrist.pieces[i][j][k] = rng.next();
+
+                    k += 1;
+                }
+
+                j += 1;
+            }
+
+            j = 0;
+            while j < File::COUNT {
+                zobrist.castle_rights[i][j] = rng.next();
+
+                j += 1;
+            }
+
+            i += 1;
+        }
+
+        i = 0;
+        while i < File::COUNT {
+            zobrist.en_passant[i] = rng.next();
+            i += 1;
+        }
+
+        zobrist.stm = rng.next();
+
+        zobrist
+    }
+
     #[inline(always)]
-    const fn empty() -> Zobrist {
+    pub const fn empty() -> Zobrist {
         Zobrist {
             pieces: [[[0; Square::COUNT]; Piece::COUNT]; Color::COUNT],
             castle_rights: [[0; File::COUNT]; Color::COUNT],
@@ -67,41 +105,4 @@ impl Zobrist {
 
 /*----------------------------------------------------------------*/
 
-pub const ZOBRIST: Zobrist = {
-    let mut zobrist = Zobrist::empty();
-    let mut rng = Xorshift64::new(0x1234567890ABCDEFu64);
-    
-    let mut i = 0;
-    while i < Color::COUNT {
-        let mut j = 0;
-        while j < Piece::COUNT {
-            let mut k = 0;
-            while k < Square::COUNT {
-                zobrist.pieces[i][j][k] = rng.next();
-                
-                k += 1;
-            }
-            
-            j += 1;
-        }
-        
-        j = 0;
-        while j < File::COUNT {
-            zobrist.castle_rights[i][j] = rng.next();
-            
-            j += 1;
-        }
-        
-        i += 1;
-    }
-    
-    i = 0;
-    while i < File::COUNT {
-        zobrist.en_passant[i] = rng.next();
-        i += 1;
-    }
-    
-    zobrist.stm = rng.next();
-    
-    zobrist
-};
+pub const ZOBRIST: Zobrist = Zobrist::new(0x123456789ABCDEF);

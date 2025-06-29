@@ -2,5 +2,6 @@
 resolver = "3"
 members = [
     "cherry-core",
-    "cherry-engine"
+    "cherry-engine",
+    "cherry-types"
 ]
