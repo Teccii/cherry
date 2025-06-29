@@ -1,9 +1,9 @@
 use std::{fmt, ops::*};
-use crate::{Direction, File, Rank, Square};
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Default)]
 pub struct Bitboard(pub u64);
 
 impl Bitboard {
@@ -42,6 +42,27 @@ impl Bitboard {
         result
     }
     
+    /*----------------------------------------------------------------*/
+
+    #[inline(always)]
+    pub const fn flip_files(self) -> Bitboard {
+        const K1: u64 = 0x5555555555555555;
+        const K2: u64 = 0x3333333333333333;
+        const K4: u64 = 0x0F0F0F0F0F0F0F0F;
+
+        let mut result = self.0;
+        result = ((result >> 1) & K1) | ((result & K1) << 1);
+        result = ((result >> 2) & K2) | ((result & K2) << 2);
+        result = ((result >> 4) & K4) | ((result & K4) << 4);
+
+        Bitboard(result)
+    }
+
+    #[inline(always)]
+    pub const fn flip_ranks(self) -> Bitboard {
+        Bitboard(self.0.swap_bytes())
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline(always)]
@@ -99,8 +120,10 @@ impl Bitboard {
 
     pub const EMPTY: Bitboard = Bitboard(0);
     pub const FULL: Bitboard = Bitboard(u64::MAX);
-    
+    pub const CORNER: Bitboard = Bitboard(0x8100000000000081);
     pub const EDGES: Bitboard = Bitboard(0xFF818181818181FF);
+    pub const CENTER: Bitboard = Bitboard(0x0000001818000000);
+    pub const BIG_CENTER: Bitboard = Bitboard(0x00003c3c3c3c0000);
     pub const DARK_SQUARES: Bitboard = Bitboard(0xAA55AA55AA55AA55);
     pub const LIGHT_SQUARES: Bitboard = Bitboard(0x55AA55AA55AA55AA);
 }
@@ -141,6 +164,12 @@ impl IntoIterator for Bitboard {
 }
 
 /*----------------------------------------------------------------*/
+
+impl fmt::Debug for Bitboard {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Bitboard({:#016X})", self.0)
+    }
+}
 
 impl fmt::Display for Bitboard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -233,6 +262,15 @@ macro_rules! impl_bb_ops {
                 Bitboard(self.$fn(rhs.0))
             }
         }
+
+        impl $trait<Square> for Bitboard {
+            type Output = Bitboard;
+
+            #[inline(always)]
+            fn $fn(self, rhs: Square) -> Self::Output {
+                Bitboard(self.0.$fn(rhs.bitboard().0))
+            }
+        }
     )*}
 }
 
@@ -249,6 +287,13 @@ macro_rules! impl_bb_assign_ops {
             #[inline(always)]
             fn $fn(&mut self, rhs: u64) {
                 self.0.$fn(rhs);
+            }
+        }
+
+        impl $trait<Square> for Bitboard {
+            #[inline(always)]
+            fn $fn(&mut self, rhs: Square) {
+                self.0.$fn(rhs.bitboard().0);
             }
         }
     )*}

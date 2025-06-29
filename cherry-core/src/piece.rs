@@ -101,7 +101,7 @@ pub struct ColorPiece {
 impl ColorPiece {
     #[inline(always)]
     pub const fn new(piece: Piece, color: Color) -> ColorPiece {
-        let mut bits = 0;
+        let mut bits = 0b10000;
         bits |= piece as u8;
         bits |= (color as u8) << 3;
         

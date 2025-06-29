@@ -1,5 +1,15 @@
-use std::{fmt, str::FromStr};
+mod builder;
+mod move_gen;
+mod parse;
+
+pub use builder::*;
+pub use move_gen::*;
+pub use parse::*;
+
+/*----------------------------------------------------------------*/
+
 use crate::*;
+use std::fmt;
 
 #[derive(Debug, Copy, Clone)]
 pub struct CastleRights {
@@ -7,7 +17,11 @@ pub struct CastleRights {
     pub long: Option<File>,
 }
 
-#[derive(Debug, Copy, Clone)]
+impl CastleRights {
+    pub const EMPTY: CastleRights = CastleRights { short: None, long: None };
+}
+
+#[derive(Copy, Clone)]
 pub struct Board {
     colors: [Bitboard; Color::COUNT],
     pieces: [Bitboard; Piece::COUNT],
@@ -25,8 +39,6 @@ pub struct Board {
 }
 
 impl Board {
-    /*----------------------------------------------------------------*/
-
     #[inline(always)]
     pub const fn occupied(&self) -> Bitboard {
         Bitboard(self.colors[0].0 | self.colors[1].0)
@@ -123,7 +135,7 @@ impl Board {
 
     #[inline(always)]
     pub const fn in_check(&self) -> bool { !self.checkers.is_empty() }
-    
+
     #[inline(always)]
     pub fn ep_square(&self) -> Option<Square> {
         self.en_passant.map(|f|
@@ -141,7 +153,7 @@ impl Board {
 
     #[inline(always)]
     pub const fn pawn_hash(&self) -> u64 { self.pawn_hash }
-    
+
     #[inline(always)]
     pub const fn hash(&self) -> u64 { self.hash }
 
@@ -151,15 +163,14 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline(always)]
-    pub fn attacks(&self, sq: Square, blockers: Bitboard) -> Bitboard {
+    pub fn attackers(&self, sq: Square, blockers: Bitboard) -> Bitboard {
         knight_moves(sq)                 & self.pieces(Piece::Knight)
-        | king_moves(sq)                 & self.pieces(Piece::King)
-        | bishop_moves(sq, blockers)     & self.diag_sliders()
-        | rook_moves(sq, blockers)       & self.orth_sliders()
-        | pawn_attacks(sq, Color::White) & self.color_pieces(Piece::Pawn, Color::Black)
-        | pawn_attacks(sq, Color::Black) & self.color_pieces(Piece::Pawn, Color::White)
+            | king_moves(sq)                 & self.pieces(Piece::King)
+            | bishop_moves(sq, blockers)     & self.diag_sliders()
+            | rook_moves(sq, blockers)       & self.orth_sliders()
+            | pawn_attacks(sq, Color::White) & self.color_pieces(Piece::Pawn, Color::Black)
+            | pawn_attacks(sq, Color::Black) & self.color_pieces(Piece::Pawn, Color::White)
     }
-
 
     #[inline(always)]
     pub fn pawn_attacks(&self, color: Color) -> Bitboard {
@@ -176,11 +187,11 @@ impl Board {
     #[inline(always)]
     pub fn piece_on(&self, sq: Square) -> Option<Piece> {
         let bb = sq.bitboard();
-        
+
         if self.occupied().is_disjoint(bb) {
             return None;
         }
-        
+
         if bb.is_subset(self.pieces(Piece::Pawn)) {
             Some(Piece::Pawn)
         } else if bb.is_subset(self.pieces(Piece::Knight)) {
@@ -203,7 +214,7 @@ impl Board {
         if self.occupied().is_disjoint(bb) {
             return None;
         }
-        
+
         if bb.is_subset(self.colors(Color::White)) {
             Some(Color::White)
         } else {
@@ -247,13 +258,14 @@ impl Board {
 
             self.set_castle_rights(self.stm, None, true);
             self.set_castle_rights(self.stm, None, false);
-            
+
             self.repetition = 0;
         } else if flag == MoveFlag::EnPassant {
             if self.ep_square() == Some(to) {
                 let victim_sq = Square::new(to.file(), Rank::Fifth.relative_to(self.stm));
 
                 self.xor_square(Piece::Pawn, !self.stm, victim_sq);
+                self.repetition = 0;
             }
         } else {
             self.xor_square(piece, self.stm, from);
@@ -268,6 +280,7 @@ impl Board {
 
                     if rights.short == Some(file) {
                         self.set_castle_rights(!self.stm, None, true);
+                        //self.repetition = 0 already handled earlier
                     } else if rights.long == Some(file) {
                         self.set_castle_rights(!self.stm, None, false);
                     }
@@ -301,9 +314,14 @@ impl Board {
                     }
                 },
                 Piece::King => {
+                    let old_rights = self.castle_rights(self.stm);
+
                     self.set_castle_rights(self.stm, None, true);
                     self.set_castle_rights(self.stm, None, false);
-                    self.repetition = 0;
+
+                    if old_rights.short.is_some() || old_rights.long.is_some() {
+                        self.repetition = 0;
+                    }
                 },
                 _ => ()
             }
@@ -346,38 +364,61 @@ impl Board {
         board.halfmove_clock = (board.halfmove_clock + 1).min(100);
         board.repetition = 0;
 
+        if board.stm == Color::Black {
+            board.fullmove_count = board.fullmove_count.saturating_add(1);
+        }
+
         board.set_en_passant(None);
         board.toggle_stm();
 
-        board.checkers = Bitboard::EMPTY;
         board.pinners = Bitboard::EMPTY;
         board.pinned = Bitboard::EMPTY;
 
-        let king = board.king(!self.stm);
-        let attackers = knight_moves(king) & board.color_pieces(Piece::Knight, board.stm)
-            | bishop_rays(king) & board.color_diag_sliders(board.stm)
-            | rook_rays(king) & board.color_orth_sliders(board.stm)
-            | pawn_attacks(king, !board.stm) & board.color_pieces(Piece::Pawn, board.stm);
+        let king = board.king(board.stm);
+        let attackers = bishop_rays(king) & self.color_diag_sliders(!self.stm)
+            | rook_rays(king) & self.color_orth_sliders(!self.stm);
 
         let occ = board.occupied();
         for sq in attackers {
             let between = between(sq, king) & occ;
 
+            if between.popcnt() == 1 {
+                board.pinners |= sq.bitboard();
+                board.pinned |= between;
+            }
+        }
+
+        Some(board)
+    }
+
+    /*----------------------------------------------------------------*/
+
+    pub fn calc_checks(&self, color: Color) -> (Bitboard, Bitboard, Bitboard) {
+        let mut checkers = Bitboard::EMPTY;
+        let mut pinners = Bitboard::EMPTY;
+        let mut pinned = Bitboard::EMPTY;
+
+        let king = self.king(color);
+        let attackers = knight_moves(king) & self.color_pieces(Piece::Knight, !color)
+            | bishop_rays(king) & self.color_diag_sliders(!color)
+            | rook_rays(king) & self.color_orth_sliders(!color)
+            | pawn_attacks(king, color) & self.color_pieces(Piece::Pawn, !color);
+
+        let occ = self.occupied();
+        for sq in attackers {
+            let between = between(sq, king) & occ;
+
             match between.popcnt() {
-                0 => board.checkers |= sq.bitboard(),
+                0 => checkers |= sq.bitboard(),
                 1 => {
-                    board.pinners |= sq.bitboard();
-                    board.pinned |= between;
+                    pinners |= sq.bitboard();
+                    pinned |= between;
                 },
                 _ => ()
             }
         }
-        
-        if !board.checkers.is_empty() {
-            return None;
-        }
 
-        Some(board)
+        (checkers, pinners, pinned)
     }
 
     /*----------------------------------------------------------------*/
@@ -423,10 +464,252 @@ impl Board {
             self.hash ^= ZOBRIST.en_passant(file);
         }
     }
-    
+
     #[inline(always)]
     fn toggle_stm(&mut self) {
         self.stm = !self.stm;
         self.hash ^= ZOBRIST.stm;
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline(always)]
+    pub fn is_sane(&self) -> bool {
+        self.halfmove_clock_is_sane()
+            && self.fullmove_count_is_sane()
+            && self.checkers_is_sane()
+            && self.castle_rights_is_sane()
+            && self.en_passant_is_sane()
+            && self.board_is_sane()
+    }
+
+    fn board_is_sane(&self) -> bool {
+        macro_rules! soft_assert {
+            ($e:expr) => {
+                if !$e {
+                    return false;
+                }
+            }
+        }
+
+        let mut occupied = Bitboard::EMPTY;
+
+        for &piece in &Piece::ALL {
+            let pieces = self.pieces(piece);
+
+            soft_assert!(pieces.is_disjoint(occupied));
+            occupied |= pieces;
+        }
+
+        soft_assert!(self.colors(Color::White).is_disjoint(self.colors(Color::Black)));
+        soft_assert!(occupied == self.occupied());
+
+        for &color in &Color::ALL {
+            let colors = self.colors(color);
+            let pawn_mask = Rank::First.bitboard() | Rank::Eighth.bitboard();
+
+            soft_assert!(self.pieces.len() <= 16);
+            soft_assert!((colors & self.pieces(Piece::King)).popcnt() == 1);
+            soft_assert!((colors & self.pieces(Piece::Pawn)).popcnt() <= 8);
+            soft_assert!((colors & self.pieces(Piece::Pawn)).is_disjoint(pawn_mask));
+        }
+
+        true
+    }
+
+    fn en_passant_is_sane(&self) -> bool {
+        macro_rules! soft_assert {
+            ($e:expr) => {
+                if !$e {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(ep_file) = self.en_passant {
+            let from = Square::new(ep_file, Rank::Seventh.relative_to(self.stm));
+            let to = Square::new(ep_file, Rank::Fifth.relative_to(self.stm));
+            let ep = Square::new(ep_file, Rank::Sixth.relative_to(self.stm));
+
+            soft_assert!(self.color_pieces(Piece::Pawn, !self.stm).has(to));
+            soft_assert!(!self.occupied().has(from));
+            soft_assert!(!self.occupied().has(ep));
+
+            let king = self.king(self.stm);
+            for checker in self.checkers {
+                let ray_through = between(checker, king).has(from);
+                soft_assert!(checker == to || ray_through)
+            }
+        }
+
+        true
+    }
+
+    fn castle_rights_is_sane(&self) -> bool {
+        macro_rules! soft_assert {
+            ($e:expr) => {
+                if !$e {
+                    return false;
+                }
+            }
+        }
+
+        for &color in &Color::ALL {
+            let back_rank = Rank::First.relative_to(color);
+            let rights = self.castle_rights(color);
+            let rooks = self.color_pieces(Piece::Rook, color);
+
+            if rights.short.is_some() || rights.long.is_some() {
+                let king = self.king(color);
+
+                soft_assert!(king.rank() == back_rank);
+
+                if let Some(rook) = rights.short {
+                    soft_assert!(rooks.has(Square::new(rook, back_rank)));
+                    soft_assert!(king.file() < rook);
+                }
+
+                if let Some(rook) = rights.long {
+                    soft_assert!(rooks.has(Square::new(rook, back_rank)));
+                    soft_assert!(rook < king.file());
+                }
+            }
+        }
+
+        true
+    }
+
+    fn checkers_is_sane(&self) -> bool {
+        if !self.calc_checks(self.stm).0.is_empty() {
+            return false;
+        }
+
+        let (checkers, pinners, pinned) = self.calc_checks(!self.stm);
+
+        checkers == self.checkers
+            && pinners == self.pinners
+            && pinned == self.pinned
+            && self.checkers.popcnt() < 2
+    }
+
+    #[inline(always)]
+    fn halfmove_clock_is_sane(&self) -> bool {
+        self.halfmove_clock <= 100
+    }
+
+    #[inline(always)]
+    fn fullmove_count_is_sane(&self) -> bool {
+        self.fullmove_count > 0
+    }
+}
+
+impl Default for Board {
+    #[inline(always)]
+    fn default() -> Self {
+        BoardBuilder::startpos().build().unwrap()
+    }
+}
+
+impl fmt::Debug for Board {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for &rank in Rank::ALL.iter().rev() {
+            for &file in File::ALL.iter() {
+                let sq = Square::new(file, rank);
+
+                if !self.occupied().has(sq) {
+                    write!(f, " .")?;
+                } else {
+                    let piece: char = self.piece_on(sq).unwrap().into();
+
+                    if self.colors(Color::White).has(sq) {
+                        write!(f, " {}", piece.to_ascii_uppercase())?;
+                    } else {
+                        write!(f, " {}", piece)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for Board {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let shredder = f.alternate();
+
+        for &rank in Rank::ALL.iter().rev() {
+            let mut empty = 0;
+
+            for &file in &File::ALL {
+                let sq = Square::new(file, rank);
+
+                if let Some(piece) = self.piece_on(sq) {
+                    if empty > 0 {
+                        write!(f, "{}", empty)?;
+                        empty = 0;
+                    }
+
+                    let mut piece: char = piece.into();
+                    if self.color_on(sq).unwrap() == Color::White {
+                        piece = piece.to_ascii_uppercase();
+                    }
+
+                    write!(f, "{}", piece)?;
+                } else {
+                    empty += 1;
+                }
+            }
+
+            if empty > 0 {
+                write!(f, "{}", empty)?;
+            }
+
+            if rank > Rank::First {
+                write!(f, "/")?;
+            }
+        }
+
+        let stm: char = self.stm.into();
+        write!(f, " {}", stm)?;
+
+        let mut wrote_castle_rights = false;
+        for &color in &Color::ALL {
+            let rights = self.castle_rights(color);
+            let mut write_rights = |file: Option<File>, right_char: char| {
+                if let Some(file) = file {
+                    let mut right = if shredder {
+                        file.into()
+                    } else {
+                        right_char
+                    };
+
+                    if color == Color::White {
+                        right = right.to_ascii_uppercase();
+                    }
+
+                    wrote_castle_rights = true;
+                    write!(f, " {}", right)?;
+                }
+
+                Ok(())
+            };
+
+            write_rights(rights.short, 'k')?;
+            write_rights(rights.long, 'q')?;
+        }
+
+        if !wrote_castle_rights {
+            write!(f, " -")?;
+        }
+
+        if let Some(file) = self.en_passant {
+            let rank = Rank::Sixth.relative_to(self.stm);
+            write!(f, " {}", Square::new(file, rank))?;
+        } else {
+            write!(f, " -")?;
+        }
+
+        write!(f, " {} {}", self.halfmove_clock, self.fullmove_count)
     }
 }

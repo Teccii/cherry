@@ -1,7 +1,5 @@
 use crate::*;
 
-/*----------------------------------------------------------------*/
-
 trait PieceType {
     const PIECE: Piece;
 
@@ -14,10 +12,10 @@ trait PieceType {
 macro_rules! sliding_piece {
     ($name:ident, $piece:expr, $pseudo_legals:ident) => {
         struct $name;
-        
+
         impl PieceType for $name {
             const PIECE: Piece = $piece;
-            
+
             fn add_legals<
                 F: FnMut(PieceMoves) -> bool,
                 const IN_CHECK: bool
@@ -25,10 +23,10 @@ macro_rules! sliding_piece {
                 let pieces = board.color_pieces(Self::PIECE, board.stm()) & mask;
                 let target_squares = board.target_squares::<IN_CHECK>();
                 let blockers = board.occupied();
-        
+
                 for piece in pieces & !board.pinned() {
                     let moves = $pseudo_legals(piece, blockers) & target_squares;
-        
+
                     if !moves.is_empty() {
                         let abort = listener(PieceMoves {
                             piece: Self::PIECE,
@@ -36,20 +34,20 @@ macro_rules! sliding_piece {
                             to: moves,
                             en_passant: false,
                         });
-        
+
                         if abort {
                             return true;
                         }
                     }
                 }
-        
+
                 if !IN_CHECK {
                     let king = board.king(board.stm());
-                    
+
                     for piece in pieces & board.pinned() {
                         let target_squares = target_squares & line(king, piece);
                         let moves = $pseudo_legals(piece, blockers) & target_squares;
-        
+
                         if !moves.is_empty() {
                             let abort = listener(PieceMoves {
                                 piece: Self::PIECE,
@@ -57,14 +55,14 @@ macro_rules! sliding_piece {
                                 to: moves,
                                 en_passant: false,
                             });
-        
+
                             if abort {
                                 return true;
                             }
                         }
                     }
                 }
-        
+
                 false
             }
         }
@@ -274,11 +272,11 @@ impl Board {
 
         targets & !self.colors(self.stm())
     }
-    
+
     fn king_safe_on(&self, sq: Square) -> bool {
         let pieces = self.colors(!self.stm());
         let blockers = self.occupied() ^ self.king(self.stm()).bitboard() ^ sq.bitboard();
-        
+
         short_circuit!(false, {
             (bishop_moves(sq, blockers) & pieces & self.diag_sliders()).is_empty(),
             (rook_moves(sq, blockers) & pieces & self.diag_sliders()).is_empty(),
@@ -286,22 +284,22 @@ impl Board {
             (king_moves(sq) & pieces & self.pieces(Piece::King)).is_empty(),
             (pawn_attacks(sq, self.stm()) & pieces & self.pieces(Piece::Pawn)).is_empty(),
         });
-        
+
         true
     }
-    
+
     fn can_castle(&self, rook: File, king_dest: File, rook_dest: File) -> bool {
         let king = self.king(self.stm());
-        
+
         let back_rank = Rank::First.relative_to(self.stm());
         let rook = Square::new(rook, back_rank);
         let king_dest = Square::new(king_dest, back_rank);
         let rook_dest = Square::new(rook_dest, back_rank);
-        
+
         let blockers = self.occupied() ^ king.bitboard();
         let check_safe = between(king, king_dest) | king_dest.bitboard();
         let check_empty = check_safe | between(king, rook) | rook_dest.bitboard();
-        
+
         // !self.pinned().has(rook) &&
         (blockers & check_empty).is_empty() && check_safe.iter().all(|sq| self.king_safe_on(sq))
     }
@@ -320,17 +318,17 @@ impl Board {
             QueenPiece::add_legals::<_, IN_CHECK>(self, mask, listener),
             KingPiece::add_legals::<_, IN_CHECK>(self, mask, listener),
         });
-        
+
         false
     }
 
     /*----------------------------------------------------------------*/
-    
+
     #[inline(always)]
     pub fn gen_moves(&self, listener: impl FnMut(PieceMoves) -> bool) -> bool {
         self.gen_moves_for(Bitboard::FULL, listener)
     }
-    
+
     pub fn gen_moves_for(&self, mask: Bitboard, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         match self.checkers().popcnt() {
             0 => self.add_legals::<_, false>(mask, &mut listener),
@@ -340,28 +338,28 @@ impl Board {
     }
 
     /*----------------------------------------------------------------*/
-    
+
     pub fn is_legal(&self, mv: Move) -> bool {
         let (from, to, flag) = (mv.from(), mv.to(), mv.flag());
         let pieces = self.colors(self.stm());
-        
+
         if !pieces.has(from) {
             return false;
         }
-        
+
         let king = self.king(self.stm());
         if from == king {
             if matches!(flag, MoveFlag::EnPassant | MoveFlag::Promotion) {
                 return false;
             }
-            
+
             if self.checkers().is_empty() {
                 let rights = self.castle_rights(self.stm());
                 let back_rank = Rank::First.relative_to(self.stm());
-                
+
                 if let Some(rook) = rights.short {
                     let rook_sq = Square::new(rook, back_rank);
-                    
+
                     if to == rook_sq && self.can_castle(rook, File::G, File::F) {
                         return flag == MoveFlag::Castling;
                     }
@@ -375,44 +373,44 @@ impl Board {
                     }
                 }
             }
-            
+
             if !(king_moves(from) & !pieces).has(to) {
                 return false;
             }
-            
+
             return self.king_safe_on(to);
         }
-        
+
         if self.pinned().has(from) && !line(king, from).has(to) {
             return false;
         }
-        
+
         let target_squares = match self.checkers().popcnt() {
             0 => self.target_squares::<false>(),
             1 => self.target_squares::<true>(),
             _ => return false,
         };
-        
+
         let piece = match self.piece_on(from) {
             Some(p) => p,
             None => return false,
         };
-        
+
         if piece != Piece::Pawn && flag == MoveFlag::Promotion {
             return false;
         }
-        
+
         match piece {
             Piece::Pawn => {
                 let promotion_rank = Rank::Eighth.relative_to(self.stm());
                 let promotion = mv.promotion();
-                
+
                 if to.rank() == promotion_rank  {
                     return promotion.is_some_and(|p| !matches!(p, Piece::Pawn | Piece::King));
                 }
-                
+
                 let mut c = |moves: PieceMoves| moves.to.has(to);
-                
+
                 if self.checkers().is_empty() {
                     PawnPiece::add_legals::<_, false>(self, from.bitboard(), &mut c)
                 } else {

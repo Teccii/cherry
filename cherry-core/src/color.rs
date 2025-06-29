@@ -23,6 +23,14 @@ impl Color {
         }
     }
 
+    #[inline(always)]
+    pub const fn sign(self) -> i16 {
+        match self {
+            Color::White => 1,
+            Color::Black => -1,
+        }
+    }
+
     /*----------------------------------------------------------------*/
 
     pub const COUNT: usize = 2;

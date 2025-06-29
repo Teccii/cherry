@@ -4,7 +4,14 @@ use crate::*;
 
 #[inline(always)]
 pub const fn pawn_quiets(sq: Square, color: Color, blockers: Bitboard) -> Bitboard {
-    todo!()
+    let up = color.sign() as i8;
+    let mut bb = Bitboard(!blockers.0 & sq.offset(0, up).bitboard().0);
+
+    if !bb.is_empty() && sq.rank() as u8 == Rank::Second.relative_to(color) as u8 {
+        bb.0 |= !blockers.0 & sq.offset(0, 2 * up).bitboard().0;
+    }
+
+    bb
 }
 
 #[inline(always)]
