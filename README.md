@@ -1,2 +1,3 @@
-# cherry
- UCI compliant chess engine written in Rust
+# Gungnir
+
+WIP UCI compliant chess engine written in Rust.
