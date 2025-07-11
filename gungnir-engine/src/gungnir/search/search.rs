@@ -217,11 +217,6 @@ const LMR: [[i32; MAX_MOVES]; MAX_DEPTH as usize] = {
     table
 };
 
-#[test]
-fn test() {
-    println!("{:#?}", LMR);
-}
-
 /*----------------------------------------------------------------*/
 
 pub fn search<Node: NodeType>(
@@ -741,10 +736,8 @@ pub fn q_search<Node: NodeType>(
         return Score::ZERO;
     }
 
-
     let initial_alpha = alpha;
     let tt_entry = shared_ctx.t_table.probe(pos.board());
-
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
 
@@ -835,14 +828,6 @@ pub fn q_search<Node: NodeType>(
         if score >= beta {
             break;
         }
-    }
-
-    if moves_seen == 0 {
-        return if pos.in_check() {
-            Score::new_mated(ply)
-        } else {
-            Score::ZERO
-        };
     }
 
     if !ctx.abort_now && let Some(best_score) = best_score {
