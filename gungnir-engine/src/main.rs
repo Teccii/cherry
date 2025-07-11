@@ -40,7 +40,8 @@ fn main() -> Result<()> {
                 ThreadCommand::Go(searcher, limits) => {
                     let mut searcher = searcher.lock().unwrap();
                     let mut output = String::new();
-                    
+
+                    //obvs debug and chess960 won't update for this thread soo gotta fix that
                     let (mv, ponder, _, _, _) = if debug {
                         searcher.search::<FullInfo>(&limits)
                     } else {

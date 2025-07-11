@@ -1,14 +1,17 @@
 use gungnir_core::*;
 use std::ops::*;
+use crate::gungnir::Score;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct T(pub i16, pub i16);
 
 impl T {
-    pub fn scale(self, phase: u16) -> i16 {
-        let phase = (phase * 256 + TOTAL_PHASE / 2) / TOTAL_PHASE;
+    pub fn scale(self, phase: u16) -> Score {
+        let phase = (phase * TAPER_SCALE + TOTAL_PHASE / 2) / TOTAL_PHASE;
+        let score = (self.0 as i32 * (TAPER_SCALE - phase) as i32
+            + self.1 as i32 * phase as i32) / TAPER_SCALE as i32;
 
-        (self.0 * (TAPER_SCALE - phase) as i16 + self.1 * phase as i16) / TAPER_SCALE as i16
+        Score::new(score as i16)
     }
     
     pub const ZERO: T = T(0, 0);
@@ -134,25 +137,36 @@ macro_rules! weights {
 
 weights! {
     bishop_pair: T => BISHOP_PAIR,
+
     pawn_value: T => PAWN_VALUE,
     knight_value: T => KNIGHT_VALUE,
     bishop_value: T => BISHOP_VALUE,
     rook_value: T => ROOK_VALUE,
     queen_value: T => QUEEN_VALUE,
+
     pawn_psqt: SquareTable => PAWN_PSQT,
     knight_psqt: SquareTable => KNIGHT_PSQT,
     bishop_psqt: SquareTable => BISHOP_PSQT,
     rook_psqt: SquareTable => ROOK_PSQT,
     queen_psqt: SquareTable => QUEEN_PSQT,
     king_psqt: SquareTable => KING_PSQT,
+
     knight_mobility: IndexTable<9> => KNIGHT_MOBILITY,
     bishop_mobility: IndexTable<14> => BISHOP_MOBILITY,
     rook_mobility: IndexTable<15> => ROOK_MOBILITY,
     queen_mobility: IndexTable<28> => QUEEN_MOBILITY,
+
     rook_open_file: FileTable => ROOK_OPEN_FILE,
     rook_semiopen_file: FileTable => ROOK_SEMIOPEN_FILE,
     queen_open_file: FileTable => QUEEN_OPEN_FILE,
     queen_semiopen_file: FileTable => QUEEN_SEMIOPEN_FILE,
+
+    pawn_minor_threat: T => PAWN_MINOR_THREAT,
+    pawn_major_threat: T => PAWN_MAJOR_THREAT,
+    minor_major_threat: T => MINOR_MAJOR_THREAT,
+
+    center_control: T => CENTER_CONTROL,
+
     passed_pawn: RankTable => PASSED_PAWN,
     backwards_pawn: T => BACKWARDS_PAWN,
     isolated_pawn: T => ISOLATED_PAWN,
@@ -224,6 +238,16 @@ pub const PASSED_PAWN: RankTable = [
 pub const BACKWARDS_PAWN: T = T(-1, -2);
 pub const ISOLATED_PAWN: T = T(-9, -1);
 pub const DOUBLED_PAWN: T = T(-5, -3);
+
+/*----------------------------------------------------------------*/
+
+pub const PAWN_MINOR_THREAT: T = T(21, 37);
+pub const PAWN_MAJOR_THREAT: T = T(22, 56);
+pub const MINOR_MAJOR_THREAT: T = T(55, 86);
+
+/*----------------------------------------------------------------*/
+
+pub const CENTER_CONTROL: T = T(3, 0);
 
 /*----------------------------------------------------------------*/
 

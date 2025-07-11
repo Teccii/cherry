@@ -94,12 +94,11 @@ impl Board {
     }
 
     pub(crate) fn checkers_is_sane(&self) -> bool {
-        let (checkers, _) = self.calc_checks_and_pins(!self.stm);
+        let (checkers, _) = self.checks_and_pins(!self.stm);
 
         soft_assert!(checkers.is_empty()); //opponent can't be in check when it's our turn
 
-        let (checkers, pinned) = self.calc_checks_and_pins(self.stm);
-
+        let (checkers, pinned) = self.checks_and_pins(self.stm);
         soft_assert!(checkers == self.checkers);
         soft_assert!(pinned == self.pinned);
         soft_assert!(self.checkers.popcnt() < 3);
@@ -117,23 +116,37 @@ impl Board {
         self.fullmove_count > 0
     }
 
-    pub(crate) fn calc_checks_and_pins(&self, color: Color) -> (Bitboard, Bitboard) {
+    pub fn checks_and_pins(&self, color: Color) -> (Bitboard, [Bitboard; Color::COUNT]) {
         let mut checkers = Bitboard::EMPTY;
-        let mut pinned = Bitboard::EMPTY;
-        
+        let mut pinned = [Bitboard::EMPTY; Color::COUNT];
+
         let our_king = self.king(color);
-        let attackers = self.colors(!color) & (
-            (bishop_rays(our_king) & self.diag_sliders()) | rook_rays(our_king) & self.orth_sliders()
+        let (diag, orth) = (self.diag_sliders(), self.orth_sliders());
+        let their_attackers = self.colors(!color) & (
+            (bishop_rays(our_king) & diag) | (rook_rays(our_king) & orth)
         );
 
         let occ = self.occupied();
-        for sq in attackers {
+        for sq in their_attackers {
             let between = between(sq, our_king) & occ;
 
             match between.popcnt() {
                 0 => checkers |= sq.bitboard(),
-                1 => pinned |= between,
+                1 => pinned[color as usize] |= between,
                 _ => ()
+            }
+        }
+
+        let their_king = self.king(!color);
+        let our_attackers = self.colors(color) & (
+            (bishop_rays(their_king) & diag) | (rook_rays(their_king) & orth)
+        );
+        
+        for sq in our_attackers {
+            let between = between(sq, their_king) & occ;
+            
+            if between.popcnt() == 1 {
+                pinned[!color as usize] |= between;
             }
         }
 

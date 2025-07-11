@@ -206,7 +206,7 @@ const LMR: [[i32; MAX_MOVES]; MAX_DEPTH as usize] = {
     while i < MAX_DEPTH as usize {
         let mut j = 0;
         while j < MAX_MOVES {
-            table[i][j] = 1024 * (0.5 + iln(i as u8) * iln(j as u8) / 2.5) as i32;
+            table[i][j] = (384f32 + 512f32 * iln(i as u8) * iln(j as u8)) as i32;
 
             j += 1;
         }
@@ -216,6 +216,11 @@ const LMR: [[i32; MAX_MOVES]; MAX_DEPTH as usize] = {
 
     table
 };
+
+#[test]
+fn test() {
+    println!("{:#?}", LMR);
+}
 
 /*----------------------------------------------------------------*/
 
@@ -364,7 +369,8 @@ pub fn search<Node: NodeType>(
         _ => (None, 0, 0)
     };
 
-    let mut improving = prev_eval.is_some_and(|e| !in_check && static_eval > e);
+    let improving = prev_eval.is_some_and(|e| !in_check && static_eval > e);
+
     if !in_check && skip_move.is_none() && !alpha.is_decisive() && !beta.is_decisive(){
         /*
         Reverse Futility Pruning: Similar to Razoring, if the static evaluation of the position is *above*
@@ -405,7 +411,6 @@ pub fn search<Node: NodeType>(
             let nmp_depth = nmp_depth(depth);
 
             ctx.search_stack[ply as usize].move_played = None;
-
             let score = -search::<Node::Alt>(
                 pos,
                 ctx,
@@ -439,9 +444,7 @@ pub fn search<Node: NodeType>(
             }
         }
     }
-    
-    improving |= static_eval >= beta + 94;
-    
+
     if let Some(entry) = tt_entry {
         depth = (depth as i16 - iir::<Node>(entry, depth)) as u8;
     }
@@ -478,6 +481,7 @@ pub fn search<Node: NodeType>(
             let s_depth = depth / 2;
 
             ctx.search_stack[ply as usize].skip_move = Some(mv);
+            ctx.search_stack[ply as usize].reduction = (depth / 2) as i32;
 
             let s_score = search::<Node::Alt>(
                 pos,
@@ -562,10 +566,10 @@ pub fn search<Node: NodeType>(
         }
 
         ctx.search_stack[ply as usize].extension = extension;
-        ctx.search_stack[ply as usize].reduction = 0;
 
         let depth = (depth as i16 + extension).clamp(0, MAX_DEPTH as i16) as u8;
         if moves_seen == 0 {
+            ctx.search_stack[ply as usize].reduction = 0;
             score = -search::<Node>(
                 pos,
                 ctx,
@@ -576,7 +580,7 @@ pub fn search<Node: NodeType>(
                 -alpha
             );
         } else {
-            ctx.search_stack[ply as usize].reduction = reduction;
+            ctx.search_stack[ply as usize].reduction = reduction / 1024;
             let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
 
             score = -search::<Node::Alt>(
@@ -590,6 +594,7 @@ pub fn search<Node: NodeType>(
             );
 
             if r_depth < depth && score > alpha {
+                ctx.search_stack[ply as usize].reduction = 0;
                 score = -search::<Node::Alt>(
                     pos,
                     ctx,
@@ -602,6 +607,7 @@ pub fn search<Node: NodeType>(
             }
 
             if Node::PV && score > alpha {
+                ctx.search_stack[ply as usize].reduction = 0;
                 score = -search::<Node>(
                     pos,
                     ctx,
@@ -702,7 +708,7 @@ pub fn search<Node: NodeType>(
 fn delta<Node: NodeType>(board: &Board, victim: Piece, eval: Score, alpha: Score) -> bool {
     !Node::PV
         && !board.in_check()
-        && calc_phase(board) < TOTAL_PHASE * 3 / 4
+        && calc_phase(board) < TOTAL_PHASE / 2
         && eval < alpha - delta_margin(victim)
 }
 
@@ -735,31 +741,23 @@ pub fn q_search<Node: NodeType>(
         return Score::ZERO;
     }
 
-    let mut best_move = None;
+
     let initial_alpha = alpha;
-    let mut tt_entry = shared_ctx.t_table.probe(pos.board());
+    let tt_entry = shared_ctx.t_table.probe(pos.board());
+
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
-        best_move = entry.table_mv.filter(|&mv| pos.board().is_legal(mv));
 
-        if entry.table_mv.is_some() && best_move.is_none() {
-            //We can't trust this entry if the move is invalid
-            tt_entry = None;
-        }
-
-        if !Node::PV {
-            let score = entry.score;
-
-            match entry.flag {
-                TTFlag::Exact => return score,
-                TTFlag::UpperBound => if score <= alpha {
-                    return score;
-                },
-                TTFlag::LowerBound => if score >= beta {
-                    return score;
-                },
-                TTFlag::None => unreachable!()
-            }
+        let score = entry.score;
+        match entry.flag {
+            TTFlag::Exact => return score,
+            TTFlag::UpperBound => if score <= alpha {
+                return score;
+            },
+            TTFlag::LowerBound => if score >= beta {
+                return score;
+            },
+            TTFlag::None => unreachable!()
         }
     } else {
         ctx.tt_misses.inc();
@@ -781,27 +779,28 @@ pub fn q_search<Node: NodeType>(
         }
     }
 
+    let mut best_move = None;
     let mut best_score = None;
-    let mut move_picker = QMovePicker::new(best_move);
+    let mut move_picker = QMovePicker::new();
     let mut moves_seen = 0;
 
     while let Some(mv) = move_picker.next(pos, &ctx.history) {
         let is_check = pos.board().is_check(mv);
 
-        /*
-        Delta Pruning: Similar to Futility Pruning, but only in Quiescence Search.
-        We test whether the captured piece + a safety margin (around 200 centipawns)
-        is enough to raise alpha.
-
-        For example if we're down a rook, don't bother testing pawn captures,
-        because they are unlikely to matter for us. For safety reasons, we cannot
-        apply this in the late endgame.
-        */
-        if best_score.is_some_and(|s: Score| !s.is_decisive()) && !is_check && !mv.is_promotion() {
+        if !alpha.is_decisive() && !is_check && !mv.is_promotion() {
             if moves_seen > 3 {
                 continue;
             }
 
+            /*
+            Delta Pruning: Similar to Futility Pruning, but only in Quiescence Search.
+            We test whether the captured piece + a safety margin (around 200 centipawns)
+            is enough to raise alpha.
+
+            For example if we're down a rook, don't bother testing pawn captures,
+            because they are unlikely to matter for us. For safety reasons, we cannot
+            apply this in the late endgame.
+            */
             if let Some(victim) = pos.board().victim(mv) && delta::<Node>(
                 pos.board(),
                 victim,

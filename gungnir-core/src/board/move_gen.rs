@@ -69,10 +69,11 @@ impl Board {
         P: slider::SlidingPiece, F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool
     >(&self, mask: Bitboard, listener: &mut F) -> bool {
         let pieces = self.color_pieces(P::PIECE, self.stm) & mask;
-        let blockers = self.occupied();
         let target_squares = self.target_squares::<IN_CHECK>();
+        let pinned = self.pinned(self.stm);
+        let blockers = self.occupied();
 
-        for piece in pieces & !self.pinned {
+        for piece in pieces & !pinned {
             let moves = P::pseudo_legals(piece, blockers) & target_squares;
             if !moves.is_empty() {
                 abort_if!(listener(PieceMoves {
@@ -86,8 +87,8 @@ impl Board {
 
         if !IN_CHECK {
             let our_king = self.king(self.stm);
-            
-            for piece in pieces & self.pinned {
+
+            for piece in pieces & pinned {
                 //If we're not in check, we can still slide along the pinned ray.
                 let target_squares = target_squares & line(our_king, piece);
                 let moves = P::pseudo_legals(piece, blockers) & target_squares;
@@ -114,8 +115,9 @@ impl Board {
 
         let pieces = self.color_pieces(PIECE, self.stm) & mask;
         let target_squares = self.target_squares::<IN_CHECK>();
+        let pinned = self.pinned(self.stm);
 
-        for piece in pieces & !self.pinned {
+        for piece in pieces & !pinned {
             let moves = knight_moves(piece) & target_squares;
             if !moves.is_empty() {
                 abort_if!(listener(PieceMoves {
@@ -138,12 +140,13 @@ impl Board {
         const PIECE: Piece = Piece::Pawn;
 
         let our_king = self.king(self.stm);
+        let target_squares = self.target_squares::<IN_CHECK>();
         let pieces = self.color_pieces(PIECE, self.stm) & mask;
         let their_pieces = self.colors(!self.stm);
+        let pinned = self.pinned(self.stm);
         let blockers = self.occupied();
-        let target_squares = self.target_squares::<IN_CHECK>();
 
-        for piece in pieces & !self.pinned {
+        for piece in pieces & !pinned {
             let moves = (
                 pawn_quiets(piece, self.stm, blockers) | (pawn_attacks(piece, self.stm) & their_pieces)
             ) & target_squares;
@@ -159,7 +162,7 @@ impl Board {
         }
 
         if !IN_CHECK {
-            for piece in pieces & self.pinned {
+            for piece in pieces & pinned {
                 //If we're not in check, we can still slide along the pinned ray.
                 let target_squares = target_squares & line(our_king, piece);
                 let moves = (
@@ -253,7 +256,7 @@ impl Board {
         let must_be_safe = king_to_dest | king_dest.bitboard();
         let must_be_empty = must_be_safe | king_to_rook | rook_dest.bitboard();
 
-        !self.pinned.has(rook)
+        !self.pinned(self.stm).has(rook)
             && (blockers & must_be_empty).is_empty()
             && must_be_safe.iter().all(|square| self.king_safe_on(square))
     }
@@ -431,7 +434,7 @@ impl Board {
             return self.king_is_legal(mv);
         }
 
-        if self.pinned.has(from) && !line(king_sq, from).has(to) {
+        if self.pinned(self.stm).has(from) && !line(king_sq, from).has(to) {
             return false;
         }
 

@@ -20,9 +20,9 @@ impl Board {
             colors: [Bitboard::EMPTY; Color::COUNT],
             pieces: [Bitboard::EMPTY; Piece::COUNT],
             castle_rights: [CastleRights { short: None, long: None }; Color::COUNT],
-            en_passant: None,
+            pinned: [Bitboard::EMPTY; Color::COUNT],
             checkers: Bitboard::EMPTY,
-            pinned: Bitboard::EMPTY,
+            en_passant: None,
             fullmove_count: 0,
             halfmove_clock: 0,
             repetition: 0,
@@ -40,7 +40,7 @@ impl Board {
             return Err(FenParseError::InvalidBoard);
         }
 
-        let (checkers, pinned) = board.calc_checks_and_pins(board.stm);
+        let (checkers, pinned) = board.checks_and_pins(board.stm);
         board.checkers = checkers;
         board.pinned = pinned;
 

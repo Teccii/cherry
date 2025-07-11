@@ -89,9 +89,9 @@ impl BoardBuilder {
             colors: [Bitboard::EMPTY; Color::COUNT],
             pieces: [Bitboard::EMPTY; Piece::COUNT],
             castle_rights: [CastleRights::EMPTY; Color::COUNT],
-            en_passant: None,
-            pinned: Bitboard::EMPTY,
+            pinned: [Bitboard::EMPTY; Color::COUNT],
             checkers: Bitboard::EMPTY,
+            en_passant: None,
             fullmove_count: 0,
             halfmove_clock: 0,
             repetition: 0,
@@ -124,7 +124,7 @@ impl BoardBuilder {
             return Err(BoardBuilderError::InvalidBoard);
         }
 
-        let (checkers, pinned) = board.calc_checks_and_pins(board.stm());
+        let (checkers, pinned) = board.checks_and_pins(board.stm());
         board.checkers = checkers;
         board.pinned = pinned;
 

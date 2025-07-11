@@ -37,9 +37,9 @@ pub struct Board {
     colors: [Bitboard; Color::COUNT],
     pieces: [Bitboard; Piece::COUNT],
     castle_rights: [CastleRights; Color::COUNT],
-    en_passant: Option<File>,
+    pinned: [Bitboard; Color::COUNT],
     checkers: Bitboard,
-    pinned: Bitboard,
+    en_passant: Option<File>,
     fullmove_count: u16,
     halfmove_clock: u8,
     repetition: u8,
@@ -132,7 +132,9 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline(always)]
-    pub const fn pinned(&self) -> Bitboard { self.pinned }
+    pub const fn pinned(&self, color: Color) -> Bitboard {
+        self.pinned[color as usize]
+    }
 
     #[inline(always)]
     pub const fn checkers(&self) -> Bitboard { self.checkers }
@@ -238,11 +240,12 @@ impl Board {
 
     pub fn make_move(&mut self, mv: Move) {
         self.checkers = Bitboard::EMPTY;
-        self.pinned = Bitboard::EMPTY;
+        self.pinned = [Bitboard::EMPTY; Color::COUNT];
 
-        let (from, to, flag, promotion) = (mv.from(), mv.to(), mv.flag(), mv.promotion());
+        let (from, to, promotion) = (mv.from(), mv.to(), mv.promotion());
         let moved = self.piece_on(from).unwrap();
         let victim = self.piece_on(to);
+        let our_king = self.king(self.stm);
         let their_king = self.king(!self.stm);
         let backrank = Rank::First.relative_to(self.stm);
         let their_backrank = Rank::Eighth.relative_to(self.stm);
@@ -353,16 +356,30 @@ impl Board {
         }
         self.set_en_passant(new_en_passant);
 
-        let attackers = self.colors(self.stm) & (
-            (bishop_rays(their_king) & self.diag_sliders()) | (rook_rays(their_king) & self.orth_sliders())
+        let (diag, orth) = (self.diag_sliders(), self.orth_sliders());
+        let our_attackers = self.colors(self.stm) & (
+            (bishop_rays(their_king) & diag) | (rook_rays(their_king) & orth)
         );
 
-        for sq in attackers {
-            let between = between(sq, their_king) & self.occupied();
+        let occ = self.occupied();
+        for sq in our_attackers {
+            let between = between(sq, their_king) & occ;
             match between.popcnt() {
                 0 => self.checkers |= sq.bitboard(),
-                1 => self.pinned |= between,
+                1 => self.pinned[!self.stm as usize] |= between,
                 _ => {}
+            }
+        }
+
+        let their_attackers = self.colors(!self.stm) & (
+            (bishop_rays(our_king) & diag) | (rook_rays(our_king) & orth)
+        );
+
+        for sq in their_attackers {
+            let between = between(sq, our_king) & occ;
+
+            if between.popcnt() == 1 {
+                self.pinned[self.stm as usize] |= between;
             }
         }
 
@@ -385,19 +402,34 @@ impl Board {
         board.set_en_passant(None);
         board.toggle_stm();
 
-        board.pinned = Bitboard::EMPTY;
+        board.pinned = [Bitboard::EMPTY; Color::COUNT];
 
-        let king = board.king(board.stm);
-        let attackers = board.colors(!board.stm) & (
-            (bishop_rays(king) & self.diag_sliders()) | (rook_rays(king) & self.orth_sliders())
+        let our_king = board.king(board.stm);
+        let (diag, orth) = (self.diag_sliders(), self.orth_sliders());
+
+        let their_attackers = board.colors(!board.stm) & (
+            (bishop_rays(our_king) & diag) | (rook_rays(our_king) & orth)
         );
 
         let occ = board.occupied();
-        for sq in attackers {
-            let between = between(sq, king) & occ;
+        for sq in their_attackers {
+            let between = between(sq, our_king) & occ;
 
             if between.popcnt() == 1 {
-                board.pinned |= between;
+                board.pinned[board.stm as usize] |= between;
+            }
+        }
+
+        let their_king = board.king(!board.stm);
+        let our_attackers = board.colors(board.stm) & (
+            (bishop_rays(their_king) & diag) | (rook_rays(their_king) & orth)
+        );
+
+        for sq in our_attackers {
+            let between = between(sq, their_king) & occ;
+
+            if between.popcnt() == 1 {
+                board.pinned[!board.stm as usize] |= between;
             }
         }
 
@@ -490,7 +522,7 @@ impl fmt::Debug for Board {
                     if self.colors(Color::White).has(sq) {
                         write!(f, "{} ", piece.to_ascii_uppercase())?;
                     } else {
-                        write!(f, "{}" , piece)?;
+                        write!(f, "{} " , piece)?;
                     }
                 }
             }

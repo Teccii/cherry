@@ -168,7 +168,6 @@ impl MovePicker {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum QPhase {
-    HashMove,
     GenPieceMoves,
     GenEvasions,
     YieldEvasions,
@@ -180,7 +179,6 @@ pub enum QPhase {
 #[derive(Debug, Clone)]
 pub struct QMovePicker {
     phase: QPhase,
-    hash_move: Option<Move>,
     piece_moves: ArrayVec<PieceMoves, 20>,
     evasions: ArrayVec<ScoredMove, MAX_MOVES>,
     captures: ArrayVec<ScoredMove, MAX_MOVES>,
@@ -188,10 +186,9 @@ pub struct QMovePicker {
 
 impl QMovePicker {
     #[inline(always)]
-    pub fn new(hash_move: Option<Move>) -> QMovePicker {
+    pub fn new() -> QMovePicker {
         QMovePicker {
-            phase: QPhase::HashMove,
-            hash_move,
+            phase: QPhase::GenPieceMoves,
             piece_moves: ArrayVec::new(),
             evasions: ArrayVec::new(),
             captures: ArrayVec::new(),
@@ -203,21 +200,6 @@ impl QMovePicker {
         pos: &mut Position,
         history: &History,
     ) -> Option<Move> {
-        if self.phase == QPhase::HashMove {
-            self.phase = QPhase::GenPieceMoves;
-
-            if self.hash_move.is_some() {
-                /*
-                It makes sense to also play the hash move in Quiescence Search
-                because we would obviously want to get out of the PV before we start
-                searching only captures and evasions.
-
-                At least I think so
-                */
-                return self.hash_move;
-            }
-        }
-
         if self.phase == QPhase::GenPieceMoves {
             pos.board().gen_moves(|moves| {
                 self.piece_moves.push(moves);
