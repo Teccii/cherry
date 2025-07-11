@@ -1,0 +1,13 @@
+[package]
+name = "cherry-core"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+pext = ["cherry-types/pext"]
+
+[dependencies]
+cherry-types = { path = "../cherry-types" }
+
+[build-dependencies]
+cherry-types = { path = "../cherry-types" }

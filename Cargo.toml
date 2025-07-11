@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-    "gungnir-core",
-    "gungnir-engine",
-    "gungnir-types",
+    "cherry-core",
+    "cherry-engine",
+    "cherry-types",
 ]
