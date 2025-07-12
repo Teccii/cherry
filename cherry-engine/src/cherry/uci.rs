@@ -179,7 +179,9 @@ impl UciCommand {
                     name += token;
                 }
 
-                let value = reader.remainder().ok_or(UciParseError::InvalidArguments)?.to_owned();
+                let value = reader.remainder()
+                    .map(str::to_owned)
+                    .unwrap_or(String::from("<empty>"));
                 
                 Ok(UciCommand::SetOption(name, value))
             },

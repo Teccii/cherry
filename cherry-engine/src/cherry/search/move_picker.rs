@@ -18,7 +18,7 @@ pub enum Phase {
     HashMove,
     GenPieceMoves,
     GenCaptures,
-    YieldCaptures,
+    YieldGoodCaptures,
     GenQuiets,
     YieldQuiets,
     YieldBadCaptures,
@@ -32,7 +32,7 @@ pub struct MovePicker {
     phase: Phase,
     hash_move: Option<Move>,
     piece_moves: ArrayVec<PieceMoves, 20>,
-    captures: ArrayVec<ScoredMove, MAX_MOVES>,
+    good_captures: ArrayVec<ScoredMove, MAX_MOVES>,
     bad_captures: ArrayVec<ScoredMove, MAX_MOVES>,
     quiets: ArrayVec<ScoredMove, MAX_MOVES>,
 }
@@ -44,13 +44,18 @@ impl MovePicker {
             phase: Phase::HashMove,
             hash_move,
             piece_moves: ArrayVec::new(),
-            captures: ArrayVec::new(),
+            good_captures: ArrayVec::new(),
             bad_captures: ArrayVec::new(),
             quiets: ArrayVec::new(),
         }
     }
 
     /*----------------------------------------------------------------*/
+
+    #[inline(always)]
+    pub fn phase(&self) -> Phase {
+        self.phase
+    }
 
     #[inline(always)]
     pub fn skip_quiets(&mut self) {
@@ -60,7 +65,13 @@ impl MovePicker {
         }
     }
     
-    pub fn next(&mut self, pos: &mut Position, history: &History, ) -> Option<Move> {
+    pub fn next(
+        &mut self,
+        pos: &mut Position,
+        history: &History,
+        counter_move: Option<MoveData>,
+        follow_up: Option<MoveData>
+    ) -> Option<Move> {
         if self.phase == Phase::HashMove {
             self.phase = Phase::GenPieceMoves;
             
@@ -83,7 +94,7 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.phase == Phase::GenCaptures {
-            self.phase = Phase::YieldCaptures;
+            self.phase = Phase::YieldGoodCaptures;
             
             let board = pos.board();
             
@@ -93,25 +104,25 @@ impl MovePicker {
                         continue;
                     }
                     
-                    let see = see(board, mv);
+                    let see = board.see(mv);
                     let score = history.get_capture(board, mv);
                     
                     if see >= 0  {
-                        self.captures.push(ScoredMove(mv, score));
+                        self.good_captures.push(ScoredMove(mv, score));
                     } else {
                         self.bad_captures.push(ScoredMove(mv, score));
                     }
                 }
             }
 
-            self.captures.sort_by_key(|mv| mv.1);
+            self.good_captures.sort_by_key(|mv| mv.1);
             self.bad_captures.sort_by_key(|mv| mv.1);
         }
 
         /*----------------------------------------------------------------*/
 
-        if self.phase == Phase::YieldCaptures {
-            if let Some(mv) = self.captures.pop() {
+        if self.phase == Phase::YieldGoodCaptures {
+            if let Some(mv) = self.good_captures.pop() {
                 return Some(mv.0);
             }
             
@@ -129,7 +140,10 @@ impl MovePicker {
                         continue;
                     }
                     
-                    let score = history.get_quiet(board, mv);
+                    let score = history.get_quiet(board, mv)
+                        + history.get_counter_move(board, mv, counter_move).unwrap_or_default()
+                        + history.get_follow_up(board, mv, follow_up).unwrap_or_default();
+
                     self.quiets.push(ScoredMove(mv, score));
                 }
             }
@@ -199,6 +213,8 @@ impl QMovePicker {
         &mut self,
         pos: &mut Position,
         history: &History,
+        counter_move: Option<MoveData>,
+        follow_up: Option<MoveData>,
     ) -> Option<Move> {
         if self.phase == QPhase::GenPieceMoves {
             pos.board().gen_moves(|moves| {
@@ -218,7 +234,7 @@ impl QMovePicker {
 
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
-                    let score = history.get_move(board, mv);
+                    let score = history.get_move(board, mv, counter_move, follow_up);
 
                     self.evasions.push(ScoredMove(mv, score));
                 }
@@ -245,7 +261,7 @@ impl QMovePicker {
                         continue;
                     }
 
-                    let see = see(board, mv);
+                    let see = board.see(mv);
                     let score = history.get_capture(board, mv);
 
                     if see >= 0 {
@@ -269,108 +285,5 @@ impl QMovePicker {
         }
         
         None
-    }
-}
-
-//TODO: Handle Promotions
-pub fn see(board: &Board, mv: Move) -> i16 {
-    let (from, to) = (mv.from(), mv.to());
-    let mut blockers = board.occupied() ^ from.bitboard();
-    
-    /*
-    En passant only has to be handled for the first capture, because pawn double pushes
-    can never capture a piece so they don't matter at all in SEE.
-    */
-    let first_capture = if board.is_en_passant(mv) {
-        blockers ^= Square::new(
-            board.en_passant().unwrap(),
-            Rank::Fifth.relative_to(board.stm())
-        ).bitboard();
-        
-        Piece::Pawn
-    }  else {
-        board.piece_on(to).unwrap()
-    };
-    
-    let mut attackers = board.attackers(to, blockers) & blockers;
-    let mut target_piece = board.piece_on(from).unwrap();
-    let mut stm = !board.stm();
-    let mut gains: ArrayVec<i16, 32> = ArrayVec::new();
-    gains.push(first_capture.see_value());
-
-    'see: loop {
-        for &piece in Piece::ALL.iter() {
-            let stm_attackers = attackers & board.color_pieces(piece, stm);
-            
-            if let Some(sq) = stm_attackers.try_next_square() {
-                gains.push(target_piece.see_value());
-                
-                if target_piece == Piece::King {
-                    break;
-                }
-                
-                let bb = sq.bitboard();
-                
-                blockers ^= bb;
-                attackers ^= bb;
-                target_piece = piece;
-                
-                if matches!(piece, Piece::Rook | Piece::Queen) {
-                    attackers |= rook_moves(sq, blockers) & blockers & board.orth_sliders();
-                }
-
-                if matches!(piece, Piece::Pawn | Piece::Bishop | Piece::Queen) {
-                    attackers |= bishop_moves(sq, blockers) & blockers & board.diag_sliders();
-                }
-                
-                stm = !stm;
-                continue 'see;
-            }
-        }
-
-        while gains.len() > 1 {
-            let forced = gains.len() == 2;
-            let their_gain = gains.pop().unwrap();
-            let our_gain = gains.last_mut().unwrap();
-
-            *our_gain -= their_gain;
-
-            if !forced && *our_gain < 0 {
-                *our_gain = 0;
-            }
-        }
-
-        return gains.pop().unwrap();
-    }
-}
-
-#[test]
-fn test_see() {
-    use cherry_core::*;
-    let fens = &[
-        "8/4k3/8/3n4/8/8/3R4/3K4 w - - 0 1",
-        "8/4k3/1n6/3n4/8/8/3R4/3K4 w - - 0 1",
-        "8/3r4/3q4/3r4/8/3Q3K/3R4/7k w - - 0 1",
-        "8/8/b7/1q6/2b5/3Q3K/4B3/7k w - - 0 1",
-    ];
-    let expected = &[
-        Piece::Knight.see_value(),
-        Piece::Knight.see_value() - Piece::Rook.see_value(),
-        0,
-        0,
-    ];
-    
-    let moves = &[
-        Move::new(Square::D2, Square::D5, MoveFlag::None),
-        Move::new(Square::D2, Square::D5, MoveFlag::None),
-        Move::new(Square::D3, Square::D5, MoveFlag::None),
-        Move::new(Square::D3, Square::C4, MoveFlag::None),
-    ];
-
-    for ((&fen, &expected), &mv) in fens.iter().zip(expected).zip(moves) {
-        let board = Board::from_fen(fen, false).unwrap();
-        
-        assert!(see(&board, mv) >= expected);
-        assert!(see(&board, mv) < (expected + 1));
     }
 }

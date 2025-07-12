@@ -2,10 +2,13 @@ mod builder;
 mod move_gen;
 mod parse;
 mod sanity;
+mod see;
 
 pub use builder::*;
 pub use move_gen::*;
 pub use parse::*;
+pub use sanity::*;
+pub use see::*;
 
 /*----------------------------------------------------------------*/
 

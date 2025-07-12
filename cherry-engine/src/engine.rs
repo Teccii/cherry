@@ -55,7 +55,7 @@ impl Engine {
 
                         println!("{}", output);
                     },
-                    ThreadCommand::Quit => break,
+                    ThreadCommand::Quit => return,
                 }
             }
         });
@@ -105,13 +105,13 @@ impl Engine {
         }
     }
 
-    pub fn input(&mut self, input: &str, bytes: usize) {
+    pub fn input(&mut self, input: &str, bytes: usize) -> bool {
         let cmd = if bytes == 0 { UciCommand::Quit } else {
             match UciCommand::parse(input, *self.chess960.borrow()) {
                 Ok(cmd) => cmd,
                 Err(e) => {
                     println!("{:?}", e);
-                    return;
+                    return true;
                 }
             }
         };
@@ -134,9 +134,7 @@ impl Engine {
                 searcher.pos.reset(Board::default());
             },
             UciCommand::IsReady => println!("readyok"),
-            UciCommand::PonderHit => {
-                self.time_man.ponderhit();
-            },
+            UciCommand::PonderHit => self.time_man.ponderhit(),
             UciCommand::Position(board, moves) => {
                 let mut searcher = self.searcher.lock().unwrap();
                 searcher.pos.reset(board);
@@ -167,10 +165,13 @@ impl Engine {
                 println!("{:?}", board);
                 println!("FEN: {}", board);
             },
-            UciCommand::Stop => {
-                self.time_man.abort_now();
+            UciCommand::Stop => self.time_man.abort_now(),
+            UciCommand::Quit => {
+                self.sender.send(ThreadCommand::Quit).unwrap();
+                return false;
             },
-            UciCommand::Quit => self.sender.send(ThreadCommand::Quit).unwrap(),
         }
+
+        true
     }
 }

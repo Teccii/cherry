@@ -25,6 +25,9 @@ weights! {
     nmp_verification_depth: u8 => NMP_VERIFY_DEPTH,
 
     iir_depth: u8 => IIR_DEPTH,
+    
+    see_depth: u8 => SEE_DEPTH,
+    see_margin: i16 => SEE_MARGIN,
 
     hist_margin: i16 => HIST_MARGIN,
     futile_depth: u8 => FUTILE_DEPTH,
@@ -61,6 +64,9 @@ pub const NMP_VERIFY_DEPTH: u8 = 12;
 
 pub const IIR_DEPTH: u8 = 6;
 
+pub const SEE_DEPTH: u8 = 10;
+pub const SEE_MARGIN: i16 = 166;
+
 pub const HIST_MARGIN: i16 = -4300;
 pub const FUTILE_DEPTH: u8 = 12;
 pub const FUTILE_BASE: i16 = 47;
@@ -77,6 +83,6 @@ pub const BASE_REDUCTION: i32 = 136;
 pub const NON_PV_REDUCTION: i32 = 926;
 pub const NOT_IMPROVING_REDUCTION: i32 = 926;
 pub const CUT_NODE_REDUCTION: i32 = 2113;
-pub const HIST_REDUCTION: i32 = 777;
+pub const HIST_REDUCTION: i32 = 155;
 
 pub const DELTA_MARGIN: i16 = 211;

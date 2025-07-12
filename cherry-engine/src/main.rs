@@ -16,7 +16,9 @@ fn main() -> Result<()> {
     let mut engine = Engine::new();
     
     while let Ok(bytes) = io::stdin().read_line(&mut buffer) {
-        engine.input(buffer.trim(), bytes);
+        if !engine.input(buffer.trim(), bytes) {
+            break;
+        }
         buffer.clear();
     }
 
