@@ -28,6 +28,7 @@ weights! {
     
     see_depth: u8 => SEE_DEPTH,
     see_margin: i16 => SEE_MARGIN,
+    see_hist: i16 => SEE_HIST,
 
     hist_margin: i16 => HIST_MARGIN,
     futile_depth: u8 => FUTILE_DEPTH,
@@ -65,7 +66,8 @@ pub const NMP_VERIFY_DEPTH: u8 = 12;
 pub const IIR_DEPTH: u8 = 6;
 
 pub const SEE_DEPTH: u8 = 10;
-pub const SEE_MARGIN: i16 = 166;
+pub const SEE_MARGIN: i16 = -44;
+pub const SEE_HIST: i16 = 61;
 
 pub const HIST_MARGIN: i16 = -4300;
 pub const FUTILE_DEPTH: u8 = 12;

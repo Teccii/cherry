@@ -233,18 +233,6 @@ pub fn search<Node: NodeType>(
 
     if !in_check && skip_move.is_none() && !alpha.is_decisive() && !beta.is_decisive(){
         /*
-        Reverse Futility Pruning: Similar to Razoring, if the static evaluation of the position is *above*
-        beta by a significant margin, we can assume that we can reach at least beta.
-        */
-
-        let rfp_mult = w.rfp_margin - w.rfp_tt * tt_entry.is_some() as i16;
-        let rfp_margin = depth as i16 * rfp_mult - improving as i16 * rfp_mult * 2;
-        if !Node::PV && depth < w.rfp_depth
-            && !alpha.is_decisive() && static_eval > beta + rfp_margin {
-            return (static_eval + beta) / 2
-        }
-
-        /*
         Razoring: If the static evaluation of the position is below alpha by a significant margin,
         skip searching this branch entirely and drop into the quiescence search.
         */
@@ -259,6 +247,18 @@ pub fn search<Node: NodeType>(
                 alpha,
                 beta
             );
+        }
+
+        /*
+        Reverse Futility Pruning: Similar to Razoring, if the static evaluation of the position is *above*
+        beta by a significant margin, we can assume that we can reach at least beta.
+        */
+
+        let rfp_mult = w.rfp_margin - w.rfp_tt * tt_entry.is_some() as i16;
+        let rfp_margin = depth as i16 * rfp_mult - improving as i16 * rfp_mult * 2;
+        if !Node::PV && depth < w.rfp_depth
+            && !alpha.is_decisive() && static_eval > beta + rfp_margin {
+            return (static_eval + beta) / 2
         }
 
         /*
@@ -416,6 +416,7 @@ pub fn search<Node: NodeType>(
 
         /*
         Late Move Reduction (LMR): Reduce the depth of moves ordered near the end.
+        History Reduction: Increase or decrease the reduction based on the history of the move
         */
         reduction += lmr::<Node>(depth, moves_seen);
         reduction += w.non_pv_reduction * !Node::PV as i32;
@@ -428,10 +429,10 @@ pub fn search<Node: NodeType>(
 
             if is_capture {
                 //SEE pruning
-                let see_margin = w.see_margin * depth as i16;
+                let see_margin = w.see_margin * depth as i16 - hist / w.see_hist;
                 if depth < w.see_depth
                     && move_picker.phase() == Phase::YieldBadCaptures
-                    && pos.board().see(mv) < alpha - see_margin {
+                    && pos.board().see(mv) < see_margin {
                     continue;
                 }
 

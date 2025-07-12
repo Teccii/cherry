@@ -298,9 +298,10 @@ impl Board {
 
                     if Some(file) == rights.short {
                         self.set_castle_rights(!self.stm, None, true);
-                        //self.repetition = 0; already handled earlier
+                        self.repetition = 0;
                     } else if Some(file) == rights.long {
                         self.set_castle_rights(!self.stm, None, false);
+                        self.repetition = 0;
                     }
                 }
             }
@@ -327,6 +328,7 @@ impl Board {
                                 Rank::Fifth.relative_to(self.stm)
                             );
                             self.xor_square(Piece::Pawn, !self.stm, victim_square);
+                            self.repetition = 0;
                         }
 
                         self.checkers |= pawn_attacks(their_king, !self.stm) & to.bitboard();
