@@ -396,11 +396,10 @@ pub trait SearchInfo {
     );
 }
 
-pub struct FullInfo;
-pub struct UciOnly;
-pub struct NoInfo;
+pub struct DebugInfo;
+pub struct UciInfo;
 
-impl SearchInfo for FullInfo {
+impl SearchInfo for DebugInfo {
     fn push(
         board: &Board,
         ctx: &ThreadContext,
@@ -462,7 +461,7 @@ impl SearchInfo for FullInfo {
     }
 }
 
-impl SearchInfo for UciOnly {
+impl SearchInfo for UciInfo {
     fn push(
         board: &Board,
         ctx: &ThreadContext,
@@ -516,8 +515,4 @@ impl SearchInfo for UciOnly {
 
         println!("{}", info);
     }
-}
-
-impl SearchInfo for NoInfo {
-    fn push(_: &Board, _: &ThreadContext, _: &SharedContext, _: u8, _: Option<Score>, _: bool) { }
 }

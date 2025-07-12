@@ -42,9 +42,9 @@ impl Engine {
                         let mut output = String::new();
 
                         let (mv, ponder, _, _, _) = if searcher.debug {
-                            searcher.search::<FullInfo>(limits)
+                            searcher.search::<DebugInfo>(limits)
                         } else {
-                            searcher.search::<UciOnly>(limits)
+                            searcher.search::<UciInfo>(limits)
                         };
 
                         write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.chess960)).unwrap();
@@ -86,7 +86,7 @@ impl Engine {
             let mut searcher = engine.searcher.lock().unwrap();
             let value = value.parse::<bool>().unwrap();
             searcher.set_chess960(value);
-        }; UciOptionType::Spin { default: 30, min: 0, max: 65535 });
+        }; UciOptionType::Check { default: false });
         add_option!(options, engine, value, "SyzygyPath" => {
             let mut searcher = engine.searcher.lock().unwrap();
             searcher.set_syzygy_path(&value);
