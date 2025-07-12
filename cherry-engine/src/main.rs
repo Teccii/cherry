@@ -6,7 +6,6 @@ mod engine;
 
 use std::{
     sync::{Arc, Mutex},
-    sync::mpsc::*,
     fmt::Write as _,
     io::Write,
     io

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc::*};
 use crate::*;
 
 pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -153,7 +153,7 @@ impl Engine {
                 println!("FEN: {}", board);
             },
             UciCommand::Stop => {
-                self.time_man.abort_now()
+                self.time_man.abort_now();
             },
             UciCommand::Quit => self.sender.send(ThreadCommand::Quit).map_err(|_| UciParseError::InvalidArguments)?,
         }
