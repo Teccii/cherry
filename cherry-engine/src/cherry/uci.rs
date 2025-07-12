@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::{fmt, str::FromStr, time::Duration};
 use super::SearchLimit;
 use cherry_core::*;
 
@@ -17,6 +17,43 @@ pub enum UciCommand {
     Display,
     Stop,
     Quit
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UciOptionType {
+    Check { default: bool },
+    Spin { default: i32, min: i32, max: i32 },
+    Combo { values: Vec<String>, default: usize },
+    String { default: String},
+    Button,
+}
+
+impl fmt::Display for UciOptionType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            UciOptionType::Check { default } => {
+                write!(f, "type check default {}", default)?;
+            },
+            UciOptionType::Spin { default, min, max } => {
+                write!(f, "type spin default {} min {} max {}", default, min, max)?;
+            },
+            UciOptionType::Combo { values, default } => {
+                write!(f, "type combo default {} ", values[0])?;
+
+                for value in values {
+                    write!(f, "var {}", value)?;
+                }
+            },
+            UciOptionType::String { default } => {
+                write!(f, "type string default {}", default)?;
+            },
+            UciOptionType::Button => {
+
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

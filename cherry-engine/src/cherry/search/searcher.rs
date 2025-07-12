@@ -131,6 +131,7 @@ pub struct Searcher {
     pub main_ctx: ThreadContext,
     pub threads: u16,
     pub chess960: bool,
+    pub debug: bool,
 }
 
 impl Searcher {
@@ -170,6 +171,7 @@ impl Searcher {
             },
             threads: 1,
             chess960: false,
+            debug: false,
         }
     }
 
@@ -238,6 +240,11 @@ impl Searcher {
     #[inline(always)]
     pub fn set_chess960(&mut self, value: bool) {
         self.chess960 = value;
+    }
+
+    #[inline(always)]
+    pub fn set_debug(&mut self, value: bool) {
+        self.debug = value;
     }
 
     #[inline(always)]
