@@ -1,5 +1,11 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, mpsc::*};
+use std::{
+    sync::{Arc, Mutex, mpsc::*},
+    cell::RefCell,
+    io::Write as _,
+    fmt::Write,
+    rc::Rc,
+};
 use crate::*;
 
 pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -9,11 +15,14 @@ pub enum ThreadCommand {
     Quit,
 }
 
+pub type UciOptions = HashMap<String, (UciOptionType, Box<dyn Fn(&Engine, String)>)>;
+
 pub struct Engine {
     searcher: Arc<Mutex<Searcher>>,
     time_man: Arc<TimeManager>,
     sender: Sender<ThreadCommand>,
-    options: HashMap<String, (UciOptionType, Box<dyn Fn(&Self, String)>)>
+    options: UciOptions,
+    chess960: Rc<RefCell<bool>>,
 }
 
 impl Engine {
@@ -51,7 +60,7 @@ impl Engine {
             }
         });
 
-        let mut options: HashMap<String, (UciOptionType, Box<dyn Fn(&Self, String)>)> = HashMap::new();
+        let mut options: UciOptions = HashMap::new();
 
         macro_rules! add_option {
             ($options:ident, $engine:ident, $value:ident, $name:expr => $func:block; $option_type:expr) => {
@@ -75,7 +84,8 @@ impl Engine {
         }; UciOptionType::Spin { default: 30, min: 0, max: 65535 });
         add_option!(options, engine, value, "UCI_Chess960" => {
             let mut searcher = engine.searcher.lock().unwrap();
-            searcher.set_chess960(value.parse::<bool>().unwrap());
+            let value = value.parse::<bool>().unwrap();
+            searcher.set_chess960(value);
         }; UciOptionType::Spin { default: 30, min: 0, max: 65535 });
         add_option!(options, engine, value, "SyzygyPath" => {
             let mut searcher = engine.searcher.lock().unwrap();
@@ -91,16 +101,21 @@ impl Engine {
             time_man,
             sender: tx,
             options,
+            chess960: Rc::new(RefCell::new(false)),
         }
     }
 
-    pub fn parse(&self, input: &str) -> Result<UciCommand> {
-        let searcher = self.searcher.lock().unwrap();
+    pub fn input(&mut self, input: &str, bytes: usize) {
+        let cmd = if bytes == 0 { UciCommand::Quit } else {
+            match UciCommand::parse(input, *self.chess960.borrow()) {
+                Ok(cmd) => cmd,
+                Err(e) => {
+                    println!("{:?}", e);
+                    return;
+                }
+            }
+        };
 
-        UciCommand::parse(input, searcher.chess960)
-    }
-
-    pub fn input(&self, cmd: UciCommand) -> Result<()> {
         match cmd {
             UciCommand::Uci => {
                 println!("id name Cherry {}", ENGINE_VERSION);
@@ -131,9 +146,9 @@ impl Engine {
                 }
             },
             UciCommand::Go(limits) => self.sender.send(ThreadCommand::Go(
-                self.searcher.clone(),
+                Arc::clone(&self.searcher),
                 limits
-            )).map_err(|_| UciParseError::InvalidArguments)?,
+            )).unwrap(),
             UciCommand::SetOption(name, value) => {
                 self.time_man.abort_now();
 
@@ -155,9 +170,7 @@ impl Engine {
             UciCommand::Stop => {
                 self.time_man.abort_now();
             },
-            UciCommand::Quit => self.sender.send(ThreadCommand::Quit).map_err(|_| UciParseError::InvalidArguments)?,
+            UciCommand::Quit => self.sender.send(ThreadCommand::Quit).unwrap(),
         }
-
-        Ok(())
     }
 }
