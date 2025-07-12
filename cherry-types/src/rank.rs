@@ -126,6 +126,7 @@ impl fmt::Display for Rank {
 
 /*----------------------------------------------------------------*/
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RankParseError;
 
 impl From<Rank> for char {

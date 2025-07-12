@@ -12,7 +12,8 @@ pub struct SharedContext {
     pub syzygy: Arc<Option<TableBases<SyzygyAdapter>>>,
     pub syzygy_depth: Arc<AtomicU8>,
     pub time_man: Arc<TimeManager>,
-    pub weights: SearchWeights,
+    pub root_moves: Arc<Vec<Move>>,
+    pub weights: Arc<SearchWeights>,
 }
 
 /*----------------------------------------------------------------*/
@@ -143,7 +144,8 @@ impl Searcher {
                 t_table: Arc::new(TTable::new(256)),
                 syzygy: Arc::new(None),
                 syzygy_depth: Arc::new(AtomicU8::new(1)),
-                weights: SearchWeights::default(),
+                root_moves: Arc::new(Vec::new()),
+                weights: Arc::new(SearchWeights::default()),
                 time_man,
             },
             main_ctx: ThreadContext {
@@ -175,12 +177,22 @@ impl Searcher {
         }
     }
 
-    pub fn search<Info: SearchInfo>(&mut self, limits: &[SearchLimit]) -> (Move, Option<Move>, Score, u8, u64) {
+    pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u8, u64) {
+        self.shared_ctx.time_man.init(self.pos.stm(), &limits);
+        self.shared_ctx.root_moves = Arc::new(limits.iter().find_map(|limit| {
+            if let SearchLimit::SearchMoves(moves) = limit {
+                Some(moves.iter()
+                    .map(|mv_token| Move::parse(self.pos.board(), self.chess960, mv_token).unwrap())
+                    .collect())
+            } else {
+                None
+            }
+        }).unwrap_or(Vec::new()));
         self.main_ctx.reset();
-        self.shared_ctx.time_man.init(self.pos.stm(), limits);
 
         let mut result = (None, None, Score::ZERO, 0);
 
+        //TODO: Thread Voting and MultiPV
         rayon::scope(|s| {
             let chess960 = self.chess960;
 

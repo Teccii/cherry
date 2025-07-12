@@ -237,6 +237,9 @@ impl Evaluator {
             }
         }
 
+        //TODO: take into account mobility along the pin line
+        //Right now the mobility of pinned pieces is not evaluated at all
+        //This could heavily backfire in certain positions
         slider_mobility!(Piece::Bishop, bishop_moves, self.weights.bishop_mobility);
         slider_mobility!(Piece::Rook, rook_moves, self.weights.rook_mobility);
         slider_mobility!(Piece::Queen, queen_moves, self.weights.queen_mobility);

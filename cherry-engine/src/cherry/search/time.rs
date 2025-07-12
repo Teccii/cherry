@@ -14,8 +14,9 @@ const STABILITY_FACTOR: [f32; 5] = [2.5, 1.2, 0.9, 0.8, 0.75];
 
 /*----------------------------------------------------------------*/
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SearchLimit {
+    SearchMoves(Vec<String>),
     WhiteTime(Duration),
     BlackTime(Duration),
     WhiteInc(Duration),
@@ -30,9 +31,6 @@ pub enum SearchLimit {
 
 /*----------------------------------------------------------------*/
 
-//it breaks my heart that these have to be atomic and mutex
-//it just feels like it shouldn't need to be, since only the main thread can write
-//and the helper threads just read it to check if they should abort
 pub struct TimeManager {
     start: AtomicInstant,
     base_time: AtomicU64,
@@ -93,8 +91,9 @@ impl TimeManager {
         let mut infinite = true;
         let mut pondering = false;
 
-        for &limit in limits {
+        for limit in limits {
             match limit {
+                SearchLimit::SearchMoves(_) => { },
                 SearchLimit::WhiteTime(time) => {
                     w_time = time.as_millis() as u64;
                     infinite = false;
@@ -116,13 +115,13 @@ impl TimeManager {
                     infinite = false;
                 },
                 SearchLimit::MovesToGo(moves) => {
-                    moves_to_go = Some(moves);
+                    moves_to_go = Some(*moves);
                 },
                 SearchLimit::MaxDepth(depth ) => {
-                    max_depth = depth;
+                    max_depth = *depth;
                 },
                 SearchLimit::MaxNodes(nodes ) => {
-                    max_nodes = nodes;
+                    max_nodes = *nodes;
                 },
                 SearchLimit::Infinite => {
                     infinite = true;

@@ -134,6 +134,7 @@ impl fmt::Display for File {
 
 /*----------------------------------------------------------------*/
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct FileParseError;
 
 impl From<File> for char {

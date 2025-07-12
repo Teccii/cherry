@@ -70,6 +70,7 @@ impl Piece {
 
 /*----------------------------------------------------------------*/
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PieceParseError;
 
 impl TryFrom<char> for Piece {

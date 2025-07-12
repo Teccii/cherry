@@ -84,6 +84,7 @@ impl UciCommand {
                         let mut fen = String::new();
                         
                         while let Some(part) = reader.next() {
+                            //TODO: could maybe use peekable here as well?
                             if part == "moves" {
                                 moves_token_passed = true;
                                 break;
@@ -124,39 +125,59 @@ impl UciCommand {
             },
             "go" => {
                 let mut options= Vec::new();
+                let mut tokens = reader.peekable();
+                let keywords = &[
+                    "searchmoves", "wtime", "btime", "winc", "binc", "movetime",
+                    "movestogo", "depth", "nodes", "infinite", "ponder"
+                ];
 
-                while let Some(token) = reader.next() {
+                while let Some(&token) = tokens.peek() {
+                    tokens.next();
+
                     options.push(match token {
+                        "searchmoves" => {
+                            let mut moves = Vec::new();
+
+                            while let Some(&mv_token) = tokens.peek() {
+                                if keywords.contains(&mv_token) {
+                                    break;
+                                }
+
+                                moves.push(tokens.next().unwrap().to_owned());
+                            }
+
+                            SearchLimit::SearchMoves(moves)
+                        }
                         "wtime" => {
-                            let millis = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::WhiteTime(Duration::from_millis(millis))
                         },
                         "btime" => {
-                            let millis = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::BlackTime(Duration::from_millis(millis))
                         },
                         "winc" => {
-                            let millis = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::WhiteInc(Duration::from_millis(millis))
                         },
                         "binc" => {
-                            let millis = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::BlackInc(Duration::from_millis(millis))
                         },
                         "movetime" => {
-                            let millis = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::MoveTime(Duration::from_millis(millis))
                         }
                         "movestogo" => {
-                            let moves_to_go = reader.next().and_then(|s| s.parse::<u16>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            let moves_to_go = tokens.next().and_then(|s| s.parse::<u16>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::MovesToGo(moves_to_go)
                         },
                         "depth" =>{
-                            let depth = reader.next().and_then(|s| s.parse::<u8>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            let depth = tokens.next().and_then(|s| s.parse::<u8>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::MaxDepth(depth)
                         },
                         "nodes" => {
-                            let nodes = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            let nodes = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::MaxNodes(nodes)
                         },
                         "infinite" => SearchLimit::Infinite,

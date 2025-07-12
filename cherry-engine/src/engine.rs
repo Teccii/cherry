@@ -42,9 +42,9 @@ impl Engine {
                         let mut output = String::new();
 
                         let (mv, ponder, _, _, _) = if searcher.debug {
-                            searcher.search::<FullInfo>(&limits)
+                            searcher.search::<FullInfo>(limits)
                         } else {
-                            searcher.search::<UciOnly>(&limits)
+                            searcher.search::<UciOnly>(limits)
                         };
 
                         write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.chess960)).unwrap();

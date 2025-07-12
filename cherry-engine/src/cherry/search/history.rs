@@ -1,5 +1,6 @@
 use cherry_core::*;
 use crate::MoveData;
+
 /*----------------------------------------------------------------*/
 
 pub const MAX_HISTORY: i16 = 8192;
@@ -145,26 +146,7 @@ impl History {
                 + self.get_follow_up(board, mv, follow_up).unwrap_or_default()
         }
     }
-
-    /*----------------------------------------------------------------*/
     
-    #[inline(always)]
-    pub fn get_move(
-        &self,
-        board: &Board,
-        mv: Move,
-        counter_move: Option<MoveData>,
-        follow_up: Option<MoveData>
-    ) -> i16 {
-        if board.is_capture(mv) {
-            self.get_capture(board, mv)
-        } else {
-            self.get_quiet(board, mv)
-                + self.get_counter_move(board, mv, counter_move).unwrap_or_default()
-                + self.get_follow_up(board, mv, follow_up).unwrap_or_default()
-        }
-    }
-
     /*----------------------------------------------------------------*/
 
     #[inline(always)]

@@ -53,6 +53,7 @@ impl std::ops::Not for Color {
 
 /*----------------------------------------------------------------*/
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ColorParseError;
 
 impl From<Color> for char {

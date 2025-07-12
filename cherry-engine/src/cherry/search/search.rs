@@ -330,6 +330,10 @@ pub fn search<Node: NodeType>(
         if skip_move == Some(mv) {
             continue;
         }
+        
+        if ply == 0 && (!shared_ctx.root_moves.is_empty() && !shared_ctx.root_moves.contains(&mv)) {
+            continue;
+        }
 
         if Node::PV {
             ctx.search_stack[ply as usize + 1].pv_len = 0;
