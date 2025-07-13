@@ -31,14 +31,12 @@ impl Position {
 
     #[inline(always)]
     pub fn board(&self) -> &Board { &self.board }
-
+    
     #[inline(always)]
     pub fn non_pawn_material(&self) -> bool {
         let pieces = self.board.colors(self.stm());
 
-        pieces != pieces & (
-            self.board.pieces(Piece::Pawn) | self.board.pieces(Piece::King)
-        )
+        pieces != pieces & (self.board.pieces(Piece::Pawn) | self.board.pieces(Piece::King))
     }
     
     #[inline(always)]

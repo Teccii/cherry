@@ -76,6 +76,15 @@ impl Score {
     pub fn is_decisive(self) -> bool {
         self.is_mate() || self.is_tb()
     }
+
+    #[inline(always)]
+    pub fn decisive_in(self) -> Option<i16> {
+        if !self.is_decisive() {
+            return None;
+        }
+        
+        self.mate_in().or_else(|| self.tb_in())
+    }
     
     #[inline(always)]
     pub fn is_infinite(self) -> bool {

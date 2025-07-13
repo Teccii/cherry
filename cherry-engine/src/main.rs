@@ -19,6 +19,7 @@ fn main() -> Result<()> {
         if !engine.input(buffer.trim(), bytes) {
             break;
         }
+
         buffer.clear();
     }
 

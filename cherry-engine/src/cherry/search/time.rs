@@ -8,9 +8,9 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-const MOVE_OVERHEAD: u64 = 30;
-const EXPECTED_MOVES: u16 = 50;
-const STABILITY_FACTOR: [f32; 5] = [2.5, 1.2, 0.9, 0.8, 0.75];
+pub const MOVE_OVERHEAD: u64 = 100;
+const EXPECTED_MOVES: u16 = 64;
+const STABILITY_FACTOR: [f32; 5] = [2.0, 1.3, 0.7, 0.5, 0.3];
 
 /*----------------------------------------------------------------*/
 
@@ -33,9 +33,13 @@ pub enum SearchLimit {
 
 pub struct TimeManager {
     start: AtomicInstant,
+    time: AtomicU64,
+    otime: AtomicU64,
+
     base_time: AtomicU64,
     target_time: AtomicU64,
     max_time: AtomicU64,
+    flag_factor: AtomicU64,
     move_overhead: AtomicU64,
     no_manage: AtomicBool,
     
@@ -57,9 +61,12 @@ impl TimeManager {
     pub fn new() -> TimeManager {
         TimeManager {
             start: AtomicInstant::new(Instant::now()),
+            time: AtomicU64::new(0),
+            otime: AtomicU64::new(0),
             base_time: AtomicU64::new(0),
             target_time: AtomicU64::new(0),
             max_time: AtomicU64::new(0),
+            flag_factor: AtomicU64::new(0),
             move_overhead: AtomicU64::new(MOVE_OVERHEAD),
             no_manage: AtomicBool::new(true),
             prev_move: Mutex::new(None),
@@ -127,10 +134,13 @@ impl TimeManager {
                     infinite = true;
                 },
                 SearchLimit::Ponder => {
-                    infinite = true;
                     pondering = true;
                 }
             }
+        }
+
+        if pondering {
+            infinite = true;
         }
 
         self.pondering.store(pondering, Ordering::Relaxed);
@@ -151,26 +161,22 @@ impl TimeManager {
                 Color::White => (w_time, b_time, w_inc),
                 Color::Black => (b_time, w_time, b_inc),
             };
-            
-            let mut flag_factor = 2;
-            flag_factor += (otime < 20000) as u64;
-            flag_factor += 2 * (otime < 10000) as u64;
-            flag_factor += 2 * (otime < 5000) as u64;
-
-            if time < 30000 {
-                flag_factor = 2;
-            }
-
             let move_overhead = self.move_overhead.load(Ordering::Relaxed);
-            
-            let target_time = (time + inc) / moves_to_go as u64 * 2 / flag_factor - move_overhead;
-            let max_time = (target_time * 7 / 2).min(time - move_overhead);
-            
+            let flag_factor = self.flag_factor(time, otime);
+
+            let max_time = ((time - move_overhead) * 3 / 5).max(move_overhead);
+            let target_time = (
+                (time - move_overhead) / moves_to_go as u64 / flag_factor + inc
+            ).saturating_sub(move_overhead).min(max_time);
+
+            self.time.store(time, Ordering::Relaxed);
+            self.otime.store(otime, Ordering::Relaxed);
+            self.flag_factor.store(flag_factor, Ordering::Relaxed);
             self.base_time.store(target_time, Ordering::Relaxed);
             self.target_time.store(target_time, Ordering::Relaxed);
             self.max_time.store(max_time, Ordering::Relaxed);
         }
-        
+
         self.start.store(Instant::now(), Ordering::Relaxed);
     }
     
@@ -191,13 +197,26 @@ impl TimeManager {
         let mut move_stability = self.move_stability.load(Ordering::Relaxed);
         
         move_stability = if Some(mv) == *prev_move {
-            move_stability + 1
+            (move_stability + 1).min(4)
         } else {
             0
         };
 
-        let move_stability_factor = STABILITY_FACTOR[move_stability.min(4) as usize];
-        let subtree_factor = (1.0 - move_nodes as f32 / nodes as f32) * 3.2 + 0.5;
+        let flag_factor = self.flag_factor.load(Ordering::Relaxed);
+        let new_flag_factor = self.flag_factor(
+            self.time.load(Ordering::Relaxed) - self.elapsed(),
+            self.otime.load(Ordering::Relaxed)
+        );
+        self.flag_factor.store(new_flag_factor, Ordering::Relaxed);
+
+        let move_stability_factor = STABILITY_FACTOR[move_stability as usize];
+        let subtree_factor = (1.0 - move_nodes as f32 / nodes as f32) * 1.5 + 0.5;
+        let flag_factor = if flag_factor != new_flag_factor {
+            0.5 * flag_factor as f32 / new_flag_factor as f32
+        } else {
+            1.0
+        };
+
         let base_time = self.base_time.load(Ordering::Relaxed);
         
         *prev_move = Some(mv);
@@ -206,6 +225,7 @@ impl TimeManager {
         let new_target = (base_time as f32
             * move_stability_factor
             * subtree_factor
+            * flag_factor
         ) as u64;
         
         self.target_time.store(new_target, Ordering::Relaxed);
@@ -215,7 +235,7 @@ impl TimeManager {
     pub fn ponderhit(&self) {
         self.pondering.store(false, Ordering::Relaxed);
         self.infinite.store(false, Ordering::Relaxed);
-        self.start.store(Instant::now(), Ordering::Relaxed);
+        self.no_manage.store(false, Ordering::Relaxed);
     }
 
     /*----------------------------------------------------------------*/
@@ -235,14 +255,14 @@ impl TimeManager {
     #[inline(always)]
     pub fn abort_search(&self, nodes: u64) -> bool {
         self.abort_now.load(Ordering::Relaxed)
-        || self.timeout_search(self.start_time())
+        || self.timeout_search()
         || self.max_nodes.load(Ordering::Relaxed) <= nodes
     }
 
     #[inline(always)]
     pub fn abort_id(&self, depth: u8, nodes: u64) -> bool {
         self.abort_now.load(Ordering::Relaxed)
-        || self.timeout_id(self.start_time())
+        || self.timeout_id()
         || self.max_depth.load(Ordering::Relaxed) < depth
         || self.max_nodes.load(Ordering::Relaxed) <= nodes
     }
@@ -251,23 +271,43 @@ impl TimeManager {
     pub fn start_time(&self) -> Instant {
         self.start.load(Ordering::Relaxed)
     }
-    
+
+    #[inline(always)]
+    pub fn elapsed(&self) -> u64 {
+        self.start_time().elapsed().as_millis() as u64
+    }
+
+    #[inline(always)]
+    pub fn is_infinite(&self) -> bool {
+        self.infinite.load(Ordering::Relaxed)
+    }
+
     #[inline(always)]
     pub fn is_pondering(&self) -> bool {
         self.pondering.load(Ordering::Relaxed)
     }
 
+    #[inline(always)]
+    pub fn no_manage(&self) -> bool {
+        self.no_manage.load(Ordering::Relaxed)
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline(always)]
-    fn timeout_search(&self, start: Instant) -> bool {
-        !self.infinite.load(Ordering::Relaxed)
-            && self.max_time.load(Ordering::Relaxed) < start.elapsed().as_millis() as u64
+    fn flag_factor(&self, time: u64, otime: u64) -> u64 {
+        1 + (3 * time < 2 * otime) as u64
+            + (2 * time < otime) as u64
+            + (3 * time < otime) as u64
     }
 
     #[inline(always)]
-    fn timeout_id(&self, start: Instant) -> bool {
-        !self.infinite.load(Ordering::Relaxed)
-            && self.target_time.load(Ordering::Relaxed) < start.elapsed().as_millis() as u64
+    fn timeout_search(&self) -> bool {
+        !self.is_infinite() && self.max_time.load(Ordering::Relaxed) < self.elapsed()
+    }
+
+    #[inline(always)]
+    fn timeout_id(&self) -> bool {
+        !self.is_infinite() && self.target_time.load(Ordering::Relaxed) < self.elapsed()
     }
 }

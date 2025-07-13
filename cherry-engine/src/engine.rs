@@ -74,14 +74,14 @@ impl Engine {
         add_option!(options, engine, value, "Hash" => {
             let mut searcher = engine.searcher.lock().unwrap();
             searcher.resize_ttable(value.parse::<usize>().unwrap());
-        }; UciOptionType::Spin { default: 64, min: 1, max: 65535 });
+        }; UciOptionType::Spin { default: 256, min: 1, max: 65535 });
         add_option!(options, engine, value, "Threads" => {
             let mut searcher = engine.searcher.lock().unwrap();
             searcher.set_threads(value.parse::<u16>().unwrap());
         }; UciOptionType::Spin { default: 1, min: 1, max: 65535 });
         add_option!(options, engine, value, "Move Overhead" => {
             engine.time_man.set_overhead(value.parse::<u64>().unwrap());
-        }; UciOptionType::Spin { default: 30, min: 0, max: 65535 });
+        }; UciOptionType::Spin { default: MOVE_OVERHEAD as i32, min: 0, max: 65535 });
         add_option!(options, engine, value, "UCI_Chess960" => {
             let mut searcher = engine.searcher.lock().unwrap();
             let value = value.parse::<bool>().unwrap();
@@ -171,7 +171,7 @@ impl Engine {
                 return false;
             },
         }
-
+        
         true
     }
 }

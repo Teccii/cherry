@@ -19,6 +19,7 @@ weights! {
 
     rfp_depth: u8 => RFP_DEPTH,
     rfp_margin: i16 => RFP_MARGIN,
+    rfp_hist: i16 => RFP_HIST,
     rfp_tt: i16 => RFP_TT,
 
     nmp_depth: u8 => NMP_DEPTH,
@@ -58,6 +59,7 @@ pub const RAZOR_MARGIN: i16 = 337;
 
 pub const RFP_DEPTH: u8 = 12;
 pub const RFP_MARGIN: i16 = 93;
+pub const RFP_HIST: i16 = 376;
 pub const RFP_TT: i16 = 20;
 
 pub const NMP_DEPTH: u8 = 4;

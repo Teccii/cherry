@@ -25,8 +25,8 @@ pub struct ThreadContext {
     pub tt_hits: BatchedAtomicCounter,
     pub tt_misses: BatchedAtomicCounter,
     pub tb_hits: BatchedAtomicCounter,
-    pub search_stack: Vec<SearchStack>,
     pub root_nodes: MoveTo<u64>,
+    pub ss: Vec<SearchStack>,
     pub history: History,
     pub sel_depth: u16,
     pub abort_now: bool,
@@ -40,13 +40,14 @@ impl ThreadContext {
         self.tt_hits.reset();
         self.tt_misses.reset();
         self.tb_hits.reset();
-        self.search_stack = vec![
+        self.ss = vec![
             SearchStack {
                 eval: -Score::INFINITE,
-                move_played: None,
+                stat_score: 0,
                 extension: 0,
                 reduction: 0,
                 skip_move: None,
+                move_played: None,
                 pv: [None; MAX_PLY as usize + 1],
                 pv_len: 0,
             };
@@ -107,10 +108,11 @@ impl MoveData {
 #[derive(Debug, Clone)]
 pub struct SearchStack {
     pub eval: Score,
-    pub move_played: Option<MoveData>,
     pub extension: i16,
     pub reduction: i32,
+    pub stat_score: i16,
     pub skip_move: Option<Move>,
+    pub move_played: Option<MoveData>,
     pub pv: [Option<Move>; MAX_PLY as usize + 1],
     pub pv_len: usize,
 }
@@ -154,13 +156,14 @@ impl Searcher {
                 tt_hits: BatchedAtomicCounter::new(),
                 tt_misses: BatchedAtomicCounter::new(),
                 tb_hits: BatchedAtomicCounter::new(),
-                search_stack: vec![
+                ss: vec![
                     SearchStack {
                         eval: -Score::INFINITE,
-                        move_played: None,
+                        stat_score: 0,
                         extension: 0,
                         reduction: 0,
                         skip_move: None,
+                        move_played: None,
                         pv: [None; MAX_PLY as usize + 1],
                         pv_len: 0,
                     };
@@ -179,6 +182,19 @@ impl Searcher {
 
     pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u8, u64) {
         self.shared_ctx.time_man.init(self.pos.stm(), &limits);
+
+        if !self.shared_ctx.time_man.no_manage() {
+            let mut legal_moves = Vec::new();
+            self.pos.board().gen_moves(|moves| {
+                legal_moves.extend(moves);
+                legal_moves.len() > 1
+            });
+
+            if legal_moves.len() == 1 {
+                return (legal_moves[0], None, -Score::INFINITE, 1, 1);
+            }
+        }
+
         self.shared_ctx.root_moves = Arc::new(limits.iter().find_map(|limit| {
             if let SearchLimit::SearchMoves(moves) = limit {
                 Some(moves.iter()
@@ -289,6 +305,10 @@ fn search_worker<Info: SearchInfo>(
             let mut fails = 0;
 
             'asp: loop {
+                if shared_ctx.time_man.abort_id(depth, ctx.nodes.global()) {
+                    break 'id;
+                }
+
                 let (alpha, beta) = if depth > 4
                     && eval.is_some_and(|e| e.abs() < 1000)
                     && fails < 10 {
@@ -314,7 +334,7 @@ fn search_worker<Info: SearchInfo>(
                 }
 
                 window.set_midpoint(score);
-                let root_move = ctx.search_stack[0].pv[0].unwrap();
+                let root_move = ctx.ss[0].pv[0].unwrap();
 
                 shared_ctx.time_man.deepen(
                     thread,
@@ -325,10 +345,10 @@ fn search_worker<Info: SearchInfo>(
                 );
 
                 if (score > alpha && score < beta) || score.is_decisive() {
-                    best_move = Some(root_move);
-                    eval = Some(score);
-                    if score.is_decisive() {
+                    if let Some(ply) = score.decisive_in() && ply.abs() as u16 <= ctx.sel_depth {
                         ponder_move = None;
+                        best_move = Some(root_move);
+                        eval = Some(score);
 
                         if thread == 0 {
                             Info::push(
@@ -343,8 +363,11 @@ fn search_worker<Info: SearchInfo>(
 
                         break 'id;
                     } else if !shared_ctx.time_man.is_pondering() {
-                        ponder_move = ctx.search_stack[0].pv[1];
+                        ponder_move = ctx.ss[0].pv[1];
                     }
+
+                    best_move = Some(root_move);
+                    eval = Some(score);
 
                     break 'asp;
                 }
@@ -435,7 +458,7 @@ impl SearchInfo for DebugInfo {
             ctx.tb_hits.global(),
         ).unwrap();
 
-        let root_stack = &ctx.search_stack[0];
+        let root_stack = &ctx.ss[0];
         let mut board = board.clone();
         let mut i = 0;
 
@@ -491,7 +514,7 @@ impl SearchInfo for UciInfo {
 
         write!(info, "tbhits {} ", ctx.tb_hits.global(), ).unwrap();
 
-        let root_stack = &ctx.search_stack[0];
+        let root_stack = &ctx.ss[0];
         let mut board = board.clone();
         let mut i = 0;
 

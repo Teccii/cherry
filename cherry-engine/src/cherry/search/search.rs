@@ -133,7 +133,7 @@ pub fn search<Node: NodeType>(
     let mut best_move = None;
     let initial_alpha = alpha;
 
-    let skip_move = ctx.search_stack[ply as usize].skip_move;
+    let skip_move = ctx.ss[ply as usize].skip_move;
     let mut tt_entry = skip_move.and_then(|_| shared_ctx.t_table.probe(pos.board()));
 
     if let Some(entry) = tt_entry {
@@ -215,14 +215,14 @@ pub fn search<Node: NodeType>(
 
     let in_check = pos.in_check();
     let static_eval = match skip_move {
-        Some(_) => ctx.search_stack[ply as usize].eval,
+        Some(_) => ctx.ss[ply as usize].eval,
         None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
     };
     
-    ctx.search_stack[ply as usize].eval = static_eval;
+    ctx.ss[ply as usize].eval = static_eval;
     let (prev_eval, prev_ext, prev_reduction) = match ply {
         2.. => {
-            let prev_stack = &ctx.search_stack[ply as usize - 2];
+            let prev_stack = &ctx.ss[ply as usize - 2];
             (Some(prev_stack.eval), prev_stack.extension, prev_stack.reduction)
         },
         _ => (None, 0, 0)
@@ -256,6 +256,7 @@ pub fn search<Node: NodeType>(
 
         let rfp_mult = w.rfp_margin - w.rfp_tt * tt_entry.is_some() as i16;
         let rfp_margin = depth as i16 * rfp_mult - improving as i16 * rfp_mult * 2;
+        
         if !Node::PV && depth < w.rfp_depth
             && !alpha.is_decisive() && static_eval > beta + rfp_margin {
             return (static_eval + beta) / 2
@@ -266,11 +267,11 @@ pub fn search<Node: NodeType>(
         If a reduced search after a null move fails high, we can be quite confident that the best legal move
         would also fail high. This can make the engine blind to zugzwang, so we do an additional verification search.
         */
-        if Node::NMP && depth > w.nmp_depth && ctx.search_stack[ply as usize - 1].move_played.is_some()
+        if Node::NMP && depth > w.nmp_depth && ctx.ss[ply as usize - 1].move_played.is_some()
             && static_eval >= beta && pos.non_pawn_material() && pos.null_move() {
             let nmp_depth = depth.saturating_sub(3 + depth / 3);
 
-            ctx.search_stack[ply as usize].move_played = None;
+            ctx.ss[ply as usize].move_played = None;
             let score = -search::<Node::Alt>(
                 pos,
                 ctx,
@@ -323,8 +324,8 @@ pub fn search<Node: NodeType>(
     let mut move_picker = MovePicker::new(best_move);
     let mut moves_seen = 0;
     
-    let counter_move = (ply >= 1).then(|| ctx.search_stack[ply as usize - 1].move_played).flatten();
-    let follow_up = (ply >= 2).then(|| ctx.search_stack[ply as usize - 2].move_played).flatten();
+    let counter_move = (ply >= 1).then(|| ctx.ss[ply as usize - 1].move_played).flatten();
+    let follow_up = (ply >= 2).then(|| ctx.ss[ply as usize - 2].move_played).flatten();
 
     while let Some(mv) = move_picker.next(pos, &ctx.history, counter_move, follow_up) {
         if skip_move == Some(mv) {
@@ -336,17 +337,19 @@ pub fn search<Node: NodeType>(
         }
 
         if Node::PV {
-            ctx.search_stack[ply as usize + 1].pv_len = 0;
+            ctx.ss[ply as usize + 1].pv_len = 0;
         }
 
         let is_capture = pos.board().is_capture(mv);
         let nodes = ctx.nodes.local();
-        let hist = ctx.history.get_move(
+        let stat_score = ctx.history.get_move(
             pos.board(),
             mv,
             counter_move,
             follow_up
         );
+        
+        ctx.ss[ply as usize].stat_score = stat_score;
 
         let mut extension: i16 = 0;
         let mut reduction: i32 = w.base_reduction; //base reduction to compensate for other reductions
@@ -365,8 +368,8 @@ pub fn search<Node: NodeType>(
                 let s_beta = entry.score - depth as i16;
                 let s_depth = depth / 2;
 
-                ctx.search_stack[ply as usize].skip_move = Some(mv);
-                ctx.search_stack[ply as usize].reduction = (depth / 2) as i32;
+                ctx.ss[ply as usize].skip_move = Some(mv);
+                ctx.ss[ply as usize].reduction = (depth / 2) as i32;
 
                 let s_score = search::<Node::Alt>(
                     pos,
@@ -379,7 +382,7 @@ pub fn search<Node: NodeType>(
                     cut_node,
                 );
 
-                ctx.search_stack[ply as usize].skip_move = None;
+                ctx.ss[ply as usize].skip_move = None;
 
                 if s_score < s_beta {
                     extension += 1;
@@ -422,14 +425,14 @@ pub fn search<Node: NodeType>(
         reduction += w.non_pv_reduction * !Node::PV as i32;
         reduction += w.not_improving_reduction * improving as i32;
         reduction += w.cut_node_reduction * cut_node as i32;
-        reduction -= hist as i32 / w.hist_reduction;
+        reduction -= stat_score as i32 / w.hist_reduction;
 
         if !Node::PV && ply != 0 && pos.non_pawn_material()
             && best_score.map_or(false, |s: Score| !s.is_decisive()) {
 
             if is_capture {
                 //SEE pruning
-                let see_margin = w.see_margin * depth as i16 - hist / w.see_hist;
+                let see_margin = w.see_margin * depth as i16 * depth as i16 - stat_score / w.see_hist;
                 if depth < w.see_depth
                     && move_picker.phase() == Phase::YieldBadCaptures
                     && pos.board().see(mv) < see_margin {
@@ -447,7 +450,7 @@ pub fn search<Node: NodeType>(
                 let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
 
                 //History Pruning
-                if hist < w.hist_margin * r_depth as i16 {
+                if stat_score < w.hist_margin * r_depth as i16 {
                     move_picker.skip_quiets();
                     continue;
                 }
@@ -456,6 +459,7 @@ pub fn search<Node: NodeType>(
                 let futile_margin = w.futile_base
                     + w.futile_margin * r_depth as i16
                     + w.futile_improving * improving as i16;
+
                 if !pos.in_check() && r_depth < w.futile_depth && static_eval <= alpha - futile_margin {
                     move_picker.skip_quiets();
                     continue;
@@ -463,7 +467,7 @@ pub fn search<Node: NodeType>(
             }
         }
 
-        ctx.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
+        ctx.ss[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv);
 
         /*
@@ -473,11 +477,11 @@ pub fn search<Node: NodeType>(
             extension += 1;
         }
 
-        ctx.search_stack[ply as usize].extension = extension;
+        ctx.ss[ply as usize].extension = extension;
 
         let depth = (depth as i16 + extension).clamp(0, MAX_DEPTH as i16) as u8;
         if moves_seen == 0 {
-            ctx.search_stack[ply as usize].reduction = 0;
+            ctx.ss[ply as usize].reduction = 0;
             score = -search::<Node>(
                 pos,
                 ctx,
@@ -489,7 +493,7 @@ pub fn search<Node: NodeType>(
                 false,
             );
         } else {
-            ctx.search_stack[ply as usize].reduction = reduction / 1024;
+            ctx.ss[ply as usize].reduction = reduction / 1024;
             let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
 
             score = -search::<Node::Alt>(
@@ -504,7 +508,7 @@ pub fn search<Node: NodeType>(
             );
 
             if r_depth < depth && score > alpha {
-                ctx.search_stack[ply as usize].reduction = 0;
+                ctx.ss[ply as usize].reduction = 0;
                 score = -search::<Node::Alt>(
                     pos,
                     ctx,
@@ -518,7 +522,7 @@ pub fn search<Node: NodeType>(
             }
 
             if Node::PV && score > alpha {
-                ctx.search_stack[ply as usize].reduction = 0;
+                ctx.ss[ply as usize].reduction = 0;
                 score = -search::<Node>(
                     pos,
                     ctx,
@@ -548,10 +552,10 @@ pub fn search<Node: NodeType>(
             best_move = Some(mv);
 
             if Node::PV && !ctx.abort_now {
-                let child = &ctx.search_stack[ply as usize + 1];
+                let child = &ctx.ss[ply as usize + 1];
                 let (child_pv, len) = (child.pv, child.pv_len);
 
-                ctx.search_stack[ply as usize].update_pv(mv, &child_pv[..len]);
+                ctx.ss[ply as usize].update_pv(mv, &child_pv[..len]);
             }
         }
 
@@ -683,8 +687,8 @@ pub fn q_search<Node: NodeType>(
     let mut move_picker = QMovePicker::new();
     let mut moves_seen = 0;
 
-    let counter_move = (ply >= 1).then(|| ctx.search_stack[ply as usize - 1].move_played).flatten();
-    let follow_up = (ply >= 2).then(|| ctx.search_stack[ply as usize - 2].move_played).flatten();
+    let counter_move = (ply >= 1).then(|| ctx.ss[ply as usize - 1].move_played).flatten();
+    let follow_up = (ply >= 2).then(|| ctx.ss[ply as usize - 2].move_played).flatten();
 
     while let Some(mv) = move_picker.next(pos, &ctx.history, counter_move, follow_up) {
         let is_check = pos.board().is_check(mv);
