@@ -38,6 +38,19 @@ impl Position {
 
         pieces != pieces & (self.board.pieces(Piece::Pawn) | self.board.pieces(Piece::King))
     }
+
+    #[inline(always)]
+    pub fn can_castle(&self) -> bool {
+        for &color in &Color::ALL {
+            let rights = self.board.castle_rights(color);
+
+            if rights.short.is_some() || rights.long.is_some() {
+                return true;
+            }
+        }
+
+        false
+    }
     
     #[inline(always)]
     pub fn stm(&self) -> Color { self.board.stm() }

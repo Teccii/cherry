@@ -5,7 +5,7 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum TTFlag {
+pub enum TTBound {
     None,
     UpperBound,
     LowerBound,
@@ -20,7 +20,7 @@ pub struct TTData {
     pub score: Score,
     pub eval: Option<Score>,
     pub table_mv: Option<Move>,
-    pub flag: TTFlag,
+    pub flag: TTBound,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -30,7 +30,7 @@ pub struct TTPackedData {
     pub score: Score,
     pub eval: Score,
     pub table_mv: Option<Move>,
-    pub flag: TTFlag,
+    pub flag: TTBound,
 }
 
 impl TTData {
@@ -40,7 +40,7 @@ impl TTData {
         score: Score,
         eval: Option<Score>,
         table_mv: Option<Move>,
-        flag: TTFlag,
+        flag: TTBound,
     ) -> TTData {
         TTData {
             depth,
@@ -133,6 +133,19 @@ impl TTable {
 
     /*----------------------------------------------------------------*/
 
+    pub fn prefetch(&self, board: &Board) {
+        #[cfg(target_feature = "sse")] {
+            use std::arch::x86_64::*;
+
+            let hash = board.hash();
+            let index = self.index(hash);
+
+            unsafe {
+                _mm_prefetch(self.entries.as_ptr().add(index) as *const i8, _MM_HINT_T0)
+            }
+        }
+    }
+
     pub fn probe(&self, board: &Board) -> Option<TTData> {
         let hash = board.hash();
         let index = self.index(hash);
@@ -154,7 +167,7 @@ impl TTable {
         score: Score,
         eval: Option<Score>,
         table_mv: Option<Move>,
-        flag: TTFlag,
+        flag: TTBound,
     ) {
         let new_data = TTData::new(
             depth,
@@ -190,7 +203,7 @@ impl TTable {
         let new_priority = new_data.depth + new_data.flag as u8;
         let old_priority = old_data.depth + old_data.flag as u8;
         
-        old_data.flag == TTFlag::None || new_priority >= old_priority
+        old_data.flag == TTBound::None || new_priority >= old_priority
     }
 
     #[inline(always)]

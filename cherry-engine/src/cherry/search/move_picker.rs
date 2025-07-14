@@ -11,6 +11,17 @@ pub const MAX_MOVES: usize = 218;
 #[derive(Debug, Copy, Clone)]
 pub struct ScoredMove(pub Move, pub i16);
 
+fn select_next(moves: &ArrayVec<ScoredMove, MAX_MOVES>) -> Option<usize> {
+    if moves.is_empty() {
+        return None;
+    }
+
+    moves.iter()
+        .enumerate()
+        .max_by_key(|(_, mv)| mv.1)
+        .map(|(i, _)| i)
+}
+
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -64,6 +75,8 @@ impl MovePicker {
             _ => self.phase
         }
     }
+
+    /*----------------------------------------------------------------*/
     
     pub fn next(
         &mut self,
@@ -97,10 +110,17 @@ impl MovePicker {
             self.phase = Phase::YieldGoodCaptures;
             
             let board = pos.board();
-            
-            for moves in self.piece_moves.iter().copied() {
+            let mask = board.colors(!board.stm());
+
+            for mut moves in self.piece_moves.iter().copied() {
+                if moves.piece == Piece::Pawn {
+                    moves.to &= mask | board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
+                } else {
+                    moves.to &= mask;
+                }
+
                 for mv in moves {
-                    if self.hash_move == Some(mv) || !board.is_capture(mv) {
+                    if self.hash_move == Some(mv) {
                         continue;
                     }
                     
@@ -114,16 +134,13 @@ impl MovePicker {
                     }
                 }
             }
-
-            self.good_captures.sort_by_key(|mv| mv.1);
-            self.bad_captures.sort_by_key(|mv| mv.1);
         }
 
         /*----------------------------------------------------------------*/
 
         if self.phase == Phase::YieldGoodCaptures {
-            if let Some(mv) = self.good_captures.pop() {
-                return Some(mv.0);
+            if let Some(index) = select_next(&self.good_captures) {
+                return self.good_captures.swap_pop(index).map(|mv| mv.0);
             }
             
             self.phase = Phase::GenQuiets;
@@ -133,10 +150,17 @@ impl MovePicker {
 
         if self.phase == Phase::GenQuiets {
             let board = pos.board();
+            let mask = !board.colors(!board.stm());
 
-            for moves in self.piece_moves.iter().copied() {
+            for mut moves in self.piece_moves.iter().copied() {
+                if moves.piece == Piece::Pawn {
+                    moves.to &= mask & !board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
+                } else {
+                    moves.to &= mask;
+                }
+
                 for mv in moves {
-                    if self.hash_move == Some(mv) || board.is_capture(mv) {
+                    if self.hash_move == Some(mv) {
                         continue;
                     }
                     
@@ -147,16 +171,15 @@ impl MovePicker {
                     self.quiets.push(ScoredMove(mv, score));
                 }
             }
-            
-            self.quiets.sort_by_key(|mv| mv.1);
+
             self.phase = Phase::YieldQuiets;
         }
 
         /*----------------------------------------------------------------*/
 
         if self.phase == Phase::YieldQuiets {
-            if let Some(mv) = self.quiets.pop() {
-                return Some(mv.0);
+            if let Some(index) = select_next(&self.quiets) {
+                return self.quiets.swap_pop(index).map(|mv| mv.0);
             }
             
             self.phase = Phase::YieldBadCaptures;
@@ -165,8 +188,8 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.phase == Phase::YieldBadCaptures {
-            if let Some(mv) = self.bad_captures.pop() {
-                return Some(mv.0);
+            if let Some(index) = select_next(&self.bad_captures) {
+                return self.bad_captures.swap_pop(index).map(|mv| mv.0);
             }
             
             self.phase = Phase::Finished;
@@ -240,13 +263,12 @@ impl QMovePicker {
                 }
             }
 
-            self.evasions.sort_by_key(|mv| mv.1);
             self.phase = QPhase::YieldEvasions;
         }
         
         if self.phase == QPhase::YieldEvasions {
-            if let Some(mv) = self.evasions.pop() {
-                return Some(mv.0);
+            if let Some(index) = select_next(&self.evasions) {
+                return self.evasions.swap_pop(index).map(|mv| mv.0);
             }
             
             self.phase = QPhase::Finished;
@@ -254,13 +276,16 @@ impl QMovePicker {
         
         if self.phase == QPhase::GenCaptures {
             let board = pos.board();
+            let mask = board.colors(!board.stm());
 
-            for moves in self.piece_moves.iter().copied() {
+            for mut moves in self.piece_moves.iter().copied() {
+                if moves.piece == Piece::Pawn {
+                    moves.to &= mask | board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
+                } else {
+                    moves.to &= mask;
+                }
+
                 for mv in moves {
-                    if !board.is_capture(mv) {
-                        continue;
-                    }
-
                     let see = board.see(mv);
                     let score = history.get_capture(board, mv);
 
@@ -269,16 +294,15 @@ impl QMovePicker {
                     }
                 }
             }
-            
-            self.captures.sort_by_key(|mv| mv.1);
+
             self.phase = QPhase::YieldCaptures;
         }
 
         /*----------------------------------------------------------------*/
 
         if self.phase == QPhase::YieldCaptures {
-            if let Some(mv) = self.captures.pop() {
-                return Some(mv.0);
+            if let Some(index) = select_next(&self.captures) {
+                return self.captures.swap_pop(index).map(|mv| mv.0);
             }
             
             self.phase = QPhase::Finished;

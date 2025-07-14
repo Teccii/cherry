@@ -14,23 +14,6 @@ const STABILITY_FACTOR: [f32; 5] = [2.0, 1.3, 0.7, 0.5, 0.3];
 
 /*----------------------------------------------------------------*/
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SearchLimit {
-    SearchMoves(Vec<String>),
-    WhiteTime(Duration),
-    BlackTime(Duration),
-    WhiteInc(Duration),
-    BlackInc(Duration),
-    MoveTime(Duration),
-    MovesToGo(u16),
-    MaxDepth(u8),
-    MaxNodes(u64),
-    Infinite,
-    Ponder,
-}
-
-/*----------------------------------------------------------------*/
-
 pub struct TimeManager {
     start: AtomicInstant,
     time: AtomicU64,
@@ -135,7 +118,7 @@ impl TimeManager {
                 },
                 SearchLimit::Ponder => {
                     pondering = true;
-                }
+                },
             }
         }
 

@@ -4,7 +4,7 @@
 mod cherry;
 mod engine;
 
-use std::io;
+use std::{env, io};
 use cherry_core::*;
 use cherry::*;
 use engine::*;
@@ -14,6 +14,15 @@ use engine::*;
 fn main() -> Result<()> {
     let mut buffer = String::new();
     let mut engine = Engine::new();
+    let args = env::args()
+        .skip(1)
+        .collect::<Vec<String>>()
+        .join(" ");
+
+    if !args.is_empty() {
+        engine.input(args.trim(), args.len());
+        return Ok(());
+    }
     
     while let Ok(bytes) = io::stdin().read_line(&mut buffer) {
         if !engine.input(buffer.trim(), bytes) {

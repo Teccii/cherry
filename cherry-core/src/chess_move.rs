@@ -182,7 +182,7 @@ impl Move {
         Ok(mv)
     }
     
-    pub fn display(self, board: &Board, chess960: bool) -> impl fmt::Display {
+    pub fn display(self, board: &Board, chess960: bool) -> Move {
         if chess960 {
             return self;
         }

@@ -7,22 +7,22 @@ include!(concat!(env!("OUT_DIR"), "/slider_moves.rs"));
 
 #[inline(always)]
 pub fn bishop_moves(sq: Square, blockers: Bitboard) -> Bitboard {
-    #[cfg(not(feature = "pext"))] {
+    #[cfg(not(target_feature = "bmi2"))] {
         SLIDER_MOVES[bishop_magic_index(sq, blockers)]
     }
 
-    #[cfg(feature = "pext")] unsafe {
+    #[cfg(target_feature = "bmi2")] unsafe {
         Bitboard(_pdep_u64(SLIDER_MOVES[bishop_magic_index(sq, blockers)] as u64, bishop_rays(sq).0))
     }
 }
 
 #[inline(always)]
 pub fn rook_moves(sq: Square, blockers: Bitboard) -> Bitboard {
-    #[cfg(not(feature = "pext"))] {
+    #[cfg(not(target_feature = "bmi2"))] {
         SLIDER_MOVES[rook_magic_index(sq, blockers)]
     }
 
-    #[cfg(feature = "pext")] unsafe {
+    #[cfg(target_feature = "bmi2")] unsafe {
         Bitboard(_pdep_u64(SLIDER_MOVES[rook_magic_index(sq, blockers)] as u64, rook_rays(sq).0))
     }
 }

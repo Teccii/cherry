@@ -1,8 +1,11 @@
 use std::{fmt, str::FromStr, time::Duration};
-use super::SearchLimit;
 use cherry_core::*;
 
+/*----------------------------------------------------------------*/
+
 pub type Result<T> = std::result::Result<T, UciParseError>;
+
+/*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone)]
 pub enum UciCommand {
@@ -12,12 +15,37 @@ pub enum UciCommand {
     PonderHit,
     Position(Board, Vec<Move>),
     Go(Vec<SearchLimit>),
-    SetOption(String, String),
+    SetOption {
+        name: String,
+        value: String,
+    },
     Debug(bool),
     Display,
+    Bench {
+        depth: u8,
+        threads: u16,
+        hash: u16,
+    },
     Stop,
     Quit
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SearchLimit {
+    SearchMoves(Vec<String>),
+    WhiteTime(Duration),
+    BlackTime(Duration),
+    WhiteInc(Duration),
+    BlackInc(Duration),
+    MoveTime(Duration),
+    MovesToGo(u16),
+    MaxDepth(u8),
+    MaxNodes(u64),
+    Infinite,
+    Ponder,
+}
+
+/*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UciOptionType {
@@ -55,6 +83,8 @@ impl fmt::Display for UciOptionType {
         Ok(())
     }
 }
+
+/*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum UciParseError {
@@ -204,7 +234,14 @@ impl UciCommand {
                     .map(str::to_owned)
                     .unwrap_or(String::from("<empty>"));
                 
-                Ok(UciCommand::SetOption(name, value))
+                Ok(UciCommand::SetOption { name, value })
+            },
+            "bench" => {
+                let depth = reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(12);
+                let threads = reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1);
+                let hash = reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(16);
+
+                Ok(UciCommand::Bench { depth, threads, hash })
             },
             "debug" => {
                 let value = reader.next().is_some_and(|s| s == "on");

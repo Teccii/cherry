@@ -28,7 +28,7 @@ impl NodeType for NonPV {
     const PV: bool = false;
     const NMP: bool = true;
 
-    type Alt = NoNMP;
+    type Alt = NonPV;
 }
 
 pub struct NoNMP;
@@ -37,7 +37,7 @@ impl NodeType for NoNMP {
     const PV: bool = false;
     const NMP: bool = false;
 
-    type Alt = NoNMP;
+    type Alt = NonPV;
 }
 /*----------------------------------------------------------------*/
 
@@ -91,18 +91,6 @@ pub fn search<Node: NodeType>(
     mut beta: Score,
     cut_node: bool,
 ) -> Score {
-    if ply != 0 && (ctx.abort_now || shared_ctx.time_man.abort_search(ctx.nodes.global())) {
-        ctx.abort_now();
-        return Score::INFINITE;
-    }
-
-    ctx.nodes.inc();
-    ctx.update_sel_depth(ply);
-
-    if ply != 0 && pos.is_draw() {
-        return Score::ZERO;
-    }
-
     if depth == 0 || ply >= MAX_PLY {
         return q_search::<Node>(
             pos,
@@ -114,7 +102,21 @@ pub fn search<Node: NodeType>(
         );
     }
 
+    ctx.ss[ply as usize].pv_len = 0;
+
+    if ply != 0 && (ctx.abort_now || shared_ctx.time_man.abort_search(ctx.nodes.global())) {
+        ctx.abort_now();
+        return Score::INFINITE;
+    }
+
+    ctx.nodes.inc();
+    ctx.update_sel_depth(ply);
+
     if ply != 0 {
+        if pos.is_draw() {
+            return Score::ZERO;
+        }
+
         /*
         Mate Distance Pruning:
         If a forced mate has already been found, prune branches where a shorter mate is not possible.
@@ -131,10 +133,9 @@ pub fn search<Node: NodeType>(
     }
 
     let mut best_move = None;
-    let initial_alpha = alpha;
-
     let skip_move = ctx.ss[ply as usize].skip_move;
     let mut tt_entry = skip_move.and_then(|_| shared_ctx.t_table.probe(pos.board()));
+    let initial_alpha = alpha;
 
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
@@ -143,24 +144,22 @@ pub fn search<Node: NodeType>(
         if entry.table_mv.is_some() && best_move.is_none() {
             //We can't trust this entry if the move is invalid
             tt_entry = None;
-        }
-
-        if !Node::PV && entry.depth >= depth {
+        } else if !Node::PV && entry.depth >= depth {
             let score = entry.score;
 
             match entry.flag {
-                TTFlag::Exact => return score,
-                TTFlag::UpperBound => {
+                TTBound::Exact => return score,
+                TTBound::UpperBound => {
                     if score <= alpha {
                         return score;
                     }
                 }
-                TTFlag::LowerBound => {
+                TTBound::LowerBound => {
                     if score >= beta {
                         return score;
                     }
                 },
-                TTFlag::None => unreachable!()
+                TTBound::None => unreachable!()
             }
         }
     } else {
@@ -168,9 +167,11 @@ pub fn search<Node: NodeType>(
     }
     
     let (mut syzygy_max, mut syzygy_min) = (Score::MAX_MATE, -Score::MAX_MATE);
-    if ply != 0 && skip_move.is_none()
+    if shared_ctx.syzygy.is_some()
+        && ply != 0 && skip_move.is_none()
         && depth >= shared_ctx.syzygy_depth.load(Ordering::Relaxed)
-        && shared_ctx.syzygy.is_some() {
+        && pos.board().halfmove_clock() == 0
+        && !pos.can_castle() {
         if let Some(wdl) = Option::as_ref(&shared_ctx.syzygy)
             .and_then(|tb| probe_wdl(tb, pos.board())) {
             ctx.tb_hits.inc();
@@ -182,14 +183,14 @@ pub fn search<Node: NodeType>(
             };
 
             let tb_bound = match wdl {
-                WdlProbeResult::Win => TTFlag::LowerBound,
-                WdlProbeResult::Loss => TTFlag::UpperBound,
-                _ => TTFlag::Exact,
+                WdlProbeResult::Win => TTBound::LowerBound,
+                WdlProbeResult::Loss => TTBound::UpperBound,
+                _ => TTBound::Exact,
             };
 
-            if tb_bound == TTFlag::Exact
-                || (tb_bound == TTFlag::LowerBound && tb_score >= beta)
-                || (tb_bound == TTFlag::UpperBound && tb_score <= alpha) {
+            if tb_bound == TTBound::Exact
+                || (tb_bound == TTBound::LowerBound && tb_score >= beta)
+                || (tb_bound == TTBound::UpperBound && tb_score <= alpha) {
                 shared_ctx.t_table.store(
                     pos.board(),
                     depth,
@@ -202,12 +203,12 @@ pub fn search<Node: NodeType>(
                 return tb_score;
             }
 
-            if Node::PV && tb_bound == TTFlag::LowerBound {
+            if Node::PV && tb_bound == TTBound::LowerBound {
                 alpha = alpha.max(tb_score);
                 syzygy_min = tb_score;
             }
 
-            if Node::PV && tb_bound == TTFlag::UpperBound {
+            if Node::PV && tb_bound == TTBound::UpperBound {
                 syzygy_max = tb_score;
             }
         }
@@ -231,14 +232,13 @@ pub fn search<Node: NodeType>(
     let improving = prev_eval.is_some_and(|e| !in_check && static_eval > e);
     let w = &shared_ctx.weights;
 
-    if !in_check && skip_move.is_none() && !alpha.is_decisive() && !beta.is_decisive(){
+    if !Node::PV && !in_check && skip_move.is_none() && !alpha.is_decisive() && !beta.is_decisive(){
         /*
         Razoring: If the static evaluation of the position is below alpha by a significant margin,
         skip searching this branch entirely and drop into the quiescence search.
         */
         let razor_margin = w.razor_margin * depth as i16;
-        if !Node::PV && depth < w.razor_depth
-            && static_eval < alpha - razor_margin {
+        if depth < w.razor_depth && static_eval < alpha - razor_margin {
             return q_search::<Node::Alt>(
                 pos,
                 ctx,
@@ -257,8 +257,7 @@ pub fn search<Node: NodeType>(
         let rfp_mult = w.rfp_margin - w.rfp_tt * tt_entry.is_some() as i16;
         let rfp_margin = depth as i16 * rfp_mult - improving as i16 * rfp_mult * 2;
         
-        if !Node::PV && depth < w.rfp_depth
-            && !alpha.is_decisive() && static_eval > beta + rfp_margin {
+        if depth < w.rfp_depth && !alpha.is_decisive() && static_eval > beta + rfp_margin {
             return (static_eval + beta) / 2
         }
 
@@ -272,7 +271,7 @@ pub fn search<Node: NodeType>(
             let nmp_depth = depth.saturating_sub(3 + depth / 3);
 
             ctx.ss[ply as usize].move_played = None;
-            let score = -search::<Node::Alt>(
+            let score = -search::<NoNMP>(
                 pos,
                 ctx,
                 shared_ctx,
@@ -290,7 +289,7 @@ pub fn search<Node: NodeType>(
                     return score;
                 }
 
-                let v_score = search::<Node::Alt>(
+                let v_score = search::<NoNMP>(
                     pos,
                     ctx,
                     shared_ctx,
@@ -322,22 +321,20 @@ pub fn search<Node: NodeType>(
     let mut quiets: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
     let mut captures: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
     let mut move_picker = MovePicker::new(best_move);
+    let mut move_exists = false;
     let mut moves_seen = 0;
     
     let counter_move = (ply >= 1).then(|| ctx.ss[ply as usize - 1].move_played).flatten();
     let follow_up = (ply >= 2).then(|| ctx.ss[ply as usize - 2].move_played).flatten();
 
     while let Some(mv) = move_picker.next(pos, &ctx.history, counter_move, follow_up) {
+        move_exists = true;
         if skip_move == Some(mv) {
             continue;
         }
         
         if ply == 0 && (!shared_ctx.root_moves.is_empty() && !shared_ctx.root_moves.contains(&mv)) {
             continue;
-        }
-
-        if Node::PV {
-            ctx.ss[ply as usize + 1].pv_len = 0;
         }
 
         let is_capture = pos.board().is_capture(mv);
@@ -362,7 +359,7 @@ pub fn search<Node: NodeType>(
         if let Some(entry) = tt_entry {
             if depth >= w.singular_depth && ply != 0
                 && entry.table_mv == Some(mv) && entry.depth >= depth - 3
-                && matches!(entry.flag, TTFlag::Exact | TTFlag::LowerBound)
+                && matches!(entry.flag, TTBound::Exact | TTBound::LowerBound)
                 && !entry.score.is_decisive() {
 
                 let s_beta = entry.score - depth as i16;
@@ -469,6 +466,7 @@ pub fn search<Node: NodeType>(
 
         ctx.ss[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv);
+        shared_ctx.t_table.prefetch(pos.board());
 
         /*
         Check Extension: Extend the search if we give check.
@@ -584,7 +582,7 @@ pub fn search<Node: NodeType>(
         }
     }
 
-    if moves_seen == 0 {
+    if !move_exists {
         return if pos.in_check() {
             Score::new_mated(ply)
         } else {
@@ -602,9 +600,9 @@ pub fn search<Node: NodeType>(
     
     if skip_move.is_none() && !ctx.abort_now {
         let flag = match () {
-            _ if best_score <= initial_alpha => TTFlag::UpperBound,
-            _ if best_score >= beta => TTFlag::LowerBound,
-            _ => TTFlag::Exact,
+            _ if best_score <= initial_alpha => TTBound::UpperBound,
+            _ if best_score >= beta => TTBound::LowerBound,
+            _ => TTBound::Exact,
         };
 
         shared_ctx.t_table.store(
@@ -619,8 +617,6 @@ pub fn search<Node: NodeType>(
 
     best_score
 }
-
-/*----------------------------------------------------------------*/
 
 /*----------------------------------------------------------------*/
 
@@ -642,36 +638,34 @@ pub fn q_search<Node: NodeType>(
     ctx.nodes.inc();
     ctx.update_sel_depth(ply);
 
-    if pos.is_draw() {
-        return Score::ZERO;
+    if ply >= MAX_PLY {
+        return pos.eval();
     }
 
-    let initial_alpha = alpha;
     let tt_entry = shared_ctx.t_table.probe(pos.board());
+    let initial_alpha = alpha;
+
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
 
-        let score = entry.score;
-        match entry.flag {
-            TTFlag::Exact => return score,
-            TTFlag::UpperBound => if score <= alpha {
-                return score;
-            },
-            TTFlag::LowerBound => if score >= beta {
-                return score;
-            },
-            TTFlag::None => unreachable!()
+        if !Node::PV {
+            let score = entry.score;
+            match entry.flag {
+                TTBound::Exact => return score,
+                TTBound::UpperBound => if score <= alpha {
+                    return score;
+                },
+                TTBound::LowerBound => if score >= beta {
+                    return score;
+                },
+                TTBound::None => unreachable!()
+            }
         }
     } else {
         ctx.tt_misses.inc();
     }
 
     let static_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval());
-
-    if ply >= MAX_PLY {
-        return static_eval;
-    }
-    
     if !pos.in_check() {
         if static_eval >= beta {
             return static_eval;
@@ -719,6 +713,8 @@ pub fn q_search<Node: NodeType>(
         }
 
         pos.make_move(mv);
+        shared_ctx.t_table.prefetch(pos.board());
+
         let score = -q_search::<Node>(
             pos,
             ctx,
@@ -746,9 +742,9 @@ pub fn q_search<Node: NodeType>(
 
     if !ctx.abort_now && let Some(best_score) = best_score {
         let flag = match () {
-            _ if best_score <= initial_alpha => TTFlag::UpperBound,
-            _ if best_score >= beta => TTFlag::LowerBound,
-            _ => TTFlag::Exact,
+            _ if best_score <= initial_alpha => TTBound::UpperBound,
+            _ if best_score >= beta => TTBound::LowerBound,
+            _ => TTBound::Exact,
         };
 
         shared_ctx.t_table.store(
