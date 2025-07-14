@@ -68,7 +68,7 @@ pub const NMP_VERIFY_DEPTH: u8 = 12;
 pub const IIR_DEPTH: u8 = 6;
 
 pub const SEE_DEPTH: u8 = 10;
-pub const SEE_MARGIN: i16 = -44;
+pub const SEE_MARGIN: i16 = -91;
 pub const SEE_HIST: i16 = 61;
 
 pub const HIST_MARGIN: i16 = -4300;

@@ -179,17 +179,7 @@ impl TTable {
         
         let hash = board.hash();
         let index = self.index(hash);
-        
-        let old_entry = &self.entries[index];
-        let old_data = old_entry.data.load(Ordering::Relaxed);
-        
-        if old_entry.key.load(Ordering::Relaxed) ^ old_data == hash {
-            if TTable::replace(new_data, TTData::from_bits(old_data)) {
-                old_entry.set(hash, new_data);
-            }
-        } else {
-            old_entry.set(hash, new_data);
-        }
+        self.entries[index].set(hash, new_data);
     }
     
     pub fn clean(&self) {
@@ -197,14 +187,6 @@ impl TTable {
     }
 
     /*----------------------------------------------------------------*/
-
-    #[inline(always)]
-    fn replace(new_data: TTData, old_data: TTData) -> bool {
-        let new_priority = new_data.depth + new_data.flag as u8;
-        let old_priority = old_data.depth + old_data.flag as u8;
-        
-        old_data.flag == TTBound::None || new_priority >= old_priority
-    }
 
     #[inline(always)]
     fn index(&self, hash: u64) -> usize {

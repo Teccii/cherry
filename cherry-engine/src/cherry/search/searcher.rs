@@ -196,15 +196,17 @@ impl Searcher {
             }
         }
 
-        self.shared_ctx.root_moves = limits.iter().find_map(|limit| {
-            if let SearchLimit::SearchMoves(moves) = limit {
-                Some(moves.iter()
-                    .map(|mv_token| Move::parse(self.pos.board(), self.chess960, mv_token).unwrap())
-                    .collect())
-            } else {
-                None
+        self.shared_ctx.root_moves.clear();
+        
+        for limit in &limits {
+            match limit {
+                SearchLimit::SearchMoves(moves) => for mv in moves {
+                    self.shared_ctx.root_moves.push(Move::parse(self.pos.board(), self.chess960, mv).unwrap());
+                },
+                _ => { }
             }
-        }).unwrap_or(ArrayVec::new());
+        }
+        
         self.main_ctx.reset();
 
         let mut result = (None, None, Score::ZERO, 0);
@@ -360,7 +362,7 @@ fn search_worker<Info: SearchInfo>(
                     fails += 1;
                     window.fail_low();
 
-                    Info::push(
+                    /*Info::push(
                         pos.board(),
                         &ctx,
                         &shared_ctx,
@@ -368,12 +370,12 @@ fn search_worker<Info: SearchInfo>(
                         depth,
                         Some(score),
                         chess960,
-                    );
+                    );*/
                 } else if score >= beta {
                     fails += 1;
                     window.fail_high();
 
-                    Info::push(
+                    /*Info::push(
                         pos.board(),
                         &ctx,
                         &shared_ctx,
@@ -381,7 +383,7 @@ fn search_worker<Info: SearchInfo>(
                         depth,
                         Some(score),
                         chess960,
-                    );
+                    );*/
                 }
             }
 

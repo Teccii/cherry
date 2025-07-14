@@ -91,6 +91,13 @@ pub fn search<Node: NodeType>(
     mut beta: Score,
     cut_node: bool,
 ) -> Score {
+    ctx.ss[ply as usize].pv_len = 0;
+
+    if ply != 0 && (ctx.abort_now || shared_ctx.time_man.abort_search(ctx.nodes.global())) {
+        ctx.abort_now();
+        return Score::INFINITE;
+    }
+
     if depth == 0 || ply >= MAX_PLY {
         return q_search::<Node>(
             pos,
@@ -100,13 +107,6 @@ pub fn search<Node: NodeType>(
             alpha,
             beta
         );
-    }
-
-    ctx.ss[ply as usize].pv_len = 0;
-
-    if ply != 0 && (ctx.abort_now || shared_ctx.time_man.abort_search(ctx.nodes.global())) {
-        ctx.abort_now();
-        return Score::INFINITE;
     }
 
     ctx.nodes.inc();
@@ -132,10 +132,13 @@ pub fn search<Node: NodeType>(
         }
     }
 
-    let mut best_move = None;
-    let skip_move = ctx.ss[ply as usize].skip_move;
-    let mut tt_entry = skip_move.and_then(|_| shared_ctx.t_table.probe(pos.board()));
     let initial_alpha = alpha;
+    let skip_move = ctx.ss[ply as usize].skip_move;
+    let mut tt_entry = match skip_move {
+        Some(_) => None,
+        None => shared_ctx.t_table.probe(pos.board())
+    };
+    let mut best_move = None;
 
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
@@ -144,7 +147,9 @@ pub fn search<Node: NodeType>(
         if entry.table_mv.is_some() && best_move.is_none() {
             //We can't trust this entry if the move is invalid
             tt_entry = None;
-        } else if !Node::PV && entry.depth >= depth {
+        }
+
+        if !Node::PV && entry.depth >= depth {
             let score = entry.score;
 
             match entry.flag {
@@ -328,11 +333,12 @@ pub fn search<Node: NodeType>(
     let follow_up = (ply >= 2).then(|| ctx.ss[ply as usize - 2].move_played).flatten();
 
     while let Some(mv) = move_picker.next(pos, &ctx.history, counter_move, follow_up) {
-        move_exists = true;
         if skip_move == Some(mv) {
             continue;
         }
-        
+
+        move_exists = true;
+
         if ply == 0 && (!shared_ctx.root_moves.is_empty() && !shared_ctx.root_moves.contains(&mv)) {
             continue;
         }
@@ -358,7 +364,7 @@ pub fn search<Node: NodeType>(
         */
         if let Some(entry) = tt_entry {
             if depth >= w.singular_depth && ply != 0
-                && entry.table_mv == Some(mv) && entry.depth >= depth - 3
+                && entry.table_mv == Some(mv) && entry.depth + 3 >= depth
                 && matches!(entry.flag, TTBound::Exact | TTBound::LowerBound)
                 && !entry.score.is_decisive() {
 
@@ -597,7 +603,6 @@ pub fn search<Node: NodeType>(
     }
 
     let best_score = best_score.unwrap().clamp(syzygy_min, syzygy_max);
-    
     if skip_move.is_none() && !ctx.abort_now {
         let flag = match () {
             _ if best_score <= initial_alpha => TTBound::UpperBound,
@@ -648,18 +653,16 @@ pub fn q_search<Node: NodeType>(
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
 
-        if !Node::PV {
-            let score = entry.score;
-            match entry.flag {
-                TTBound::Exact => return score,
-                TTBound::UpperBound => if score <= alpha {
-                    return score;
-                },
-                TTBound::LowerBound => if score >= beta {
-                    return score;
-                },
-                TTBound::None => unreachable!()
-            }
+        let score = entry.score;
+        match entry.flag {
+            TTBound::Exact => return score,
+            TTBound::UpperBound => if score <= alpha {
+                return score;
+            },
+            TTBound::LowerBound => if score >= beta {
+                return score;
+            },
+            TTBound::None => unreachable!()
         }
     } else {
         ctx.tt_misses.inc();
@@ -740,7 +743,7 @@ pub fn q_search<Node: NodeType>(
         }
     }
 
-    if !ctx.abort_now && let Some(best_score) = best_score {
+    if let Some(best_score) = best_score && !ctx.abort_now {
         let flag = match () {
             _ if best_score <= initial_alpha => TTBound::UpperBound,
             _ if best_score >= beta => TTBound::LowerBound,

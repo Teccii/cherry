@@ -207,8 +207,10 @@ impl Evaluator {
             data.mobility_area(Color::White),
             data.mobility_area(Color::Black)
         );
+        let (w_king, b_king) = (board.king(Color::White), board.king(Color::Black));
         let blockers = board.occupied();
 
+        //pinned knights can't move so no need to calculate their mobility
         for sq in board.color_pieces(Piece::Knight, Color::White) & !w_pinned {
             let attacks = knight_moves(sq) & w_safe;
 
@@ -229,17 +231,26 @@ impl Evaluator {
                     score += $table[attacks.popcnt()];
                 }
 
+                for sq in board.color_pieces($piece, Color::White) & w_pinned {
+                    let attacks = $attacks(sq, blockers) & w_safe & line(w_king, sq);
+
+                    score += $table[attacks.popcnt()];
+                }
+
                 for sq in board.color_pieces($piece, Color::Black) & !b_pinned {
                     let attacks = $attacks(sq, blockers) & b_safe;
 
                     score -= $table[attacks.popcnt()];
                 }
+
+                for sq in board.color_pieces($piece, Color::Black) & b_pinned {
+                    let attacks = $attacks(sq, blockers) & b_safe & line(b_king, sq);
+
+                    score += $table[attacks.popcnt()];
+                }
             }
         }
 
-        //TODO: take into account mobility along the pin line
-        //Right now the mobility of pinned pieces is not evaluated at all
-        //This could heavily backfire in certain positions
         slider_mobility!(Piece::Bishop, bishop_moves, self.weights.bishop_mobility);
         slider_mobility!(Piece::Rook, rook_moves, self.weights.rook_mobility);
         slider_mobility!(Piece::Queen, queen_moves, self.weights.queen_mobility);

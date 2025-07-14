@@ -251,10 +251,10 @@ pub const CENTER_CONTROL: T = T(3, 0);
 
 /*----------------------------------------------------------------*/
 
-pub const KNIGHT_ATTACK: u8 = 2;
-pub const BISHOP_ATTACK: u8 = 2;
+pub const KNIGHT_ATTACK: u8 = 4;
+pub const BISHOP_ATTACK: u8 = 3;
 pub const ROOK_ATTACK: u8 = 3;
-pub const QUEEN_ATTACK: u8 = 5;
+pub const QUEEN_ATTACK: u8 = 2;
 
 pub const KING_DANGER: [i16; 100] = [
     0,   0,   1,   2,   3,   5,   7,   9,   12,  15,
