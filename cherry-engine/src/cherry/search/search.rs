@@ -439,7 +439,6 @@ pub fn search<Node: NodeType>(
                     && pos.board().see(mv) < see_margin {
                     continue;
                 }
-
             } else {
                 //Late Move Pruning
                 let lmp_margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16);
@@ -651,16 +650,18 @@ pub fn q_search<Node: NodeType>(
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
 
-        let score = entry.score;
-        match entry.flag {
-            TTBound::Exact => return score,
-            TTBound::UpperBound => if score <= alpha {
-                return score;
-            },
-            TTBound::LowerBound => if score >= beta {
-                return score;
-            },
-            TTBound::None => unreachable!()
+        if !Node::PV {
+            let score = entry.score;
+            match entry.flag {
+                TTBound::Exact => return score,
+                TTBound::UpperBound => if score <= alpha {
+                    return score;
+                },
+                TTBound::LowerBound => if score >= beta {
+                    return score;
+                },
+                TTBound::None => unreachable!()
+            }
         }
     } else {
         ctx.tt_misses.inc();

@@ -191,7 +191,7 @@ impl Evaluator {
         psqt!(Piece::Rook, self.weights.rook_value, self.weights.rook_psqt);
         psqt!(Piece::Queen, self.weights.queen_value, self.weights.queen_psqt);
         psqt!(Piece::King, T::ZERO, self.weights.king_psqt);
-        
+
         score
     }
 
@@ -225,26 +225,22 @@ impl Evaluator {
 
         macro_rules! slider_mobility {
             ($piece:expr, $attacks:ident, $table:expr) => {
-                for sq in board.color_pieces($piece, Color::White) & !w_pinned {
-                    let attacks = $attacks(sq, blockers) & w_safe;
+                for sq in board.color_pieces($piece, Color::White) {
+                    let attacks = if w_pinned.has(sq) {
+                        $attacks(sq, blockers) & w_safe & line(w_king, sq)
+                    } else {
+                        $attacks(sq, blockers) & w_safe
+                    };
 
                     score += $table[attacks.popcnt()];
                 }
 
-                for sq in board.color_pieces($piece, Color::White) & w_pinned {
-                    let attacks = $attacks(sq, blockers) & w_safe & line(w_king, sq);
-
-                    score += $table[attacks.popcnt()];
-                }
-
-                for sq in board.color_pieces($piece, Color::Black) & !b_pinned {
-                    let attacks = $attacks(sq, blockers) & b_safe;
-
-                    score -= $table[attacks.popcnt()];
-                }
-
-                for sq in board.color_pieces($piece, Color::Black) & b_pinned {
-                    let attacks = $attacks(sq, blockers) & b_safe & line(b_king, sq);
+                for sq in board.color_pieces($piece, Color::Black) {
+                    let attacks = if b_pinned.has(sq) {
+                        $attacks(sq, blockers) & b_safe & line(b_king, sq)
+                    } else {
+                        $attacks(sq, blockers) & b_safe
+                    };
 
                     score -= $table[attacks.popcnt()];
                 }
@@ -284,12 +280,12 @@ impl Evaluator {
                 let support = pawn_attacks(pawn, !color) & our_pawns;
 
                 score += self.weights.doubled_pawn * color.sign() * doubled as i16;
-                score += self.weights.passed_pawn[rank as usize] * color.sign() * passed as i16;
+                score += self.weights.passed_pawn[rank.relative_to(color) as usize] * color.sign() * passed as i16;
                 score += self.weights.backwards_pawn * color.sign() * backwards as i16;
                 score += self.weights.isolated_pawn * color.sign() * isolated as i16;
 
                 if !support.is_empty() || phalanx {
-                    let value = self.weights.connected_pawns[rank as usize] * (1 + phalanx as i16)
+                    let value = self.weights.connected_pawns[rank.relative_to(color) as usize] * (1 + phalanx as i16)
                         + self.weights.supported_pawn * support.popcnt() as i16;
 
                     score += value * color.sign();
@@ -363,10 +359,11 @@ impl Evaluator {
             let our_pawns = board.color_pieces(Piece::Pawn, color);
             let our_knights = board.color_pieces(Piece::Knight, color);
             let their_pawns = board.color_pieces(Piece::Pawn, !color);
+            let rank_mask = Bitboard(0x0000FFFFFF000000).relative_to(color);
 
-            for piece in our_knights | board.color_pieces(Piece::Bishop, color) {
+            for piece in rank_mask & (our_knights | board.color_pieces(Piece::Bishop, color)) {
                 let (file, rank) = (piece.file(), piece.rank());
-                let outpost_mask = rank.above() & (file.bitboard() | file.adjacent());
+                let outpost_mask = rank.above() & file.adjacent();
 
                 if (outpost_mask & their_pawns).is_empty() {
                     let defended = !(pawn_attacks(piece, !color) & our_pawns).is_empty();

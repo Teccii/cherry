@@ -194,7 +194,6 @@ pub const BISHOP_MOBILITY: IndexTable<14> = [
     T(81, 78),  T(81, 86),
     T(91, 88),  T(98, 97),
 ];
-
 pub const ROOK_MOBILITY: IndexTable<15> = [
     T(-60,-78), T(-20,-17), T(2, 23),
     T(3, 39),   T(3, 70),   T(11, 99),
@@ -202,7 +201,6 @@ pub const ROOK_MOBILITY: IndexTable<15> = [
     T(40,139),  T(41,158),  T(48,164),
     T(57,168),  T(57,169),  T(62,172),
 ];
-
 pub const QUEEN_MOBILITY: IndexTable<28> = [
     T(-30,-48), T(-12,-30), T(-8, -7),  T( -9, 19),
     T(20, 40),  T(23, 55),  T(23, 59),  T(35, 75),
@@ -216,7 +214,6 @@ pub const QUEEN_MOBILITY: IndexTable<28> = [
 pub const ROOK_OPEN_FILE: FileTable = [
     T(56, 0), T(56, 0), T(56, 0), T(56, 0), T(56, 0), T(56, 0), T(56, 0), T(56, 0),
 ];
-
 pub const ROOK_SEMIOPEN_FILE: FileTable = [
     T(36, 0), T(36, 0), T(36, 0), T(36, 0), T(36, 0), T(36, 0), T(36, 0), T(36, 0),
 ];
@@ -226,7 +223,6 @@ pub const QUEEN_OPEN_FILE: FileTable = [
 pub const QUEEN_SEMIOPEN_FILE: FileTable = [
     T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0),
 ];
-
 pub const KNIGHT_BEHIND_PAWN: T = T(5, 15);
 pub const BISHOP_BEHIND_PAWN: T = T(5, 15);
 
