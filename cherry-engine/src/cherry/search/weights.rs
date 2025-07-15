@@ -31,7 +31,9 @@ weights! {
     see_margin: i16 => SEE_MARGIN,
     see_hist: i16 => SEE_HIST,
 
+    hist_depth: u8 => HIST_DEPTH,
     hist_margin: i16 => HIST_MARGIN,
+
     futile_depth: u8 => FUTILE_DEPTH,
     futile_base: i16 => FUTILE_BASE,
     futile_margin: i16 => FUTILE_MARGIN,
@@ -71,7 +73,9 @@ pub const SEE_DEPTH: u8 = 10;
 pub const SEE_MARGIN: i16 = -91;
 pub const SEE_HIST: i16 = 61;
 
+pub const HIST_DEPTH: u8 = 10;
 pub const HIST_MARGIN: i16 = -4300;
+
 pub const FUTILE_DEPTH: u8 = 12;
 pub const FUTILE_BASE: i16 = 47;
 pub const FUTILE_MARGIN: i16 = 107;

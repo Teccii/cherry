@@ -246,7 +246,7 @@ impl Evaluator {
                 for sq in board.color_pieces($piece, Color::Black) & b_pinned {
                     let attacks = $attacks(sq, blockers) & b_safe & line(b_king, sq);
 
-                    score += $table[attacks.popcnt()];
+                    score -= $table[attacks.popcnt()];
                 }
             }
         }
@@ -280,11 +280,20 @@ impl Evaluator {
                 let passed = (pawns & pass_mask).is_empty();
                 let backwards = (our_pawns & backwards_mask).is_empty() && !passed;
                 let isolated = (adjacent & our_pawns).is_empty();
+                let phalanx = !(adjacent & our_pawns & rank.bitboard()).is_empty();
+                let support = pawn_attacks(pawn, !color) & our_pawns;
 
                 score += self.weights.doubled_pawn * color.sign() * doubled as i16;
                 score += self.weights.passed_pawn[rank as usize] * color.sign() * passed as i16;
                 score += self.weights.backwards_pawn * color.sign() * backwards as i16;
                 score += self.weights.isolated_pawn * color.sign() * isolated as i16;
+
+                if !support.is_empty() || phalanx {
+                    let value = self.weights.connected_pawns[rank as usize] * (1 + phalanx as i16)
+                        + self.weights.supported_pawn * support.popcnt() as i16;
+
+                    score += value * color.sign();
+                }
             }
         }
 
@@ -350,6 +359,26 @@ impl Evaluator {
             ) & Bitboard::BIG_CENTER;
 
             score += self.weights.center_control * color.sign() * our_uncontested.popcnt() as i16;
+
+            let our_pawns = board.color_pieces(Piece::Pawn, color);
+            let our_knights = board.color_pieces(Piece::Knight, color);
+            let their_pawns = board.color_pieces(Piece::Pawn, !color);
+
+            for piece in our_knights | board.color_pieces(Piece::Bishop, color) {
+                let (file, rank) = (piece.file(), piece.rank());
+                let outpost_mask = rank.above() & (file.bitboard() | file.adjacent());
+
+                if (outpost_mask & their_pawns).is_empty() {
+                    let defended = !(pawn_attacks(piece, !color) & our_pawns).is_empty();
+                    let table = if our_knights.has(piece) {
+                        &self.weights.knight_outpost
+                    } else {
+                        &self.weights.bishop_outpost
+                    };
+
+                    score += table[defended as usize] * color.sign();
+                }
+            }
         }
 
         score
@@ -361,6 +390,7 @@ impl Evaluator {
         let mut score = T::ZERO;
 
         for &color in &Color::ALL {
+            let our_pawns = board.color_pieces(Piece::Pawn, color);
             let our_bishops = board.color_pieces(Piece::Bishop, color);
 
             if our_bishops.popcnt() > 1 && !(
@@ -369,8 +399,20 @@ impl Evaluator {
                 score += self.weights.bishop_pair * color.sign();
             }
 
-            let semiopen_files = data.semiopen_files(color);
+            let up_offset = color.sign() as i8;
+            for knight in board.color_pieces(Piece::Knight, color) {
+                if knight.try_offset(0, up_offset).is_some_and(|sq| our_pawns.has(sq)) {
+                    score += self.weights.knight_behind_pawn * color.sign();
+                }
+            }
 
+            for bishop in our_bishops {
+                if bishop.try_offset(0, up_offset).is_some_and(|sq| our_pawns.has(sq)) {
+                    score += self.weights.bishop_behind_pawn * color.sign();
+                }
+            }
+
+            let semiopen_files = data.semiopen_files(color);
             for rook in board.color_pieces(Piece::Rook, color) {
                 if semiopen_files.has(rook) {
                     score += self.weights.rook_semiopen_file[rook.file() as usize] * color.sign();

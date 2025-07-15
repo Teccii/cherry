@@ -1,6 +1,6 @@
 use cherry_core::*;
 use std::ops::*;
-use crate::cherry::Score;
+use crate::Score;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct T(pub i16, pub i16);
@@ -137,7 +137,6 @@ macro_rules! weights {
 
 weights! {
     bishop_pair: T => BISHOP_PAIR,
-
     pawn_value: T => PAWN_VALUE,
     knight_value: T => KNIGHT_VALUE,
     bishop_value: T => BISHOP_VALUE,
@@ -160,14 +159,20 @@ weights! {
     rook_semiopen_file: FileTable => ROOK_SEMIOPEN_FILE,
     queen_open_file: FileTable => QUEEN_OPEN_FILE,
     queen_semiopen_file: FileTable => QUEEN_SEMIOPEN_FILE,
+    knight_behind_pawn: T => KNIGHT_BEHIND_PAWN,
+    bishop_behind_pawn: T => BISHOP_BEHIND_PAWN,
 
     pawn_minor_threat: T => PAWN_MINOR_THREAT,
     pawn_major_threat: T => PAWN_MAJOR_THREAT,
     minor_major_threat: T => MINOR_MAJOR_THREAT,
 
     center_control: T => CENTER_CONTROL,
+    knight_outpost: IndexTable<2> => KNIGHT_OUTPOST,
+    bishop_outpost: IndexTable<2> => BISHOP_OUTPOST,
 
     passed_pawn: RankTable => PASSED_PAWN,
+    connected_pawns: RankTable => CONNECTED_PAWNS,
+    supported_pawn: T => SUPPORTED_PAWN,
     backwards_pawn: T => BACKWARDS_PAWN,
     isolated_pawn: T => ISOLATED_PAWN,
     doubled_pawn: T => DOUBLED_PAWN,
@@ -222,6 +227,9 @@ pub const QUEEN_SEMIOPEN_FILE: FileTable = [
     T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0),
 ];
 
+pub const KNIGHT_BEHIND_PAWN: T = T(5, 15);
+pub const BISHOP_BEHIND_PAWN: T = T(5, 15);
+
 /*----------------------------------------------------------------*/
 
 pub const PASSED_PAWN: RankTable = [
@@ -234,7 +242,17 @@ pub const PASSED_PAWN: RankTable = [
     T(31, 57),
     T(0, 0),
 ];
-
+pub const CONNECTED_PAWNS: RankTable = [
+    T(0, 0),
+    T(7, 8),
+    T(8, 9),
+    T(12, 14),
+    T(29, 32),
+    T(48, 57),
+    T(86, 94),
+    T(0, 0),
+];
+pub const SUPPORTED_PAWN: T = T(3, 7);
 pub const BACKWARDS_PAWN: T = T(-1, -2);
 pub const ISOLATED_PAWN: T = T(-9, -1);
 pub const DOUBLED_PAWN: T = T(-5, -3);
@@ -248,6 +266,14 @@ pub const MINOR_MAJOR_THREAT: T = T(55, 86);
 /*----------------------------------------------------------------*/
 
 pub const CENTER_CONTROL: T = T(3, 0);
+pub const KNIGHT_OUTPOST: IndexTable<2> = [
+    T(12, -20), //Undefended
+    T(34, 0), //Defended
+];
+pub const BISHOP_OUTPOST: IndexTable<2> = [
+    T(12, -10), //Undefended
+    T(44, 0), //Defended
+];
 
 /*----------------------------------------------------------------*/
 
@@ -272,7 +298,6 @@ pub const KING_DANGER: [i16; 100] = [
 /*----------------------------------------------------------------*/
 
 pub const BISHOP_PAIR: T = T(29, 130);
-
 pub const PAWN_VALUE: T = T(100, 182);
 pub const KNIGHT_VALUE: T = T(275, 371);
 pub const BISHOP_VALUE: T = T(300, 443);
@@ -289,7 +314,6 @@ pub const PAWN_PSQT: SquareTable = [
     T(91, 63), T(50, 64), T(41, 64), T(57, 50), T(15, 59), T(41, 53), T(31, 61), T(13, 55),
     T(0, 0),   T(0, 0),   T(0, 0),   T(0, 0),   T(0, 0),   T(0, 0),   T(0, 0),   T(0, 0),
 ];
-
 pub const KNIGHT_PSQT: SquareTable = [
     T(-23, -18), T(-15, -12), T(-2, 27),   T(-11, -23), T(-11, -23), T(-2, -27),  T(-15, -12), T(-23, -18),
     T(-2, -20),  T(-4, -22),  T(11, 18),   T(16, 27),   T(16, 27),   T(11, 18),   T(-4, -22),  T(-2, -20),
@@ -300,8 +324,6 @@ pub const KNIGHT_PSQT: SquareTable = [
     T(-15, -45), T(-20, -48), T(34, 34),   T(24, 40),   T(24, 40),   T(34, 34),   T(-20, -48), T(-15, -45),
     T(-23, -13), T(-5, -31),  T(-11, -37), T(-4, -44),  T(-4, -44),  T(-11, -37), T(-5, 31),   T(-23, -13),
 ];
-
-
 pub const BISHOP_PSQT: SquareTable = [
     T(-28, -36), T(43, 33),  T(23, 35), T(23, 28), T(23, 29), T(32, 35),  T(45, 22),  T(-22, -25),
     T(32, 35),   T(23, 32),  T(33, 36), T(17, 41), T(26, 36), T(24, 33),  T(36, 26),  T(34, 34),
@@ -312,7 +334,6 @@ pub const BISHOP_PSQT: SquareTable = [
     T(13, 45),   T(16, 53),  T(30, 38), T(13, 45), T(8, 48),  T(35, 43),  T(-20, 54), T(3, 57),
     T(-6, -47),  T(-15, 52), T(-6, 51), T(-4, 48), T(-3, 52), T(-10, 45), T(9, 50),   T(0, -45),
 ];
-
 pub const ROOK_PSQT: SquareTable = [
     T(4, 35),  T(11, 34), T(6, 41),  T(13, 34), T(13, 30), T(14, 33), T(19, 29), T(6, 37),
     T(3, 40),  T(0, 40),  T(5, 41),  T(14, 28), T(12, 26), T(12, 39), T(19, 34), T(16, 34),
@@ -323,7 +344,6 @@ pub const ROOK_PSQT: SquareTable = [
     T(32, 62), T(22, 66), T(29, 70), T(32, 57), T(45, 53), T(57, 58), T(19, 70), T(12, 70),
     T(22, 59), T(17, 67), T(2, 69),  T(11, 58), T(18, 53), T(30, 60), T(28, 65), T(15, 67),
 ];
-
 pub const QUEEN_PSQT: SquareTable = [
     T(24, 35),  T(31, 30),  T(29, 30), T(33, 49),  T(33, 44), T(16, 34), T(18, 33),  T(31, 26),
     T(22, 61),  T(35, 41),  T(30, 53), T(31, 47),  T(31, 59), T(32, 47), T(43, 18),  T(50, 30),
@@ -334,7 +354,6 @@ pub const QUEEN_PSQT: SquareTable = [
     T(26, 94),  T(24, 102), T(31, 97), T(34, 96),  T(39, 96), T(45, 94), T(31, 104), T(45, 97),
     T(39, 75),  T(40, 78),  T(29, 86), T(16, 80),  T(43, 83), T(56, 78), T(68, 87),  T(57, 82),
 ];
-
 pub const KING_PSQT: SquareTable = [
     T(271, 1),   T(327, 45),  T(271, 85),  T(198, 76),  T(198, 76),  T(271, 85),  T(327, 45),  T(271, 1),
     T(278, 53),  T(303, 100), T(234, 133), T(179, 135), T(179, 135), T(234, 133), T(303, 100), T(278, 53),

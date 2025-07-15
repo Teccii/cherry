@@ -237,13 +237,13 @@ pub fn search<Node: NodeType>(
     let improving = prev_eval.is_some_and(|e| !in_check && static_eval > e);
     let w = &shared_ctx.weights;
 
-    if !Node::PV && !in_check && skip_move.is_none() && !alpha.is_decisive() && !beta.is_decisive(){
+    if !Node::PV && !in_check && skip_move.is_none() {
         /*
         Razoring: If the static evaluation of the position is below alpha by a significant margin,
         skip searching this branch entirely and drop into the quiescence search.
         */
         let razor_margin = w.razor_margin * depth as i16;
-        if depth < w.razor_depth && static_eval < alpha - razor_margin {
+        if depth < w.razor_depth && static_eval <= alpha - razor_margin {
             return q_search::<Node::Alt>(
                 pos,
                 ctx,
@@ -262,7 +262,7 @@ pub fn search<Node: NodeType>(
         let rfp_mult = w.rfp_margin - w.rfp_tt * tt_entry.is_some() as i16;
         let rfp_margin = depth as i16 * rfp_mult - improving as i16 * rfp_mult * 2;
         
-        if depth < w.rfp_depth && !alpha.is_decisive() && static_eval > beta + rfp_margin {
+        if depth < w.rfp_depth && static_eval >= beta + rfp_margin {
             return (static_eval + beta) / 2
         }
 
@@ -338,7 +338,6 @@ pub fn search<Node: NodeType>(
         }
 
         move_exists = true;
-
         if ply == 0 && (!shared_ctx.root_moves.is_empty() && !shared_ctx.root_moves.contains(&mv)) {
             continue;
         }
@@ -365,8 +364,7 @@ pub fn search<Node: NodeType>(
         if let Some(entry) = tt_entry {
             if depth >= w.singular_depth && ply != 0
                 && entry.table_mv == Some(mv) && entry.depth + 3 >= depth
-                && matches!(entry.flag, TTBound::Exact | TTBound::LowerBound)
-                && !entry.score.is_decisive() {
+                && matches!(entry.flag, TTBound::Exact | TTBound::LowerBound) {
 
                 let s_beta = entry.score - depth as i16;
                 let s_depth = depth / 2;
@@ -409,7 +407,7 @@ pub fn search<Node: NodeType>(
                         &[],
                         depth
                     );
-                } else if s_score >= beta && !s_score.is_decisive() {
+                } else if s_score >= beta {
                     //multi-cut
                     return s_score;
                 } else if entry.score >= beta {
@@ -453,7 +451,7 @@ pub fn search<Node: NodeType>(
                 let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
 
                 //History Pruning
-                if stat_score < w.hist_margin * r_depth as i16 {
+                if r_depth < w.hist_depth && stat_score < w.hist_margin * r_depth as i16 {
                     move_picker.skip_quiets();
                     continue;
                 }

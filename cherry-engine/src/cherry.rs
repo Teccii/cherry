@@ -6,6 +6,10 @@ mod eval {
     pub use weights::*;
 }
 
+/*
+MIT License | Copyright (c) 2022-2023 Cosmo Bobak
+Cherry's NNUE is heavily based on code from the engines Viridithas and Black Marlin.
+*/
 #[cfg(feature="nnue")] mod nnue {
     mod accumulator;
     mod features;

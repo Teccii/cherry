@@ -5,3 +5,7 @@ members = [
     "cherry-engine",
     "cherry-types",
 ]
+
+[profile.release]
+lto="fat"
+codegen-units = 1
