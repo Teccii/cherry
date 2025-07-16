@@ -91,6 +91,6 @@ pub const BASE_REDUCTION: i32 = 136;
 pub const NON_PV_REDUCTION: i32 = 926;
 pub const NOT_IMPROVING_REDUCTION: i32 = 926;
 pub const CUT_NODE_REDUCTION: i32 = 2113;
-pub const HIST_REDUCTION: i32 = 155;
+pub const HIST_REDUCTION: i32 = 131;
 
 pub const DELTA_MARGIN: i16 = 211;

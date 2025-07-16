@@ -39,45 +39,6 @@ impl NodeType for NoNMP {
 
     type Alt = NonPV;
 }
-/*----------------------------------------------------------------*/
-
-#[inline(always)]
-fn lmr<Node: NodeType>(depth: u8, moves_seen: u16) -> i32 {
-    if Node::PV || depth < 3 {
-        return 0;
-    }
-
-    LMR[depth as usize][moves_seen as usize]
-}
-
-const LMR: [[i32; MAX_MOVES]; MAX_DEPTH as usize] = {
-    const fn iln(x: u8) -> f32 {
-        let ilog2 = x.checked_ilog2();
-
-        if let Some(value) = ilog2 {
-            //ln(x) = log2(x) * ln(2)
-            return value as f32 * std::f32::consts::LN_2;
-        }
-
-        0.0
-    }
-    
-    let mut table = [[0; MAX_MOVES]; MAX_DEPTH as usize];
-    let mut i = 0;
-
-    while i < MAX_DEPTH as usize {
-        let mut j = 0;
-        while j < MAX_MOVES {
-            table[i][j] = (384f32 + 512f32 * iln(i as u8) * iln(j as u8)) as i32;
-
-            j += 1;
-        }
-
-        i += 1
-    }
-
-    table
-};
 
 /*----------------------------------------------------------------*/
 
@@ -174,7 +135,7 @@ pub fn search<Node: NodeType>(
     let (mut syzygy_max, mut syzygy_min) = (Score::MAX_MATE, -Score::MAX_MATE);
     if shared_ctx.syzygy.is_some()
         && ply != 0 && skip_move.is_none()
-        && depth >= shared_ctx.syzygy_depth.load(Ordering::Relaxed)
+        && depth >= shared_ctx.syzygy_depth
         && pos.board().halfmove_clock() == 0
         && !pos.can_castle() {
         if let Some(wdl) = Option::as_ref(&shared_ctx.syzygy)
@@ -220,12 +181,15 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.in_check();
-    let static_eval = match skip_move {
+
+    let raw_eval = match skip_move {
         Some(_) => ctx.ss[ply as usize].eval,
         None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
     };
-    
-    ctx.ss[ply as usize].eval = static_eval;
+    let corr =  ctx.history.get_corr(pos.board());
+    let static_eval = raw_eval + 66 * corr / 512;
+    ctx.ss[ply as usize].eval = raw_eval;
+
     let (prev_eval, prev_ext, prev_reduction) = match ply {
         2.. => {
             let prev_stack = &ctx.ss[ply as usize - 2];
@@ -422,9 +386,9 @@ pub fn search<Node: NodeType>(
         Late Move Reduction (LMR): Reduce the depth of moves ordered near the end.
         History Reduction: Increase or decrease the reduction based on the history of the move
         */
-        reduction += lmr::<Node>(depth, moves_seen);
+        reduction += shared_ctx.lmr_lookup.get(depth as usize, moves_seen as usize);
         reduction += w.non_pv_reduction * !Node::PV as i32;
-        reduction += w.not_improving_reduction * improving as i32;
+        reduction += w.not_improving_reduction * !improving as i32;
         reduction += w.cut_node_reduction * cut_node as i32;
         reduction -= stat_score as i32 / w.hist_reduction;
 
@@ -611,10 +575,17 @@ pub fn search<Node: NodeType>(
             pos.board(),
             depth,
             best_score,
-            Some(static_eval),
+            Some(raw_eval),
             best_move,
             flag
         );
+    }
+
+    let is_capture = best_move.is_some_and(|mv| !pos.board().is_capture(mv));
+    if !in_check && !is_capture && (
+        (best_score < static_eval && best_score < beta) || (best_score > static_eval && best_score > initial_alpha)
+    ) {
+        ctx.history.update_corr(pos.board(), best_score, static_eval, depth);
     }
 
     best_score
@@ -641,7 +612,7 @@ pub fn q_search<Node: NodeType>(
     ctx.update_sel_depth(ply);
 
     if ply >= MAX_PLY {
-        return pos.eval();
+        return pos.eval() + ctx.history.get_corr(pos.board());
     }
 
     let tt_entry = shared_ctx.t_table.probe(pos.board());
@@ -667,7 +638,9 @@ pub fn q_search<Node: NodeType>(
         ctx.tt_misses.inc();
     }
 
-    let static_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval());
+    let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval());
+    let static_eval = raw_eval + 66 * ctx.history.get_corr(pos.board()) / 512;
+
     if !pos.in_check() {
         if static_eval >= beta {
             return static_eval;
@@ -753,7 +726,7 @@ pub fn q_search<Node: NodeType>(
             pos.board(),
             0,
             best_score,
-            Some(static_eval),
+            Some(raw_eval),
             best_move,
             flag
         );

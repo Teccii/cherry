@@ -87,7 +87,7 @@ impl Nnue {
             acc_stack: std::array::from_fn(|_| Accumulator {
                 white: Align64([0; HL]),
                 black: Align64([0; HL]),
-                update: UpdateBuffer::default(),
+                update_buffer: UpdateBuffer::default(),
                 dirty: [false; Color::COUNT],
             }),
             acc_index: 0,
@@ -163,7 +163,7 @@ impl Nnue {
             }
         }
         
-        self.acc_mut().update = update;
+        self.acc_mut().update_buffer = update;
         self.acc_index += 1;
         self.acc_mut().dirty = [true; Color::COUNT];
     }
@@ -187,35 +187,35 @@ impl Nnue {
     }
     
     /*----------------------------------------------------------------*/
-    
-    pub fn apply_updates(&mut self, weights: &NetworkWeights, perspective: Color) {
-        let mut index = self.acc_index;
-        
-        //Find the first non-dirty accumulator
-        loop {
-            index -= 1;
-            
-            if !self.acc_stack[index].dirty[perspective as usize] {
-                break;
-            }
-        }
-        
-        //Recalculate all accumulators from thereon
-        loop {
-            index += 1;
-            self.next_acc(weights, perspective, index);
-            self.acc_mut().dirty[perspective as usize] = false;
-            
-            if index == self.acc_index {
-                break;
+
+    pub fn apply_updates(&mut self, weights: &NetworkWeights) {
+        for &color in &Color::ALL {
+            if self.acc().dirty[color as usize] {
+                self.lazy_update(weights, color);
             }
         }
     }
 
-    pub fn force_updates(&mut self, weights: &NetworkWeights) {
-        for &color in &Color::ALL {
-            if self.acc().dirty[color as usize] {
-                self.apply_updates(weights, color);
+    fn lazy_update(&mut self, weights: &NetworkWeights, perspective: Color) {
+        let mut index = self.acc_index;
+
+        //Find the first non-dirty accumulator
+        loop {
+            index -= 1;
+
+            if !self.acc_stack[index].dirty[perspective as usize] {
+                break;
+            }
+        }
+
+        //Recalculate all accumulators from thereon
+        loop {
+            index += 1;
+            self.next_acc(weights, perspective, index);
+            self.acc_stack[index].dirty[perspective as usize] = false;
+
+            if index == self.acc_index {
+                break;
             }
         }
     }
@@ -225,7 +225,7 @@ impl Nnue {
         let src = prev.last().unwrap();
         let target = next.first_mut().unwrap();
         
-        match (src.update.adds(), src.update.subs()) {
+        match (src.update_buffer.adds(), src.update_buffer.subs()) {
             //quiet moves, including promotions
             (&[add], &[sub]) => {
                 let add = add.to_index(perspective);
@@ -271,7 +271,7 @@ impl Nnue {
                     sub2
                 );
             },
-            _ => panic!("Invalid Update: {:?}", src.update)
+            _ => panic!("Invalid Update: {:?}", src.update_buffer)
         }
     }
 

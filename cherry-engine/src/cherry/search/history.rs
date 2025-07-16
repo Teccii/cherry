@@ -1,32 +1,43 @@
 use cherry_core::*;
-use crate::MoveData;
+use crate::{Score, MoveData};
 
 /*----------------------------------------------------------------*/
 
 pub const MAX_HISTORY: i16 = 8192;
+pub const MAX_CORRECTION: i16 = 1024;
+
+const PAWN_CORRECTION_SIZE: usize = 512;
+const MINOR_CORRECTION_SIZE: usize = 32768;
 
 /*----------------------------------------------------------------*/
-
-pub const fn move_to<T: Copy>(default: T) -> MoveTo<T> {
-    [[default; Square::COUNT]; Square::COUNT]
-}
-
-pub const fn piece_to<T: Copy>(default: T) -> PieceTo<T> {
-    [[default; Square::COUNT]; Piece::COUNT]
-}
 
 pub type MoveTo<T> = [[T; Square::COUNT]; Square::COUNT];
 pub type PieceTo<T> = [[T; Square::COUNT]; Piece::COUNT];
 pub type ButterflyTable = [MoveTo<i16>; Color::COUNT];
 pub type PieceToTable = [PieceTo<i16>; Color::COUNT];
 pub type ContinuationTable = [PieceTo<PieceTo<i16>>; Color::COUNT];
+pub type CorrectionTable<const SIZE: usize> = [[i16; SIZE]; Color::COUNT];
+
+/*----------------------------------------------------------------*/
+
+const fn move_to<T: Copy>(default: T) -> MoveTo<T> {
+    [[default; Square::COUNT]; Square::COUNT]
+}
+
+const fn piece_to<T: Copy>(default: T) -> PieceTo<T> {
+    [[default; Square::COUNT]; Piece::COUNT]
+}
+
+/*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone)]
 pub struct History {
     quiets: Box<ButterflyTable>,
     captures: Box<PieceToTable>,
     counter_move: Box<ContinuationTable>,
-    follow_up: Box<ContinuationTable>
+    follow_up: Box<ContinuationTable>,
+    pawn_corr: Box<CorrectionTable<PAWN_CORRECTION_SIZE>>,
+    minor_corr: Box<CorrectionTable<MINOR_CORRECTION_SIZE>>,
 }
 
 impl History {
@@ -37,7 +48,19 @@ impl History {
             captures: Box::new([piece_to(0); Color::COUNT]),
             counter_move: Box::new([piece_to(piece_to(0)); Color::COUNT]),
             follow_up: Box::new([piece_to(piece_to(0)); Color::COUNT]),
+            pawn_corr: Box::new([[0; PAWN_CORRECTION_SIZE]; Color::COUNT]),
+            minor_corr: Box::new([[0; MINOR_CORRECTION_SIZE]; Color::COUNT])
         }
+    }
+
+    #[inline(always)]
+    pub fn reset(&mut self) {
+        self.quiets = Box::new([move_to(0); Color::COUNT]);
+        self.captures = Box::new([piece_to(0); Color::COUNT]);
+        self.counter_move = Box::new([piece_to(piece_to(0)); Color::COUNT]);
+        self.follow_up = Box::new([piece_to(piece_to(0)); Color::COUNT]);
+        self.pawn_corr = Box::new([[0; PAWN_CORRECTION_SIZE]; Color::COUNT]);
+        self.minor_corr = Box::new([[0; MINOR_CORRECTION_SIZE]; Color::COUNT]);
     }
 
     /*----------------------------------------------------------------*/
@@ -146,16 +169,18 @@ impl History {
                 + self.get_follow_up(board, mv, follow_up).unwrap_or_default()
         }
     }
-    
-    /*----------------------------------------------------------------*/
 
     #[inline(always)]
-    pub fn reset(&mut self) {
-        self.quiets = Box::new([move_to(0); Color::COUNT]);
-        self.captures = Box::new([piece_to(0); Color::COUNT]);
-        self.counter_move = Box::new([piece_to(piece_to(0)); Color::COUNT]);
-        self.follow_up = Box::new([piece_to(piece_to(0)); Color::COUNT]);
+    pub fn get_corr(&self, board: &Board) -> i16 {
+        let pawn_hash = board.pawn_hash();
+        let minor_hash = board.minor_hash();
+        let stm = board.stm();
+
+        self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE]
+            + self.minor_corr[stm as usize][minor_hash as usize % MINOR_CORRECTION_SIZE]
     }
+    
+    /*----------------------------------------------------------------*/
     
     pub fn update(
         &mut self,
@@ -206,12 +231,45 @@ impl History {
             History::update_value(self.get_capture_mut(board, mv), -amount);
         }
     }
-    
+
+    pub fn update_corr(
+        &mut self,
+        board: &Board,
+        best_score: Score,
+        static_eval: Score,
+        depth: u8,
+    ) {
+        let amount = (best_score - static_eval).0 * depth as i16 / 4;
+        let pawn_hash = board.pawn_hash();
+        let minor_hash = board.minor_hash();
+        let stm = board.stm();
+
+        History::update_corr_value(
+            &mut self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE],
+            amount,
+        );
+
+        History::update_corr_value(
+            &mut self.minor_corr[stm as usize][minor_hash as usize % MINOR_CORRECTION_SIZE],
+            amount,
+        );
+    }
+
+    /*----------------------------------------------------------------*/
+
     #[inline(always)]
     fn update_value(value: &mut i16, amount: i16) {
         let amount = amount.clamp(-MAX_HISTORY, MAX_HISTORY);
         let decay = (*value as i32 * amount.abs() as i32 / MAX_HISTORY as i32) as i16;
-        
+
+        *value += amount - decay;
+    }
+
+    #[inline(always)]
+    fn update_corr_value(value: &mut i16, amount: i16) {
+        let amount = amount.clamp(-MAX_CORRECTION / 4, MAX_CORRECTION / 4);
+        let decay = (*value as i32 * amount.abs() as i32 / MAX_CORRECTION as i32) as i16;
+
         *value += amount - decay;
     }
 }

@@ -47,6 +47,7 @@ pub struct Board {
     halfmove_clock: u8,
     repetition: u8,
     pawn_hash: u64,
+    minor_hash: u64,
     hash: u64,
     stm: Color,
 }
@@ -170,6 +171,9 @@ impl Board {
 
     #[inline(always)]
     pub const fn pawn_hash(&self) -> u64 { self.pawn_hash }
+
+    #[inline(always)]
+    pub const fn minor_hash(&self) -> u64 { self.minor_hash }
 
     #[inline(always)]
     pub const fn hash(&self) -> u64 { self.hash }
@@ -466,8 +470,10 @@ impl Board {
         let zobrist = ZOBRIST.piece(sq, piece, color);
         self.hash ^= zobrist;
 
-        if piece == Piece::Pawn {
-            self.pawn_hash ^= zobrist;
+        match piece {
+            Piece::Pawn => self.pawn_hash ^= zobrist,
+            Piece::Knight | Piece::Bishop => self.minor_hash ^= zobrist,
+            _ => { }
         }
     }
 

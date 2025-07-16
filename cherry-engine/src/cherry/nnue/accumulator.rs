@@ -9,7 +9,7 @@ pub struct Accumulator {
     pub white: Align64<[i16; HL]>,
     pub black: Align64<[i16; HL]>,
     
-    pub update: UpdateBuffer,
+    pub update_buffer: UpdateBuffer,
     pub dirty: [bool; Color::COUNT],
 }
 

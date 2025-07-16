@@ -262,6 +262,8 @@ impl Evaluator {
 
         for &color in &Color::ALL {
             let our_pawns = board.color_pieces(Piece::Pawn, color);
+            let their_pawns = board.color_pieces(Piece::Pawn, !color);
+
             for pawn in our_pawns {
                 let (file, rank) = (pawn.file(), pawn.rank());
                 let (file, adjacent) = (file.bitboard(), file.adjacent());
@@ -273,7 +275,7 @@ impl Evaluator {
                 let backwards_mask = below & adjacent;
 
                 let doubled = (file & our_pawns).popcnt() > 1;
-                let passed = (pawns & pass_mask).is_empty();
+                let passed = (their_pawns & pass_mask).is_empty();
                 let backwards = (our_pawns & backwards_mask).is_empty() && !passed;
                 let isolated = (adjacent & our_pawns).is_empty();
                 let phalanx = !(adjacent & our_pawns & rank.bitboard()).is_empty();

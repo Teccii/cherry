@@ -27,6 +27,7 @@ impl Board {
             halfmove_clock: 0,
             repetition: 0,
             pawn_hash: 0,
+            minor_hash: 0,
             hash: 0,
             stm: Color::White,
         };

@@ -10,11 +10,12 @@ use crate::*;
 #[derive(Clone)]
 pub struct SharedContext {
     pub t_table: Arc<TTable>,
-    pub syzygy: Arc<Option<TableBases<SyzygyAdapter>>>,
-    pub syzygy_depth: Arc<AtomicU8>,
     pub time_man: Arc<TimeManager>,
+    pub syzygy: Arc<Option<TableBases<SyzygyAdapter>>>,
+    pub syzygy_depth: u8,
     pub root_moves: ArrayVec<Move, MAX_MOVES>,
     pub weights: SearchWeights,
+    pub lmr_lookup: LookUp<i32, {MAX_DEPTH as usize}, MAX_MOVES>,
 }
 
 /*----------------------------------------------------------------*/
@@ -55,7 +56,7 @@ impl ThreadContext {
             MAX_PLY as usize + 1
         ];
         self.history.reset();
-        self.root_nodes = move_to(0);
+        self.root_nodes = [[0; Square::COUNT]; Square::COUNT];
         self.sel_depth = 0;
         self.abort_now = false;
     }
@@ -145,11 +146,14 @@ impl Searcher {
             pos: Position::new(board),
             shared_ctx: SharedContext {
                 t_table: Arc::new(TTable::new(16)),
+                time_man,
                 syzygy: Arc::new(None),
-                syzygy_depth: Arc::new(AtomicU8::new(1)),
+                syzygy_depth: 1,
                 root_moves: ArrayVec::new(),
                 weights: SearchWeights::default(),
-                time_man,
+                lmr_lookup: LookUp::new(|i, j|
+                    1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5) as i32
+                ),
             },
             main_ctx: ThreadContext {
                 qnodes: BatchedAtomicCounter::new(),
@@ -170,7 +174,7 @@ impl Searcher {
                     };
                     MAX_PLY as usize + 1
                 ],
-                root_nodes: move_to(0),
+                root_nodes: [[0; Square::COUNT]; Square::COUNT],
                 history: History::new(),
                 sel_depth: 0,
                 abort_now: false,
@@ -285,7 +289,7 @@ impl Searcher {
     
     #[inline(always)]
     pub fn set_syzygy_depth(&mut self, depth: u8) {
-        self.shared_ctx.syzygy_depth.store(depth, Ordering::Relaxed);
+        self.shared_ctx.syzygy_depth = depth;
     }
 }
 

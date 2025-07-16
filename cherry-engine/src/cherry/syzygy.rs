@@ -72,7 +72,7 @@ pub fn probe_dtz(tb: &TableBases<SyzygyAdapter>, board: &Board) -> Option<DtzPro
         board.pieces(Piece::Knight).0,
         board.pieces(Piece::Pawn).0,
         board.halfmove_clock() as u32,
-        0,
+        board.ep_square().map_or(0, |sq| sq as u32),
         board.stm() == Color::White,
     ).ok()
 }

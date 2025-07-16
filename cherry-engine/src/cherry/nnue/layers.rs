@@ -26,7 +26,7 @@ pub fn propagate<const L: usize, const NL: usize>(
         }
     }
 
-    screlu(&values, &mut output[..])
+    screlu(&values, &mut output[..]);
 }
 
 pub fn propagate_out<const L: usize>(

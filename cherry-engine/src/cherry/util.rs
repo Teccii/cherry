@@ -1,7 +1,4 @@
-use std::{
-    sync::{Arc, atomic::*},
-    ops::*
-};
+use std::sync::{Arc, atomic::*};
 
 /*----------------------------------------------------------------*/
 
@@ -76,5 +73,34 @@ impl Clone for BatchedAtomicCounter {
             local: 0,
             buffer: 0,
         }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone)]
+pub struct LookUp<T: Copy + Default, const M: usize, const N: usize> {
+    table: [[T; N]; M],
+}
+
+impl<T: Copy + Default, const M: usize, const N: usize> LookUp<T, M, N> {
+    pub fn new<F: Fn(usize, usize) -> T>(f: F) -> Self {
+        let mut table = [[T::default(); N]; M];
+
+        for i in 0..M {
+            for j in 0..N {
+                table[i][j] = f(i, j);
+            }
+        }
+
+        Self { table }
+    }
+
+    pub fn get(&self, i: usize, j: usize) -> T {
+        if i >= M || j >= N {
+            panic!("LookUp::get(): Indices out of bounds");
+        }
+
+        self.table[i][j]
     }
 }
