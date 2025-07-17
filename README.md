@@ -61,6 +61,9 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - King Safety
   - Attack Units
 - Tapered Evaluation
+- Correction History Heuristic
+  - Pawn Structure
+  - Minor Pieces
 - NNUE (WIP)
 
 ### Time Management
