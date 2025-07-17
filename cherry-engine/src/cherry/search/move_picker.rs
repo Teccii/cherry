@@ -49,7 +49,7 @@ pub struct MovePicker {
 }
 
 impl MovePicker {
-    #[inline(always)]
+    #[inline]
     pub fn new(hash_move: Option<Move>) -> MovePicker {
         MovePicker {
             phase: Phase::HashMove,
@@ -63,12 +63,12 @@ impl MovePicker {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn phase(&self) -> Phase {
         self.phase
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn skip_quiets(&mut self) {
         self.phase = match self.phase {
             Phase::GenQuiets | Phase::YieldQuiets => Phase::YieldBadCaptures,
@@ -222,7 +222,7 @@ pub struct QMovePicker {
 }
 
 impl QMovePicker {
-    #[inline(always)]
+    #[inline]
     pub fn new() -> QMovePicker {
         QMovePicker {
             phase: QPhase::GenPieceMoves,

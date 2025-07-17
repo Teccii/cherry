@@ -16,7 +16,7 @@ pub enum Rank {
 }
 
 impl Rank {
-    #[inline(always)]
+    #[inline]
     pub const fn index(i: usize) -> Rank {
         match i {
             0 => Rank::First,
@@ -31,7 +31,7 @@ impl Rank {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn try_index(i: usize) -> Option<Rank> {
         match i {
             0 => Some(Rank::First),
@@ -48,7 +48,7 @@ impl Rank {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn offset(self, dx: i8) -> Rank {
         let i = self as i8 + dx;
 
@@ -59,7 +59,7 @@ impl Rank {
         Rank::index(i as usize)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn try_offset(self, dx: i8) -> Option<Rank> {
         let i = self as i8 + dx;
 
@@ -72,12 +72,12 @@ impl Rank {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn flip(self) -> Rank {
         Rank::index(Rank::Eighth as usize - self as usize)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn relative_to(self, color: Color) -> Rank {
         match color {
             Color::White => self,
@@ -87,17 +87,17 @@ impl Rank {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn bitboard(self) -> Bitboard {
         Bitboard(0xFF << (8 * self as u8))
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn above(self) -> Bitboard {
         Bitboard(0xFFFFFFFFFFFFFF00).shift::<Up>(self as usize)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn below(self) -> Bitboard {
         Bitboard(!self.above().0)
     }
@@ -118,7 +118,7 @@ impl Rank {
 }
 
 impl fmt::Display for Rank {
-    #[inline(always)]
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", char::from(*self))
     }
@@ -130,7 +130,7 @@ impl fmt::Display for Rank {
 pub struct RankParseError;
 
 impl From<Rank> for char {
-    #[inline(always)]
+    #[inline]
     fn from(f: Rank) -> char {
         match f {
             Rank::First => '1',
@@ -148,7 +148,7 @@ impl From<Rank> for char {
 impl TryFrom<char> for Rank {
     type Error = RankParseError;
 
-    #[inline(always)]
+    #[inline]
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Rank::First),
@@ -167,7 +167,7 @@ impl TryFrom<char> for Rank {
 impl FromStr for Rank {
     type Err = RankParseError;
 
-    #[inline(always)]
+    #[inline]
     fn from_str(s: &str) -> Result<Rank, RankParseError> {
         let mut chars = s.chars();
         let c = chars.next().ok_or(RankParseError)?;

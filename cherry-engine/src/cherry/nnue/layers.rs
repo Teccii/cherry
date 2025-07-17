@@ -1,6 +1,6 @@
 use super::*;
 
-#[inline(always)]
+#[inline]
 pub fn activate_ft(
     us: &Align64<[i16; HL]>,
     them: &Align64<[i16; HL]>,

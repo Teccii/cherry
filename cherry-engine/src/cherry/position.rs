@@ -10,7 +10,7 @@ pub struct Position {
 }
 
 impl Position {
-    #[inline(always)]
+    #[inline]
     pub fn new(board: Board) -> Position {
         Position {
             board,
@@ -20,7 +20,7 @@ impl Position {
         }
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn reset(&mut self, board: Board) {
         self.board = board;
         self.board_history.clear();
@@ -29,17 +29,17 @@ impl Position {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn board(&self) -> &Board { &self.board }
     
-    #[inline(always)]
+    #[inline]
     pub fn non_pawn_material(&self) -> bool {
         let pieces = self.board.colors(self.stm());
 
         pieces != pieces & (self.board.pieces(Piece::Pawn) | self.board.pieces(Piece::King))
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn can_castle(&self) -> bool {
         for &color in &Color::ALL {
             let rights = self.board.castle_rights(color);
@@ -52,25 +52,25 @@ impl Position {
         false
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn stm(&self) -> Color { self.board.stm() }
 
-    #[inline(always)]
+    #[inline]
     pub fn hash(&self) -> u64 { self.board.hash() }
 
-    #[inline(always)]
+    #[inline]
     pub fn pawn_hash(&self) -> u64 { self.board.pawn_hash() }
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn make_move(&mut self, mv: Move) {
         self.board_history.push(self.board.clone());
         self.move_history.push(Some(mv));
         self.board.make_move(mv);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn null_move(&mut self) -> bool {
         if let Some(new_board) = self.board.null_move() {
             self.board_history.push(self.board.clone());
@@ -83,13 +83,13 @@ impl Position {
         false
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn unmake_move(&mut self) {
         self.board = self.board_history.pop().unwrap();
         self.move_history.pop();
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn unmake_null_move(&mut self) {
         self.board = self.board_history.pop().unwrap();
         self.move_history.pop();
@@ -97,19 +97,19 @@ impl Position {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn eval(&self) -> Score {
         self.evaluator.eval(&self.board)
     }
     
     /*----------------------------------------------------------------*/
     
-    #[inline(always)]
+    #[inline]
     pub fn in_check(&self) -> bool {
         self.board.in_check()
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn is_draw(&self) -> bool {
         self.board.status() == BoardStatus::Draw
             || self.insufficient_material()

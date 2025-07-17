@@ -7,41 +7,41 @@ use super::*;
 pub struct Score(pub i16);
 
 impl Score {
-    #[inline(always)]
+    #[inline]
     pub const fn new(value: i16) -> Score {
         Score(value)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn new_mate(ply: u16) -> Score {
         Score::MAX_MATE - ply as i16
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn new_mated(ply: u16) -> Score {
         -Score::MAX_MATE + ply as i16
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn new_tb_win(ply: u16) -> Score {
         Score::MAX_TB_WIN - ply as i16
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn new_tb_loss(ply: u16) -> Score {
         -Score::MAX_TB_WIN + ply as i16
     }
 
     /*----------------------------------------------------------------*/
     
-    #[inline(always)]
+    #[inline]
     pub fn is_mate(self) -> bool {
         let abs_score = self.abs();
 
         abs_score >= Score::MIN_MATE && abs_score <= Score::MAX_MATE
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn mate_in(self) -> Option<i16> {
         if self.is_mate() {
             let abs_score = self.abs();
@@ -53,14 +53,14 @@ impl Score {
         None
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn is_tb(self) -> bool {
         let abs_score = self.abs();
         
         abs_score >= Score::MIN_TB_WIN && abs_score <= Score::MAX_TB_WIN
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn tb_in(self) -> Option<i16> {
         if self.is_tb() {
             let abs_score = self.abs();
@@ -72,12 +72,12 @@ impl Score {
         None
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn is_decisive(self) -> bool {
         self.is_mate() || self.is_tb()
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn decisive_in(self) -> Option<i16> {
         if !self.is_decisive() {
             return None;
@@ -86,7 +86,7 @@ impl Score {
         self.mate_in().or_else(|| self.tb_in())
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn is_infinite(self) -> bool {
         let abs_score = self.abs();
         
@@ -95,12 +95,12 @@ impl Score {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn abs(self) -> Score {
         Score(self.0.abs())
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn sign(self) -> i16 {
         self.0.signum()
     }
@@ -139,42 +139,42 @@ impl fmt::Display for Score {
 }
 
 impl From<i16> for Score {
-    #[inline(always)]
+    #[inline]
     fn from(value: i16) -> Self {
         Score(value)
     }
 }
 
 impl From<Score> for i16 {
-    #[inline(always)]
+    #[inline]
     fn from(score: Score) -> i16 {
         score.0
     }
 }
 
 impl PartialEq<i16> for Score {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &i16) -> bool {
         self.0 == *other
     }
 }
 
 impl PartialEq<Score> for i16 {
-    #[inline(always)]
+    #[inline]
     fn eq(&self, other: &Score) -> bool {
         *self == other.0
     }
 }
 
 impl PartialOrd<i16> for Score {
-    #[inline(always)]
+    #[inline]
     fn partial_cmp(&self, other: &i16) -> Option<Ordering> {
         self.0.partial_cmp(other)
     }
 }
 
 impl PartialOrd<Score> for i16 {
-    #[inline(always)]
+    #[inline]
     fn partial_cmp(&self, other: &Score) -> Option<Ordering> {
         self.partial_cmp(&other.0)
     }
@@ -183,7 +183,7 @@ impl PartialOrd<Score> for i16 {
 impl Neg for Score {
     type Output = Score;
 
-    #[inline(always)]
+    #[inline]
     fn neg(self) -> Self::Output {
         Score(-self.0)
     }
@@ -194,7 +194,7 @@ macro_rules! impl_score_ops {
         impl $trait<Score> for Score {
             type Output = Score;
 
-            #[inline(always)]
+            #[inline]
             fn $fn(self, rhs: Score) -> Self::Output {
                 Score(self.0.$fn(rhs.0))
             }
@@ -205,7 +205,7 @@ macro_rules! impl_score_ops {
 macro_rules! impl_score_assign_ops {
     ($($trait:ident, $fn:ident;)*) => {$(
         impl $trait<Score> for Score {
-            #[inline(always)]
+            #[inline]
             fn $fn(&mut self, rhs: Score) {
                 self.0.$fn(rhs.0);
             }
@@ -218,7 +218,7 @@ macro_rules! impl_score_i16_ops {
         impl $trait<i16> for Score {
             type Output = Score;
 
-            #[inline(always)]
+            #[inline]
             fn $fn(self, rhs: i16) -> Self::Output {
                 Score(self.0.$fn(rhs))
             }
@@ -227,7 +227,7 @@ macro_rules! impl_score_i16_ops {
         impl $trait<Score> for i16 {
             type Output = Score;
 
-            #[inline(always)]
+            #[inline]
             fn $fn(self, rhs: Score) -> Self::Output {
                 Score(self.$fn(rhs.0))
             }
@@ -238,7 +238,7 @@ macro_rules! impl_score_i16_ops {
 macro_rules! impl_score_i16_assign_ops {
     ($($trait:ident, $fn:ident;)*) => {$(
         impl $trait<i16> for Score {
-            #[inline(always)]
+            #[inline]
             fn $fn(&mut self, rhs: i16) {
                 self.0.$fn(rhs);
             }

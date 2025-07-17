@@ -20,7 +20,7 @@ pub struct BoardBuilder {
 }
 
 impl BoardBuilder {
-    #[inline(always)]
+    #[inline]
     pub fn empty() -> BoardBuilder {
         BoardBuilder {
             pieces: [None; Square::COUNT],
@@ -32,7 +32,7 @@ impl BoardBuilder {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn from_board(board: &Board) -> BoardBuilder {
         let mut builder = BoardBuilder::empty();
 
@@ -64,17 +64,17 @@ impl BoardBuilder {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn startpos() -> BoardBuilder {
         BoardBuilder::chess960(518)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn chess960(scharnagl: u16) -> BoardBuilder {
         BoardBuilder::double_chess960(scharnagl, scharnagl)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn double_chess960(white_scharnagl: u16, black_sharnagl: u16) -> BoardBuilder {
         let mut builder = BoardBuilder::empty();
         builder.write_scharnagl(white_scharnagl, Color::White);
@@ -188,7 +188,7 @@ impl BoardBuilder {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     fn write_scharnagl(&mut self, scharnagl: u16, color: Color) {
         assert!(scharnagl < 960, "BoardBuilder::write_scharnagl(): Scharnagl number must be in the range 0..960");
 
@@ -277,12 +277,12 @@ impl BoardBuilder {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn set_piece(&mut self, sq: Square, piece: Option<ColorPiece>) {
         self.pieces[sq as usize] = piece;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_castle_rights(&mut self, color: Color, file: Option<File>, short: bool) {
         let rights = if short {
             &mut self.castle_rights[color as usize].short
@@ -293,22 +293,22 @@ impl BoardBuilder {
         *rights = file;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_en_passant(&mut self, sq: Option<Square>) {
         self.en_passant = sq;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_halfmove_clock(&mut self, value: u8) {
         self.halfmove_clock = value.min(100);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_fullmove_count(&mut self, value: u16) {
         self.fullmove_count = value.max(1);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_stm(&mut self, color: Color) {
         self.stm = color;
     }

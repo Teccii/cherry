@@ -26,7 +26,7 @@ pub const fn rook_relevant_blockers(sq: Square) -> Bitboard {
 
 /*----------------------------------------------------------------*/
 
-#[inline(always)]
+#[inline]
 const fn slider_moves_slow(sq: Square, mut blockers: Bitboard, deltas: &[(i8, i8); 4]) -> Bitboard {
     blockers.0 &= !sq.bitboard().0;
 
@@ -63,9 +63,9 @@ pub const fn rook_moves_slow(sq: Square, blockers: Bitboard) -> Bitboard {
 /*----------------------------------------------------------------*/
 
 
-#[inline(always)]
+#[inline]
 pub const fn bishop_rays(sq: Square) -> Bitboard {
-    #[inline(always)]
+    #[inline]
     const fn calc_moves(sq: Square) -> Bitboard {
         let mut bb = Bitboard::EMPTY;
         let sq = sq.bitboard();
@@ -93,9 +93,9 @@ pub const fn bishop_rays(sq: Square) -> Bitboard {
     TABLE[sq as usize]
 }
 
-#[inline(always)]
+#[inline]
 pub const fn rook_rays(sq: Square) -> Bitboard {
-    #[inline(always)]
+    #[inline]
     const fn calc_moves(sq: Square) -> Bitboard {
         let mut bb = Bitboard::EMPTY;
         let sq = sq.bitboard();
@@ -123,9 +123,9 @@ pub const fn rook_rays(sq: Square) -> Bitboard {
     TABLE[sq as usize]
 }
 
-#[inline(always)]
+#[inline]
 pub const fn queen_rays(sq: Square) -> Bitboard {
-    #[inline(always)]
+    #[inline]
     const fn calc_moves(sq: Square) -> Bitboard {
         let mut bb = Bitboard::EMPTY;
         let sq = sq.bitboard();

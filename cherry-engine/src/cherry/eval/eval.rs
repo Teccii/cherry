@@ -108,32 +108,32 @@ impl EvalData {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn attacks(&self, color: Color) -> Bitboard {
         self.attacks[color as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn pawn_attacks(&self, color: Color) -> Bitboard {
         self.pawn_attacks[color as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn blocked_pawns(&self, color: Color) -> Bitboard {
         self.blocked_pawns[color as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn mobility_area(&self, color: Color) -> Bitboard {
         self.mobility_area[color as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn semiopen_files(&self, color: Color) -> Bitboard {
         self.semiopen_files[color as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn open_files(&self) -> Bitboard {
         self.open_files
     }
@@ -147,7 +147,7 @@ pub struct Evaluator {
 }
 
 impl Evaluator {
-    #[inline(always)]
+    #[inline]
     pub fn new(weights: EvalWeights) -> Evaluator {
         Evaluator { weights }
     }
@@ -438,7 +438,7 @@ impl Evaluator {
 }
 
 impl Default for Evaluator {
-    #[inline(always)]
+    #[inline]
     fn default() -> Self {
         Evaluator { weights: EvalWeights::default() }
     }

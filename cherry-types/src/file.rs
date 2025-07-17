@@ -16,7 +16,7 @@ pub enum File {
 }
 
 impl File {
-    #[inline(always)]
+    #[inline]
     pub const fn index(i: usize) -> File {
         match i {
             0 => File::A,
@@ -31,7 +31,7 @@ impl File {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn try_index(i: usize) -> Option<File> {
         match i {
             0 => Some(File::A),
@@ -48,7 +48,7 @@ impl File {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn offset(self, dx: i8) -> File {
         let i = self as i8 + dx;
 
@@ -59,7 +59,7 @@ impl File {
         File::index(i as usize)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn try_offset(self, dx: i8) -> Option<File> {
         let i = self as i8 + dx;
 
@@ -70,19 +70,19 @@ impl File {
         File::try_index(i as usize)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn flip(self) -> File {
         File::index(File::H as usize - self as usize)
     }
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn bitboard(self) -> Bitboard {
         Bitboard(0x101010101010101 << self as u8)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn adjacent(self) -> Bitboard {
         const TABLE: [Bitboard; File::COUNT] = {
             let mut table = [Bitboard::EMPTY; File::COUNT];
@@ -126,7 +126,7 @@ impl File {
 }
 
 impl fmt::Display for File {
-    #[inline(always)]
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", char::from(*self))
     }
@@ -138,7 +138,7 @@ impl fmt::Display for File {
 pub struct FileParseError;
 
 impl From<File> for char {
-    #[inline(always)]
+    #[inline]
     fn from(f: File) -> char {
         match f {
             File::A => 'a',
@@ -156,7 +156,7 @@ impl From<File> for char {
 impl TryFrom<char> for File {
     type Error = FileParseError;
 
-    #[inline(always)]
+    #[inline]
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c.to_ascii_lowercase() {
             'a' => Ok(File::A),
@@ -175,7 +175,7 @@ impl TryFrom<char> for File {
 impl FromStr for File {
     type Err = FileParseError;
 
-    #[inline(always)]
+    #[inline]
     fn from_str(s: &str) -> Result<File, FileParseError> {
         let mut chars = s.chars();
         let c = chars.next().ok_or(FileParseError)?;

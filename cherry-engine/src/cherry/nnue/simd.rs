@@ -21,51 +21,51 @@ macro_rules! simd_wrapper {
             
             /*----------------------------------------------------------------*/
             
-            #[inline(always)]
+            #[inline]
             pub unsafe fn zero_i16() -> $vec {
                 unsafe { $zero() }
             }
             
-            #[inline(always)]
+            #[inline]
             pub unsafe fn splat_i16(value: i16) -> $vec {
                 unsafe { $splat(value) }
             }
             
             /*----------------------------------------------------------------*/
 
-            #[inline(always)]
+            #[inline]
             pub unsafe fn load_i16(src: *const i16) -> $vec {
                 unsafe { $load(src.cast()) }
             }
         
-            #[inline(always)]
+            #[inline]
             pub unsafe fn store_i16(dst: *mut i16, vec: $vec) {
                 unsafe { $store(dst.cast(), vec); }
             }
         
-            #[inline(always)]
+            #[inline]
             pub unsafe fn add_i16(lhs: $vec, rhs: $vec) -> $vec {
                 unsafe { $add(lhs, rhs) }
             }
         
-            #[inline(always)]
+            #[inline]
             pub unsafe fn sub_i16(lhs: $vec, rhs: $vec) -> $vec {
                 unsafe { $sub(lhs, rhs) }
             }
             
             /*----------------------------------------------------------------*/
             
-            #[inline(always)]
+            #[inline]
             pub unsafe fn max_i16(lhs: $vec, rhs: $vec) -> $vec {
                 unsafe { $max(lhs, rhs) }
             }
             
-            #[inline(always)]
+            #[inline]
             pub unsafe fn min_i16(lhs: $vec, rhs: $vec) -> $vec {
                 unsafe { $min(lhs, rhs) }
             }
         
-            #[inline(always)]
+            #[inline]
             pub unsafe fn clamp_i16(value: $vec, low: $vec, high: $vec) -> $vec {
                 unsafe { $min($max(value, low), high) }
             }

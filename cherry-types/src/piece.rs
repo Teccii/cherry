@@ -16,7 +16,7 @@ pub enum Piece {
 }
 
 impl Piece {
-    #[inline(always)]
+    #[inline]
     pub const fn index(i: usize) -> Piece {
         match i {
             0 => Piece::Pawn,
@@ -29,7 +29,7 @@ impl Piece {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn try_index(i: usize) -> Option<Piece> {
         match i {
             0 => Some(Piece::Pawn),
@@ -76,7 +76,7 @@ pub struct PieceParseError;
 impl TryFrom<char> for Piece {
     type Error = PieceParseError;
 
-    #[inline(always)]
+    #[inline]
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c.to_ascii_lowercase() {
             'p' => Ok(Piece::Pawn),
@@ -91,7 +91,7 @@ impl TryFrom<char> for Piece {
 }
 
 impl From<Piece> for char {
-    #[inline(always)]
+    #[inline]
     fn from(p: Piece) -> Self {
         match p {
             Piece::Pawn => 'p',
@@ -107,7 +107,7 @@ impl From<Piece> for char {
 impl FromStr for Piece {
     type Err = PieceParseError;
 
-    #[inline(always)]
+    #[inline]
     fn from_str(s: &str) -> Result<Piece, PieceParseError> {
         let mut chars = s.chars();
         let c = chars.next().ok_or(PieceParseError)?;
@@ -139,7 +139,7 @@ pub struct ColorPiece {
 }
 
 impl ColorPiece {
-    #[inline(always)]
+    #[inline]
     pub const fn new(piece: Piece, color: Color) -> ColorPiece {
         let mut bits = 0b10000;
         bits |= piece as u8;
@@ -150,12 +150,12 @@ impl ColorPiece {
 
     /*----------------------------------------------------------------*/
     
-    #[inline(always)]
+    #[inline]
     pub const fn piece(self) -> Piece {
         Piece::index((self.bits.get() as u8 & 0b111) as usize)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn color(self) -> Color {
         Color::index((((self.bits.get() as u8) >> 3) & 0b1) as usize)
     }

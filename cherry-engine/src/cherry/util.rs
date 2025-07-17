@@ -15,7 +15,7 @@ pub struct BatchedAtomicCounter {
 }
 
 impl BatchedAtomicCounter {
-    #[inline(always)]
+    #[inline]
     pub fn new() -> BatchedAtomicCounter {
         BatchedAtomicCounter {
             global: Arc::new(AtomicU64::new(0)), 
@@ -24,7 +24,7 @@ impl BatchedAtomicCounter {
         }
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn inc(&mut self) {
         self.buffer += 1;
         
@@ -33,31 +33,31 @@ impl BatchedAtomicCounter {
         }
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn flush(&mut self) {
         self.global.fetch_add(self.buffer, Ordering::Relaxed);
         self.local += self.buffer;
         self.buffer = 0;
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn reset(&mut self) {
         self.global.store(0, Ordering::Relaxed);
         self.local = 0;
         self.buffer = 0;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn global(&self) -> u64 {
         self.global.load(Ordering::Relaxed) + self.buffer
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn local(&self) -> u64 {
         self.local + self.buffer
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn buffer(&self) -> u64 {
         self.buffer
     }
@@ -66,7 +66,7 @@ impl BatchedAtomicCounter {
 }
 
 impl Clone for BatchedAtomicCounter {
-    #[inline(always)]
+    #[inline]
     fn clone(&self) -> Self {
         BatchedAtomicCounter {
             global: Arc::clone(&self.global),

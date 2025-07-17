@@ -34,7 +34,7 @@ pub struct TTPackedData {
 }
 
 impl TTData {
-    #[inline(always)]
+    #[inline]
     pub fn new(
         depth: u8,
         score: Score,
@@ -51,7 +51,7 @@ impl TTData {
         }
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn from_bits(bits: u64) -> TTData {
         let packed = unsafe {
             std::mem::transmute::<u64, TTPackedData>(bits)
@@ -66,7 +66,7 @@ impl TTData {
         }
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn to_bits(self) -> u64 {
         unsafe {
             std::mem::transmute::<TTPackedData, u64>(TTPackedData {
@@ -89,7 +89,7 @@ pub struct TTEntry {
 }
 
 impl TTEntry {
-    #[inline(always)]
+    #[inline]
     pub fn set(&self, hash: u64, data: TTData) {
         let data = data.to_bits();
         
@@ -97,13 +97,13 @@ impl TTEntry {
         self.data.store(data, Ordering::Relaxed);
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn reset(&self) {
         self.key.store(0, Ordering::Relaxed);
         self.data.store(0, Ordering::Relaxed);
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn zero() -> TTEntry {
         TTEntry {
             key: AtomicU64::new(0),
@@ -121,7 +121,7 @@ pub struct TTable {
 }
 
 impl TTable {
-    #[inline(always)]
+    #[inline]
     pub fn new(mb: usize) -> TTable {
         let size = mb * 1024 * 1024 / size_of::<TTEntry>();
         
@@ -188,7 +188,7 @@ impl TTable {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     fn index(&self, hash: u64) -> usize {
         (hash % self.size) as usize
     }

@@ -101,12 +101,12 @@ const fn magic_index(
     magic.offset as usize + (hash >> (Square::COUNT - bits)) as usize
 }
 
-#[inline(always)]
+#[inline]
 pub const fn bishop_magic_index(sq: Square, blockers: Bitboard) -> usize {
     magic_index(BISHOP_MAGICS, BISHOP_BITS, sq, blockers)
 }
 
-#[inline(always)]
+#[inline]
 pub const fn rook_magic_index(sq: Square, blockers: Bitboard) -> usize {
     magic_index(ROOK_MAGICS, ROOK_BITS, sq, blockers)
 }

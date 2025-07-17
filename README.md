@@ -57,8 +57,8 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - Doubled Pawns
 - King Safety
   - Attack Units
-  - 
 - Tapered Evaluation
+- NNUE (WIP)
 
 ### Time Management
 - Optimal and Maximum Time Limits

@@ -22,7 +22,7 @@ macro_rules! impl_tapered_ops {
         impl $trait for T {
             type Output = T;
             
-            #[inline(always)]
+            #[inline]
             fn $fn(self, rhs: T) -> Self::Output {
                 T(self.0.$fn(rhs.0), self.1.$fn(rhs.1))
             }
@@ -35,7 +35,7 @@ macro_rules! impl_tapered_i16_ops {
         impl $trait<i16> for T {
             type Output = T;
             
-            #[inline(always)]
+            #[inline]
             fn $fn(self, rhs: i16) -> Self::Output {
                 T(self.0.$fn(rhs), self.1.$fn(rhs))
             }
@@ -46,7 +46,7 @@ macro_rules! impl_tapered_i16_ops {
 macro_rules! impl_tapered_assign_ops {
     ($($trait:ident, $fn:ident;)*) => {$(
         impl $trait for T {
-            #[inline(always)]
+            #[inline]
             fn $fn(&mut self, rhs: T) {
                 self.0.$fn(rhs.0);
                 self.1.$fn(rhs.1);
@@ -58,7 +58,7 @@ macro_rules! impl_tapered_assign_ops {
 macro_rules! impl_tapered_i16_assign_ops {
     ($($trait:ident, $fn:ident;)*) => {$(
         impl $trait<i16> for T {
-            #[inline(always)]
+            #[inline]
             fn $fn(&mut self, rhs: i16) {
                 self.0.$fn(rhs);
                 self.1.$fn(rhs);

@@ -7,7 +7,7 @@ pub enum Color {
 }
 
 impl Color {
-    #[inline(always)]
+    #[inline]
     pub const fn index(i: usize) -> Color {
         match i {
             0 => Color::White,
@@ -16,7 +16,7 @@ impl Color {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn try_index(i: usize) -> Option<Color> {
         match i {
             0 => Some(Color::White),
@@ -25,7 +25,7 @@ impl Color {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn sign(self) -> i16 {
         match self {
             Color::White => 1,
@@ -42,7 +42,7 @@ impl Color {
 impl std::ops::Not for Color {
     type Output = Color;
 
-    #[inline(always)]
+    #[inline]
     fn not(self) -> Self::Output {
         match self {
             Color::White => Color::Black,
@@ -57,7 +57,7 @@ impl std::ops::Not for Color {
 pub struct ColorParseError;
 
 impl From<Color> for char {
-    #[inline(always)]
+    #[inline]
     fn from(color: Color) -> char {
         match color {
             Color::White => 'w',
@@ -69,7 +69,7 @@ impl From<Color> for char {
 impl TryFrom<char> for Color {
     type Error = ColorParseError;
 
-    #[inline(always)]
+    #[inline]
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c.to_ascii_lowercase() {
             'w' => Ok(Color::White),
@@ -82,7 +82,7 @@ impl TryFrom<char> for Color {
 impl FromStr for Color {
     type Err = ColorParseError;
     
-    #[inline(always)]
+    #[inline]
     fn from_str(s: &str) -> Result<Color, ColorParseError> {
         let mut chars = s.chars();
         let c = chars.next().ok_or(ColorParseError)?;

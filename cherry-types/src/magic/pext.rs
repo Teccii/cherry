@@ -57,12 +57,12 @@ fn pext_index(magics: &[PextEntry; Square::COUNT], sq: Square, blockers: Bitboar
     magic.offset as usize + index as usize
 }
 
-#[inline(always)]
+#[inline]
 pub fn rook_magic_index(sq: Square, blockers: Bitboard) -> usize {
     pext_index(&MAGICS.rook_magics, sq, blockers)
 }
 
-#[inline(always)]
+#[inline]
 pub fn bishop_magic_index(sq: Square, blockers: Bitboard) -> usize {
     pext_index(&MAGICS.bishop_magics, sq, blockers)
 }

@@ -10,7 +10,7 @@ pub struct Window {
 }
 
 impl Window {
-    #[inline(always)]
+    #[inline]
     pub fn new(window: i16) -> Window {
         Window {
             window,
@@ -21,35 +21,35 @@ impl Window {
         }
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn get(&self) -> (Score, Score) {
         (self.alpha, self.beta)
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn set_midpoint(&mut self, score: Score) {
         self.midpoint = score;
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn reset(&mut self) {
         self.window = self.start;
         self.alpha = self.midpoint - self.window;
         self.beta = self.midpoint + self.window;
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn expand(&mut self) {
         self.window += 7 + self.window / 2;
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn fail_high(&mut self) {
         self.beta = self.midpoint + self.window;
         self.expand();
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn fail_low(&mut self) {
         self.beta = (self.alpha + self.beta) / 2;
         self.alpha = self.midpoint - self.window;

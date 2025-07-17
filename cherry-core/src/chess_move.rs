@@ -27,7 +27,7 @@ pub enum MoveFlag {
 pub struct MoveParseError;
 
 impl MoveFlag {
-    #[inline(always)]
+    #[inline]
     pub const fn index(i: usize) -> MoveFlag {
         match i {
             0 => MoveFlag::None,
@@ -38,7 +38,7 @@ impl MoveFlag {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn try_index(i: usize) -> Option<MoveFlag> {
         match i {
             0 => Some(MoveFlag::None),
@@ -51,7 +51,7 @@ impl MoveFlag {
 }
 
 impl Move {
-    #[inline(always)]
+    #[inline]
     pub const fn new(from: Square, to: Square, flag: MoveFlag) -> Move {
         let mut bits = 0;
 
@@ -62,7 +62,7 @@ impl Move {
         Move { bits: NonZeroU16::new(bits).unwrap() }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn new_promotion(from: Square, to: Square, piece: Piece) -> Move {
         let mut bits = 0;
 
@@ -76,20 +76,20 @@ impl Move {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn bits(self) -> u16 { self.bits.get() }
 
-    #[inline(always)]
+    #[inline]
     pub const fn from(self) -> Square {
         Square::index((self.bits.get() & 0b111111) as usize)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn to(self) -> Square {
         Square::index(((self.bits.get() >> 6) & 0b111111) as usize)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn promotion(self) -> Option<Piece> {
         match self.flag() {
             MoveFlag::Promotion => Some(Piece::index(Piece::Knight as usize + ((self.bits.get() >> 12) & 0b11) as usize)),
@@ -99,21 +99,21 @@ impl Move {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn set_src(&mut self, sq: Square) {
         let no_from = self.bits.get() & !0b111111;
 
         self.bits = NonZeroU16::new(no_from | sq as u16).unwrap();
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn set_dest(&mut self, sq: Square) {
         let no_to = self.bits.get() & !0b111111000000;
 
         self.bits = NonZeroU16::new(no_to | ((sq as u16) << 6)).unwrap();
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn set_promotion(&mut self, promotion: Option<Piece>) {
         let no_promotion = self.bits.get() & !0b11000000000000;
         let promotion = if let Some(p) = promotion {
@@ -125,7 +125,7 @@ impl Move {
         self.bits = NonZeroU16::new(no_promotion | promotion).unwrap();
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn set_flag(&mut self, flag: MoveFlag) {
         let no_flag = self.bits.get() & !0b1100000000000000;
 
@@ -134,22 +134,22 @@ impl Move {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn flag(self) -> MoveFlag {
         MoveFlag::index(((self.bits.get() >> 14) & 0b11) as usize)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn is_promotion(self) -> bool {
         self.flag() as u8 == MoveFlag::Promotion as u8
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn is_en_passant(self) -> bool {
         self.flag() as u8 == MoveFlag::EnPassant as u8
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn is_castling(self) -> bool {
         self.flag() as u8 == MoveFlag::Castling as u8
     }
@@ -297,7 +297,7 @@ impl PieceMoves {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn is_empty(self) -> bool {
         self.to.is_empty()
     }
@@ -307,7 +307,7 @@ impl IntoIterator for PieceMoves {
     type Item = Move;
     type IntoIter = PieceMovesIter;
 
-    #[inline(always)]
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         PieceMovesIter {
             moves: self,
@@ -325,7 +325,7 @@ pub struct PieceMovesIter {
 impl Iterator for PieceMovesIter {
     type Item = Move;
 
-    #[inline(always)]
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let from = self.moves.from;
         let to = self.moves.to.try_next_square()?;
@@ -356,7 +356,7 @@ impl Iterator for PieceMovesIter {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.len();
 
@@ -365,7 +365,7 @@ impl Iterator for PieceMovesIter {
 }
 
 impl ExactSizeIterator for PieceMovesIter {
-    #[inline(always)]
+    #[inline]
     fn len(&self) -> usize {
         self.moves.len() - self.promotion
     }

@@ -7,7 +7,7 @@ use crate::*;
 pub struct Bitboard(pub u64);
 
 impl Bitboard {
-    #[inline(always)]
+    #[inline]
     pub const fn shift<D: Direction>(self, steps: usize) -> Bitboard {
         /*
         For some reason, `shl` takes an `isize` as a parameter but then panics if you try to shift
@@ -31,7 +31,7 @@ impl Bitboard {
         result
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn smear<D: Direction>(self) -> Bitboard {
         let mut result = self;
 
@@ -44,7 +44,7 @@ impl Bitboard {
     
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn flip_files(self) -> Bitboard {
         const K1: u64 = 0x5555555555555555;
         const K2: u64 = 0x3333333333333333;
@@ -58,12 +58,12 @@ impl Bitboard {
         Bitboard(result)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn flip_ranks(self) -> Bitboard {
         Bitboard(self.0.swap_bytes())
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn relative_to(self, color: Color) -> Bitboard {
         match color {
             Color::White => self,
@@ -73,58 +73,58 @@ impl Bitboard {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn next_square(self) -> Square {
         Square::index(self.0.trailing_zeros() as usize)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn try_next_square(self) -> Option<Square> {
         Square::try_index(self.0.trailing_zeros() as usize)
     }
     
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn is_superset(self, rhs: Bitboard) -> bool {
         rhs.is_subset(self)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn is_subset(self, rhs: Bitboard) -> bool {
         self.0 & rhs.0 == self.0
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn is_disjoint(self, rhs: Bitboard) -> bool {
         self.0 & rhs.0 == 0
     }
 
     /*----------------------------------------------------------------*/
     
-    #[inline(always)]
+    #[inline]
     pub const fn has(self, sq: Square) -> bool {
         !self.is_disjoint(sq.bitboard())
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn popcnt(self) -> usize {
         self.0.count_ones() as usize
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn iter(self) -> BitboardIter {
         BitboardIter(self)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn iter_subsets(self) -> BitboardSubsetIter {
         BitboardSubsetIter {
             set: self,
@@ -148,7 +148,7 @@ impl Bitboard {
 /*----------------------------------------------------------------*/
 
 impl From<u64> for Bitboard {
-    #[inline(always)]
+    #[inline]
     fn from(value: u64) -> Self {
         Bitboard(value)
     }
@@ -157,14 +157,14 @@ impl From<u64> for Bitboard {
 impl Deref for Bitboard {
     type Target = u64;
 
-    #[inline(always)]
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl DerefMut for Bitboard {
-    #[inline(always)]
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -174,7 +174,7 @@ impl IntoIterator for Bitboard {
     type Item = Square;
     type IntoIter = BitboardIter;
 
-    #[inline(always)]
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         BitboardIter(self)
     }
@@ -211,7 +211,7 @@ impl fmt::Display for Bitboard {
 impl Not for Bitboard {
     type Output = Bitboard;
 
-    #[inline(always)]
+    #[inline]
     fn not(self) -> Self::Output {
         Bitboard(!self.0)
     }
@@ -220,7 +220,7 @@ impl Not for Bitboard {
 impl Shl<usize> for Bitboard {
     type Output = Bitboard;
     
-    #[inline(always)]
+    #[inline]
     fn shl(self, rhs: usize) -> Self::Output {
         Bitboard(self.0 << rhs)
     }
@@ -229,21 +229,21 @@ impl Shl<usize> for Bitboard {
 impl Shr<usize> for Bitboard {
     type Output = Bitboard;
 
-    #[inline(always)]
+    #[inline]
     fn shr(self, rhs: usize) -> Self::Output {
         Bitboard(self.0 >> rhs)
     }
 }
 
 impl ShlAssign<usize> for Bitboard {
-    #[inline(always)]
+    #[inline]
     fn shl_assign(&mut self, rhs: usize) {
         self.0 <<= rhs;
     }
 }
 
 impl ShrAssign<usize> for Bitboard {
-    #[inline(always)]
+    #[inline]
     fn shr_assign(&mut self, rhs: usize) {
         self.0 >>= rhs;
     }
@@ -256,7 +256,7 @@ macro_rules! impl_bb_ops {
         impl $trait<Bitboard> for Bitboard {
             type Output = Bitboard;
             
-            #[inline(always)]
+            #[inline]
             fn $fn(self, rhs: Bitboard) -> Self::Output {
                 Bitboard(self.0.$fn(rhs.0))
             }
@@ -265,7 +265,7 @@ macro_rules! impl_bb_ops {
         impl $trait<u64> for Bitboard {
             type Output = Bitboard;
             
-            #[inline(always)]
+            #[inline]
             fn $fn(self, rhs: u64) -> Self::Output {
                 Bitboard(self.0.$fn(rhs))
             }
@@ -274,7 +274,7 @@ macro_rules! impl_bb_ops {
         impl $trait<Bitboard> for u64 {
             type Output = Bitboard;
             
-            #[inline(always)]
+            #[inline]
             fn $fn(self, rhs: Bitboard) -> Self::Output {
                 Bitboard(self.$fn(rhs.0))
             }
@@ -283,7 +283,7 @@ macro_rules! impl_bb_ops {
         impl $trait<Square> for Bitboard {
             type Output = Bitboard;
 
-            #[inline(always)]
+            #[inline]
             fn $fn(self, rhs: Square) -> Self::Output {
                 Bitboard(self.0.$fn(rhs.bitboard().0))
             }
@@ -294,21 +294,21 @@ macro_rules! impl_bb_ops {
 macro_rules! impl_bb_assign_ops {
     ($($trait:ident, $fn:ident;)*) => {$(
         impl $trait<Bitboard> for Bitboard {
-            #[inline(always)]
+            #[inline]
             fn $fn(&mut self, rhs: Bitboard) {
                 self.0.$fn(rhs.0);
             }
         }
     
         impl $trait<u64> for Bitboard {
-            #[inline(always)]
+            #[inline]
             fn $fn(&mut self, rhs: u64) {
                 self.0.$fn(rhs);
             }
         }
 
         impl $trait<Square> for Bitboard {
-            #[inline(always)]
+            #[inline]
             fn $fn(&mut self, rhs: Square) {
                 self.0.$fn(rhs.bitboard().0);
             }
@@ -337,7 +337,7 @@ pub struct BitboardIter(Bitboard);
 impl Iterator for BitboardIter {
     type Item = Square;
 
-    #[inline(always)]
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let sq = self.0.try_next_square();
         
@@ -360,7 +360,7 @@ pub struct BitboardSubsetIter {
 impl Iterator for BitboardSubsetIter {
     type Item = Bitboard;
 
-    #[inline(always)]
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
             return None;

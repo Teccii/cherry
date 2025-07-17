@@ -200,28 +200,28 @@ pub struct UpdateBuffer {
 }
 
 impl UpdateBuffer {
-    #[inline(always)]
+    #[inline]
     pub fn move_piece(&mut self, piece: Piece, color: Color, from: Square, to: Square) {
         self.add_piece(piece, color, to);
         self.remove_piece(piece, color, from);
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn add_piece(&mut self, piece: Piece, color: Color, sq: Square) {
         self.add.push(FeatureUpdate { piece, color, sq });
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn remove_piece(&mut self, piece: Piece, color: Color, sq: Square) {
         self.sub.push(FeatureUpdate { piece, color, sq });
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn adds(&self) -> &[FeatureUpdate] {
         &self.add
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn subs(&self) -> &[FeatureUpdate] {
         &self.sub
     }

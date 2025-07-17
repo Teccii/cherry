@@ -8,12 +8,12 @@ pub struct Xorshift64 {
 }
 
 impl Xorshift64 {
-    #[inline(always)]
+    #[inline]
     pub const fn new(state: u64) -> Xorshift64 {
         Xorshift64 { state }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn next(&mut self) -> u64 {
         self.state ^= self.state << 13;
         self.state ^= self.state >> 17;
@@ -72,7 +72,7 @@ impl Zobrist {
         zobrist
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn empty() -> Zobrist {
         Zobrist {
             pieces: [[[0; Square::COUNT]; Piece::COUNT]; Color::COUNT],
@@ -82,22 +82,22 @@ impl Zobrist {
         }
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn piece(&self, sq: Square, piece: Piece, color: Color) -> u64 {
         self.pieces[color as usize][piece as usize][sq as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn castle_rights(&self, file: File, color: Color) -> u64 {
         self.castle_rights[color as usize][file as usize]
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn en_passant(&self, file: File) -> u64 {
         self.en_passant[file as usize]
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn stm(&self) -> u64 {
         self.stm
     }

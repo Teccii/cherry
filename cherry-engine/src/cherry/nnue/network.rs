@@ -67,7 +67,7 @@ impl NetworkWeights {
 }
 
 impl Default for NetworkWeights {
-    #[inline(always)]
+    #[inline]
     fn default() -> Self {
         Self::new(NNUE_BYTES)
     }
@@ -168,7 +168,7 @@ impl Nnue {
         self.acc_mut().dirty = [true; Color::COUNT];
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn unmake_move(&mut self) {
         self.acc_index -= 1;
     }
@@ -277,12 +277,12 @@ impl Nnue {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     fn acc(&self) -> &Accumulator {
         &self.acc_stack[self.acc_index]
     }
 
-    #[inline(always)]
+    #[inline]
     fn acc_mut(&mut self) -> &mut Accumulator {
         &mut self.acc_stack[self.acc_index]
     }

@@ -9,7 +9,7 @@ macro_rules! soft_assert {
 }
 
 impl Board {
-    #[inline(always)]
+    #[inline]
     pub fn is_sane(&self) -> bool {
         soft_assert!(self.board_is_sane());
         soft_assert!(self.checkers_is_sane());
@@ -106,12 +106,12 @@ impl Board {
         true
     }
 
-    #[inline(always)]
+    #[inline]
     pub(crate) fn halfmove_clock_is_sane(&self) -> bool {
         self.halfmove_clock <= 100
     }
 
-    #[inline(always)]
+    #[inline]
     pub(crate) fn fullmove_count_is_sane(&self) -> bool {
         self.fullmove_count > 0
     }

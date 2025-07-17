@@ -16,12 +16,12 @@ pub enum Square {
 }
 
 impl Square {
-    #[inline(always)]
+    #[inline]
     pub const fn new(file: File, rank: Rank) -> Square {
         Square::index(((rank as usize) << 3) | file as usize)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn index(i: usize) -> Square {
         match i {
             0 => Square::A1,
@@ -100,7 +100,7 @@ impl Square {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn try_index(i: usize) -> Option<Square> {
         match i {
             0 => Some(Square::A1),
@@ -181,7 +181,7 @@ impl Square {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn offset(self, dx: i8, dy: i8) -> Square {
         let i = self.file() as i8 + dx;
         let j = self.rank() as i8 + dy;
@@ -197,7 +197,7 @@ impl Square {
         Square::new(File::index(i as usize), Rank::index(j as usize))
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn try_offset(self, dx: i8, dy: i8) -> Option<Square> {
         let i = self.file() as i8 + dx;
         let j = self.rank() as i8 + dy;
@@ -215,17 +215,17 @@ impl Square {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn flip_rank(self) -> Square {
         Square::index(self as usize ^ 56)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn flip_file(self) -> Square {
         Square::index(self as usize ^ 7)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn relative_to(self, color: Color) -> Square {
         match color {
             Color::White => self,
@@ -235,12 +235,12 @@ impl Square {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn dist(self, other: Square) -> u8 {
         ((other.rank() as i8 - self.rank() as i8).abs() + (other.file() as i8 - self.file() as i8).abs()) as u8
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn center_dist(self) -> u8 {
         const TABLE: [u8; Square::COUNT] = [
             6, 5, 4, 3, 3, 4, 5, 6,
@@ -258,17 +258,17 @@ impl Square {
     
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn file(self) -> File {
         File::index(self as usize & 7)
     }
     
-    #[inline(always)]
+    #[inline]
     pub const fn rank(self) -> Rank {
         Rank::index(self as usize >> 3)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn bitboard(self) -> Bitboard {
         Bitboard(1u64 << self as u8)
     }
@@ -297,7 +297,7 @@ pub enum SquareParseError {
 impl FromStr for Square {
     type Err = SquareParseError;
 
-    #[inline(always)]
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
         let file = chars.next()

@@ -35,7 +35,7 @@ pub struct ThreadContext {
 }
 
 impl ThreadContext {
-    #[inline(always)]
+    #[inline]
     pub fn reset(&mut self) {
         self.qnodes.reset();
         self.nodes.reset();
@@ -61,14 +61,14 @@ impl ThreadContext {
         self.abort_now = false;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn update_sel_depth(&mut self, ply: u16) {
         if ply > self.sel_depth {
             self.sel_depth = ply;
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn abort_now(&mut self) {
         self.abort_now = true;
     }
@@ -120,7 +120,7 @@ pub struct SearchStack {
 }
 
 impl SearchStack {
-    #[inline(always)]
+    #[inline]
     pub fn update_pv(&mut self, best_move: Move, child_pv: &[Option<Move>]) {
         self.pv[0] = Some(best_move);
         self.pv_len = child_pv.len() + 1;
@@ -140,7 +140,7 @@ pub struct Searcher {
 }
 
 impl Searcher {
-    #[inline(always)]
+    #[inline]
     pub fn new(board: Board, time_man: Arc<TimeManager>) -> Searcher {
         Searcher {
             pos: Position::new(board),
@@ -187,19 +187,6 @@ impl Searcher {
 
     pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u8, u64) {
         self.shared_ctx.time_man.init(self.pos.stm(), &limits);
-
-        if !self.shared_ctx.time_man.no_manage() {
-            let mut legal_moves = Vec::new();
-            self.pos.board().gen_moves(|moves| {
-                legal_moves.extend(moves);
-                legal_moves.len() > 1
-            });
-
-            if legal_moves.len() == 1 {
-                return (legal_moves[0], None, -Score::INFINITE, 1, 1);
-            }
-        }
-
         self.shared_ctx.root_moves.clear();
         
         for limit in &limits {
@@ -257,37 +244,37 @@ impl Searcher {
         (best_move.unwrap(), ponder_move, best_score, depth, self.main_ctx.nodes.global())
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn resize_ttable(&mut self, mb: usize) {
         self.shared_ctx.t_table = Arc::new(TTable::new(mb));
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn clean_ttable(&mut self) {
         self.shared_ctx.t_table.clean();
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_threads(&mut self, count: u16) {
         self.threads = count.max(1);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_chess960(&mut self, value: bool) {
         self.chess960 = value;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_debug(&mut self, value: bool) {
         self.debug = value;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_syzygy_path(&mut self, path: &str) {
         self.shared_ctx.syzygy = Arc::new(Some(TableBases::<SyzygyAdapter>::new(path).unwrap()));
     }
     
-    #[inline(always)]
+    #[inline]
     pub fn set_syzygy_depth(&mut self, depth: u8) {
         self.shared_ctx.syzygy_depth = depth;
     }
@@ -409,6 +396,18 @@ fn search_worker<Info: SearchInfo>(
             }
         }
 
+        while shared_ctx.time_man.is_infinite() && !(ctx.abort_now || shared_ctx.time_man.timeout_id()) {
+            Info::push(
+                pos.board(),
+                &ctx,
+                &shared_ctx,
+                TTBound::Exact,
+                depth,
+                eval,
+                chess960,
+            );
+        }
+
         if let Some(best_score) = eval {
             (best_move, ponder_move, best_score, depth)
         } else {
@@ -449,7 +448,7 @@ impl SearchInfo for DebugInfo {
 
         if let Some(eval) = eval {
             if let Some(ply) = eval.mate_in() {
-                write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
+                write!(info, "score mate {} ", ply / 2).unwrap();
             } else {
                 write!(info, "score cp {} ", eval.0).unwrap();
 
@@ -517,7 +516,7 @@ impl SearchInfo for UciInfo {
 
         if let Some(eval) = eval {
             if let Some(ply) = eval.mate_in() {
-                write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
+                write!(info, "score mate {} ", ply / 2).unwrap();
             } else {
                 write!(info, "score cp {} ", eval.0).unwrap();
 

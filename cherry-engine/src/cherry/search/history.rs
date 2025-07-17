@@ -41,7 +41,7 @@ pub struct History {
 }
 
 impl History {
-    #[inline(always)]
+    #[inline]
     pub fn new() -> History {
         History {
             quiets: Box::new([move_to(0); Color::COUNT]),
@@ -53,7 +53,7 @@ impl History {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn reset(&mut self) {
         self.quiets = Box::new([move_to(0); Color::COUNT]);
         self.captures = Box::new([piece_to(0); Color::COUNT]);
@@ -65,14 +65,14 @@ impl History {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn get_quiet(&self, board: &Board, mv: Move) -> i16 {
         self.quiets[board.stm() as usize]
             [mv.from() as usize]
             [mv.to() as usize]
     }
     
-    #[inline(always)]
+    #[inline]
     fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
         &mut self.quiets[board.stm() as usize]
             [mv.to() as usize]
@@ -81,14 +81,14 @@ impl History {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn get_capture(&self, board: &Board, mv: Move) -> i16 {
         self.captures[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
             [mv.to() as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     fn get_capture_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
         &mut self.captures[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
@@ -153,7 +153,7 @@ impl History {
 
     /*----------------------------------------------------------------*/
     
-    #[inline(always)]
+    #[inline]
     pub fn get_move(
         &self,
         board: &Board,
@@ -170,7 +170,7 @@ impl History {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_corr(&self, board: &Board) -> i16 {
         let pawn_hash = board.pawn_hash();
         let minor_hash = board.minor_hash();
@@ -257,7 +257,7 @@ impl History {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     fn update_value(value: &mut i16, amount: i16) {
         let amount = amount.clamp(-MAX_HISTORY, MAX_HISTORY);
         let decay = (*value as i32 * amount.abs() as i32 / MAX_HISTORY as i32) as i16;
@@ -265,7 +265,7 @@ impl History {
         *value += amount - decay;
     }
 
-    #[inline(always)]
+    #[inline]
     fn update_corr_value(value: &mut i16, amount: i16) {
         let amount = amount.clamp(-MAX_CORRECTION / 4, MAX_CORRECTION / 4);
         let decay = (*value as i32 * amount.abs() as i32 / MAX_CORRECTION as i32) as i16;

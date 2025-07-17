@@ -5,7 +5,7 @@ use crate::*;
 
 include!(concat!(env!("OUT_DIR"), "/slider_moves.rs"));
 
-#[inline(always)]
+#[inline]
 pub fn bishop_moves(sq: Square, blockers: Bitboard) -> Bitboard {
     #[cfg(not(target_feature = "bmi2"))] {
         SLIDER_MOVES[bishop_magic_index(sq, blockers)]
@@ -16,7 +16,7 @@ pub fn bishop_moves(sq: Square, blockers: Bitboard) -> Bitboard {
     }
 }
 
-#[inline(always)]
+#[inline]
 pub fn rook_moves(sq: Square, blockers: Bitboard) -> Bitboard {
     #[cfg(not(target_feature = "bmi2"))] {
         SLIDER_MOVES[rook_magic_index(sq, blockers)]
@@ -27,14 +27,14 @@ pub fn rook_moves(sq: Square, blockers: Bitboard) -> Bitboard {
     }
 }
 
-#[inline(always)]
+#[inline]
 pub fn queen_moves(sq: Square, blockers: Bitboard) -> Bitboard {
     Bitboard(bishop_moves(sq, blockers).0 | rook_moves(sq, blockers).0)
 }
 
 /*----------------------------------------------------------------*/
 
-#[inline(always)]
+#[inline]
 pub const fn pawn_quiets(sq: Square, color: Color, blockers: Bitboard) -> Bitboard {
     let sq_bb = sq.bitboard();
     let mut moves = Bitboard(if let Color::White = color {
@@ -55,9 +55,9 @@ pub const fn pawn_quiets(sq: Square, color: Color, blockers: Bitboard) -> Bitboa
     moves
 }
 
-#[inline(always)]
+#[inline]
 pub const fn pawn_attacks(sq: Square, color: Color) -> Bitboard {
-    #[inline(always)]
+    #[inline]
     const fn calc_attacks(sq: Square, color: Color) -> Bitboard {
         let bb = sq.bitboard();
 
@@ -89,9 +89,9 @@ pub const fn pawn_attacks(sq: Square, color: Color) -> Bitboard {
 
 /*----------------------------------------------------------------*/
 
-#[inline(always)]
+#[inline]
 pub const fn knight_moves(sq: Square) -> Bitboard {
-    #[inline(always)]
+    #[inline]
     const fn calc_moves(sq: Square) -> Bitboard {
         const DELTAS: [(i8, i8); 8] = [
             (1, 2),   (2, 1),
@@ -132,9 +132,9 @@ pub const fn knight_moves(sq: Square) -> Bitboard {
 
 /*----------------------------------------------------------------*/
 
-#[inline(always)]
+#[inline]
 pub const fn king_moves(sq: Square) -> Bitboard {
-    #[inline(always)]
+    #[inline]
     const fn calc_moves(sq: Square) -> Bitboard {
         const DELTAS: [(i8, i8); 8] = [
             (0, 1),  (1, 1),
@@ -206,9 +206,9 @@ pub const fn king_zone(sq: Square, color: Color) -> Bitboard {
 
 /*----------------------------------------------------------------*/
 
-#[inline(always)]
+#[inline]
 pub const fn between(from: Square, to: Square) -> Bitboard {
-    #[inline(always)]
+    #[inline]
     const fn calc_between(from: Square, to: Square) -> Bitboard {
         let dx = to.file() as i8 - from.file() as i8;
         let dy = to.rank() as i8 - from.rank() as i8;
@@ -253,9 +253,9 @@ pub const fn between(from: Square, to: Square) -> Bitboard {
     TABLE[from as usize][to as usize]
 }
 
-#[inline(always)]
+#[inline]
 pub const fn line(from: Square, to: Square) -> Bitboard {
-    #[inline(always)]
+    #[inline]
     const fn calc_line(from: Square, to: Square) -> Bitboard {
         let rays = bishop_rays(from);
         if rays.has(to) {

@@ -53,80 +53,80 @@ pub struct Board {
 }
 
 impl Board {
-    #[inline(always)]
+    #[inline]
     pub const fn occupied(&self) -> Bitboard {
         Bitboard(self.colors[0].0 | self.colors[1].0)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn colors(&self, color: Color) -> Bitboard {
         self.colors[color as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn pieces(&self, piece: Piece) -> Bitboard {
         self.pieces[piece as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn color_pieces(&self, piece: Piece, color: Color) -> Bitboard {
         Bitboard(self.colors(color).0 & self.pieces(piece).0)
     }
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn minors(&self) -> Bitboard {
         Bitboard(self.pieces(Piece::Knight).0 | self.pieces(Piece::Bishop).0)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn color_minors(&self, color: Color) -> Bitboard {
         Bitboard(self.colors(color).0 & self.minors().0)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn majors(&self) -> Bitboard {
         Bitboard(self.pieces(Piece::Rook).0 | self.pieces(Piece::Queen).0)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn color_majors(&self, color: Color) -> Bitboard {
         Bitboard(self.colors(color).0 & self.majors().0)
     }
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn diag_sliders(&self) -> Bitboard {
         Bitboard(self.pieces(Piece::Bishop).0 | self.pieces(Piece::Queen).0)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn color_diag_sliders(&self, color: Color) -> Bitboard {
         Bitboard(self.colors(color).0 & self.diag_sliders().0)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn orth_sliders(&self) -> Bitboard {
         Bitboard(self.pieces(Piece::Rook).0 | self.pieces(Piece::Queen).0)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn color_orth_sliders(&self, color: Color) -> Bitboard {
         Bitboard(self.colors(color).0 & self.orth_sliders().0)
     }
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn castle_rights(&self, color: Color) -> CastleRights {
         self.castle_rights[color as usize]
     }
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn king(&self, color: Color) -> Square {
         self.color_pieces(Piece::King, color).try_next_square().unwrap_or_else(|| {
             panic!("Board {}", self);
@@ -135,23 +135,23 @@ impl Board {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn pinned(&self, color: Color) -> Bitboard {
         self.pinned[color as usize]
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn checkers(&self) -> Bitboard { self.checkers }
 
-    #[inline(always)]
+    #[inline]
     pub const fn en_passant(&self) -> Option<File> { self.en_passant }
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn in_check(&self) -> bool { !self.checkers.is_empty() }
 
-    #[inline(always)]
+    #[inline]
     pub fn ep_square(&self) -> Option<Square> {
         self.en_passant.map(|f|
             Square::new(f, Rank::Sixth.relative_to(self.stm))
@@ -160,30 +160,30 @@ impl Board {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub const fn repetition(&self) -> u8 { self.repetition }
     
-    #[inline(always)]
+    #[inline]
     pub const fn halfmove_clock(&self) -> u8 { self.halfmove_clock }
 
-    #[inline(always)]
+    #[inline]
     pub const fn fullmove_count(&self) -> u16 { self.fullmove_count }
 
-    #[inline(always)]
+    #[inline]
     pub const fn pawn_hash(&self) -> u64 { self.pawn_hash }
 
-    #[inline(always)]
+    #[inline]
     pub const fn minor_hash(&self) -> u64 { self.minor_hash }
 
-    #[inline(always)]
+    #[inline]
     pub const fn hash(&self) -> u64 { self.hash }
 
-    #[inline(always)]
+    #[inline]
     pub const fn stm(&self) -> Color { self.stm }
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn attackers(&self, sq: Square, blockers: Bitboard) -> Bitboard {
         (knight_moves(sq) & self.pieces(Piece::Knight))
             | (king_moves(sq) & self.pieces(Piece::King))
@@ -193,7 +193,7 @@ impl Board {
             | (pawn_attacks(sq, Color::Black) & self.color_pieces(Piece::Pawn, Color::White))
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn pawn_attacks(&self, color: Color) -> Bitboard {
         let pawns = self.color_pieces(Piece::Pawn, color);
 
@@ -205,7 +205,7 @@ impl Board {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     pub fn piece_on(&self, sq: Square) -> Option<Piece> {
         let bb = sq.bitboard();
 
@@ -228,7 +228,7 @@ impl Board {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn color_on(&self, sq: Square) -> Option<Color> {
         let bb = sq.bitboard();
 
@@ -461,7 +461,7 @@ impl Board {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     fn xor_square(&mut self, piece: Piece, color: Color, sq: Square) {
         let bb = sq.bitboard();
         self.colors[color as usize] ^= bb;
@@ -477,7 +477,7 @@ impl Board {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn set_castle_rights(&mut self, color: Color, file: Option<File>, short: bool) {
         let rights = if short {
             &mut self.castle_rights[color as usize].short
@@ -494,7 +494,7 @@ impl Board {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn set_en_passant(&mut self, file: Option<File>) {
         if let Some(prev) = std::mem::replace(&mut self.en_passant, file) {
             self.hash ^= ZOBRIST.en_passant(prev);
@@ -505,7 +505,7 @@ impl Board {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn toggle_stm(&mut self) {
         self.stm = !self.stm;
         self.hash ^= ZOBRIST.stm;
@@ -513,7 +513,7 @@ impl Board {
 }
 
 impl Default for Board {
-    #[inline(always)]
+    #[inline]
     fn default() -> Self {
         BoardBuilder::startpos().build().unwrap()
     }

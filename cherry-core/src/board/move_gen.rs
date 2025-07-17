@@ -215,7 +215,7 @@ impl Board {
 
     /*----------------------------------------------------------------*/
 
-    #[inline(always)]
+    #[inline]
     fn king_safe_on(&self, square: Square) -> bool {
         macro_rules! short_circuit {
             ($($attackers:expr),*) => {
