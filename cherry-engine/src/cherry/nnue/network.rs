@@ -117,8 +117,8 @@ impl Nnue {
 
         self.acc_index = 0;
         let acc = self.acc_mut();
-        vec_add_inplace(acc.select_mut(Color::White), weights, &w_add);
-        vec_add_inplace(acc.select_mut(Color::Black), weights, &b_add);
+        vec_add(acc.select_mut(Color::White), weights, &w_add);
+        vec_add(acc.select_mut(Color::Black), weights, &b_add);
         acc.dirty = [false; Color::COUNT];
     }
 

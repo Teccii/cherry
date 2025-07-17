@@ -1,5 +1,6 @@
 use arrayvec::ArrayVec;
 use cherry_core::*;
+use super::simd::*;
 use super::*;
 
 /*----------------------------------------------------------------*/
@@ -31,84 +32,25 @@ impl Accumulator {
 
 /*----------------------------------------------------------------*/
 
-pub fn vec_update(
-    acc: &mut Align64<[i16; HL]>,
-    weights: &NetworkWeights,
-    adds: &[usize],
-    subs: &[usize],
-) {
-    for i in 0..(HL/simd::I16_CHUNK) {
-        let offset = i * simd::I16_CHUNK;
-
-        unsafe {
-            let mut add_chunks = ArrayVec::<_, 64>::new();
-            let mut sub_chunks = ArrayVec::<_, 64>::new();
-            for &index in adds {
-                add_chunks.push(simd::load_i16(weights.ft_weights.get_unchecked(index * HL + offset)));
-            }
-            for &index in subs {
-                sub_chunks.push(simd::load_i16(weights.ft_weights.get_unchecked(index * HL + offset)));
-            }
-
-            let mut value = simd::load_i16(acc.get_unchecked(offset));
-            for chunk in add_chunks {
-                value = simd::add_i16(value, chunk);
-            }
-            for chunk in sub_chunks {
-                value = simd::sub_i16(value, chunk);
-            }
-
-            simd::store_i16(acc.get_unchecked_mut(offset), value);
-        }
-    }
-}
-
-pub fn vec_add_inplace(
+pub fn vec_add(
     acc: &mut Align64<[i16; HL]>,
     weights: &NetworkWeights,
     adds: &[usize],
 ) {
-    for i in 0..(HL/simd::I16_CHUNK) {
-        let offset = i * simd::I16_CHUNK;
-
-        unsafe {
-            let mut add_chunks = ArrayVec::<_, 64>::new();
-            for &index in adds {
-                add_chunks.push(simd::load_i16(weights.ft_weights.get_unchecked(index * HL + offset)));
-            }
-
-            let mut value = simd::load_i16(acc.get_unchecked(offset));
-
-            for chunk in add_chunks {
-                value = simd::add_i16(value, chunk);
-            }
-
-            simd::store_i16(acc.get_unchecked_mut(offset), value);
+    for i in 0..(HL/CHUNK_SIZE) {
+        let offset = i * CHUNK_SIZE;
+        let mut value = I16Reg::from_slice(&acc[offset..]);
+        
+        for &index in adds {
+            value += I16Reg::from_slice(&weights.ft_weights[(index * HL + offset)..]);
         }
+
+        value.copy_to_slice(&mut acc[offset..]);
     }
-}
 
-pub fn vec_sub(
-    acc: &mut Align64<[i16; HL]>,
-    weights: &NetworkWeights,
-    subs: &[usize],
-) {
-    for i in 0..(HL/simd::I16_CHUNK) {
-        let offset = i * simd::I16_CHUNK;
-
-        unsafe {
-            let mut sub_chunks = ArrayVec::<_, 64>::new();
-            for &index in subs {
-                sub_chunks.push(simd::load_i16(weights.ft_weights.get_unchecked(index * HL + offset)));
-            }
-
-            let mut value = simd::load_i16(acc.get_unchecked(offset));
-
-            for chunk in sub_chunks {
-                value = simd::sub_i16(value, chunk);
-            }
-
-            simd::store_i16(acc.get_unchecked_mut(offset), value);
+    for i in (HL - HL % CHUNK_SIZE)..HL {
+        for &index in adds {
+            acc[i] += weights.ft_weights[(index * HL + i)];
         }
     }
 }
@@ -120,19 +62,19 @@ pub fn vec_add_sub(
     add: usize,
     sub: usize
 ) {
-    for i in 0..(HL /simd::I16_CHUNK) {
-        let offset = i * simd::I16_CHUNK;
+    for i in 0..(HL/CHUNK_SIZE) {
+        let offset = i * CHUNK_SIZE;
+        let add_chunk = I16Reg::from_slice(&weights.ft_weights[(add * HL + offset)..]);
+        let sub_chunk = I16Reg::from_slice(&weights.ft_weights[(sub * HL + offset)..]);
+        let value = I16Reg::from_slice(&input[offset..]);
+        let value = value + add_chunk - sub_chunk;
+        
+        value.copy_to_slice(&mut output[offset..]);
+    }
 
-        unsafe {
-            let add_chunk = simd::load_i16(weights.ft_weights.get_unchecked(add * HL + offset));
-            let sub_chunk = simd::load_i16(weights.ft_weights.get_unchecked(sub * HL + offset));
-
-            let mut value = simd::load_i16(input.get_unchecked(offset));
-            value = simd::add_i16(value, add_chunk);
-            value = simd::sub_i16(value, sub_chunk);
-
-            simd::store_i16(output.get_unchecked_mut(offset), value);
-        }
+    for i in (HL - HL % CHUNK_SIZE)..HL {
+        output[i] += input[i] + weights.ft_weights[add * HL + i]
+            - weights.ft_weights[sub * HL + i];
     }
 }
 
@@ -144,21 +86,21 @@ pub fn vec_add_sub2(
     sub1: usize,
     sub2: usize
 ) {
-    for i in 0..(HL /simd::I16_CHUNK) {
-        let offset = i * simd::I16_CHUNK;
+    for i in 0..(HL/CHUNK_SIZE) {
+        let offset = i * CHUNK_SIZE;
+        let add_chunk = I16Reg::from_slice(&weights.ft_weights[(add * HL + offset)..]);
+        let sub1_chunk = I16Reg::from_slice(&weights.ft_weights[(sub1 * HL + offset)..]);
+        let sub2_chunk = I16Reg::from_slice(&weights.ft_weights[(sub2 * HL + offset)..]);
+        let value = I16Reg::from_slice(&input[offset..]);
+        let value = value + add_chunk - sub1_chunk - sub2_chunk;
 
-        unsafe {
-            let add_chunk = simd::load_i16(weights.ft_weights.get_unchecked(add * HL + offset));
-            let sub1_chunk = simd::load_i16(weights.ft_weights.get_unchecked(sub1 * HL + offset));
-            let sub2_chunk = simd::load_i16(weights.ft_weights.get_unchecked(sub2 * HL + offset));
+        value.copy_to_slice(&mut output[offset..]);
+    }
 
-            let mut value = simd::load_i16(input.get_unchecked(offset));
-            value = simd::add_i16(value, add_chunk);
-            value = simd::sub_i16(value, sub1_chunk);
-            value = simd::sub_i16(value, sub2_chunk);
-
-            simd::store_i16(output.get_unchecked_mut(offset), value);
-        }
+    for i in (HL - HL % CHUNK_SIZE)..HL {
+        output[i] += input[i] + weights.ft_weights[add * HL + i]
+            - weights.ft_weights[sub1 * HL + i]
+            - weights.ft_weights[sub2 * HL + i];
     }
 }
 
@@ -171,23 +113,23 @@ pub fn vec_add2_sub2(
     sub1: usize,
     sub2: usize
 ) {
-    for i in 0..(HL /simd::I16_CHUNK) {
-        let offset = i * simd::I16_CHUNK;
+    for i in 0..(HL/CHUNK_SIZE) {
+        let offset = i * CHUNK_SIZE;
+        let add1_chunk = I16Reg::from_slice(&weights.ft_weights[(add1 * HL + offset)..]);
+        let add2_chunk = I16Reg::from_slice(&weights.ft_weights[(add2 * HL + offset)..]);
+        let sub1_chunk = I16Reg::from_slice(&weights.ft_weights[(sub1 * HL + offset)..]);
+        let sub2_chunk = I16Reg::from_slice(&weights.ft_weights[(sub2 * HL + offset)..]);
+        let value = I16Reg::from_slice(&input[offset..]);
+        let value = value + add1_chunk + add2_chunk - sub1_chunk - sub2_chunk;
 
-        unsafe {
-            let add1_chunk = simd::load_i16(weights.ft_weights.get_unchecked(add1 * HL + offset));
-            let add2_chunk = simd::load_i16(weights.ft_weights.get_unchecked(add2 * HL + offset));
-            let sub1_chunk = simd::load_i16(weights.ft_weights.get_unchecked(sub1 * HL + offset));
-            let sub2_chunk = simd::load_i16(weights.ft_weights.get_unchecked(sub2 * HL + offset));
+        value.copy_to_slice(&mut output[offset..]);
+    }
 
-            let mut value = simd::load_i16(input.get_unchecked(offset));
-            value = simd::add_i16(value, add1_chunk);
-            value = simd::add_i16(value, add2_chunk);
-            value = simd::sub_i16(value, sub1_chunk);
-            value = simd::sub_i16(value, sub2_chunk);
-
-            simd::store_i16(output.get_unchecked_mut(offset), value);
-        }
+    for i in (HL - HL % CHUNK_SIZE)..HL {
+        output[i] += input[i] + weights.ft_weights[add1 * HL + i]
+            + weights.ft_weights[add2 * HL + i]
+            - weights.ft_weights[sub1 * HL + i]
+            - weights.ft_weights[sub2 * HL + i];
     }
 }
 
