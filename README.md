@@ -20,7 +20,7 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - Iterative Deepening
 - Aspiration Windows
 - Transposition Table
-  - Depth-preferred replacement strategy
+  - Always replace replacement strategy
   - Lockless
 - Syzygy Endgame Tablebases
 - Principal Variation Search
@@ -35,8 +35,9 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - History Reductions
   - Other Reductions
 - Pruning
-  - Reverse Futility Pruning
   - Razoring
+  - Multi-Cut
+  - Reverse Futility Pruning
   - Null Move Pruning
   - Late Move Pruning
   - History Pruning
@@ -45,13 +46,15 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - Delta Pruning in QSearch
 
 ### Evaluation
-- Piece-Square Tables
 - Bishop Pair
+- Piece-Square Tables
 - Rook/Queen on Open/Semiopen File
+- Minor Piece behind Pawn
 - Threats to Minor and Major Pieces
 - Mobility and Center Control
 - Pawn Structure Evaluation
   - Passed Pawns
+  - Connected Pawns
   - Isolated Pawns
   - Backwards Pawns
   - Doubled Pawns

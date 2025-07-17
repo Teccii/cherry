@@ -1,5 +1,4 @@
 use std::{fmt::Write, sync::Arc};
-use std::sync::atomic::{AtomicU8, Ordering};
 use arrayvec::ArrayVec;
 use pyrrhic_rs::TableBases;
 use cherry_core::*;
@@ -15,7 +14,7 @@ pub struct SharedContext {
     pub syzygy_depth: u8,
     pub root_moves: ArrayVec<Move, MAX_MOVES>,
     pub weights: SearchWeights,
-    pub lmr_lookup: LookUp<i32, {MAX_DEPTH as usize}, MAX_MOVES>,
+    pub lmr_lookup: LookUp<i32, {MAX_PLY as usize}, MAX_MOVES>,
 }
 
 /*----------------------------------------------------------------*/
@@ -56,7 +55,7 @@ impl ThreadContext {
             MAX_PLY as usize + 1
         ];
         self.history.reset();
-        self.root_nodes = [[0; Square::COUNT]; Square::COUNT];
+        self.root_nodes = move_to(0);
         self.sel_depth = 0;
         self.abort_now = false;
     }
@@ -174,7 +173,7 @@ impl Searcher {
                     };
                     MAX_PLY as usize + 1
                 ],
-                root_nodes: [[0; Square::COUNT]; Square::COUNT],
+                root_nodes: move_to(0),
                 history: History::new(),
                 sel_depth: 0,
                 abort_now: false,
@@ -188,7 +187,7 @@ impl Searcher {
     pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u8, u64) {
         self.shared_ctx.time_man.init(self.pos.stm(), &limits);
         self.shared_ctx.root_moves.clear();
-        
+
         for limit in &limits {
             match limit {
                 SearchLimit::SearchMoves(moves) => for mv in moves {
@@ -201,20 +200,18 @@ impl Searcher {
         self.main_ctx.reset();
 
         let mut result = (None, None, Score::ZERO, 0);
-
-        //TODO: Thread Voting and MultiPV
         rayon::scope(|s| {
             let chess960 = self.chess960;
 
             for i in 1..self.threads {
                 let pos = self.pos.clone();
-                let main_ctx = self.main_ctx.clone();
+                let ctx = self.main_ctx.clone();
                 let shared_ctx = self.shared_ctx.clone();
 
                 s.spawn(move |_| {
                     let _ = search_worker::<Info>(
                         pos,
-                        main_ctx,
+                        ctx,
                         shared_ctx,
                         i + 1,
                         chess960,
@@ -223,12 +220,12 @@ impl Searcher {
             }
 
             let pos = self.pos.clone();
-            let main_ctx = self.main_ctx.clone();
+            let ctx = self.main_ctx.clone();
             let shared_ctx = self.shared_ctx.clone();
 
             result = search_worker::<Info>(
                 pos,
-                main_ctx,
+                ctx,
                 shared_ctx,
                 0,
                 chess960,
@@ -328,8 +325,8 @@ fn search_worker<Info: SearchInfo>(
                 }
 
                 window.set_midpoint(score);
-                let root_move = ctx.ss[0].pv[0].unwrap();
 
+                let root_move = ctx.ss[0].pv[0].unwrap();
                 shared_ctx.time_man.deepen(
                     thread,
                     depth,
@@ -339,42 +336,18 @@ fn search_worker<Info: SearchInfo>(
                 );
 
                 if (score > alpha && score < beta) || score.is_decisive() {
-                    if !shared_ctx.time_man.is_pondering() {
-                        ponder_move = ctx.ss[0].pv[1];
-                    }
-
+                    ponder_move = ctx.ss[0].pv[1];
                     best_move = Some(root_move);
                     eval = Some(score);
-
                     break 'asp;
                 }
 
                 if score <= alpha {
                     fails += 1;
                     window.fail_low();
-
-                    /*Info::push(
-                        pos.board(),
-                        &ctx,
-                        &shared_ctx,
-                        TTBound::UpperBound,
-                        depth,
-                        Some(score),
-                        chess960,
-                    );*/
                 } else if score >= beta {
                     fails += 1;
                     window.fail_high();
-
-                    /*Info::push(
-                        pos.board(),
-                        &ctx,
-                        &shared_ctx,
-                        TTBound::LowerBound,
-                        depth,
-                        Some(score),
-                        chess960,
-                    );*/
                 }
             }
 
@@ -396,16 +369,20 @@ fn search_worker<Info: SearchInfo>(
             }
         }
 
-        while shared_ctx.time_man.is_infinite() && !(ctx.abort_now || shared_ctx.time_man.timeout_id()) {
-            Info::push(
-                pos.board(),
-                &ctx,
-                &shared_ctx,
-                TTBound::Exact,
-                depth,
-                eval,
-                chess960,
-            );
+        while depth == MAX_DEPTH
+            && shared_ctx.time_man.is_infinite()
+            && !(shared_ctx.time_man.abort_now() || shared_ctx.time_man.timeout_id()) {
+            if thread == 0 {
+                Info::push(
+                    pos.board(),
+                    &ctx,
+                    &shared_ctx,
+                    TTBound::Exact,
+                    depth,
+                    eval,
+                    chess960,
+                );
+            }
         }
 
         if let Some(best_score) = eval {

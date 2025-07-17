@@ -207,7 +207,7 @@ impl Engine {
                 limits
             )).unwrap(),
             UciCommand::SetOption { name, value } => {
-                self.time_man.abort_now();
+                self.time_man.stop();
 
                 if let Some((_, func)) = self.options.get(&name) {
                     func(self, value);
@@ -275,7 +275,7 @@ impl Engine {
                     (total_nodes as f32 / total_time) as u64
                 );
             },
-            UciCommand::Stop => self.time_man.abort_now(),
+            UciCommand::Stop => self.time_man.stop(),
             UciCommand::Quit => {
                 self.sender.send(ThreadCommand::Quit).unwrap();
                 return false;

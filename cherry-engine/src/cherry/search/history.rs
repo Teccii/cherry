@@ -20,11 +20,11 @@ pub type CorrectionTable<const SIZE: usize> = [[i16; SIZE]; Color::COUNT];
 
 /*----------------------------------------------------------------*/
 
-const fn move_to<T: Copy>(default: T) -> MoveTo<T> {
+pub const fn move_to<T: Copy>(default: T) -> MoveTo<T> {
     [[default; Square::COUNT]; Square::COUNT]
 }
 
-const fn piece_to<T: Copy>(default: T) -> PieceTo<T> {
+pub const fn piece_to<T: Copy>(default: T) -> PieceTo<T> {
     [[default; Square::COUNT]; Piece::COUNT]
 }
 
