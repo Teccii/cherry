@@ -1,6 +1,6 @@
 #![feature(str_split_whitespace_remainder)]
 #![feature(generic_const_exprs)]
-#![feature(portable_simd)]
+#![cfg_attr(feature="nnue", feature(portable_simd))]
 
 mod cherry;
 

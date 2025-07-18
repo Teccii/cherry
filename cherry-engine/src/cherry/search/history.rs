@@ -34,8 +34,8 @@ pub const fn piece_to<T: Copy>(default: T) -> PieceTo<T> {
 pub struct History {
     quiets: Box<ButterflyTable>,
     captures: Box<PieceToTable>,
-    counter_move: Box<ContinuationTable>,
-    follow_up: Box<ContinuationTable>,
+    counter_move: Box<ContinuationTable>, //use for 1-ply, 3-ply, 5-ply, etc.
+    follow_up: Box<ContinuationTable>, //use for 2-ply, 4-ply, 6-ply, etc.
     pawn_corr: Box<CorrectionTable<PAWN_CORRECTION_SIZE>>,
     minor_corr: Box<CorrectionTable<MINOR_CORRECTION_SIZE>>,
 }

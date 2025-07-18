@@ -401,6 +401,7 @@ impl Engine {
             },
             UciCommand::Stop => self.time_man.stop(),
             UciCommand::Quit => {
+                self.time_man.stop();
                 self.sender.send(ThreadCommand::Quit).unwrap();
                 return false;
             },
