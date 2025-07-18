@@ -550,7 +550,9 @@ pub fn search<Node: NodeType>(
     }
 
     if !move_exists {
-        return if pos.in_check() {
+        return if skip_move.is_some() {
+            alpha
+        } else if pos.in_check() {
             Score::new_mated(ply)
         } else {
             Score::ZERO

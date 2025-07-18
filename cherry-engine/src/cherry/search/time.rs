@@ -125,7 +125,7 @@ impl TimeManager {
         self.max_depth.store(max_depth, Ordering::Relaxed);
         self.max_nodes.store(max_nodes, Ordering::Relaxed);
         
-        let moves_to_go = moves_to_go.unwrap_or(EXPECTED_MOVES);
+        let moves_to_go = moves_to_go.unwrap_or(EXPECTED_MOVES) + 1;
         self.moves_to_go.store(moves_to_go, Ordering::Relaxed);
         self.no_manage.store(infinite || move_time.is_some(), Ordering::Relaxed);
 
