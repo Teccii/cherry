@@ -22,7 +22,7 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - Transposition Table
   - Always replace replacement strategy
   - Lockless
-- Syzygy Endgame Tablebases
+- Syzygy Endgame Tablebases (via [`pyrrhic-rs`](https://github.com/Algorhythm-sxv/pyrrhic-rs))
 - Principal Variation Search
 - Quiescence Search for Captures and Evasions
 - Extensions

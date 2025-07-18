@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-trace = []
 nnue = []
 
 [dependencies]
 cherry-core = { path = "../cherry-core" }
 pyrrhic-rs = "0.2.0"
+indexmap = "2.10.0"
 arrayvec = "0.7.6"
 atomic-time = "0.1.5"
 rayon =  "1.10.0"

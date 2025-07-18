@@ -1,4 +1,7 @@
-use std::{fmt::Write, sync::Arc};
+use std::{
+    fmt::Write,
+    sync::{Arc, Mutex, atomic::*}
+};
 use arrayvec::ArrayVec;
 use pyrrhic_rs::TableBases;
 use cherry_core::*;
@@ -6,15 +9,18 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
+pub type LmrLookup = LookUp<i32, {MAX_PLY as usize}, MAX_MOVES>;
+pub type SyzygyTable = Option<TableBases<SyzygyAdapter>>;
+
 #[derive(Clone)]
 pub struct SharedContext {
     pub t_table: Arc<TTable>,
     pub time_man: Arc<TimeManager>,
-    pub syzygy: Arc<Option<TableBases<SyzygyAdapter>>>,
+    pub syzygy: Arc<SyzygyTable>,
     pub syzygy_depth: u8,
-    pub root_moves: ArrayVec<Move, MAX_MOVES>,
-    pub weights: SearchWeights,
-    pub lmr_lookup: LookUp<i32, {MAX_PLY as usize}, MAX_MOVES>,
+    pub search_moves: ArrayVec<Move, MAX_MOVES>,
+    pub weights: Arc<SearchWeights>,
+    pub lmr_lookup: Arc<LmrLookup>,
 }
 
 /*----------------------------------------------------------------*/
@@ -135,6 +141,7 @@ pub struct Searcher {
     pub main_ctx: ThreadContext,
     pub threads: u16,
     pub chess960: bool,
+    pub ponder: bool,
     pub debug: bool,
 }
 
@@ -148,11 +155,11 @@ impl Searcher {
                 time_man,
                 syzygy: Arc::new(None),
                 syzygy_depth: 1,
-                root_moves: ArrayVec::new(),
-                weights: SearchWeights::default(),
-                lmr_lookup: LookUp::new(|i, j|
+                search_moves: ArrayVec::new(),
+                weights: Arc::new(SearchWeights::default()),
+                lmr_lookup: Arc::new(LookUp::new(|i, j|
                     1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5) as i32
-                ),
+                )),
             },
             main_ctx: ThreadContext {
                 qnodes: BatchedAtomicCounter::new(),
@@ -180,18 +187,19 @@ impl Searcher {
             },
             threads: 1,
             chess960: false,
+            ponder: false,
             debug: false,
         }
     }
 
     pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u8, u64) {
         self.shared_ctx.time_man.init(self.pos.stm(), &limits);
-        self.shared_ctx.root_moves.clear();
+        self.shared_ctx.search_moves.clear();
 
         for limit in &limits {
             match limit {
                 SearchLimit::SearchMoves(moves) => for mv in moves {
-                    self.shared_ctx.root_moves.push(Move::parse(self.pos.board(), self.chess960, mv).unwrap());
+                    self.shared_ctx.search_moves.push(Move::parse(self.pos.board(), self.chess960, mv).unwrap());
                 },
                 _ => { }
             }
@@ -238,7 +246,7 @@ impl Searcher {
             panic!("Search failed!");
         }
 
-        (best_move.unwrap(), ponder_move, best_score, depth, self.main_ctx.nodes.global())
+        (best_move.unwrap(), ponder_move.filter(|_| self.ponder), best_score, depth, self.main_ctx.nodes.global())
     }
 
     #[inline]
@@ -259,6 +267,11 @@ impl Searcher {
     #[inline]
     pub fn set_chess960(&mut self, value: bool) {
         self.chess960 = value;
+    }
+
+    #[inline]
+    pub fn set_ponder(&mut self, value: bool) {
+        self.ponder = value;
     }
 
     #[inline]
@@ -294,9 +307,10 @@ fn search_worker<Info: SearchInfo>(
         'id: loop {
             window.reset();
             let mut fails = 0;
+            let mut abort = false;
 
             'asp: loop {
-                if shared_ctx.time_man.abort_id(depth, ctx.nodes.global()) {
+                if abort {
                     break 'id;
                 }
 
@@ -336,6 +350,7 @@ fn search_worker<Info: SearchInfo>(
                 );
 
                 if (score > alpha && score < beta) || score.is_decisive() {
+                    abort = shared_ctx.time_man.abort_id(depth, ctx.nodes.global());
                     ponder_move = ctx.ss[0].pv[1];
                     best_move = Some(root_move);
                     eval = Some(score);

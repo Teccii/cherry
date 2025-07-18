@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::{
     sync::{Arc, Mutex, mpsc::*},
     cell::RefCell,
@@ -7,7 +6,7 @@ use std::{
     rc::Rc,
 };
 use std::time::Instant;
-use arrayvec::ArrayVec;
+use indexmap::IndexMap;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -69,7 +68,7 @@ const BENCH_POSITIONS: &[&str] = &[
 
 /*----------------------------------------------------------------*/
 
-pub type UciOptions = HashMap<String, (UciOptionType, Box<dyn Fn(&Engine, String)>)>;
+pub type UciOptions = IndexMap<String, (UciOptionType, Box<dyn Fn(&Engine, String)>)>;
 
 pub enum ThreadCommand {
     Go(Arc<Mutex<Searcher>>, Vec<SearchLimit>),
@@ -119,7 +118,7 @@ impl Engine {
             }
         });
 
-        let mut options: UciOptions = HashMap::new();
+        let mut options: UciOptions = IndexMap::new();
 
         macro_rules! add_option {
             ($options:ident, $engine:ident, $value:ident, $name:expr => $func:block; $option_type:expr) => {
@@ -130,22 +129,22 @@ impl Engine {
             }
         }
 
-        add_option!(options, engine, value, "Hash" => {
-            let mut searcher = engine.searcher.lock().unwrap();
-            searcher.resize_ttable(value.parse::<usize>().unwrap());
-        }; UciOptionType::Spin { default: 16, min: 1, max: 65535 });
         add_option!(options, engine, value, "Threads" => {
             let mut searcher = engine.searcher.lock().unwrap();
             searcher.set_threads(value.parse::<u16>().unwrap());
         }; UciOptionType::Spin { default: 1, min: 1, max: 65535 });
+        add_option!(options, engine, value, "Hash" => {
+            let mut searcher = engine.searcher.lock().unwrap();
+            searcher.resize_ttable(value.parse::<usize>().unwrap());
+        }; UciOptionType::Spin { default: 16, min: 1, max: 65535 });
+        add_option!(options, engine, value, "Ponder" => {
+            let mut searcher = engine.searcher.lock().unwrap();
+            let value = value.parse::<bool>().unwrap();
+            searcher.set_ponder(value);
+        }; UciOptionType::Check { default: false });
         add_option!(options, engine, value, "Move Overhead" => {
             engine.time_man.set_overhead(value.parse::<u64>().unwrap());
         }; UciOptionType::Spin { default: MOVE_OVERHEAD as i32, min: 0, max: 65535 });
-        add_option!(options, engine, value, "UCI_Chess960" => {
-            let mut searcher = engine.searcher.lock().unwrap();
-            let value = value.parse::<bool>().unwrap();
-            searcher.set_chess960(value);
-        }; UciOptionType::Check { default: false });
         add_option!(options, engine, value, "SyzygyPath" => {
             let mut searcher = engine.searcher.lock().unwrap();
             searcher.set_syzygy_path(&value);
@@ -154,6 +153,11 @@ impl Engine {
             let mut searcher = engine.searcher.lock().unwrap();
             searcher.set_syzygy_depth(value.parse::<u8>().unwrap());
         }; UciOptionType::Spin { default: 1, min: 1, max: MAX_DEPTH as i32 });
+        add_option!(options, engine, value, "UCI_Chess960" => {
+            let mut searcher = engine.searcher.lock().unwrap();
+            let value = value.parse::<bool>().unwrap();
+            searcher.set_chess960(value);
+        }; UciOptionType::Check { default: false });
 
         Engine {
             searcher,

@@ -15,6 +15,7 @@ pub struct Accumulator {
 }
 
 impl Accumulator {
+    #[inline]
     pub fn select(&self, color: Color) -> &Align64<[i16; HL]> {
         match color {
             Color::White => &self.white,
@@ -22,6 +23,7 @@ impl Accumulator {
         }
     }
 
+    #[inline]
     pub fn select_mut(&mut self, color: Color) -> &mut Align64<[i16; HL]> {
         match color {
             Color::White => &mut self.white,

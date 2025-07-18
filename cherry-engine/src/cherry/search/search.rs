@@ -302,7 +302,7 @@ pub fn search<Node: NodeType>(
         }
 
         move_exists = true;
-        if ply == 0 && (!shared_ctx.root_moves.is_empty() && !shared_ctx.root_moves.contains(&mv)) {
+        if ply == 0 && (!shared_ctx.search_moves.is_empty() && !shared_ctx.search_moves.contains(&mv)){
             continue;
         }
 

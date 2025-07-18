@@ -12,7 +12,7 @@ pub fn activate_ft(
     screlu(them, &mut output[HL..].try_into().unwrap());
 }
 
-pub fn propagate<const L: usize, const NL: usize>(
+pub fn feed_forward<const L: usize, const NL: usize>(
     input: &[u8; L],
     weights: &[i16; L * NL],
     biases: &[i16; NL],
@@ -23,7 +23,7 @@ pub fn propagate<const L: usize, const NL: usize>(
     for j in 0..NL {
         let offset = j * L;
         
-        propagate_out(
+        feed_forward_one(
             input,
             weights[offset..(offset + L)].try_into().unwrap(),
             biases[j],
@@ -34,7 +34,7 @@ pub fn propagate<const L: usize, const NL: usize>(
     screlu(&values, output);
 }
 
-pub fn propagate_out<const L: usize>(
+pub fn feed_forward_one<const L: usize>(
     input: &[u8; L],
     weights: &[i16; L],
     bias: i16,

@@ -247,7 +247,7 @@ impl UciCommand {
                 let value = reader.next().is_some_and(|s| s == "on");
                 
                 Ok(UciCommand::Debug(value))
-            }
+            },
             _ => Err(UciParseError::InvalidCommand),
         }
     }

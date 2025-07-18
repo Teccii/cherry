@@ -6,7 +6,7 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 pub const INPUT: usize = 768;
-pub const HL: usize = 1024;
+pub const HL: usize = 512;
 pub const L1: usize = HL * 2;
 
 pub const SCALE: i16 = 400;
@@ -31,12 +31,9 @@ impl NetworkWeights {
         const I16_SIZE: usize = size_of::<i16>();
 
         debug_assert!(bytes.len() == I16_SIZE * (
-            INPUT * HL
-                + HL
-                + L1
-                + 1
+            INPUT * HL + HL + L1 + 1
         ));
-        
+
         let ft_weights = Self::aligned_from_bytes::<{INPUT * HL}>(bytes);
         bytes = &bytes[(INPUT * HL * I16_SIZE)..];
         let ft_bias = Self::aligned_from_bytes::<HL>(bytes);
@@ -181,7 +178,7 @@ impl Nnue {
         let mut output = 0;
 
         activate_ft(us, them, &mut ft_output);
-        propagate_out(&ft_output, &weights.out_weights, weights.out_bias, &mut output);
+        feed_forward_one(&ft_output, &weights.out_weights, weights.out_bias, &mut output);
 
         (output as i32 / QA as i32 * SCALE as i32 / (QA as i32 * QB as i32)) as i16
     }

@@ -6,7 +6,7 @@ pub struct Position {
     board: Board,
     board_history: Vec<Board>,
     move_history: Vec<Option<Move>>,
-    evaluator: Evaluator
+    evaluator: Evaluator,
 }
 
 impl Position {

@@ -175,7 +175,7 @@ impl TimeManager {
         self.move_stability.store(move_stability, Ordering::Relaxed);
 
         let move_stability_factor = STABILITY_FACTOR[move_stability as usize];
-        let subtree_factor = (1.0 - move_nodes as f32 / nodes as f32) * 3.5 + 0.5;
+        let subtree_factor = (1.0 - move_nodes as f32 / nodes as f32) * 3.0 + 0.5;
         let base_time = self.base_time.load(Ordering::Relaxed);
         
         let new_target = (base_time as f32
