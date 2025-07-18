@@ -26,6 +26,13 @@ pub enum UciCommand {
         threads: u16,
         hash: u16,
     },
+    #[cfg(feature = "tune")] Tune {
+        threads: usize,
+        buffer_size: usize,
+        queue_size: usize,
+        file_paths: Vec<String>,
+    },
+    Help(Option<String>),
     Stop,
     Quit
 }
@@ -76,7 +83,7 @@ impl fmt::Display for UciOptionType {
                 write!(f, "type string default {}", default)?;
             },
             UciOptionType::Button => {
-
+                write!(f, "type button")?;
             }
         }
 
@@ -236,6 +243,27 @@ impl UciCommand {
                 
                 Ok(UciCommand::SetOption { name, value })
             },
+            #[cfg(feature = "tune")] "tune" => {
+                let threads = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                let buffer_size = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                let queue_size = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                let mut file_paths = Vec::new();
+
+                while let Some(file_path) = reader.next() {
+                    file_paths.push(file_path.to_owned());
+                }
+
+                if file_paths.is_empty() {
+                    return Err(UciParseError::InvalidArguments);
+                }
+
+                Ok(UciCommand::Tune {
+                    threads,
+                    buffer_size,
+                    queue_size,
+                    file_paths
+                })
+            },
             "bench" => {
                 let depth = reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(12);
                 let threads = reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1);
@@ -247,6 +275,11 @@ impl UciCommand {
                 let value = reader.next().is_some_and(|s| s == "on");
                 
                 Ok(UciCommand::Debug(value))
+            },
+            "help" => {
+                let command = reader.next().map(str::to_owned);
+                
+                Ok(UciCommand::Help(command))
             },
             _ => Err(UciParseError::InvalidCommand),
         }

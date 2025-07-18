@@ -49,6 +49,7 @@ mod engine;
 mod position;
 mod score;
 mod syzygy;
+#[cfg(feature = "tune")] mod tune;
 mod uci;
 mod util;
 
@@ -59,5 +60,6 @@ pub use position::*;
 pub use score::*;
 pub use search::*;
 pub use syzygy::*;
+#[cfg(feature = "tune")] pub use tune::*;
 pub use uci::*;
 pub use util::*;

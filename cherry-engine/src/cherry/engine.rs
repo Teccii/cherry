@@ -197,6 +197,16 @@ impl Engine {
                 searcher.pos.reset(Board::default());
             },
             UciCommand::IsReady => println!("readyok"),
+            #[cfg(feature = "tune")] UciCommand::Tune {
+                threads,
+                buffer_size,
+                queue_size,
+                file_paths
+            } => {
+                let file_paths = file_paths.iter().map(String::as_str).collect::<Vec<_>>();
+
+                tune(threads, buffer_size, queue_size, &file_paths);
+            },
             UciCommand::PonderHit => self.time_man.ponderhit(),
             UciCommand::Position(board, moves) => {
                 let mut searcher = self.searcher.lock().unwrap();
@@ -225,7 +235,7 @@ impl Engine {
                 let searcher = self.searcher.lock().unwrap();
                 let board = searcher.pos.board();
 
-                println!("{:?}", board);
+                println!("\n{:?}", board);
                 println!("FEN: {}", board);
             },
             UciCommand::Bench { depth, threads, hash } => {
@@ -278,6 +288,116 @@ impl Engine {
                     total_nodes,
                     (total_nodes as f32 / total_time) as u64
                 );
+            },
+            UciCommand::Help(cmd) => {
+                println!();
+
+                if let Some(cmd) = cmd {
+                    match cmd.as_str() {
+                        "uci" => println!(
+                            "Usage: uci\n\
+                            Description: Performs the UCI handshake."
+                        ),
+                        "ucinewgame" | "newgame" => println!(
+                            "Usage: ucinewgame\n\
+                            Aliases: newgame\n\
+                            Description: Signals the start of a new game, and resets the internal state of the Engine."
+                        ),
+                        "isready" => println!(
+                            "Usage:isready\n\
+                            Description: Synchronises the interface with the engine. Waits until the Engine is ready again."
+                        ),
+                        "ponderhit" => println!(
+                            "Usage: ponderhit\n
+                            Description: Signals that the expected move has been played."
+                        ),
+                        "position" => println!(
+                            "Usage: position (startpos | fen <fen>) [moves <move1> ... <moveN>]\n\
+                            Description: Resets the board to a new position.\n\
+                            Options:\n\
+                            \t- startpos: Start from the standard chess starting position.\n\
+                            \t- fen: Start from a specific chess position.\n\
+                            \t- moves <move1>...<moveN>: Play a sequence of moves after the initial position."
+                        ),
+                        "go" => println!(
+                            "Usage: go [options]\n\
+                            Description: Start searching for the best move from the current position.\n\
+                            Options:\n\
+                            \t- searchmoves <move1>...<moveN>: Limits the search to the given root moves.\n\
+                            \t- wtime/btime <ms>: Time left for White/Black in milliseconds.\n\
+                            \t- winc/binc <ms>: Increment per move for White/Black.\n\
+                            \t- movetime <ms>: Search for exactly this amount of time.\n\
+                            \t- movestogo <n>: Moves remaining until the next time control.\n\
+                            \t- maxdepth <n>: Limit search depth.\n\
+                            \t- maxnodes <n>: Limit number of nodes searched.\n\
+                            \t- infinite: Search until 'stop' is received.\n\
+                            \t- ponder: Start the search in ponder mode."
+                        ),
+                        "setoption" => println!(
+                            "Usage: setoption name <name> value <value>\n\
+                            Description: Sets a UCI option to the specified value.\n\
+                            Options:\n\
+                            \t- name: The name of the UCI option.\n\
+                            \t- value: The new value of the UCI option."
+                        ),
+                        "debug" => println!(
+                            "Usage: debug <on|off>\n\
+                            Description: Toggles debug mode on or off. In debug mode, the Engine prints a more detailed output."
+                        ),
+                        "display" => println!(
+                            "Usage: display\n\
+                            Aliases: d\n\
+                            Description: Displays the current board."
+                        ),
+                        "bench" => println!(
+                            "Usage: bench [depth] [threads] [hash]\n\
+                            Description: Runs a performance benchmark.\n\
+                            Options:\n\
+                            \t- depth: The maximum depth for the benchmark. [default: 12]\n\
+                            \t- threads: The number of threads to use for the benchmark. [default: 1]\n\
+                            \t- hash: The size of the transposition table for the benchmark. [default: 16]"
+                        ),
+                        #[cfg(feature = "tune")] "tune" => println!(
+                            "Usage: tune <threads> <buffer_size> <queue_size> <file_path1> ... <file_pathN>\n\
+                            Description: Runs the NNUE trainer with the specified settings.\n\
+                            Options:\n\
+                            \t- threads: The number of threads to use for the data loader.\n\
+                            \t- buffer_size: The size of the data loader's buffer in megabytes.\n\
+                            \t- queue_size: The size of the batch queue in the number of batches.\n\
+                            \t- file_path1...file_pathN: The list of file paths for the training data."
+                        ),
+                        "help" => println!(
+                            "Usage: help [command]\n\
+                            Description: Displays either information about a specific command, or a list of commands."
+                        ),
+                        "stop" => println!(
+                            "Usage: stop\n\
+                            Description: Halts the current search immediately."
+                        ),
+                        "quit" => println!(
+                            "Usage: quit\n\
+                            Description: Quits the program immediately."
+                        ),
+                        x => println!("Unknown command: {}", x)
+                    }
+                } else {
+                    println!("Available commands:");
+                    println!("\tuci\t\t- Perform the UCI handshake");
+                    println!("\tucinewgame\t\t- Signal the start of a new game");
+                    println!("\tisready\t\t- Check if the Engine is ready");
+                    println!("\tponderhit\t\t- Inform the Engine that the expected move was played");
+                    println!("\tposition\t\t- Reset the board to a new position");
+                    println!("\tgo\t\t- Start searching for the best move");
+                    println!("\tsetoption\t\t- Set an Engine option");
+                    println!("\tdebug\t\t- Toggle debug mode");
+                    println!("\tdisplay\t\t- Display the current board");
+                    println!("\tbench\t\t- Run a performance benchmark");
+                    #[cfg(feature = "tune")] println!("\ttune\t\t- Run the NNUE trainer");
+                    println!("\thelp\t\t- Show information about a command");
+                    println!("\tstop\t\t- Halt the current search immediately");
+                    println!("\tquit\t\t- Quit the program immediately");
+                    println!("\nType 'help <command>' to get detailed information about a specific command");
+                }
             },
             UciCommand::Stop => self.time_man.stop(),
             UciCommand::Quit => {

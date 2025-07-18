@@ -6,10 +6,10 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 pub const INPUT: usize = 768;
-pub const HL: usize = 512;
+pub const HL: usize = 1024;
 pub const L1: usize = HL * 2;
 
-pub const SCALE: i16 = 400;
+pub const EVAL_SCALE: i16 = 400;
 pub const QA: i16 = 255;
 pub const QB: i16 = 64;
 
@@ -175,12 +175,12 @@ impl Nnue {
         let (us, them) = (acc.select(stm), acc.select(!stm));
 
         let mut ft_output = Align64([0u8; L1]);
-        let mut output = 0;
+        let mut l1_output = 0;
 
         activate_ft(us, them, &mut ft_output);
-        feed_forward_one(&ft_output, &weights.out_weights, weights.out_bias, &mut output);
+        feed_forward_one(&ft_output, &weights.out_weights, weights.out_bias, &mut l1_output);
 
-        (output as i32 / QA as i32 * SCALE as i32 / (QA as i32 * QB as i32)) as i16
+        (l1_output as i32 * EVAL_SCALE as i32 / (QA as i32 * QB as i32)) as i16
     }
     
     /*----------------------------------------------------------------*/
