@@ -3,12 +3,10 @@
 #![feature(portable_simd)]
 
 mod cherry;
-mod engine;
 
 use std::{env, io};
 use cherry_core::*;
 use cherry::*;
-use engine::*;
 
 /*----------------------------------------------------------------*/
 

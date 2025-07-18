@@ -45,6 +45,7 @@ mod search {
     pub use window::*;
 }
 
+mod engine;
 mod position;
 mod score;
 mod syzygy;
@@ -52,6 +53,7 @@ mod uci;
 mod util;
 
 pub use eval::*;
+pub use engine::*;
 #[cfg(feature = "nnue")] pub use nnue::*;
 pub use position::*;
 pub use score::*;
