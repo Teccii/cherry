@@ -25,7 +25,6 @@ impl Board {
             en_passant: None,
             fullmove_count: 0,
             halfmove_clock: 0,
-            repetition: 0,
             pawn_hash: 0,
             minor_hash: 0,
             hash: 0,

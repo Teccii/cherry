@@ -19,13 +19,13 @@ weights! {
 
     rfp_depth: u8 => RFP_DEPTH,
     rfp_margin: i16 => RFP_MARGIN,
-    rfp_hist: i16 => RFP_HIST,
     rfp_tt: i16 => RFP_TT,
 
     nmp_depth: u8 => NMP_DEPTH,
     nmp_verification_depth: u8 => NMP_VERIFY_DEPTH,
 
     iir_depth: u8 => IIR_DEPTH,
+    corr_frac: i16 => CORR_FRAC,
     
     see_depth: u8 => SEE_DEPTH,
     see_margin: i16 => SEE_MARGIN,
@@ -50,8 +50,6 @@ weights! {
     not_improving_reduction: i32 => NOT_IMPROVING_REDUCTION,
     cut_node_reduction: i32 => CUT_NODE_REDUCTION,
     hist_reduction: i32 => HIST_REDUCTION,
-
-    delta_margin: i16 => DELTA_MARGIN,
 }
 
 /*----------------------------------------------------------------*/
@@ -61,13 +59,13 @@ pub const RAZOR_MARGIN: i16 = 337;
 
 pub const RFP_DEPTH: u8 = 12;
 pub const RFP_MARGIN: i16 = 93;
-pub const RFP_HIST: i16 = 376;
 pub const RFP_TT: i16 = 20;
 
 pub const NMP_DEPTH: u8 = 4;
 pub const NMP_VERIFY_DEPTH: u8 = 12;
 
 pub const IIR_DEPTH: u8 = 6;
+pub const CORR_FRAC: i16 = 66;
 
 pub const SEE_DEPTH: u8 = 10;
 pub const SEE_MARGIN: i16 = -91;
@@ -92,5 +90,3 @@ pub const NON_PV_REDUCTION: i32 = 926;
 pub const NOT_IMPROVING_REDUCTION: i32 = 926;
 pub const CUT_NODE_REDUCTION: i32 = 2113;
 pub const HIST_REDUCTION: i32 = 131;
-
-pub const DELTA_MARGIN: i16 = 211;

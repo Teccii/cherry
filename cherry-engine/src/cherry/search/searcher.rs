@@ -400,6 +400,18 @@ fn search_worker<Info: SearchInfo>(
             }
         }
 
+        if thread == 0 {
+            Info::push(
+                pos.board(),
+                &ctx,
+                &shared_ctx,
+                TTBound::Exact,
+                depth,
+                eval,
+                chess960,
+            );
+        }
+
         if let Some(best_score) = eval {
             (best_move, ponder_move, best_score, depth)
         } else {

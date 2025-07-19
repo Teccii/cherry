@@ -45,7 +45,6 @@ pub struct Board {
     en_passant: Option<File>,
     fullmove_count: u16,
     halfmove_clock: u8,
-    repetition: u8,
     pawn_hash: u64,
     minor_hash: u64,
     hash: u64,
@@ -159,9 +158,6 @@ impl Board {
     }
 
     /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub const fn repetition(&self) -> u8 { self.repetition }
     
     #[inline]
     pub const fn halfmove_clock(&self) -> u8 { self.halfmove_clock }
@@ -262,10 +258,8 @@ impl Board {
 
         if moved == Piece::Pawn || (victim.is_some() && !is_castle) {
             self.halfmove_clock = 0;
-            self.repetition = 0;
         } else {
             self.halfmove_clock = (self.halfmove_clock + 1).min(100);
-            self.repetition = (self.repetition + 1).min(100);
         }
         if self.stm == Color::Black {
             self.fullmove_count = self.fullmove_count.saturating_add(1);
@@ -287,8 +281,6 @@ impl Board {
 
             self.set_castle_rights(self.stm, None, true);
             self.set_castle_rights(self.stm, None, false);
-
-            self.repetition = 0;
         } else {
             self.xor_square(moved, self.stm, from);
             self.xor_square(moved, self.stm, to);
@@ -302,10 +294,8 @@ impl Board {
 
                     if Some(file) == rights.short {
                         self.set_castle_rights(!self.stm, None, true);
-                        self.repetition = 0;
                     } else if Some(file) == rights.long {
                         self.set_castle_rights(!self.stm, None, false);
-                        self.repetition = 0;
                     }
                 }
             }
@@ -332,7 +322,6 @@ impl Board {
                                 Rank::Fifth.relative_to(self.stm)
                             );
                             self.xor_square(Piece::Pawn, !self.stm, victim_square);
-                            self.repetition = 0;
                         }
 
                         self.checkers |= pawn_attacks(their_king, !self.stm) & to.bitboard();
@@ -343,10 +332,6 @@ impl Board {
 
                     self.set_castle_rights(self.stm, None, true);
                     self.set_castle_rights(self.stm, None, false);
-
-                    if old_rights.short.is_some() || old_rights.long.is_some() {
-                        self.repetition = 0;
-                    }
                 }
                 Piece::Rook => if from.rank() == backrank {
                     let rights = self.castle_rights(self.stm);
@@ -354,10 +339,8 @@ impl Board {
 
                     if Some(file) == rights.short {
                         self.set_castle_rights(self.stm, None, true);
-                        self.repetition = 0;
                     } else if Some(file) == rights.long {
                         self.set_castle_rights(self.stm, None, false);
-                        self.repetition = 0;
                     }
                 }
                 _ => {}
@@ -402,7 +385,6 @@ impl Board {
 
         let mut board = self.clone();
         board.halfmove_clock = (board.halfmove_clock + 1).min(100);
-        board.repetition = 0;
 
         if board.stm == Color::Black {
             board.fullmove_count = board.fullmove_count.saturating_add(1);

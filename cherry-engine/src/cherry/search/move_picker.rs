@@ -163,12 +163,8 @@ impl MovePicker {
                     if self.hash_move == Some(mv) {
                         continue;
                     }
-                    
-                    let score = history.get_quiet(board, mv)
-                        + history.get_counter_move(board, mv, counter_move).unwrap_or_default()
-                        + history.get_follow_up(board, mv, follow_up).unwrap_or_default();
 
-                    self.quiets.push(ScoredMove(mv, score));
+                    self.quiets.push(ScoredMove(mv, history.get_move(board, mv, counter_move, follow_up)));
                 }
             }
 
@@ -257,9 +253,7 @@ impl QMovePicker {
 
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
-                    let score = history.get_move(board, mv, counter_move, follow_up);
-
-                    self.evasions.push(ScoredMove(mv, score));
+                    self.evasions.push(ScoredMove(mv, history.get_move(board, mv, counter_move, follow_up)));
                 }
             }
 
@@ -286,12 +280,7 @@ impl QMovePicker {
                 }
 
                 for mv in moves {
-                    let see = board.see(mv);
-                    let score = history.get_capture(board, mv);
-
-                    if see >= 0 {
-                        self.captures.push(ScoredMove(mv, score));
-                    }
+                    self.captures.push(ScoredMove(mv, history.get_capture(board, mv)));
                 }
             }
 

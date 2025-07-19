@@ -74,7 +74,7 @@ pub fn search<Node: NodeType>(
     ctx.update_sel_depth(ply);
 
     if ply != 0 {
-        if pos.is_draw() {
+        if pos.is_draw(ply) {
             return Score::ZERO;
         }
 
@@ -187,7 +187,7 @@ pub fn search<Node: NodeType>(
         None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
     };
     let corr =  ctx.history.get_corr(pos.board());
-    let static_eval = raw_eval + 66 * corr / 512;
+    let static_eval = raw_eval + shared_ctx.weights.corr_frac * corr / 512;
     ctx.ss[ply as usize].eval = raw_eval;
 
     let (prev_eval, prev_ext, prev_reduction) = match ply {
@@ -640,10 +640,11 @@ pub fn q_search<Node: NodeType>(
         ctx.tt_misses.inc();
     }
 
+    let in_check = pos.in_check();
     let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval());
-    let static_eval = raw_eval + 66 * ctx.history.get_corr(pos.board()) / 512;
+    let static_eval = raw_eval + shared_ctx.weights.corr_frac * ctx.history.get_corr(pos.board()) / 512;
 
-    if !pos.in_check() {
+    if !in_check {
         if static_eval >= beta {
             return static_eval;
         }
@@ -662,31 +663,8 @@ pub fn q_search<Node: NodeType>(
     let follow_up = (ply >= 2).then(|| ctx.ss[ply as usize - 2].move_played).flatten();
 
     while let Some(mv) = move_picker.next(pos, &ctx.history, counter_move, follow_up) {
-        let is_check = pos.board().is_check(mv);
-
-        if !alpha.is_decisive() && !is_check && !mv.is_promotion() {
-            if moves_seen > 3 {
-                continue;
-            }
-
-            /*
-            Delta Pruning: Similar to Futility Pruning, but only in Quiescence Search.
-            We test whether the captured piece + a safety margin (around 200 centipawns)
-            is enough to raise alpha.
-
-            For example if we're down a rook, don't bother testing pawn captures,
-            because they are unlikely to matter for us. For safety reasons, we cannot
-            apply this in the late endgame.
-            */
-            if let Some(victim) = pos.board().victim(mv) {
-                let delta_margin = victim.see_value() + shared_ctx.weights.delta_margin;
-
-                if !Node::PV && !pos.in_check()
-                    && calc_phase(pos.board()) < TOTAL_PHASE / 2
-                    && static_eval < alpha - delta_margin {
-                    continue;
-                }
-            }
+        if pos.board().is_capture(mv) && pos.board().see(mv) < 0 {
+            continue;
         }
 
         pos.make_move(mv);
