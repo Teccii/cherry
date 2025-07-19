@@ -181,12 +181,11 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.in_check();
-
     let raw_eval = match skip_move {
         Some(_) => ctx.ss[ply as usize].eval,
         None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
     };
-    let corr =  ctx.history.get_corr(pos.board());
+    let corr = ctx.history.get_corr(pos.board());
     let static_eval = raw_eval + shared_ctx.weights.corr_frac * corr / 512;
     ctx.ss[ply as usize].eval = raw_eval;
 
@@ -278,12 +277,12 @@ pub fn search<Node: NodeType>(
 
     if let Some(entry) = tt_entry {
         let iir = if (Node::PV || cut_node) && depth > w.iir_depth && entry.table_mv.is_none() {
-            1 + (entry.depth >= depth) as i16
+            1 + (entry.depth >= depth) as u8
         } else {
             0
         };
 
-        depth = (depth as i16 - iir) as u8;
+        depth = depth.saturating_sub(iir);
     }
 
     let mut best_score = None;

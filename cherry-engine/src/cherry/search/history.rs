@@ -37,7 +37,6 @@ pub struct History {
     counter_move: Box<ContinuationTable>, //use for 1-ply, 3-ply, 5-ply, etc.
     follow_up: Box<ContinuationTable>, //use for 2-ply, 4-ply, 6-ply, etc.
     pawn_corr: Box<CorrectionTable<PAWN_CORRECTION_SIZE>>,
-    minor_corr: Box<CorrectionTable<MINOR_CORRECTION_SIZE>>,
 }
 
 impl History {
@@ -49,7 +48,6 @@ impl History {
             counter_move: Box::new([piece_to(piece_to(0)); Color::COUNT]),
             follow_up: Box::new([piece_to(piece_to(0)); Color::COUNT]),
             pawn_corr: Box::new([[0; PAWN_CORRECTION_SIZE]; Color::COUNT]),
-            minor_corr: Box::new([[0; MINOR_CORRECTION_SIZE]; Color::COUNT])
         }
     }
 
@@ -60,7 +58,6 @@ impl History {
         self.counter_move = Box::new([piece_to(piece_to(0)); Color::COUNT]);
         self.follow_up = Box::new([piece_to(piece_to(0)); Color::COUNT]);
         self.pawn_corr = Box::new([[0; PAWN_CORRECTION_SIZE]; Color::COUNT]);
-        self.minor_corr = Box::new([[0; MINOR_CORRECTION_SIZE]; Color::COUNT]);
     }
 
     /*----------------------------------------------------------------*/
@@ -173,11 +170,9 @@ impl History {
     #[inline]
     pub fn get_corr(&self, board: &Board) -> i16 {
         let pawn_hash = board.pawn_hash();
-        let minor_hash = board.minor_hash();
         let stm = board.stm();
 
         self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE]
-            + self.minor_corr[stm as usize][minor_hash as usize % MINOR_CORRECTION_SIZE]
     }
     
     /*----------------------------------------------------------------*/
@@ -241,16 +236,10 @@ impl History {
     ) {
         let amount = (best_score - static_eval).0 * depth as i16 / 4;
         let pawn_hash = board.pawn_hash();
-        let minor_hash = board.minor_hash();
         let stm = board.stm();
 
         History::update_corr_value(
             &mut self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE],
-            amount,
-        );
-
-        History::update_corr_value(
-            &mut self.minor_corr[stm as usize][minor_hash as usize % MINOR_CORRECTION_SIZE],
             amount,
         );
     }

@@ -95,7 +95,6 @@ impl BoardBuilder {
             fullmove_count: 0,
             halfmove_clock: 0,
             pawn_hash: 0,
-            minor_hash: 0,
             hash: 0,
             stm: Color::White,
         };
