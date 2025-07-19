@@ -45,12 +45,12 @@ pub fn tune(
             let nstm = ft.forward(nstm).screlu();
             let ft_output = stm.concat(nstm);
 
-            l1.forward(ft_output);
+            l1.forward(ft_output)
         });
 
     let schedule = TrainingSchedule {
-        net_id: "cherry_768x2-1024",
-        eval_scale: EVAL_SCALE,
+        net_id: String::from("cherry_768x2-1024"),
+        eval_scale: EVAL_SCALE as f32,
         wdl_scheduler: wdl::ConstantWDL { value: 0.75 },
         lr_scheduler: lr::StepLR { start: 0.001, gamma: 0.1, step: 18 },
         steps: TrainingSteps {
@@ -75,9 +75,9 @@ pub fn tune(
                 && entry.score.unsigned_abs() <= 10000
                 && !entry.pos.is_checked(entry.pos.side_to_move())
                 && entry.mv.mtype() == MoveType::Normal
-                && entry.pos.piece_at(entry.mv.to()) == PieceType::None
+                && entry.pos.piece_at(entry.mv.to()).piece_type() == PieceType::None
         }
-        
+
         loader::SfBinpackLoader::new_concat_multiple(
             file_paths,
             buffer_size,
