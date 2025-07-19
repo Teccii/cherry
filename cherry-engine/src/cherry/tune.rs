@@ -70,11 +70,19 @@ pub fn tune(
     };
 
     let data_loader = {
+        fn filter(entry: &TrainingDataEntry) -> bool {
+            entry.ply >= 12
+                && entry.score.unsigned_abs() <= 10000
+                && !entry.pos.is_checked(entry.pos.side_to_move())
+                && entry.mv.mtype() == MoveType::Normal
+                && entry.pos.piece_at(entry.mv.to()) == PieceType::None
+        }
+        
         loader::SfBinpackLoader::new_concat_multiple(
             file_paths,
             buffer_size,
             threads,
-            |e| true
+            filter,
         )
     };
 
