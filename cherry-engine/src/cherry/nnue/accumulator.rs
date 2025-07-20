@@ -52,7 +52,7 @@ pub fn vec_add(
 
     for i in (HL - HL % CHUNK_SIZE)..HL {
         for &index in adds {
-            acc[i] += weights.ft_weights[(index * HL + i)];
+            acc[i] += weights.ft_weights[index * HL + i];
         }
     }
 }

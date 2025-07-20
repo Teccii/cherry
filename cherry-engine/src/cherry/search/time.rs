@@ -249,11 +249,6 @@ impl TimeManager {
     }
 
     #[inline]
-    pub fn is_pondering(&self) -> bool {
-        self.pondering.load(Ordering::Relaxed)
-    }
-
-    #[inline]
     pub fn no_manage(&self) -> bool {
         self.no_manage.load(Ordering::Relaxed)
     }

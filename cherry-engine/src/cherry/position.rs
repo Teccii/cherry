@@ -30,7 +30,9 @@ impl Position {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn board(&self) -> &Board { &self.board }
+    pub fn board(&self) -> &Board {
+        &self.board
+    }
     
     #[inline]
     pub fn non_pawn_material(&self) -> bool {
@@ -53,10 +55,14 @@ impl Position {
     }
     
     #[inline]
-    pub fn stm(&self) -> Color { self.board.stm() }
+    pub fn stm(&self) -> Color {
+        self.board.stm()
+    }
 
     #[inline]
-    pub fn hash(&self) -> u64 { self.board.hash() }
+    pub fn hash(&self) -> u64 {
+        self.board.hash()
+    }
 
     /*----------------------------------------------------------------*/
 

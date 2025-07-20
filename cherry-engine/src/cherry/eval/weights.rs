@@ -88,7 +88,6 @@ impl_tapered_i16_assign_ops! {
 }
 
 pub type IndexTable<const N: usize> = [T; N];
-pub type FileTable = IndexTable<{File::COUNT}>;
 pub type RankTable = IndexTable<{Rank::COUNT}>;
 pub type SquareTable = IndexTable<{Square::COUNT}>;
 

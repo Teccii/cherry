@@ -22,6 +22,15 @@ fn select_next(moves: &ArrayVec<ScoredMove, MAX_MOVES>) -> Option<usize> {
         .map(|(i, _)| i)
 }
 
+#[inline]
+fn mask_captures(moves: &mut PieceMoves, mask: Bitboard, ep_mask: Bitboard) {
+    if moves.piece == Piece::Pawn {
+        moves.to &= mask | ep_mask;
+    } else {
+        moves.to &= mask;
+    }
+}
+
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -111,13 +120,10 @@ impl MovePicker {
             
             let board = pos.board();
             let mask = board.colors(!board.stm());
+            let ep_mask = board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
 
             for mut moves in self.piece_moves.iter().copied() {
-                if moves.piece == Piece::Pawn {
-                    moves.to &= mask | board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
-                } else {
-                    moves.to &= mask;
-                }
+                mask_captures(&mut moves, mask, ep_mask);
 
                 for mv in moves {
                     if self.hash_move == Some(mv) {
@@ -269,13 +275,10 @@ impl QMovePicker {
         if self.phase == QPhase::GenCaptures {
             let board = pos.board();
             let mask = board.colors(!board.stm());
+            let ep_mask = board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
 
             for mut moves in self.piece_moves.iter().copied() {
-                if moves.piece == Piece::Pawn {
-                    moves.to &= mask | board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
-                } else {
-                    moves.to &= mask;
-                }
+                mask_captures(&mut moves, mask, ep_mask);
 
                 for mv in moves {
                     self.captures.push(ScoredMove(mv, history.get_capture(board, mv)));

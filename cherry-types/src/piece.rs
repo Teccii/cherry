@@ -152,11 +152,11 @@ impl ColorPiece {
     
     #[inline]
     pub const fn piece(self) -> Piece {
-        Piece::index((self.bits.get() as u8 & 0b111) as usize)
+        Piece::index((self.bits.get() & 0b111) as usize)
     }
     
     #[inline]
     pub const fn color(self) -> Color {
-        Color::index((((self.bits.get() as u8) >> 3) & 0b1) as usize)
+        Color::index(((self.bits.get() >> 3) & 0b1) as usize)
     }
 }

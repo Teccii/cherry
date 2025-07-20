@@ -23,7 +23,9 @@ impl BatchedAtomicCounter {
             buffer: 0,
         }
     }
-    
+
+    /*----------------------------------------------------------------*/
+
     #[inline]
     pub fn inc(&mut self) {
         self.buffer += 1;
@@ -47,6 +49,8 @@ impl BatchedAtomicCounter {
         self.buffer = 0;
     }
 
+    /*----------------------------------------------------------------*/
+
     #[inline]
     pub fn global(&self) -> u64 {
         self.global.load(Ordering::Relaxed) + self.buffer
@@ -56,12 +60,10 @@ impl BatchedAtomicCounter {
     pub fn local(&self) -> u64 {
         self.local + self.buffer
     }
-    
-    #[inline]
-    pub fn buffer(&self) -> u64 {
-        self.buffer
-    }
-    
+
+    /*----------------------------------------------------------------*/
+
+
     pub const BATCH_SIZE: u64 = 1024;
 }
 
@@ -96,6 +98,7 @@ impl<T: Copy + Default, const M: usize, const N: usize> LookUp<T, M, N> {
         Self { table }
     }
 
+    #[inline]
     pub fn get(&self, i: usize, j: usize) -> T {
         if i >= M || j >= N {
             panic!("LookUp::get(): Indices out of bounds");

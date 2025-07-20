@@ -7,7 +7,6 @@ pub const MAX_HISTORY: i16 = 8192;
 pub const MAX_CORRECTION: i16 = 1024;
 
 const PAWN_CORRECTION_SIZE: usize = 512;
-const MINOR_CORRECTION_SIZE: usize = 32768;
 
 /*----------------------------------------------------------------*/
 

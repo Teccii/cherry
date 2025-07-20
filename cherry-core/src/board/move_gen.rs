@@ -503,13 +503,6 @@ mod tests {
             Piece::Queen
         ];
 
-        const FLAGS: [MoveFlag; 4] = [
-            MoveFlag::None,
-            MoveFlag::EnPassant,
-            MoveFlag::Castling,
-            MoveFlag::Promotion
-        ];
-
         for &from in &Square::ALL {
             for &to in &Square::ALL {
                 if from == to {

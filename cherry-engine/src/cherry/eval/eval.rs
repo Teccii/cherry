@@ -7,7 +7,6 @@ use crate::*;
 pub struct EvalData {
     attacks: [Bitboard; Color::COUNT],
     pawn_attacks: [Bitboard; Color::COUNT],
-    blocked_pawns: [Bitboard; Color::COUNT],
     mobility_area: [Bitboard; Color::COUNT],
     semiopen_files: [Bitboard; Color::COUNT],
     open_files: Bitboard
@@ -96,7 +95,6 @@ impl EvalData {
         EvalData {
             attacks: [w_attacks, b_attacks],
             pawn_attacks: [w_pawn_attacks, b_pawn_attacks],
-            blocked_pawns: [w_blocked_pawns, b_blocked_pawns],
             mobility_area: [
                 !(b_pawn_attacks | w_blocked_pawns),
                 !(w_pawn_attacks | b_blocked_pawns)
@@ -116,11 +114,6 @@ impl EvalData {
     #[inline]
     pub fn pawn_attacks(&self, color: Color) -> Bitboard {
         self.pawn_attacks[color as usize]
-    }
-
-    #[inline]
-    pub fn blocked_pawns(&self, color: Color) -> Bitboard {
-        self.blocked_pawns[color as usize]
     }
 
     #[inline]

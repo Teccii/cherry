@@ -52,26 +52,6 @@ pub fn probe_wdl(tb: &TableBases<SyzygyAdapter>, board: &Board) -> Option<WdlPro
         board.pieces(Piece::Bishop).0,
         board.pieces(Piece::Knight).0,
         board.pieces(Piece::Pawn).0,
-        0,
-        board.stm() == Color::White,
-    ).ok()
-}
-
-pub fn probe_dtz(tb: &TableBases<SyzygyAdapter>, board: &Board) -> Option<DtzProbeResult> {
-    if board.occupied().popcnt() as u32 > tb.max_pieces() {
-        return None;
-    }
-
-    tb.probe_root(
-        board.colors(Color::White).0,
-        board.colors(Color::Black).0,
-        board.pieces(Piece::King).0,
-        board.pieces(Piece::Queen).0,
-        board.pieces(Piece::Rook).0,
-        board.pieces(Piece::Bishop).0,
-        board.pieces(Piece::Knight).0,
-        board.pieces(Piece::Pawn).0,
-        board.halfmove_clock() as u32,
         board.ep_square().map_or(0, |sq| sq as u32),
         board.stm() == Color::White,
     ).ok()

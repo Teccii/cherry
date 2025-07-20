@@ -5,8 +5,6 @@ use cherry_core::*;
 
 pub type Result<T> = std::result::Result<T, UciParseError>;
 
-/*----------------------------------------------------------------*/
-
 #[derive(Debug, Clone)]
 pub enum UciCommand {
     Uci,
@@ -59,7 +57,7 @@ pub enum UciOptionType {
     Check { default: bool },
     Spin { default: i32, min: i32, max: i32 },
     Combo { values: Vec<String>, default: usize },
-    String { default: String},
+    String { default: String },
     Button,
 }
 

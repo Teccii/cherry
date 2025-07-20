@@ -324,8 +324,6 @@ impl Board {
                     }
                 }
                 Piece::King => {
-                    let old_rights = self.castle_rights(self.stm);
-
                     self.set_castle_rights(self.stm, None, true);
                     self.set_castle_rights(self.stm, None, false);
                 }

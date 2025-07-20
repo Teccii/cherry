@@ -6,7 +6,7 @@ use crate::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TTBound {
-    None,
+    #[allow(dead_code)] None,
     UpperBound,
     LowerBound,
     Exact
@@ -141,7 +141,7 @@ impl TTable {
             let index = self.index(hash);
 
             unsafe {
-                _mm_prefetch(self.entries.as_ptr().add(index) as *const i8, _MM_HINT_T0)
+                _mm_prefetch::<_MM_HINT_T0>(self.entries.as_ptr().add(index) as *const i8)
             }
         }
     }
@@ -181,7 +181,8 @@ impl TTable {
         let index = self.index(hash);
         self.entries[index].set(hash, new_data);
     }
-    
+
+    #[inline]
     pub fn clean(&self) {
         self.entries.iter().for_each(|e| e.reset());
     }

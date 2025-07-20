@@ -1,6 +1,10 @@
-use std::{env, fs, io::Write, path::PathBuf};
+use std::{
+    env,
+    fs,
+    io::{BufWriter, Write},
+    path::PathBuf
+};
 #[cfg(target_feature = "bmi2")]  use std::arch::x86_64::_pext_u64;
-use std::io::BufWriter;
 use cherry_types::*;
 
 /*----------------------------------------------------------------*/

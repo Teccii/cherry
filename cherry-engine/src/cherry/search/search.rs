@@ -1,4 +1,3 @@
-use std::sync::atomic::Ordering;
 use arrayvec::ArrayVec;
 use pyrrhic_rs::WdlProbeResult;
 use cherry_core::*;
@@ -660,7 +659,6 @@ pub fn q_search<Node: NodeType>(
     let mut best_move = None;
     let mut best_score = None;
     let mut move_picker = QMovePicker::new();
-    let mut moves_seen = 0;
 
     let counter_move = (ply >= 1).then(|| ctx.ss[ply as usize - 1].move_played).flatten();
     let follow_up = (ply >= 2).then(|| ctx.ss[ply as usize - 2].move_played).flatten();
@@ -682,7 +680,6 @@ pub fn q_search<Node: NodeType>(
             -alpha
         );
         pos.unmake_move();
-        moves_seen += 1;
 
         if best_score.is_none() || score > best_score.unwrap() {
             best_score = Some(score);

@@ -1,7 +1,4 @@
-use std::{
-    fmt::Write,
-    sync::{Arc, Mutex, atomic::*}
-};
+use std::{fmt::Write, sync::Arc};
 use arrayvec::ArrayVec;
 use pyrrhic_rs::TableBases;
 use cherry_core::*;
@@ -307,13 +304,8 @@ fn search_worker<Info: SearchInfo>(
         'id: loop {
             window.reset();
             let mut fails = 0;
-            let mut abort = false;
 
             'asp: loop {
-                if abort {
-                    break 'id;
-                }
-
                 let (alpha, beta) = if depth > 4
                     && eval.is_some_and(|e| e.abs() < 1000)
                     && fails < 10 {
@@ -350,10 +342,10 @@ fn search_worker<Info: SearchInfo>(
                 );
 
                 if (score > alpha && score < beta) || score.is_decisive() {
-                    abort = shared_ctx.time_man.abort_id(depth, ctx.nodes.global());
                     ponder_move = ctx.ss[0].pv[1];
                     best_move = Some(root_move);
                     eval = Some(score);
+
                     break 'asp;
                 }
 
