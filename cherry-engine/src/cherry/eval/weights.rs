@@ -155,10 +155,10 @@ weights! {
     rook_mobility: IndexTable<15> => ROOK_MOBILITY,
     queen_mobility: IndexTable<28> => QUEEN_MOBILITY,
 
-    rook_open_file: FileTable => ROOK_OPEN_FILE,
-    rook_semiopen_file: FileTable => ROOK_SEMIOPEN_FILE,
-    queen_open_file: FileTable => QUEEN_OPEN_FILE,
-    queen_semiopen_file: FileTable => QUEEN_SEMIOPEN_FILE,
+    rook_open_file: T => ROOK_OPEN_FILE,
+    rook_semiopen_file: T => ROOK_SEMIOPEN_FILE,
+    queen_open_file: T => QUEEN_OPEN_FILE,
+    queen_semiopen_file: T => QUEEN_SEMIOPEN_FILE,
     knight_behind_pawn: T => KNIGHT_BEHIND_PAWN,
     bishop_behind_pawn: T => BISHOP_BEHIND_PAWN,
 
@@ -211,18 +211,10 @@ pub const QUEEN_MOBILITY: IndexTable<28> = [
     T(110,182), T(114,182), T(114,192), T(116,219),
 ];
 
-pub const ROOK_OPEN_FILE: FileTable = [
-    T(56, 0), T(56, 0), T(56, 0), T(56, 0), T(56, 0), T(56, 0), T(56, 0), T(56, 0),
-];
-pub const ROOK_SEMIOPEN_FILE: FileTable = [
-    T(36, 0), T(36, 0), T(36, 0), T(36, 0), T(36, 0), T(36, 0), T(36, 0), T(36, 0),
-];
-pub const QUEEN_OPEN_FILE: FileTable = [
-    T(-6, 0), T(-6, 0), T(-6, 0), T(-6, 0), T(-6, 0), T(-6, 0), T(-6, 0), T(-6, 0),
-];
-pub const QUEEN_SEMIOPEN_FILE: FileTable = [
-    T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0), T(11, 0),
-];
+pub const ROOK_OPEN_FILE: T = T(56, 0);
+pub const ROOK_SEMIOPEN_FILE: T = T(36, 0);
+pub const QUEEN_OPEN_FILE: T = T(-6, 0);
+pub const QUEEN_SEMIOPEN_FILE: T = T(11, 0);
 pub const KNIGHT_BEHIND_PAWN: T = T(5, 15);
 pub const BISHOP_BEHIND_PAWN: T = T(5, 15);
 

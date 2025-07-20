@@ -82,6 +82,16 @@ impl Bitboard {
     pub const fn try_next_square(self) -> Option<Square> {
         Square::try_index(self.0.trailing_zeros() as usize)
     }
+
+    #[inline]
+    pub const fn next_square_back(self) -> Square {
+        Square::index(63 - self.0.leading_zeros() as usize)
+    }
+
+    #[inline]
+    pub const fn try_next_square_back(self) -> Option<Square> {
+        Square::try_index(63 - self.0.leading_zeros() as usize)
+    }
     
     /*----------------------------------------------------------------*/
 
@@ -340,6 +350,18 @@ impl Iterator for BitboardIter {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let sq = self.0.try_next_square();
+        
+        if let Some(sq) = sq {
+            self.0 ^= sq.bitboard();
+        }
+        
+        sq
+    }
+}
+
+impl DoubleEndedIterator for BitboardIter {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let sq = self.0.try_next_square_back();
         
         if let Some(sq) = sq {
             self.0 ^= sq.bitboard();

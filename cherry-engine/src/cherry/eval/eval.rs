@@ -261,7 +261,6 @@ impl Evaluator {
 
     fn eval_pawns(&self, board: &Board) -> T {
         let mut score = T::ZERO;
-        let pawns = board.pieces(Piece::Pawn);
 
         for &color in &Color::ALL {
             let our_pawns = board.color_pieces(Piece::Pawn, color);
@@ -421,21 +420,21 @@ impl Evaluator {
             let semiopen_files = data.semiopen_files(color);
             for rook in board.color_pieces(Piece::Rook, color) {
                 if semiopen_files.has(rook) {
-                    score += self.weights.rook_semiopen_file[rook.file() as usize] * sign;
+                    score += self.weights.rook_semiopen_file * sign;
                 }
 
                 if data.open_files().has(rook) {
-                    score += self.weights.rook_open_file[rook.file() as usize] * sign;
+                    score += self.weights.rook_open_file * sign;
                 }
             }
 
             for queen in board.color_pieces(Piece::Queen, color) {
                 if semiopen_files.has(queen) {
-                    score += self.weights.queen_semiopen_file[queen.file() as usize] * sign;
+                    score += self.weights.queen_semiopen_file * sign;
                 }
 
                 if data.open_files().has(queen) {
-                    score += self.weights.queen_open_file[queen.file() as usize] * sign;
+                    score += self.weights.queen_open_file * sign;
                 }
             }
         }
