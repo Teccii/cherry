@@ -24,7 +24,7 @@ fn select_next(moves: &ArrayVec<ScoredMove, MAX_MOVES>) -> Option<usize> {
 
 /*----------------------------------------------------------------*/
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Phase {
     HashMove,
     GenPieceMoves,
@@ -123,11 +123,9 @@ impl MovePicker {
                     if self.hash_move == Some(mv) {
                         continue;
                     }
-                    
-                    let see = board.see(mv);
+
                     let score = history.get_capture(board, mv);
-                    
-                    if see >= 0  {
+                    if board.cmp_see(mv, 0)  {
                         self.good_captures.push(ScoredMove(mv, score));
                     } else {
                         self.bad_captures.push(ScoredMove(mv, score));

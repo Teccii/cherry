@@ -181,23 +181,20 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.in_check();
+    let corr = ctx.history.get_corr(pos.board());
     let raw_eval = match skip_move {
         Some(_) => ctx.ss[ply as usize].eval,
         None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
     };
-    let corr = ctx.history.get_corr(pos.board());
     let static_eval = raw_eval + shared_ctx.weights.corr_frac * corr / 512;
     ctx.ss[ply as usize].eval = raw_eval;
 
-    let (prev_eval, prev_ext, prev_reduction) = match ply {
-        2.. => {
-            let prev_stack = &ctx.ss[ply as usize - 2];
-            (Some(prev_stack.eval), prev_stack.extension, prev_stack.reduction)
-        },
-        _ => (None, 0, 0)
+    let prev_eval = match ply {
+        2.. => Some(ctx.ss[ply as usize - 2].eval),
+        _ => None,
     };
 
-    let improving = prev_eval.is_some_and(|e| !in_check && static_eval > e);
+    let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
     let w = &shared_ctx.weights;
 
     if !Node::PV && !in_check && skip_move.is_none() {
@@ -399,7 +396,7 @@ pub fn search<Node: NodeType>(
                 let see_margin = w.see_margin * depth as i16 * depth as i16 - stat_score / w.see_hist;
                 if depth < w.see_depth
                     && move_picker.phase() == Phase::YieldBadCaptures
-                    && pos.board().see(mv) < see_margin {
+                    && !pos.board().cmp_see(mv, see_margin) {
                     continue;
                 }
             } else {
@@ -425,6 +422,12 @@ pub fn search<Node: NodeType>(
 
                 if !pos.in_check() && r_depth < w.futile_depth && static_eval <= alpha - futile_margin {
                     move_picker.skip_quiets();
+                    continue;
+                }
+
+                //SEE Pruning for Quiets
+                let see_margin = w.see_margin * r_depth as i16 * r_depth as i16;
+                if r_depth < w.see_depth && !pos.board().cmp_see(mv, see_margin) {
                     continue;
                 }
             }
@@ -640,8 +643,9 @@ pub fn q_search<Node: NodeType>(
     }
 
     let in_check = pos.in_check();
+    let corr = ctx.history.get_corr(pos.board());
     let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval());
-    let static_eval = raw_eval + shared_ctx.weights.corr_frac * ctx.history.get_corr(pos.board()) / 512;
+    let static_eval = raw_eval + shared_ctx.weights.corr_frac * corr / 512;
 
     if !in_check {
         if static_eval >= beta {
@@ -662,7 +666,7 @@ pub fn q_search<Node: NodeType>(
     let follow_up = (ply >= 2).then(|| ctx.ss[ply as usize - 2].move_played).flatten();
 
     while let Some(mv) = move_picker.next(pos, &ctx.history, counter_move, follow_up) {
-        if pos.board().is_capture(mv) && pos.board().see(mv) < 0 {
+        if !pos.board().cmp_see(mv, 0) {
             continue;
         }
 

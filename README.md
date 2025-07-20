@@ -27,6 +27,8 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - Quiescence Search for Captures and Evasions
 - Extensions
   - Singular Extensions
+    - Double Extension
+    - Triple Extension
   - Check Extensions
 - Reductions
   - Fractional Reductions
@@ -63,7 +65,6 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - Tapered Evaluation
 - Correction History Heuristic
   - Pawn Structure
-  - Minor Pieces
 - NNUE (WIP)
 
 ### Time Management

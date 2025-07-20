@@ -1,78 +1,94 @@
-use arrayvec::ArrayVec;
 use cherry_types::*;
 use crate::*;
 
 impl Board {
-    //TODO: Handle Promotions
-    pub fn see(&self, mv: Move) -> i16 {
-        let (from, to) = (mv.from(), mv.to());
-        let mut blockers = self.occupied() ^ from.bitboard();
+    /*
+    Adapted from Viridithas and Ethereal:
+    https://github.com/cosmobobak/viridithas/blob/master/src/search.rs#L1734
+    https://github.com/AndyGrant/Ethereal/blob/master/src/search.c#L929
+    */
+    pub fn cmp_see(&self, mv: Move, threshold: i16) -> bool {
+        let (from, to, flag, promotion) = (mv.from(), mv.to(), mv.flag(), mv.promotion());
 
-        /*
-        En passant only has to be handled for the first capture, because pawn double pushes
-        can never capture a piece so they don't matter at all in SEE.
-        */
-        let first_capture = if self.is_en_passant(mv) {
-            blockers ^= Square::new(
-                self.en_passant.unwrap(),
-                Rank::Fifth.relative_to(self.stm)
-            ).bitboard();
-
-            Piece::Pawn
-        }  else {
-            self.piece_on(to).unwrap()
+        let mut next_victim = promotion.unwrap_or_else(|| self.piece_on(from).unwrap());
+        let mut balance = -threshold + match flag {
+            MoveFlag::None => self.piece_on(to).map_or(0, |p| p.see_value()),
+            MoveFlag::EnPassant => Piece::Pawn.see_value(),
+            MoveFlag::Promotion => promotion.unwrap().see_value(),
+            MoveFlag::Castling => 0,
         };
 
-        let mut attackers = self.attackers(to, blockers) & blockers;
-        let mut target_piece = self.piece_on(from).unwrap();
-        let mut stm = !self.stm;
-        let mut gains: ArrayVec<i16, 32> = ArrayVec::new();
-        gains.push(first_capture.see_value());
+        //best case fail
+        if balance < 0 {
+            return false;
+        }
+
+        balance -= next_victim.see_value();
+        //worst case pass
+        if balance >= 0 {
+            return true;
+        }
+
+        let mut occupied = self.occupied() ^ from | to;
+        if flag == MoveFlag::EnPassant {
+            occupied ^= self.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
+        }
+
+        let (diag, orth) = (self.diag_sliders(), self.orth_sliders());
+        let (w_pinned, b_pinned) = (
+            self.pinned(Color::White),
+            self.pinned(Color::Black)
+        );
+        let (w_checks, b_checks) = (
+            queen_rays(self.king(Color::White)),
+            queen_rays(self.king(Color::Black))
+        );
+        let allowed_pieces = !(w_pinned | b_pinned)
+            | (w_pinned & w_checks)
+            | (b_pinned & b_checks);
+
+        let mut attackers = self.attackers(to, occupied) & allowed_pieces;
+        let mut color = !self.stm;
 
         'see: loop {
-            for &piece in Piece::ALL.iter() {
-                let stm_attackers = attackers & self.color_pieces(piece, stm);
+            let stm_attackers = attackers & self.colors(color);
 
-                if let Some(sq) = stm_attackers.try_next_square() {
-                    gains.push(target_piece.see_value());
+            if stm_attackers.is_empty() {
+                break 'see;
+            }
 
-                    if target_piece == Piece::King {
-                        break;
-                    }
-
-                    let bb = sq.bitboard();
-
-                    blockers ^= bb;
-                    attackers ^= bb;
-                    target_piece = piece;
-
-                    if matches!(piece, Piece::Rook | Piece::Queen) {
-                        attackers |= rook_moves(sq, blockers) & blockers & self.orth_sliders();
-                    }
-
-                    if matches!(piece, Piece::Pawn | Piece::Bishop | Piece::Queen) {
-                        attackers |= bishop_moves(sq, blockers) & blockers & self.diag_sliders();
-                    }
-
-                    stm = !stm;
-                    continue 'see;
+            //find LVA
+            for &piece in &Piece::ALL {
+                next_victim = piece;
+                if !(stm_attackers & self.pieces(next_victim)).is_empty() {
+                    break;
                 }
             }
 
-            while gains.len() > 1 {
-                let forced = gains.len() == 2;
-                let their_gain = gains.pop().unwrap();
-                let our_gain = gains.last_mut().unwrap();
+            occupied ^= (stm_attackers & self.pieces(next_victim)).next_square();
 
-                *our_gain -= their_gain;
-
-                if !forced && *our_gain < 0 {
-                    *our_gain = 0;
-                }
+            if matches!(next_victim, Piece::Pawn | Piece::Bishop | Piece::Queen) {
+                attackers |= bishop_moves(to, occupied) & diag;
             }
 
-            return gains.pop().unwrap();
+            if matches!(next_victim, Piece::Rook | Piece::Queen) {
+                attackers |= rook_moves(to, occupied) & orth;
+            }
+
+            attackers &= occupied;
+            color = !color;
+
+            balance = -balance - 1 - next_victim.see_value();
+            if balance >= 0 {
+                if next_victim == Piece::King && !(attackers & self.colors(color)).is_empty() {
+                    color = !color;
+                }
+
+                break;
+            }
         }
+
+        self.stm != color
     }
 }
 
@@ -86,12 +102,14 @@ mod tests {
             "8/4k3/1n6/3n4/8/8/3R4/3K4 w - - 0 1",
             "8/3r4/3q4/3r4/8/3Q3K/3R4/7k w - - 0 1",
             "8/8/b7/1q6/2b5/3Q3K/4B3/7k w - - 0 1",
+            "8/1pp2k2/3p4/8/8/3Q1K2/8/8 w - - 0 1",
         ];
         let expected = &[
             Piece::Knight.see_value(),
             Piece::Knight.see_value() - Piece::Rook.see_value(),
             0,
             0,
+            Piece::Pawn.see_value() - Piece::Queen.see_value(),
         ];
 
         let moves = &[
@@ -99,13 +117,14 @@ mod tests {
             Move::new(Square::D2, Square::D5, MoveFlag::None),
             Move::new(Square::D3, Square::D5, MoveFlag::None),
             Move::new(Square::D3, Square::C4, MoveFlag::None),
+            Move::new(Square::D3, Square::D6, MoveFlag::None),
         ];
 
         for ((&fen, &expected), &mv) in fens.iter().zip(expected).zip(moves) {
             let board = Board::from_fen(fen, false).unwrap();
 
-            assert!(board.see(mv) >= expected);
-            assert!(board.see(mv) < (expected + 1));
+            assert!(board.cmp_see(mv, expected));
+            assert!(!board.cmp_see(mv, expected + 1));
         }
     }
 }
