@@ -476,21 +476,23 @@ impl SearchInfo for DebugInfo {
         let root_stack = &ctx.ss[0];
         let mut board = board.clone();
 
-        write!(info, "pv ").unwrap();
-        for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
-            if i as u8 == depth || i as u8 == MAX_DEPTH {
-                break;
-            }
-
-            if let Some(mv) = mv {
-                if !board.is_legal(mv) {
+        if root_stack.pv_len != 0 {
+            write!(info, "pv ").unwrap();
+            for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
+                if i as u8 == depth || i as u8 == MAX_DEPTH {
                     break;
                 }
-                
-                write!(info, "{} ", mv.display(&board, chess960)).unwrap();
-                board.make_move(mv);
-            } else {
-                break;
+
+                if let Some(mv) = mv {
+                    if !board.is_legal(mv) {
+                        break;
+                    }
+
+                    write!(info, "{} ", mv.display(&board, chess960)).unwrap();
+                    board.make_move(mv);
+                } else {
+                    break;
+                }
             }
         }
 
@@ -538,21 +540,23 @@ impl SearchInfo for UciInfo {
         let root_stack = &ctx.ss[0];
         let mut board = board.clone();
 
-        write!(info, "pv ").unwrap();
-        for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
-            if i as u8 == depth || i as u8 == MAX_DEPTH {
-                break;
-            }
-
-            if let Some(mv) = mv {
-                if !board.is_legal(mv) {
+        if root_stack.pv_len != 0 {
+            write!(info, "pv ").unwrap();
+            for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
+                if i as u8 == depth || i as u8 == MAX_DEPTH {
                     break;
                 }
 
-                write!(info, "{} ", mv.display(&board, chess960)).unwrap();
-                board.make_move(mv);
-            } else {
-                break;
+                if let Some(mv) = mv {
+                    if !board.is_legal(mv) {
+                        break;
+                    }
+
+                    write!(info, "{} ", mv.display(&board, chess960)).unwrap();
+                    board.make_move(mv);
+                } else {
+                    break;
+                }
             }
         }
 

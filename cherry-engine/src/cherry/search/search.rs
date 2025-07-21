@@ -282,16 +282,14 @@ pub fn search<Node: NodeType>(
     }
 
     let mut best_score = None;
+    let mut moves_seen = 0;
+    let mut move_exists = false;
     let mut quiets: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
     let mut captures: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
     let mut move_picker = MovePicker::new(best_move);
-    let mut move_exists = false;
-    let mut moves_seen = 0;
-    
-    let counter_move = (ply >= 1).then(|| ctx.ss[ply as usize - 1].move_played).flatten();
-    let follow_up = (ply >= 2).then(|| ctx.ss[ply as usize - 2].move_played).flatten();
+    let cont_indices = ContIndices::new(&ctx.ss, ply);
 
-    while let Some(mv) = move_picker.next(pos, &ctx.history, counter_move, follow_up) {
+    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
         if skip_move == Some(mv) {
             continue;
         }
@@ -303,12 +301,7 @@ pub fn search<Node: NodeType>(
 
         let is_capture = pos.board().is_capture(mv);
         let nodes = ctx.nodes.local();
-        let stat_score = ctx.history.get_move(
-            pos.board(),
-            mv,
-            counter_move,
-            follow_up
-        );
+        let stat_score = ctx.history.get_move(pos.board(), mv, &cont_indices);
         
         ctx.ss[ply as usize].stat_score = stat_score;
 
@@ -357,15 +350,7 @@ pub fn search<Node: NodeType>(
                         extension += 1;
                     }
 
-                    ctx.history.update(
-                        pos.board(),
-                        mv,
-                        counter_move,
-                        follow_up,
-                        &[],
-                        &[],
-                        depth
-                    );
+                    ctx.history.update(pos.board(), mv, &cont_indices, &[], &[], depth);
                 } else if s_score >= beta {
                     //multi-cut
                     return s_score;
@@ -527,15 +512,7 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             if !ctx.abort_now {
-                ctx.history.update(
-                    pos.board(),
-                    mv,
-                    counter_move,
-                    follow_up,
-                    &quiets,
-                    &captures,
-                    depth
-                );
+                ctx.history.update(pos.board(), mv, &cont_indices, &quiets, &captures, depth);
             }
             
             break;
@@ -659,11 +636,9 @@ pub fn q_search<Node: NodeType>(
     let mut best_move = None;
     let mut best_score = None;
     let mut move_picker = QMovePicker::new();
+    let cont_indices = ContIndices::new(&ctx.ss, ply);
 
-    let counter_move = (ply >= 1).then(|| ctx.ss[ply as usize - 1].move_played).flatten();
-    let follow_up = (ply >= 2).then(|| ctx.ss[ply as usize - 2].move_played).flatten();
-
-    while let Some(mv) = move_picker.next(pos, &ctx.history, counter_move, follow_up) {
+    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
         if !pos.board().cmp_see(mv, 0) {
             continue;
         }

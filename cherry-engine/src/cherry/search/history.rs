@@ -1,5 +1,5 @@
 use cherry_core::*;
-use crate::{Score, MoveData};
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
@@ -28,6 +28,24 @@ pub const fn piece_to<T: Copy>(default: T) -> PieceTo<T> {
 }
 
 /*----------------------------------------------------------------*/
+
+#[derive(Debug, Clone)]
+pub struct ContIndices {
+    pub counter_move: Option<MoveData>,
+    pub counter_move2: Option<MoveData>,
+    pub follow_up: Option<MoveData>,
+}
+
+impl ContIndices {
+    #[inline]
+    pub fn new(ss: &[SearchStack], ply: u16) -> ContIndices {
+        ContIndices {
+            counter_move: (ply >= 1).then(|| ss[ply as usize - 1].move_played).flatten(),
+            counter_move2: (ply >= 3).then(|| ss[ply as usize - 3].move_played).flatten(),
+            follow_up: (ply >= 2).then(|| ss[ply as usize - 2].move_played).flatten(),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct History {
@@ -154,15 +172,15 @@ impl History {
         &self,
         board: &Board,
         mv: Move,
-        counter_move: Option<MoveData>,
-        follow_up: Option<MoveData>
+        indices: &ContIndices,
     ) -> i16 {
         if board.is_capture(mv) {
             self.get_capture(board, mv)
         } else {
             self.get_quiet(board, mv)
-                + self.get_counter_move(board, mv, counter_move).unwrap_or_default()
-                + self.get_follow_up(board, mv, follow_up).unwrap_or_default()
+                + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default()
+                + self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default()
+                + self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default()
         }
     }
 
@@ -180,8 +198,7 @@ impl History {
         &mut self,
         board: &Board,
         best_move: Move,
-        counter_move: Option<MoveData>,
-        follow_up: Option<MoveData>,
+        indices: &ContIndices,
         quiets: &[Move],
         captures: &[Move],
         depth: u8
@@ -198,23 +215,34 @@ impl History {
                 History::update_value(self.get_quiet_mut(board, mv), -amount);
             }
             
-            if let Some(value) = self.get_counter_move_mut(board, best_move, counter_move) {
+            if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move) {
                 History::update_value(value, amount);
                 
                 for &mv in quiets {
                     History::update_value(
-                        self.get_counter_move_mut(board, mv, counter_move).unwrap(),
+                        self.get_counter_move_mut(board, mv, indices.counter_move).unwrap(),
                         -amount
                     );
                 }
             }
 
-            if let Some(value) = self.get_follow_up_mut(board, best_move, follow_up) {
+            if let Some(value) = self.get_follow_up_mut(board, best_move, indices.follow_up) {
                 History::update_value(value, amount);
 
                 for &mv in quiets {
                     History::update_value(
-                        self.get_follow_up_mut(board, mv, follow_up).unwrap(),
+                        self.get_follow_up_mut(board, mv, indices.follow_up).unwrap(),
+                        -amount
+                    );
+                }
+            }
+
+            if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move2) {
+                History::update_value(value, amount);
+
+                for &mv in quiets {
+                    History::update_value(
+                        self.get_counter_move_mut(board, mv, indices.counter_move2).unwrap(),
                         -amount
                     );
                 }

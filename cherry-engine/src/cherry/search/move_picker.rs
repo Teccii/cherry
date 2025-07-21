@@ -91,8 +91,7 @@ impl MovePicker {
         &mut self,
         pos: &mut Position,
         history: &History,
-        counter_move: Option<MoveData>,
-        follow_up: Option<MoveData>
+        indices: &ContIndices,
     ) -> Option<Move> {
         if self.phase == Phase::HashMove {
             self.phase = Phase::GenPieceMoves;
@@ -168,7 +167,7 @@ impl MovePicker {
                         continue;
                     }
 
-                    self.quiets.push(ScoredMove(mv, history.get_move(board, mv, counter_move, follow_up)));
+                    self.quiets.push(ScoredMove(mv, history.get_move(board, mv, indices)));
                 }
             }
 
@@ -236,8 +235,7 @@ impl QMovePicker {
         &mut self,
         pos: &mut Position,
         history: &History,
-        counter_move: Option<MoveData>,
-        follow_up: Option<MoveData>,
+        indices: &ContIndices
     ) -> Option<Move> {
         if self.phase == QPhase::GenPieceMoves {
             pos.board().gen_moves(|moves| {
@@ -257,7 +255,7 @@ impl QMovePicker {
 
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
-                    self.evasions.push(ScoredMove(mv, history.get_move(board, mv, counter_move, follow_up)));
+                    self.evasions.push(ScoredMove(mv, history.get_move(board, mv, indices)));
                 }
             }
 
