@@ -8,8 +8,6 @@ use crate::*;
 pub trait NodeType {
     const PV: bool;
     const NMP: bool;
-
-    type Alt: NodeType;
 }
 
 pub struct PV;
@@ -17,8 +15,6 @@ pub struct PV;
 impl NodeType for PV {
     const PV: bool = true;
     const NMP: bool = false;
-
-    type Alt = NonPV;
 }
 
 pub struct NonPV;
@@ -26,8 +22,6 @@ pub struct NonPV;
 impl NodeType for NonPV {
     const PV: bool = false;
     const NMP: bool = true;
-
-    type Alt = NonPV;
 }
 
 pub struct NoNMP;
@@ -35,8 +29,6 @@ pub struct NoNMP;
 impl NodeType for NoNMP {
     const PV: bool = false;
     const NMP: bool = false;
-
-    type Alt = NonPV;
 }
 
 /*----------------------------------------------------------------*/
@@ -180,12 +172,12 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.in_check();
-    let corr = ctx.history.get_corr(pos.board());
+    let corr = ctx.history.get_corr(pos.board(), &shared_ctx.weights);
     let raw_eval = match skip_move {
         Some(_) => ctx.ss[ply as usize].eval,
         None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
     };
-    let static_eval = raw_eval + shared_ctx.weights.corr_frac * corr / 512;
+    let static_eval = raw_eval + corr;
     ctx.ss[ply as usize].eval = raw_eval;
 
     let prev_eval = match ply {
@@ -203,7 +195,7 @@ pub fn search<Node: NodeType>(
         */
         let razor_margin = w.razor_margin * depth as i16;
         if depth < w.razor_depth && static_eval <= alpha - razor_margin {
-            return q_search::<Node::Alt>(
+            return q_search::<Node>(
                 pos,
                 ctx,
                 shared_ctx,
@@ -306,25 +298,83 @@ pub fn search<Node: NodeType>(
         ctx.ss[ply as usize].stat_score = stat_score;
 
         let mut extension: i16 = 0;
-        let mut reduction: i32 = w.base_reduction; //base reduction to compensate for other reductions
+        let mut reduction: i32 = 0;
         let mut score;
-        
+
+        /*
+        Late Move Reduction (LMR): Reduce the depth of moves ordered near the end.
+        History Reduction: Increase or decrease the reduction based on the history of the move
+        */
+        reduction += shared_ctx.lmr_lookup.get(depth as usize, moves_seen as usize);
+        reduction += w.non_pv_reduction * !Node::PV as i32;
+        reduction += w.not_improving_reduction * !improving as i32;
+        reduction += w.cut_node_reduction * cut_node as i32;
+        reduction -= stat_score as i32 / w.hist_reduction;
+
+        if !Node::PV && ply != 0 && pos.non_pawn_material()
+            && best_score.map_or(false, |s: Score| !s.is_decisive()) {
+
+            if is_capture {
+                //SEE pruning
+                let see_margin = w.see_margin * depth as i16 * depth as i16 - (stat_score / w.see_hist) as i16;
+                if depth < w.see_depth
+                    && move_picker.phase() == Phase::YieldBadCaptures
+                    && !pos.board().cmp_see(mv, see_margin) {
+                    continue;
+                }
+            } else {
+                //Late Move Pruning
+                let lmp_margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16);
+                if moves_seen >= lmp_margin {
+                    move_picker.skip_quiets();
+                    continue;
+                }
+
+                let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
+
+                //History Pruning
+                if r_depth < w.hist_depth && stat_score < w.hist_margin * r_depth as i32 {
+                    move_picker.skip_quiets();
+                    continue;
+                }
+
+                //Futility Pruning
+                let futile_margin = w.futile_base
+                    + w.futile_margin * r_depth as i16
+                    + w.futile_improving * improving as i16;
+
+                if !pos.in_check() && r_depth < w.futile_depth && static_eval <= alpha - futile_margin {
+                    move_picker.skip_quiets();
+                    continue;
+                }
+
+                //SEE Pruning for Quiets
+                let see_margin = w.see_margin * r_depth as i16 * r_depth as i16;
+                if r_depth < w.see_depth && !pos.board().cmp_see(mv, see_margin) {
+                    continue;
+                }
+            }
+        }
+
         /*
         Singular Extensions: If all moves but one fail low and just one fails high,
         then that move is singular and should be extended.
+        Currently negative elo, come back to this after Cherry is stronger
         */
-        if let Some(entry) = tt_entry {
+        /*if let Some(entry) = tt_entry {
             if depth >= w.singular_depth && ply != 0
-                && entry.table_mv == Some(mv) && entry.depth + 3 >= depth
+                && entry.table_mv == Some(mv)
+                && !entry.score.is_decisive()
+                && entry.depth + 2 >= depth
                 && matches!(entry.flag, TTBound::Exact | TTBound::LowerBound) {
 
-                let s_beta = entry.score - depth as i16;
+                let s_beta = entry.score - 3 * depth as i16;
                 let s_depth = depth / 2;
 
                 ctx.ss[ply as usize].skip_move = Some(mv);
                 ctx.ss[ply as usize].reduction = (depth / 2) as i32;
 
-                let s_score = search::<Node::Alt>(
+                let s_score = search::<NonPV>(
                     pos,
                     ctx,
                     shared_ctx,
@@ -349,73 +399,16 @@ pub fn search<Node: NodeType>(
                     if s_score < s_beta - triple_margin {
                         extension += 1;
                     }
-
-                    ctx.history.update(pos.board(), mv, &cont_indices, &[], &[], depth);
-                } else if s_score >= beta {
+                } else if s_score >= beta && !s_score.is_decisive() {
                     //multi-cut
                     return s_score;
                 } else if entry.score >= beta {
-                    extension = -3;
+                    extension = -2;
                 } else if cut_node {
                     extension = -2;
                 }
             }
-        }
-
-        /*
-        Late Move Reduction (LMR): Reduce the depth of moves ordered near the end.
-        History Reduction: Increase or decrease the reduction based on the history of the move
-        */
-        reduction += shared_ctx.lmr_lookup.get(depth as usize, moves_seen as usize);
-        reduction += w.non_pv_reduction * !Node::PV as i32;
-        reduction += w.not_improving_reduction * !improving as i32;
-        reduction += w.cut_node_reduction * cut_node as i32;
-        reduction -= stat_score as i32 / w.hist_reduction;
-
-        if !Node::PV && ply != 0 && pos.non_pawn_material()
-            && best_score.map_or(false, |s: Score| !s.is_decisive()) {
-
-            if is_capture {
-                //SEE pruning
-                let see_margin = w.see_margin * depth as i16 * depth as i16 - stat_score / w.see_hist;
-                if depth < w.see_depth
-                    && move_picker.phase() == Phase::YieldBadCaptures
-                    && !pos.board().cmp_see(mv, see_margin) {
-                    continue;
-                }
-            } else {
-                //Late Move Pruning
-                let lmp_margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16);
-                if moves_seen >= lmp_margin {
-                    move_picker.skip_quiets();
-                    continue;
-                }
-
-                let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
-
-                //History Pruning
-                if r_depth < w.hist_depth && stat_score < w.hist_margin * r_depth as i16 {
-                    move_picker.skip_quiets();
-                    continue;
-                }
-
-                //Futility Pruning
-                let futile_margin = w.futile_base
-                    + w.futile_margin * r_depth as i16
-                    + w.futile_improving * improving as i16;
-
-                if !pos.in_check() && r_depth < w.futile_depth && static_eval <= alpha - futile_margin {
-                    move_picker.skip_quiets();
-                    continue;
-                }
-
-                //SEE Pruning for Quiets
-                let see_margin = w.see_margin * r_depth as i16 * r_depth as i16;
-                if r_depth < w.see_depth && !pos.board().cmp_see(mv, see_margin) {
-                    continue;
-                }
-            }
-        }
+        }*/
 
         ctx.ss[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv);
@@ -447,7 +440,7 @@ pub fn search<Node: NodeType>(
             ctx.ss[ply as usize].reduction = reduction / 1024;
             let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
 
-            score = -search::<Node::Alt>(
+            score = -search::<NonPV>(
                 pos,
                 ctx,
                 shared_ctx,
@@ -460,7 +453,7 @@ pub fn search<Node: NodeType>(
 
             if r_depth < depth && score > alpha {
                 ctx.ss[ply as usize].reduction = 0;
-                score = -search::<Node::Alt>(
+                score = -search::<NonPV>(
                     pos,
                     ctx,
                     shared_ctx,
@@ -592,7 +585,7 @@ pub fn q_search<Node: NodeType>(
     ctx.update_sel_depth(ply);
 
     if ply >= MAX_PLY {
-        return pos.eval() + ctx.history.get_corr(pos.board());
+        return pos.eval() + ctx.history.get_corr(pos.board(), &shared_ctx.weights);
     }
 
     let tt_entry = shared_ctx.t_table.probe(pos.board());
@@ -619,9 +612,9 @@ pub fn q_search<Node: NodeType>(
     }
 
     let in_check = pos.in_check();
-    let corr = ctx.history.get_corr(pos.board());
+    let corr = ctx.history.get_corr(pos.board(), &shared_ctx.weights);
     let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval());
-    let static_eval = raw_eval + shared_ctx.weights.corr_frac * corr / 512;
+    let static_eval = raw_eval + corr;
 
     if !in_check {
         if static_eval >= beta {

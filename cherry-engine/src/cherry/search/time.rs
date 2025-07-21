@@ -177,13 +177,14 @@ impl TimeManager {
         let move_stability_factor = STABILITY_FACTOR[move_stability as usize];
         let subtree_factor = (1.0 - move_nodes as f32 / nodes as f32) * 3.0 + 0.5;
         let base_time = self.base_time.load(Ordering::Relaxed);
+        let max_time = self.max_time.load(Ordering::Relaxed);
         
         let new_target = (base_time as f32
             * move_stability_factor
             * subtree_factor
         ) as u64;
         
-        self.target_time.store(new_target, Ordering::Relaxed);
+        self.target_time.store(new_target.min(max_time), Ordering::Relaxed);
     }
 
     #[inline]

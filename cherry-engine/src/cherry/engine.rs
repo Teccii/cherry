@@ -267,7 +267,7 @@ impl Engine {
 
                 let total_time = start_time.elapsed().as_secs_f32();
 
-                /*println!("\n================================================================");
+                println!("\n================================================================");
                 for (i, (best_move, time, score, nodes)) in bench_data.iter().enumerate() {
                     println!(
                         "[#{:>3}]{:>8} cp Best: {:>8} {:>8} nodes {:>8} nps",
@@ -278,13 +278,12 @@ impl Engine {
                         (*nodes as f32 / time) as u64,
                     )
                 }
-                println!("==================================================================");*/
+                println!("==================================================================");
                 let total_nodes = bench_data.iter()
                     .fold(0u64, |acc, (_, _, _, nodes)| acc + nodes);
 
                 println!(
-                    //"OVERALL: {:>30} nodes {:>8} nps",
-                    "{} nodes {} nps",
+                    "OVERALL: {:>30} nodes {:>8} nps",
                     total_nodes,
                     (total_nodes as f32 / total_time) as u64
                 );

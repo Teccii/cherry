@@ -26,9 +26,6 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - Principal Variation Search
 - Quiescence Search for Captures and Evasions
 - Extensions
-  - Singular Extensions
-    - Double Extension
-    - Triple Extension
   - Check Extensions
 - Reductions
   - Fractional Reductions
@@ -38,14 +35,12 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - Other Reductions
 - Pruning
   - Razoring
-  - Multi-Cut
   - Reverse Futility Pruning
   - Null Move Pruning
   - Late Move Pruning
   - History Pruning
   - Futility Pruning
   - SEE Pruning
-  - Delta Pruning in QSearch
 
 ### Evaluation
 - Bishop Pair

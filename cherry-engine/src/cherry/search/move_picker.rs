@@ -9,7 +9,7 @@ pub const MAX_MOVES: usize = 218;
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
-pub struct ScoredMove(pub Move, pub i16);
+pub struct ScoredMove(pub Move, pub i32);
 
 fn select_next(moves: &ArrayVec<ScoredMove, MAX_MOVES>) -> Option<usize> {
     if moves.is_empty() {

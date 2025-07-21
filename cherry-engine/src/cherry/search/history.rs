@@ -3,7 +3,7 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-pub const MAX_HISTORY: i16 = 8192;
+pub const MAX_HISTORY: i32 = 8192;
 pub const MAX_CORRECTION: i16 = 1024;
 
 const PAWN_CORRECTION_SIZE: usize = 512;
@@ -12,9 +12,9 @@ const PAWN_CORRECTION_SIZE: usize = 512;
 
 pub type MoveTo<T> = [[T; Square::COUNT]; Square::COUNT];
 pub type PieceTo<T> = [[T; Square::COUNT]; Piece::COUNT];
-pub type ButterflyTable = [MoveTo<i16>; Color::COUNT];
-pub type PieceToTable = [PieceTo<i16>; Color::COUNT];
-pub type ContinuationTable = [PieceTo<PieceTo<i16>>; Color::COUNT];
+pub type ButterflyTable = [MoveTo<i32>; Color::COUNT];
+pub type PieceToTable = [PieceTo<i32>; Color::COUNT];
+pub type ContinuationTable = [PieceTo<PieceTo<i32>>; Color::COUNT];
 pub type CorrectionTable<const SIZE: usize> = [[i16; SIZE]; Color::COUNT];
 
 /*----------------------------------------------------------------*/
@@ -80,14 +80,14 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_quiet(&self, board: &Board, mv: Move) -> i16 {
+    pub fn get_quiet(&self, board: &Board, mv: Move) -> i32 {
         self.quiets[board.stm() as usize]
             [mv.from() as usize]
             [mv.to() as usize]
     }
     
     #[inline]
-    fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
+    fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
         &mut self.quiets[board.stm() as usize]
             [mv.to() as usize]
             [mv.to() as usize]
@@ -96,14 +96,14 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_capture(&self, board: &Board, mv: Move) -> i16 {
+    pub fn get_capture(&self, board: &Board, mv: Move) -> i32 {
         self.captures[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
             [mv.to() as usize]
     }
 
     #[inline]
-    fn get_capture_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
+    fn get_capture_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
         &mut self.captures[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
             [mv.to() as usize]
@@ -116,7 +116,7 @@ impl History {
         board: &Board,
         mv: Move,
         prev_mv: Option<MoveData>
-    ) -> Option<i16> {
+    ) -> Option<i32> {
         let prev_mv = prev_mv?;
 
         Some(self.counter_move[board.stm() as usize]
@@ -129,7 +129,7 @@ impl History {
         board: &Board,
         mv: Move,
         prev_mv: Option<MoveData>
-    ) -> Option<&mut i16> {
+    ) -> Option<&mut i32> {
         let prev_mv = prev_mv?;
 
         Some(&mut self.counter_move[board.stm() as usize]
@@ -144,7 +144,7 @@ impl History {
         board: &Board,
         mv: Move,
         prev_mv: Option<MoveData>
-    ) -> Option<i16> {
+    ) -> Option<i32> {
         let prev_mv = prev_mv?;
 
         Some(self.follow_up[board.stm() as usize]
@@ -157,7 +157,7 @@ impl History {
         board: &Board,
         mv: Move,
         prev_mv: Option<MoveData>
-    ) -> Option<&mut i16> {
+    ) -> Option<&mut i32> {
         let prev_mv = prev_mv?;
 
         Some(&mut self.follow_up[board.stm() as usize]
@@ -173,7 +173,7 @@ impl History {
         board: &Board,
         mv: Move,
         indices: &ContIndices,
-    ) -> i16 {
+    ) -> i32 {
         if board.is_capture(mv) {
             self.get_capture(board, mv)
         } else {
@@ -185,11 +185,11 @@ impl History {
     }
 
     #[inline]
-    pub fn get_corr(&self, board: &Board) -> i16 {
+    pub fn get_corr(&self, board: &Board, weights: &SearchWeights) -> i16 {
         let pawn_hash = board.pawn_hash();
         let stm = board.stm();
 
-        self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE]
+        weights.corr_frac * self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE] / 512
     }
     
     /*----------------------------------------------------------------*/
@@ -204,7 +204,7 @@ impl History {
         depth: u8
     ) {
         let is_capture = board.is_capture(best_move);
-        let amount = (14 * depth as i16).min(MAX_HISTORY);
+        let amount = (14 * depth as i32).min(MAX_HISTORY);
         
         if is_capture {
             History::update_value(self.get_capture_mut(board, best_move), amount);
@@ -274,9 +274,9 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn update_value(value: &mut i16, amount: i16) {
+    fn update_value(value: &mut i32, amount: i32) {
         let amount = amount.clamp(-MAX_HISTORY, MAX_HISTORY);
-        let decay = (*value as i32 * amount.abs() as i32 / MAX_HISTORY as i32) as i16;
+        let decay = *value * amount.abs() / MAX_HISTORY;
 
         *value += amount - decay;
     }

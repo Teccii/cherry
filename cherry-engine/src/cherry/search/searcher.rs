@@ -114,7 +114,7 @@ pub struct SearchStack {
     pub eval: Score,
     pub extension: i16,
     pub reduction: i32,
-    pub stat_score: i16,
+    pub stat_score: i32,
     pub skip_move: Option<Move>,
     pub move_played: Option<MoveData>,
     pub pv: [Option<Move>; MAX_PLY as usize + 1],
