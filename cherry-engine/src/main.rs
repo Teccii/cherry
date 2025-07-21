@@ -10,7 +10,7 @@ use cherry::*;
 
 /*----------------------------------------------------------------*/
 
-fn main() -> Result<()> {
+fn main() {
     let mut buffer = String::new();
     let mut engine = Engine::new();
     let args = env::args()
@@ -20,7 +20,7 @@ fn main() -> Result<()> {
 
     if !args.is_empty() {
         engine.input(args.trim(), args.len());
-        return Ok(());
+        return;
     }
     
     while let Ok(bytes) = io::stdin().read_line(&mut buffer) {
@@ -30,6 +30,4 @@ fn main() -> Result<()> {
 
         buffer.clear();
     }
-
-    Ok(())
 }
