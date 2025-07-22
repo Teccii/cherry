@@ -6,7 +6,7 @@ use crate::*;
 pub const MAX_HISTORY: i32 = 8192;
 pub const MAX_CORRECTION: i16 = 1024;
 
-const PAWN_CORRECTION_SIZE: usize = 512;
+const PAWN_CORRECTION_SIZE: usize = 1024;
 
 /*----------------------------------------------------------------*/
 
@@ -261,7 +261,7 @@ impl History {
         static_eval: Score,
         depth: u8,
     ) {
-        let amount = (best_score - static_eval).0 * depth as i16 / 4;
+        let amount = (best_score - static_eval).0 * depth as i16 / 8;
         let pawn_hash = board.pawn_hash();
         let stm = board.stm();
 

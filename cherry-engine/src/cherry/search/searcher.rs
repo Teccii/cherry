@@ -299,7 +299,7 @@ fn search_worker<Info: SearchInfo>(
         let mut best_move: Option<Move> = None;
         let mut ponder_move: Option<Move> = None;
         let mut eval: Option<Score> = None;
-        let mut depth = 1 + (thread % 2 == 1) as u8;
+        let mut depth = 1;
 
         'id: loop {
             window.reset();
@@ -370,10 +370,11 @@ fn search_worker<Info: SearchInfo>(
                 );
             }
 
-            depth += 1;
             if shared_ctx.time_man.abort_id(depth, ctx.nodes.global()) {
                 break 'id;
             }
+
+            depth += 1;
         }
 
         while depth == MAX_DEPTH
@@ -478,11 +479,9 @@ impl SearchInfo for DebugInfo {
 
         if root_stack.pv_len != 0 {
             write!(info, "pv ").unwrap();
-            for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
-                if i as u8 == depth || i as u8 == MAX_DEPTH {
-                    break;
-                }
-
+            let len = usize::min(root_stack.pv_len, depth as usize);
+            
+            for &mv in root_stack.pv[..len].iter() {
                 if let Some(mv) = mv {
                     if !board.is_legal(mv) {
                         break;
@@ -542,11 +541,9 @@ impl SearchInfo for UciInfo {
 
         if root_stack.pv_len != 0 {
             write!(info, "pv ").unwrap();
-            for (i, &mv) in root_stack.pv[..root_stack.pv_len].iter().enumerate() {
-                if i as u8 == depth || i as u8 == MAX_DEPTH {
-                    break;
-                }
+            let len = usize::min(root_stack.pv_len, depth as usize);
 
+            for &mv in root_stack.pv[..len].iter() {
                 if let Some(mv) = mv {
                     if !board.is_legal(mv) {
                         break;

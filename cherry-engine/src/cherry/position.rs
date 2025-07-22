@@ -113,10 +113,10 @@ impl Position {
     }
     
     #[inline]
-    pub fn is_draw(&self, ply: u16) -> bool {
+    pub fn is_draw(&self) -> bool {
         self.board.status() == BoardStatus::Draw
             || self.insufficient_material()
-            || self.repetition(ply)
+            || self.repetition()
     }
 
     /*----------------------------------------------------------------*/
@@ -138,22 +138,15 @@ impl Position {
         }
     }
     
-    fn repetition(&self, ply: u16) -> bool {
+    fn repetition(&self) -> bool {
         let hash = self.hash();
-        let ply = ply as usize - 1;
 
-        let two_fold = self.board_history.iter()
-            .rev()
-            .take(ply)
-            .any(|b| b.hash() == hash);
-
-        let three_fold = || self.board_history.iter()
+        self.board_history.iter()
             .rev()
             .take(self.board.halfmove_clock() as usize)
-            .skip(ply)
+            .skip(1)
+            .step_by(2)
             .filter(|b| b.hash() == hash)
-            .count() >= 2;
-
-        two_fold || three_fold()
+            .count() >= 2
     }
 }
