@@ -445,7 +445,7 @@ impl SearchInfo for DebugInfo {
 
         if let Some(eval) = eval {
             if let Some(ply) = eval.mate_in() {
-                write!(info, "score mate {} ", ply / 2).unwrap();
+                write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
             } else {
                 write!(info, "score cp {} ", eval.0).unwrap();
 
@@ -513,7 +513,7 @@ impl SearchInfo for UciInfo {
 
         if let Some(eval) = eval {
             if let Some(ply) = eval.mate_in() {
-                write!(info, "score mate {} ", ply / 2).unwrap();
+                write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
             } else {
                 write!(info, "score cp {} ", eval.0).unwrap();
 
