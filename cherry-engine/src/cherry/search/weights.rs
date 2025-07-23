@@ -18,32 +18,32 @@ weights! {
     counter_move_frac: i32 => COUNTER_MOVE_FRAC,
     follow_up_frac: i32 => FOLLOW_UP_FRAC,
     counter_move2_frac: i32 => COUNTER_MOVE2_FRAC,
-    
+
     quiet_bonus_base: i32 => QUIET_BONUS_BASE,
     quiet_bonus_mul: i32 => QUIET_BONUS_MUL,
     quiet_malus_base: i32 => QUIET_MALUS_BASE,
     quiet_malus_mul: i32 => QUIET_MALUS_MUL,
-    
-    capture_bonus_base: i32 => CAPTURE_BONUS_BASE,
-    capture_bonus_mul: i32 => CAPTURE_BONUS_MUL,
-    capture_malus_base: i32 => CAPTURE_MALUS_BASE,
-    capture_malus_mul: i32 => CAPTURE_MALUS_MUL,
-    
-    counter_move_bonus_base: i32 => COUNTER_MOVE_BONUS_BASE,
-    counter_move_bonus_mul: i32 => COUNTER_MOVE_BONUS_MUL,
-    counter_move_malus_base: i32 => COUNTER_MOVE_MALUS_BASE,
-    counter_move_malus_mul: i32 => COUNTER_MOVE_MALUS_MUL,
-    
-    follow_up_bonus_base: i32 => FOLLOW_UP_BONUS_BASE,
-    follow_up_bonus_mul: i32 => FOLLOW_UP_BONUS_MUL,
-    follow_up_malus_base: i32 => FOLLOW_UP_MALUS_BASE,
-    follow_up_malus_mul: i32 => FOLLOW_UP_MALUS_MUL,
-    
-    counter_move2_bonus_base: i32 => COUNTER_MOVE2_BONUS_BASE,
-    counter_move2_bonus_mul: i32 => COUNTER_MOVE2_BONUS_MUL,
-    counter_move2_malus_base: i32 => COUNTER_MOVE2_MALUS_BASE,
-    counter_move2_malus_mul: i32 => COUNTER_MOVE2_MALUS_MUL,
-    
+
+    capt_bonus_base: i32 => CAPTURE_BONUS_BASE,
+    capt_bonus_mul: i32 => CAPTURE_BONUS_MUL,
+    capt_malus_base: i32 => CAPTURE_MALUS_BASE,
+    capt_malus_mul: i32 => CAPTURE_MALUS_MUL,
+
+    cont1_bonus_base: i32 => CONT1_BONUS_BASE,
+    cont1_bonus_mul: i32 => CONT1_BONUS_MUL,
+    cont1_malus_base: i32 => CONT1_MALUS_BASE,
+    cont1_malus_mul: i32 => CONT1_MALUS_MUL,
+
+    cont2_bonus_base: i32 => CONT2_BONUS_BASE,
+    cont2_bonus_mul: i32 => CONT2_BONUS_MUL,
+    cont2_malus_base: i32 => CONT2_MALUS_BASE,
+    cont2_malus_mul: i32 => CONT2_MALUS_MUL,
+
+    cont3_bonus_base: i32 => CONT3_BONUS_BASE,
+    cont3_bonus_mul: i32 => CONT3_BONUS_MUL,
+    cont3_malus_base: i32 => CONT3_MALUS_BASE,
+    cont3_malus_mul: i32 => CONT3_MALUS_MUL,
+
     rfp_depth: u8 => RFP_DEPTH,
     rfp_margin: i16 => RFP_MARGIN,
 
@@ -83,20 +83,20 @@ pub const CAPTURE_BONUS_MUL: i32 = 14;
 pub const CAPTURE_MALUS_BASE: i32 = 0;
 pub const CAPTURE_MALUS_MUL: i32 = 14;
 
-pub const COUNTER_MOVE_BONUS_BASE: i32 = 0;
-pub const COUNTER_MOVE_BONUS_MUL: i32 = 14;
-pub const COUNTER_MOVE_MALUS_BASE: i32 = 0;
-pub const COUNTER_MOVE_MALUS_MUL: i32 = 14;
+pub const CONT1_BONUS_BASE: i32 = 0;
+pub const CONT1_BONUS_MUL: i32 = 14;
+pub const CONT1_MALUS_BASE: i32 = 0;
+pub const CONT1_MALUS_MUL: i32 = 14;
 
-pub const FOLLOW_UP_BONUS_BASE: i32 = 0;
-pub const FOLLOW_UP_BONUS_MUL: i32 = 14;
-pub const FOLLOW_UP_MALUS_BASE: i32 = 0;
-pub const FOLLOW_UP_MALUS_MUL: i32 = 14;
+pub const CONT2_BONUS_BASE: i32 = 0;
+pub const CONT2_BONUS_MUL: i32 = 14;
+pub const CONT2_MALUS_BASE: i32 = 0;
+pub const CONT2_MALUS_MUL: i32 = 14;
 
-pub const COUNTER_MOVE2_BONUS_BASE: i32 = 0;
-pub const COUNTER_MOVE2_BONUS_MUL: i32 = 14;
-pub const COUNTER_MOVE2_MALUS_BASE: i32 = 0;
-pub const COUNTER_MOVE2_MALUS_MUL: i32 = 14;
+pub const CONT3_BONUS_BASE: i32 = 0;
+pub const CONT3_BONUS_MUL: i32 = 14;
+pub const CONT3_MALUS_BASE: i32 = 0;
+pub const CONT3_MALUS_MUL: i32 = 14;
 
 pub const RFP_DEPTH: u8 = 12;
 pub const RFP_MARGIN: i16 = 93;

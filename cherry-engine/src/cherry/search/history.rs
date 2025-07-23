@@ -217,7 +217,7 @@ impl History {
         if is_capture {
             History::update_value(
                 self.get_capture_mut(board, best_move),
-                delta(weights.capture_bonus_base, weights.capture_bonus_mul, depth)
+                delta(weights.capt_bonus_base, weights.capt_bonus_mul, depth)
             );
         } else {
             History::update_value(
@@ -235,13 +235,13 @@ impl History {
             if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move) {
                 History::update_value(
                     value,
-                    delta(weights.counter_move_bonus_base, weights.counter_move_bonus_mul, depth)
+                    delta(weights.cont1_bonus_base, weights.cont1_bonus_mul, depth)
                 );
                 
                 for &mv in quiets {
                     History::update_value(
                         self.get_counter_move_mut(board, mv, indices.counter_move).unwrap(),
-                        -delta(weights.counter_move_malus_base, weights.counter_move_malus_mul, depth)
+                        -delta(weights.cont1_malus_base, weights.cont1_malus_mul, depth)
                     );
                 }
             }
@@ -249,13 +249,13 @@ impl History {
             if let Some(value) = self.get_follow_up_mut(board, best_move, indices.follow_up) {
                 History::update_value(
                     value,
-                    delta(weights.follow_up_bonus_base, weights.follow_up_bonus_mul, depth)
+                    delta(weights.cont2_bonus_base, weights.cont2_bonus_mul, depth)
                 );
 
                 for &mv in quiets {
                     History::update_value(
                         self.get_follow_up_mut(board, mv, indices.follow_up).unwrap(),
-                        -delta(weights.follow_up_malus_base, weights.follow_up_malus_mul, depth)
+                        -delta(weights.cont2_malus_base, weights.cont2_malus_mul, depth)
                     );
                 }
             }
@@ -263,13 +263,13 @@ impl History {
             if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move2) {
                 History::update_value(
                     value,
-                    delta(weights.counter_move2_bonus_base, weights.counter_move2_bonus_mul, depth)
+                    delta(weights.cont3_bonus_base, weights.cont3_bonus_mul, depth)
                 );
 
                 for &mv in quiets {
                     History::update_value(
                         self.get_counter_move_mut(board, mv, indices.counter_move2).unwrap(),
-                        -delta(weights.counter_move2_malus_base, weights.counter_move2_malus_mul, depth)
+                        -delta(weights.cont3_malus_base, weights.cont3_malus_mul, depth)
                     );
                 }
             }
@@ -278,7 +278,7 @@ impl History {
         for &mv in captures {
             History::update_value(
                 self.get_capture_mut(board, mv),
-                -delta(weights.capture_malus_base, weights.capture_malus_mul, depth)
+                -delta(weights.capt_malus_base, weights.capt_malus_mul, depth)
             );
         }
     }
