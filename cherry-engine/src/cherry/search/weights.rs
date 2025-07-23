@@ -15,19 +15,19 @@ macro_rules! weights {
 
 weights! {
     pawn_corr_frac: i16 => PAWN_CORR_FRAC,
-    counter_move_frac: i32 => COUNTER_MOVE_FRAC,
-    follow_up_frac: i32 => FOLLOW_UP_FRAC,
-    counter_move2_frac: i32 => COUNTER_MOVE2_FRAC,
+    cont1_frac: i32 => CONT1_FRAC,
+    cont2_frac: i32 => CONT2_FRAC,
+    cont3_frac: i32 => CONT3_FRAC,
 
     quiet_bonus_base: i32 => QUIET_BONUS_BASE,
     quiet_bonus_mul: i32 => QUIET_BONUS_MUL,
     quiet_malus_base: i32 => QUIET_MALUS_BASE,
     quiet_malus_mul: i32 => QUIET_MALUS_MUL,
 
-    capt_bonus_base: i32 => CAPTURE_BONUS_BASE,
-    capt_bonus_mul: i32 => CAPTURE_BONUS_MUL,
-    capt_malus_base: i32 => CAPTURE_MALUS_BASE,
-    capt_malus_mul: i32 => CAPTURE_MALUS_MUL,
+    capt_bonus_base: i32 => CAPT_BONUS_BASE,
+    capt_bonus_mul: i32 => CAPT_BONUS_MUL,
+    capt_malus_base: i32 => CAPT_MALUS_BASE,
+    capt_malus_mul: i32 => CAPT_MALUS_MUL,
 
     cont1_bonus_base: i32 => CONT1_BONUS_BASE,
     cont1_bonus_mul: i32 => CONT1_BONUS_MUL,
@@ -69,19 +69,19 @@ weights! {
 /*----------------------------------------------------------------*/
 
 pub const PAWN_CORR_FRAC: i16 = 66;
-pub const COUNTER_MOVE_FRAC: i32 = 512;
-pub const FOLLOW_UP_FRAC: i32 = 512;
-pub const COUNTER_MOVE2_FRAC: i32 = 512;
+pub const CONT1_FRAC: i32 = 512;
+pub const CONT2_FRAC: i32 = 512;
+pub const CONT3_FRAC: i32 = 512;
 
 pub const QUIET_BONUS_BASE: i32 = 0;
 pub const QUIET_BONUS_MUL: i32 = 14;
 pub const QUIET_MALUS_BASE: i32 = 0;
 pub const QUIET_MALUS_MUL: i32 = 14;
 
-pub const CAPTURE_BONUS_BASE: i32 = 0;
-pub const CAPTURE_BONUS_MUL: i32 = 14;
-pub const CAPTURE_MALUS_BASE: i32 = 0;
-pub const CAPTURE_MALUS_MUL: i32 = 14;
+pub const CAPT_BONUS_BASE: i32 = 0;
+pub const CAPT_BONUS_MUL: i32 = 14;
+pub const CAPT_MALUS_BASE: i32 = 0;
+pub const CAPT_MALUS_MUL: i32 = 14;
 
 pub const CONT1_BONUS_BASE: i32 = 0;
 pub const CONT1_BONUS_MUL: i32 = 14;
