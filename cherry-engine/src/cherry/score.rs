@@ -125,11 +125,9 @@ impl fmt::Display for Score {
                 write!(f, "-INF")
             }
         } else if let Some(ply) = self.mate_in() {
-            if ply > 0 {
-                write!(f, "#{}", ply)
-            } else {
-                write!(f, "#-{}", ply)
-            }
+            write!(f, "#{}", ply)
+        } else if let Some(ply) = self.tb_in() {
+            write!(f, "#{}", ply)
         } else if self.0 > 0 {
             write!(f, "+{:.1}", self.0 as f32 / 100.0)
         } else {

@@ -1,6 +1,8 @@
 use cherry_core::*;
 use super::*;
 
+/*----------------------------------------------------------------*/
+
 #[derive(Debug, Clone)]
 pub struct Position {
     board: Board,
@@ -137,16 +139,20 @@ impl Position {
             _ => false
         }
     }
-    
+
     fn repetition(&self) -> bool {
         let hash = self.hash();
+        let hm = self.board.halfmove_clock() as usize;
+
+        if hm < 4 {
+            return false;
+        }
 
         self.board_history.iter()
             .rev()
-            .take(self.board.halfmove_clock() as usize)
-            .skip(1)
+            .take(hm + 1) //idk if hm or hm + 1
+            .skip(3)
             .step_by(2)
-            .filter(|b| b.hash() == hash)
-            .count() >= 2
+            .any(|b| b.hash() == hash)
     }
 }
