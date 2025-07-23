@@ -1,6 +1,5 @@
 use arrayvec::ArrayVec;
 use cherry_core::*;
-use super::simd::*;
 use super::*;
 
 /*----------------------------------------------------------------*/

@@ -15,7 +15,6 @@ Cherry's NNUE is heavily based on code from the engines Viridithas and Black Mar
     mod features;
     mod layers;
     mod network;
-    mod simd;
     mod util;
     
     pub use accumulator::*;

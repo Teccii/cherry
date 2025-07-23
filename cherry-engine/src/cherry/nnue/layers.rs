@@ -1,5 +1,4 @@
 use std::simd::prelude::*;
-use super::simd::*;
 use super::*;
 
 #[inline]
