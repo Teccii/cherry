@@ -19,8 +19,7 @@ weights! {
 
     nmp_depth: u8 => NMP_DEPTH,
 
-    iir_depth: u8 => IIR_DEPTH,
-    corr_frac: i16 => CORR_FRAC,
+    pawn_corr_frac: i16 => PAWN_CORR_FRAC,
     
     see_depth: u8 => SEE_DEPTH,
     see_margin: i16 => SEE_MARGIN,
@@ -46,8 +45,7 @@ pub const RFP_MARGIN: i16 = 93;
 
 pub const NMP_DEPTH: u8 = 5;
 
-pub const IIR_DEPTH: u8 = 6;
-pub const CORR_FRAC: i16 = 66;
+pub const PAWN_CORR_FRAC: i16 = 66;
 
 pub const SEE_DEPTH: u8 = 10;
 pub const SEE_MARGIN: i16 = -91;
