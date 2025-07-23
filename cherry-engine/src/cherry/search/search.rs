@@ -37,19 +37,19 @@ pub fn search<Node: NodeType>(
     pos: &mut Position,
     ctx: &mut ThreadContext,
     shared_ctx: &SharedContext,
-    mut depth: u8,
+    depth: u8,
     ply: u16,
     mut alpha: Score,
     mut beta: Score,
     cut_node: bool,
 ) -> Score {
-    ctx.ss[ply as usize].pv_len = 0;
-
     if ply != 0 && (ctx.abort_now || shared_ctx.time_man.abort_search(ctx.nodes.global())) {
         ctx.abort_now();
         return Score::INFINITE;
     }
 
+    ctx.ss[ply as usize].pv.len = 0;
+    
     if depth == 0 || ply >= MAX_PLY {
         return q_search::<Node>(
             pos,
@@ -395,11 +395,11 @@ pub fn search<Node: NodeType>(
             alpha = score;
             best_move = Some(mv);
 
-            if !ctx.abort_now {
+            if Node::PV && !ctx.abort_now {
                 let child = &ctx.ss[ply as usize + 1];
-                let (child_pv, len) = (child.pv, child.pv_len);
+                let (child_pv, len) = (child.pv.moves, child.pv.len);
 
-                ctx.ss[ply as usize].update_pv(mv, &child_pv[..len]);
+                ctx.ss[ply as usize].pv.update(mv, &child_pv[..len]);
             }
         }
 
@@ -474,8 +474,6 @@ pub fn q_search<Node: NodeType>(
     mut alpha: Score,
     beta: Score,
 ) -> Score {
-    ctx.ss[ply as usize].pv_len = 0;
-    
     if ctx.abort_now || shared_ctx.time_man.abort_search(ctx.nodes.global()) {
         ctx.abort_now();
 
@@ -486,12 +484,12 @@ pub fn q_search<Node: NodeType>(
     ctx.nodes.inc();
     ctx.update_sel_depth(ply);
 
-    if ply >= MAX_PLY {
-        return pos.eval() + ctx.history.get_corr(pos.board(), &shared_ctx.weights);
-    }
-
     if pos.is_draw() {
         return Score::ZERO;
+    }
+
+    if ply >= MAX_PLY {
+        return pos.eval() + ctx.history.get_corr(pos.board(), &shared_ctx.weights);
     }
 
     let tt_entry = shared_ctx.t_table.probe(pos.board());
@@ -562,13 +560,6 @@ pub fn q_search<Node: NodeType>(
         if score > alpha {
             alpha = score;
             best_move = Some(mv);
-            
-            if !ctx.abort_now {
-                let child = &ctx.ss[ply as usize + 1];
-                let (child_pv, len) = (child.pv, child.pv_len);
-
-                ctx.ss[ply as usize].update_pv(mv, &child_pv[..len]);
-            }
         }
 
         if score >= beta {

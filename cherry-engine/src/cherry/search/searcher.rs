@@ -29,6 +29,7 @@ pub struct ThreadContext {
     pub tt_hits: BatchedAtomicCounter,
     pub tt_misses: BatchedAtomicCounter,
     pub tb_hits: BatchedAtomicCounter,
+    pub root_pv: Pv,
     pub root_nodes: MoveTo<u64>,
     pub ss: Vec<SearchStack>,
     pub history: History,
@@ -44,6 +45,8 @@ impl ThreadContext {
         self.tt_hits.reset();
         self.tt_misses.reset();
         self.tb_hits.reset();
+        self.root_pv = Pv::default();
+        self.root_nodes = move_to(0);
         self.ss = vec![
             SearchStack {
                 eval: -Score::INFINITE,
@@ -52,13 +55,11 @@ impl ThreadContext {
                 reduction: 0,
                 skip_move: None,
                 move_played: None,
-                pv: [None; MAX_PLY as usize + 1],
-                pv_len: 0,
+                pv: Pv::default(),
             };
             MAX_PLY as usize + 1
         ];
         self.history.reset();
-        self.root_nodes = move_to(0);
         self.sel_depth = 0;
         self.abort_now = false;
     }
@@ -110,6 +111,31 @@ impl MoveData {
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone)]
+pub struct Pv {
+    pub moves: [Option<Move>; MAX_PLY as usize + 1],
+    pub len: usize,
+}
+
+impl Pv {
+    #[inline]
+    pub fn update(&mut self, best_move: Move, child_pv: &[Option<Move>]) {
+        self.moves[0] = Some(best_move);
+        self.len = child_pv.len() + 1;
+        self.moves[1..self.len].copy_from_slice(child_pv);
+    }
+}
+
+impl Default for Pv {
+    #[inline]
+    fn default() -> Self {
+        Pv {
+            moves: [None; MAX_PLY as usize + 1],
+            len: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SearchStack {
     pub eval: Score,
     pub extension: i16,
@@ -117,17 +143,7 @@ pub struct SearchStack {
     pub stat_score: i32,
     pub skip_move: Option<Move>,
     pub move_played: Option<MoveData>,
-    pub pv: [Option<Move>; MAX_PLY as usize + 1],
-    pub pv_len: usize,
-}
-
-impl SearchStack {
-    #[inline]
-    pub fn update_pv(&mut self, best_move: Move, child_pv: &[Option<Move>]) {
-        self.pv[0] = Some(best_move);
-        self.pv_len = child_pv.len() + 1;
-        self.pv[1..self.pv_len].copy_from_slice(child_pv);
-    }
+    pub pv: Pv,
 }
 
 /*----------------------------------------------------------------*/
@@ -164,6 +180,11 @@ impl Searcher {
                 tt_hits: BatchedAtomicCounter::new(),
                 tt_misses: BatchedAtomicCounter::new(),
                 tb_hits: BatchedAtomicCounter::new(),
+                root_pv: Pv {
+                    moves: [None; MAX_PLY as usize + 1],
+                    len: 0,
+                },
+                root_nodes: move_to(0),
                 ss: vec![
                     SearchStack {
                         eval: -Score::INFINITE,
@@ -172,12 +193,10 @@ impl Searcher {
                         reduction: 0,
                         skip_move: None,
                         move_played: None,
-                        pv: [None; MAX_PLY as usize + 1],
-                        pv_len: 0,
+                        pv: Pv::default(),
                     };
                     MAX_PLY as usize + 1
                 ],
-                root_nodes: move_to(0),
                 history: History::new(),
                 sel_depth: 0,
                 abort_now: false,
@@ -332,7 +351,7 @@ fn search_worker<Info: SearchInfo>(
 
                 window.set_midpoint(score);
 
-                let root_move = ctx.ss[0].pv[0].unwrap();
+                let root_move = ctx.ss[0].pv.moves[0].unwrap();
                 shared_ctx.time_man.deepen(
                     thread,
                     depth,
@@ -342,7 +361,8 @@ fn search_worker<Info: SearchInfo>(
                 );
 
                 if (score > alpha && score < beta) || score.is_decisive() {
-                    ponder_move = ctx.ss[0].pv[1];
+                    ctx.root_pv = ctx.ss[0].pv.clone();
+                    ponder_move = ctx.ss[0].pv.moves[1];
                     best_move = Some(root_move);
                     eval = Some(score);
 
@@ -358,17 +378,15 @@ fn search_worker<Info: SearchInfo>(
                 }
             }
 
-            if thread == 0 {
-                Info::push(
-                    pos.board(),
-                    &ctx,
-                    &shared_ctx,
-                    TTBound::Exact,
-                    depth,
-                    eval,
-                    chess960,
-                );
-            }
+            Info::push(
+                thread,
+                pos.board(),
+                &ctx,
+                &shared_ctx,
+                eval,
+                depth,
+                chess960
+            );
 
             if shared_ctx.time_man.abort_id(depth, ctx.nodes.global()) {
                 break 'id;
@@ -380,30 +398,26 @@ fn search_worker<Info: SearchInfo>(
         while depth == MAX_DEPTH
             && shared_ctx.time_man.is_infinite()
             && !(shared_ctx.time_man.abort_now() || shared_ctx.time_man.timeout_id()) {
-            if thread == 0 {
-                Info::push(
-                    pos.board(),
-                    &ctx,
-                    &shared_ctx,
-                    TTBound::Exact,
-                    depth,
-                    eval,
-                    chess960,
-                );
-            }
-        }
-
-        if thread == 0 {
             Info::push(
+                thread,
                 pos.board(),
                 &ctx,
                 &shared_ctx,
-                TTBound::Exact,
-                depth,
                 eval,
-                chess960,
+                depth,
+                chess960
             );
         }
+
+        Info::push(
+            thread,
+            pos.board(),
+            &ctx,
+            &shared_ctx,
+            eval,
+            depth,
+            chess960
+        );
 
         if let Some(best_score) = eval {
             (best_move, ponder_move, best_score, depth)
@@ -417,12 +431,12 @@ fn search_worker<Info: SearchInfo>(
 
 pub trait SearchInfo {
     fn push(
+        thread: u16,
         board: &Board,
         ctx: &ThreadContext,
         shared_ctx: &SharedContext,
-        bound: TTBound,
-        depth: u8,
         eval: Option<Score>,
+        depth: u8,
         chess960: bool,
     );
 }
@@ -433,14 +447,18 @@ pub struct NoInfo;
 
 impl SearchInfo for DebugInfo {
     fn push(
+        thread: u16,
         board: &Board,
         ctx: &ThreadContext,
         shared_ctx: &SharedContext,
-        bound: TTBound,
-        depth: u8,
         eval: Option<Score>,
+        depth: u8,
         chess960: bool,
     ) {
+        if thread != 0 {
+            return;
+        }
+        
         let mut info = format!("info depth {} seldepth {} ", depth, ctx.sel_depth);
 
         if let Some(eval) = eval {
@@ -448,22 +466,16 @@ impl SearchInfo for DebugInfo {
                 write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
             } else {
                 write!(info, "score cp {} ", eval.0).unwrap();
-
-                match bound {
-                    TTBound::LowerBound => write!(info, "lowerbound ").unwrap(),
-                    TTBound::UpperBound => write!(info, "upperbound ").unwrap(),
-                    _ => { }
-                }
             }
         }
-
+        
         let nodes = ctx.nodes.global();
-        let qnodes = ctx.qnodes.global();
-        let millis = shared_ctx.time_man.start_time().elapsed().as_millis() as u64;
-        write!(info, "nodes {} qnodes {} time {} ", nodes, qnodes, millis).unwrap();
+        let time = shared_ctx.time_man.elapsed();
+        
+        write!(info, "nodes {} qnodes {} time {} ", nodes, ctx.qnodes.global(), time).unwrap();
 
-        if millis != 0 {
-            write!(info, "nps {} ", (nodes / millis) * 1000).unwrap();
+        if time != 0 {
+            write!(info, "nps {} ", (nodes / time) * 1000).unwrap();
         }
 
         write!(
@@ -473,15 +485,15 @@ impl SearchInfo for DebugInfo {
             ctx.tt_misses.global(),
             ctx.tb_hits.global(),
         ).unwrap();
-
-        let root_stack = &ctx.ss[0];
+        
         let mut board = board.clone();
+        let root_pv = &ctx.root_pv;
 
-        if root_stack.pv_len != 0 {
+        if root_pv.len != 0 {
             write!(info, "pv ").unwrap();
-            let len = usize::min(root_stack.pv_len, depth as usize);
+            let len = usize::min(root_pv.len, depth as usize);
             
-            for &mv in root_stack.pv[..len].iter() {
+            for &mv in root_pv.moves[..len].iter() {
                 if let Some(mv) = mv {
                     if !board.is_legal(mv) {
                         break;
@@ -501,14 +513,18 @@ impl SearchInfo for DebugInfo {
 
 impl SearchInfo for UciInfo {
     fn push(
+        thread: u16,
         board: &Board,
         ctx: &ThreadContext,
         shared_ctx: &SharedContext,
-        bound: TTBound,
-        depth: u8,
         eval: Option<Score>,
+        depth: u8,
         chess960: bool,
     ) {
+        if thread != 0 {
+            return;
+        }
+
         let mut info = format!("info depth {} seldepth {} ", depth, ctx.sel_depth);
 
         if let Some(eval) = eval {
@@ -516,34 +532,28 @@ impl SearchInfo for UciInfo {
                 write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
             } else {
                 write!(info, "score cp {} ", eval.0).unwrap();
-
-                match bound {
-                    TTBound::LowerBound => write!(info, "lowerbound ").unwrap(),
-                    TTBound::UpperBound => write!(info, "upperbound ").unwrap(),
-                    _ => { }
-                }
             }
         }
 
         let nodes = ctx.nodes.global();
-        let millis = shared_ctx.time_man.start_time().elapsed().as_millis() as u64;
-        
-        write!(info, "nodes {} time {} ", nodes, millis).unwrap();
+        let time = shared_ctx.time_man.elapsed();
 
-        if millis != 0 {
-            write!(info, "nps {} ", (nodes / millis) * 1000).unwrap();
+        write!(info, "nodes {} time {} ", nodes, time).unwrap();
+        
+        if time != 0 {
+            write!(info, "nps {} ", (nodes / time) * 1000).unwrap();
         }
 
-        write!(info, "tbhits {} ", ctx.tb_hits.global(), ).unwrap();
+        write!(info, "tbhits {} ", ctx.tb_hits.global()).unwrap();
 
-        let root_stack = &ctx.ss[0];
         let mut board = board.clone();
+        let root_pv = &ctx.root_pv;
 
-        if root_stack.pv_len != 0 {
+        if root_pv.len != 0 {
             write!(info, "pv ").unwrap();
-            let len = usize::min(root_stack.pv_len, depth as usize);
+            let len = usize::min(root_pv.len, depth as usize);
 
-            for &mv in root_stack.pv[..len].iter() {
+            for &mv in root_pv.moves[..len].iter() {
                 if let Some(mv) = mv {
                     if !board.is_legal(mv) {
                         break;
@@ -563,12 +573,12 @@ impl SearchInfo for UciInfo {
 
 impl SearchInfo for NoInfo {
     fn push(
+        _: u16,
         _: &Board,
         _: &ThreadContext,
         _: &SharedContext,
-        _: TTBound,
-        _: u8,
         _: Option<Score>,
-        _: bool
+        _: u8,
+        _: bool,
     ) { }
 }

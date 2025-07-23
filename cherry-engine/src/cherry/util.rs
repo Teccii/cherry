@@ -64,7 +64,7 @@ impl BatchedAtomicCounter {
     /*----------------------------------------------------------------*/
 
 
-    pub const BATCH_SIZE: u64 = 1024;
+    pub const BATCH_SIZE: u64 = 2048;
 }
 
 impl Clone for BatchedAtomicCounter {

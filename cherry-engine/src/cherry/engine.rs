@@ -69,6 +69,35 @@ const BENCH_POSITIONS: &[&str] = &[
 
 pub type UciOptions = IndexMap<String, (UciOptionType, Box<dyn Fn(&Engine, String)>)>;
 
+macro_rules! add_option {
+    ($options:ident, $engine:ident, $value:ident, $name:expr => $func:block; $option_type:expr) => {
+        $options.insert(
+            String::from($name),
+            ($option_type, Box::new(|$engine: &Engine, $value: String| $func))
+        );
+    }
+}
+
+macro_rules! add_searcher_option {
+    ($options:ident, $engine:ident, $value:ident, $name:expr => $func:ident, $param:expr; $option_type:expr) => {
+        add_option!($options, $engine, $value, $name => {
+            let mut searcher = $engine.searcher.lock().unwrap();
+            searcher.$func($param);
+        }; $option_type);
+    }
+}
+
+macro_rules! add_tunable_option {
+    ($options:ident, $engine:ident, $value:ident, $name:expr => $field:ident, $param:expr, $default:expr, $min:expr, $max:expr) => {
+        add_option!($options, $engine, $value, $name => {
+            let mut searcher = $engine.searcher.lock().unwrap();
+            searcher.shared_ctx.$field = $param;
+        }; UciOptionType::Spin { default: $default as i32, min: $min, max: $max });
+    }
+}
+
+/*----------------------------------------------------------------*/
+
 pub enum ThreadCommand {
     Go(Arc<Mutex<Searcher>>, Vec<SearchLimit>),
     Quit,
@@ -119,44 +148,39 @@ impl Engine {
 
         let mut options: UciOptions = IndexMap::new();
 
-        macro_rules! add_option {
-            ($options:ident, $engine:ident, $value:ident, $name:expr => $func:block; $option_type:expr) => {
-                $options.insert(
-                    String::from($name),
-                    ($option_type, Box::new(|$engine: &Engine, $value: String| $func))
-                );
-            }
-        }
-
-        add_option!(options, engine, value, "Threads" => {
-            let mut searcher = engine.searcher.lock().unwrap();
-            searcher.set_threads(value.parse::<u16>().unwrap());
-        }; UciOptionType::Spin { default: 1, min: 1, max: 65535 });
-        add_option!(options, engine, value, "Hash" => {
-            let mut searcher = engine.searcher.lock().unwrap();
-            searcher.resize_ttable(value.parse::<usize>().unwrap());
-        }; UciOptionType::Spin { default: 16, min: 1, max: 65535 });
-        add_option!(options, engine, value, "Ponder" => {
-            let mut searcher = engine.searcher.lock().unwrap();
-            let value = value.parse::<bool>().unwrap();
-            searcher.set_ponder(value);
-        }; UciOptionType::Check { default: false });
+        add_searcher_option!(
+            options, engine, value,
+            "Threads" => set_threads, value.parse::<u16>().unwrap();
+            UciOptionType::Spin { default: 1, min: 1, max: 65535 }
+        );
+        add_searcher_option!(
+            options, engine, value,
+            "Hash" => resize_ttable, value.parse::<usize>().unwrap();
+            UciOptionType::Spin { default: 16, min: 1, max: 65535 }
+        );
+        add_searcher_option!(
+            options, engine, value,
+            "SyzygyPath" => set_syzygy_path, &value;
+            UciOptionType::String { default: String::from("<empty>") }
+        );
+        add_searcher_option!(
+            options, engine, value,
+            "SyzygyProbeDepth" => set_syzygy_depth, value.parse::<u8>().unwrap();
+            UciOptionType::Spin { default: 1, min: 1, max: MAX_DEPTH as i32 }
+        );
+        add_searcher_option!(
+            options, engine, value,
+            "Ponder" => set_ponder, value.parse::<bool>().unwrap();
+            UciOptionType::Check { default: false }
+        );
+        add_searcher_option!(
+            options, engine, value,
+            "UCI_Chess960" => set_chess960, value.parse::<bool>().unwrap();
+            UciOptionType::Check { default: false }
+        );
         add_option!(options, engine, value, "Move Overhead" => {
             engine.time_man.set_overhead(value.parse::<u64>().unwrap());
         }; UciOptionType::Spin { default: MOVE_OVERHEAD as i32, min: 0, max: 65535 });
-        add_option!(options, engine, value, "SyzygyPath" => {
-            let mut searcher = engine.searcher.lock().unwrap();
-            searcher.set_syzygy_path(&value);
-        }; UciOptionType::String { default: String::from("<empty>") });
-        add_option!(options, engine, value, "SyzygyProbeDepth" => {
-            let mut searcher = engine.searcher.lock().unwrap();
-            searcher.set_syzygy_depth(value.parse::<u8>().unwrap());
-        }; UciOptionType::Spin { default: 1, min: 1, max: MAX_DEPTH as i32 });
-        add_option!(options, engine, value, "UCI_Chess960" => {
-            let mut searcher = engine.searcher.lock().unwrap();
-            let value = value.parse::<bool>().unwrap();
-            searcher.set_chess960(value);
-        }; UciOptionType::Check { default: false });
 
         Engine {
             searcher,
@@ -259,13 +283,13 @@ impl Engine {
 
                     bench_data.push((
                         best_move.display(&pos, false),
-                        start_time.elapsed().as_secs_f32(),
+                        start_time.elapsed().as_millis() as u64,
                         score.0,
                         nodes
                     ));
                 }
 
-                let total_time = start_time.elapsed().as_secs_f32();
+                let total_time = start_time.elapsed().as_millis() as u64;
 
                 println!("\n================================================================");
                 for (i, (best_move, time, score, nodes)) in bench_data.iter().enumerate() {
@@ -275,8 +299,8 @@ impl Engine {
                         score,
                         best_move,
                         nodes,
-                        (*nodes as f32 / time) as u64,
-                    )
+                        (*nodes / *time) * 1000,
+                    );
                 }
                 println!("==================================================================");
                 let total_nodes = bench_data.iter()
@@ -285,7 +309,7 @@ impl Engine {
                 println!(
                     "OVERALL: {:>30} nodes {:>8} nps",
                     total_nodes,
-                    (total_nodes as f32 / total_time) as u64
+                    (total_nodes / total_time) * 1000
                 );
             },
             UciCommand::Help(cmd) => {
