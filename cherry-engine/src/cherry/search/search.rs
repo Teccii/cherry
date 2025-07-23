@@ -405,7 +405,7 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             if !ctx.abort_now {
-                ctx.history.update(pos.board(), mv, &cont_indices, &quiets, &captures, depth);
+                ctx.history.update(pos.board(), &cont_indices, w, mv, &quiets, &captures, depth);
             }
             
             break;
