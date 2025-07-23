@@ -239,7 +239,7 @@ pub fn search<Node: NodeType>(
     let mut move_picker = MovePicker::new(best_move);
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
-    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
+    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices, w) {
         if skip_move == Some(mv) {
             continue;
         }
@@ -251,7 +251,7 @@ pub fn search<Node: NodeType>(
 
         let nodes = ctx.nodes.local();
         let is_capture = pos.board().is_capture(mv);
-        let stat_score = ctx.history.get_move(pos.board(), mv, &cont_indices);
+        let stat_score = ctx.history.get_move(pos.board(), mv, &cont_indices, w);
         
         ctx.ss[ply as usize].stat_score = stat_score;
 
@@ -432,8 +432,10 @@ pub fn search<Node: NodeType>(
 
     if ply == 0 {
         ctx.nodes.flush();
+        ctx.qnodes.flush();
         ctx.tt_hits.flush();
         ctx.tt_misses.flush();
+        ctx.tb_hits.flush();
     }
 
     let best_score = best_score.unwrap().clamp(syzygy_min, syzygy_max);
@@ -535,7 +537,7 @@ pub fn q_search<Node: NodeType>(
     let mut move_picker = QMovePicker::new();
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
-    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
+    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices, &shared_ctx.weights) {
         if !pos.board().cmp_see(mv, 0) {
             continue;
         }

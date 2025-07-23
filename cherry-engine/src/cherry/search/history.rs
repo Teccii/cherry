@@ -173,14 +173,15 @@ impl History {
         board: &Board,
         mv: Move,
         indices: &ContIndices,
+        weights: &SearchWeights,
     ) -> i32 {
         if board.is_capture(mv) {
             self.get_capture(board, mv)
         } else {
             self.get_quiet(board, mv)
-                + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default()
-                + self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default()
-                + self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default()
+                + weights.counter_move_frac * self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() / 512
+                + weights.follow_up_frac * self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default() / 512
+                + weights.counter_move2_frac * self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default() / 512
         }
     }
 

@@ -20,6 +20,9 @@ weights! {
     nmp_depth: u8 => NMP_DEPTH,
 
     pawn_corr_frac: i16 => PAWN_CORR_FRAC,
+    counter_move_frac: i32 => COUNTER_MOVE_FRAC,
+    follow_up_frac: i32 => FOLLOW_UP_FRAC,
+    counter_move2_frac: i32 => COUNTER_MOVE2_FRAC,
     
     see_depth: u8 => SEE_DEPTH,
     see_margin: i16 => SEE_MARGIN,
@@ -46,6 +49,9 @@ pub const RFP_MARGIN: i16 = 93;
 pub const NMP_DEPTH: u8 = 5;
 
 pub const PAWN_CORR_FRAC: i16 = 66;
+pub const COUNTER_MOVE_FRAC: i32 = 512;
+pub const FOLLOW_UP_FRAC: i32 = 512;
+pub const COUNTER_MOVE2_FRAC: i32 = 512;
 
 pub const SEE_DEPTH: u8 = 10;
 pub const SEE_MARGIN: i16 = -91;
