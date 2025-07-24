@@ -576,6 +576,7 @@ pub fn q_search<Node: NodeType>(
             -alpha
         );
         pos.unmake_move();
+        moves_seen += 1;
 
         if best_score.is_none() || score > best_score.unwrap() {
             best_score = Some(score);
