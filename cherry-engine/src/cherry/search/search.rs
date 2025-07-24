@@ -49,7 +49,7 @@ pub fn search<Node: NodeType>(
     }
 
     ctx.ss[ply as usize].pv.len = 0;
-    
+
     if depth == 0 || ply >= MAX_PLY {
         return q_search::<Node>(
             pos,
@@ -122,7 +122,7 @@ pub fn search<Node: NodeType>(
     } else {
         ctx.tt_misses.inc();
     }
-    
+
     let (mut syzygy_max, mut syzygy_min) = (Score::MAX_MATE, -Score::MAX_MATE);
     if shared_ctx.syzygy.is_some()
         && ply != 0 && skip_move.is_none()
@@ -386,7 +386,7 @@ pub fn search<Node: NodeType>(
 
         pos.unmake_move();
         moves_seen += 1;
-        
+
         if ply == 0 {
             ctx.root_nodes[mv.from() as usize][mv.to() as usize] += ctx.nodes.local() - nodes;
         }
@@ -538,9 +538,11 @@ pub fn q_search<Node: NodeType>(
 
     let mut best_move = None;
     let mut best_score = None;
+    let mut moves_seen = 0;
     let mut move_picker = QMovePicker::new();
+    let cont_indices = ContIndices::new(&ctx.ss, ply);
 
-    while let Some(mv) = move_picker.next(pos, &ctx.history) {
+    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices, &shared_ctx.weights) {
         if !pos.board().cmp_see(mv, 0) {
             continue;
         }
@@ -570,6 +572,10 @@ pub fn q_search<Node: NodeType>(
         if score >= beta {
             break;
         }
+    }
+    
+    if moves_seen == 0 && in_check {
+        return Score::new_mated(ply);
     }
 
     if let Some(best_score) = best_score && !ctx.abort_now {

@@ -67,39 +67,12 @@ const BENCH_POSITIONS: &[&str] = &[
 
 /*----------------------------------------------------------------*/
 
-pub type UciOptions = IndexMap<String, (UciOptionType, Box<dyn Fn(&Engine, String)>)>;
-
-macro_rules! add_option {
-    ($options:ident, $engine:ident, $value:ident, $name:expr => $func:block; $option_type:expr) => {
-        $options.insert(
-            String::from($name),
-            ($option_type, Box::new(|$engine: &Engine, $value: String| $func))
-        );
-    }
-}
-
-macro_rules! add_searcher_option {
-    ($options:ident, $engine:ident, $value:ident, $name:expr => $func:ident, $param:expr; $option_type:expr) => {
-        add_option!($options, $engine, $value, $name => {
-            let mut searcher = $engine.searcher.lock().unwrap();
-            searcher.$func($param);
-        }; $option_type);
-    }
-}
-
-macro_rules! add_tunable_option {
-    ($options:ident, $engine:ident, $value:ident, $name:expr => $field:ident, $param:expr, $default:expr, $min:expr, $max:expr) => {
-        add_option!($options, $engine, $value, $name => {
-            let mut searcher = $engine.searcher.lock().unwrap();
-            searcher.shared_ctx.$field = $param;
-        }; UciOptionType::Spin { default: $default as i32, min: $min, max: $max });
-    }
-}
-
-/*----------------------------------------------------------------*/
-
 pub enum ThreadCommand {
     Go(Arc<Mutex<Searcher>>, Vec<SearchLimit>),
+    SetOption(Arc<Mutex<Searcher>>, String, String),
+    Position(Arc<Mutex<Searcher>>, Board, Vec<Move>),
+    Debug(Arc<Mutex<Searcher>>, bool),
+    NewGame(Arc<Mutex<Searcher>>),
     Quit,
 }
 
@@ -107,7 +80,6 @@ pub struct Engine {
     searcher: Arc<Mutex<Searcher>>,
     time_man: Arc<TimeManager>,
     sender: Sender<ThreadCommand>,
-    options: UciOptions,
     chess960: Rc<RefCell<bool>>,
 }
 
@@ -141,52 +113,44 @@ impl Engine {
 
                         println!("{}", output);
                     },
+                    ThreadCommand::Position(searcher, board, moves) => {
+                        let mut searcher = searcher.lock().unwrap();
+                        searcher.pos.reset(board);
+
+                        for mv in moves {
+                            searcher.pos.make_move(mv);
+                        }
+                    },
+                    ThreadCommand::SetOption(searcher, name, value) => {
+                        let mut searcher = searcher.lock().unwrap();
+
+                        match name.as_str() {
+                            "Threads" => searcher.threads = value.parse::<u16>().unwrap(),
+                            "Hash" => searcher.resize_ttable(value.parse::<usize>().unwrap()),
+                            "SyzygyPath" => searcher.set_syzygy_path(value.as_str()),
+                            "SyzygyProbeDepth" => searcher.shared_ctx.syzygy_depth = value.parse::<u8>().unwrap(),
+                            "Ponder" => searcher.ponder = value.parse::<bool>().unwrap(),
+                            "UCI_Chess960" => searcher.chess960 = value.parse::<bool>().unwrap(),
+                            _ => { }
+                        }
+                    },
+                    ThreadCommand::Debug(searcher, value) => {
+                        let mut searcher = searcher.lock().unwrap();
+                        searcher.debug = value;
+                    },
+                    ThreadCommand::NewGame(searcher) => {
+                        let mut searcher = searcher.lock().unwrap();
+                        searcher.clean_ttable();
+                    },
                     ThreadCommand::Quit => return,
                 }
             }
         });
 
-        let mut options: UciOptions = IndexMap::new();
-
-        add_searcher_option!(
-            options, engine, value,
-            "Threads" => set_threads, value.parse::<u16>().unwrap();
-            UciOptionType::Spin { default: 1, min: 1, max: 65535 }
-        );
-        add_searcher_option!(
-            options, engine, value,
-            "Hash" => resize_ttable, value.parse::<usize>().unwrap();
-            UciOptionType::Spin { default: 16, min: 1, max: 65535 }
-        );
-        add_searcher_option!(
-            options, engine, value,
-            "SyzygyPath" => set_syzygy_path, &value;
-            UciOptionType::String { default: String::from("<empty>") }
-        );
-        add_searcher_option!(
-            options, engine, value,
-            "SyzygyProbeDepth" => set_syzygy_depth, value.parse::<u8>().unwrap();
-            UciOptionType::Spin { default: 1, min: 1, max: MAX_DEPTH as i32 }
-        );
-        add_searcher_option!(
-            options, engine, value,
-            "Ponder" => set_ponder, value.parse::<bool>().unwrap();
-            UciOptionType::Check { default: false }
-        );
-        add_searcher_option!(
-            options, engine, value,
-            "UCI_Chess960" => set_chess960, value.parse::<bool>().unwrap();
-            UciOptionType::Check { default: false }
-        );
-        add_option!(options, engine, value, "Move Overhead" => {
-            engine.time_man.set_overhead(value.parse::<u64>().unwrap());
-        }; UciOptionType::Spin { default: MOVE_OVERHEAD as i32, min: 0, max: 65535 });
-
         Engine {
             searcher,
             time_man,
             sender: tx,
-            options,
             chess960: Rc::new(RefCell::new(false)),
         }
     }
@@ -206,18 +170,14 @@ impl Engine {
             UciCommand::Uci => {
                 println!("id name Cherry {}", ENGINE_VERSION);
                 println!("id author Tecci");
-
-                for (name, (option_type, _)) in self.options.iter() {
-                    println!("option name {} {}", name, option_type);
-                }
-
+                println!("option name Threads type spin default 1 min 1 max 65535");
+                println!("option name Hash type spin default 16 min 1 max 65535");
+                println!("option name SyzygyPath type string default <empty>");
+                println!("option name SyzygyProbeDepth type spin default 1 min 0 max 128");
+                println!("option name Move Overhead type spin default 100 min 0 max 5000");
+                println!("option name Ponder type check default false");
+                println!("option name UCI_Chess960 type check default false");
                 println!("uciok");
-            },
-            UciCommand::NewGame => {
-                let mut searcher = self.searcher.lock().unwrap();
-
-                searcher.clean_ttable();
-                searcher.pos.reset(Board::default());
             },
             UciCommand::IsReady => println!("readyok"),
             #[cfg(feature = "tune")] UciCommand::Tune {
@@ -231,29 +191,37 @@ impl Engine {
                 tune(threads, buffer_size, queue_size, &file_paths);
             },
             UciCommand::PonderHit => self.time_man.ponderhit(),
-            UciCommand::Position(board, moves) => {
-                let mut searcher = self.searcher.lock().unwrap();
-                searcher.pos.reset(board);
-
-                for mv in moves {
-                    searcher.pos.make_move(mv);
-                }
-            },
+            UciCommand::NewGame => self.sender.send(
+                ThreadCommand::NewGame(Arc::clone(&self.searcher))
+            ).unwrap(),
+            UciCommand::Position(board, moves) => self.sender.send(
+                ThreadCommand::Position(
+                    Arc::clone(&self.searcher),
+                    board,
+                    moves
+                )
+            ).unwrap(),
             UciCommand::Go(limits) => self.sender.send(ThreadCommand::Go(
                 Arc::clone(&self.searcher),
                 limits
             )).unwrap(),
             UciCommand::SetOption { name, value } => {
-                self.time_man.stop();
-
-                if let Some((_, func)) = self.options.get(&name) {
-                    func(self, value);
+                match name.as_str() {
+                    "Move Overhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
+                    "Chess960" => *self.chess960.borrow_mut() = value.parse::<bool>().unwrap(),
+                    _ => { }
                 }
+
+                self.sender.send(ThreadCommand::SetOption(
+                    Arc::clone(&self.searcher),
+                    name,
+                    value
+                )).unwrap();
             },
-            UciCommand::Debug(value) => {
-                let mut searcher = self.searcher.lock().unwrap();
-                searcher.set_debug(value);
-            },
+            UciCommand::Debug(value) => self.sender.send(ThreadCommand::Debug(
+                Arc::clone(&self.searcher),
+                value
+            )).unwrap(),
             UciCommand::Display => {
                 let searcher = self.searcher.lock().unwrap();
                 let board = searcher.pos.board();

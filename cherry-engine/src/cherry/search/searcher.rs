@@ -325,7 +325,7 @@ fn search_worker<Info: SearchInfo>(
                     && fails < 10 {
                     window.get()
                 } else {
-                    (-Score::MAX_MATE, Score::MAX_MATE)
+                    (-Score::INFINITE, Score::INFINITE)
                 };
 
                 ctx.sel_depth = 0;
@@ -345,8 +345,8 @@ fn search_worker<Info: SearchInfo>(
                 }
 
                 window.set_midpoint(score);
-
                 let root_move = ctx.ss[0].pv.moves[0].unwrap();
+
                 shared_ctx.time_man.deepen(
                     thread,
                     depth,
@@ -354,7 +354,6 @@ fn search_worker<Info: SearchInfo>(
                     ctx.nodes.local(),
                     root_move,
                 );
-
                 if (score > alpha && score < beta) || score.is_decisive() {
                     ctx.root_pv = ctx.ss[0].pv.clone();
                     ponder_move = ctx.ss[0].pv.moves[1];
