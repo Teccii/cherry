@@ -140,7 +140,7 @@ impl Engine {
                     },
                     ThreadCommand::NewGame(searcher) => {
                         let mut searcher = searcher.lock().unwrap();
-                        searcher.clean_ttable();
+                        searcher.new_game();
                     },
                     ThreadCommand::Quit => return,
                 }
@@ -235,12 +235,12 @@ impl Engine {
                 let limits = vec![SearchLimit::MaxDepth(depth)];
 
                 searcher.resize_ttable(hash as usize);
-                searcher.set_threads(threads);
+                searcher.threads = threads;
 
                 let start_time = Instant::now();
                 for pos in BENCH_POSITIONS.iter().map(|fen| fen.parse::<Board>().unwrap()) {
                     searcher.pos.reset(pos.clone());
-                    searcher.clean_ttable();
+                    searcher.new_game();
 
                     let start_time = Instant::now();
                     let (best_move, _, score, _, nodes) = if searcher.debug {

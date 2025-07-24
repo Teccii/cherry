@@ -59,7 +59,6 @@ impl ThreadContext {
             };
             MAX_PLY as usize + 1
         ];
-        self.history.reset();
         self.sel_depth = 0;
         self.abort_now = false;
     }
@@ -261,43 +260,19 @@ impl Searcher {
     }
 
     #[inline]
+    pub fn new_game(&mut self) {
+        self.shared_ctx.t_table.clean();
+        self.main_ctx.history.reset();
+    }
+
+    #[inline]
     pub fn resize_ttable(&mut self, mb: usize) {
         self.shared_ctx.t_table = Arc::new(TTable::new(mb));
     }
 
     #[inline]
-    pub fn clean_ttable(&mut self) {
-        self.shared_ctx.t_table.clean();
-    }
-
-    #[inline]
-    pub fn set_threads(&mut self, count: u16) {
-        self.threads = count.max(1);
-    }
-
-    #[inline]
-    pub fn set_chess960(&mut self, value: bool) {
-        self.chess960 = value;
-    }
-
-    #[inline]
-    pub fn set_ponder(&mut self, value: bool) {
-        self.ponder = value;
-    }
-
-    #[inline]
-    pub fn set_debug(&mut self, value: bool) {
-        self.debug = value;
-    }
-
-    #[inline]
     pub fn set_syzygy_path(&mut self, path: &str) {
         self.shared_ctx.syzygy = Arc::new(Some(TableBases::<SyzygyAdapter>::new(path).unwrap()));
-    }
-    
-    #[inline]
-    pub fn set_syzygy_depth(&mut self, depth: u8) {
-        self.shared_ctx.syzygy_depth = depth;
     }
 }
 
