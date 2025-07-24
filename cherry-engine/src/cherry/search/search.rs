@@ -186,6 +186,9 @@ pub fn search<Node: NodeType>(
     };
 
     let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
+    let tt_pv = tt_entry.is_some_and(|e| e.flag == TTBound::Exact);
+    ctx.ss[ply as usize].tt_pv = tt_pv;
+    
     let w = &shared_ctx.weights;
 
     if !Node::PV && !in_check && skip_move.is_none() {
@@ -230,7 +233,7 @@ pub fn search<Node: NodeType>(
             }
         }
     }
-
+    
     let mut best_score = None;
     let mut moves_seen = 0;
     let mut move_exists = false;

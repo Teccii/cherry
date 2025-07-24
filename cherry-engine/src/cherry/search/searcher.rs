@@ -50,6 +50,7 @@ impl ThreadContext {
         self.ss = vec![
             SearchStack {
                 eval: -Score::INFINITE,
+                tt_pv: false,
                 stat_score: 0,
                 extension: 0,
                 reduction: 0,
@@ -135,6 +136,7 @@ impl Default for Pv {
 #[derive(Debug, Clone)]
 pub struct SearchStack {
     pub eval: Score,
+    pub tt_pv: bool,
     pub extension: i16,
     pub reduction: i32,
     pub stat_score: i32,
@@ -185,6 +187,7 @@ impl Searcher {
                 ss: vec![
                     SearchStack {
                         eval: -Score::INFINITE,
+                        tt_pv: false,
                         stat_score: 0,
                         extension: 0,
                         reduction: 0,
