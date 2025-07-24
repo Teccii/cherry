@@ -130,6 +130,8 @@ impl Default for Pv {
     }
 }
 
+/*----------------------------------------------------------------*/
+
 #[derive(Debug, Clone)]
 pub struct SearchStack {
     pub eval: Score,
@@ -261,13 +263,13 @@ impl Searcher {
     }
 
     #[inline]
-    pub fn resize_ttable(&mut self, mb: usize) {
-        self.shared_ctx.t_table = Arc::new(TTable::new(mb));
+    pub fn clean_ttable(&mut self) {
+        self.shared_ctx.t_table.clean();
     }
 
     #[inline]
-    pub fn clean_ttable(&mut self) {
-        self.shared_ctx.t_table.clean();
+    pub fn resize_ttable(&mut self, mb: usize) {
+        self.shared_ctx.t_table = Arc::new(TTable::new(mb));
     }
 
     #[inline]
