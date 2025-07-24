@@ -23,25 +23,41 @@ fn select_next(moves: &ArrayVec<ScoredMove, MAX_MOVES>) -> Option<usize> {
 }
 
 #[inline]
-fn mask_captures(moves: &mut PieceMoves, mask: Bitboard, ep_mask: Bitboard) {
+fn mask_tactics(moves: &mut PieceMoves, their_pieces: Bitboard, ep_square: Option<Square>) {
     if moves.piece == Piece::Pawn {
-        moves.to &= mask | ep_mask;
+        const PROMOTION_MASK: Bitboard = Bitboard(Rank::First.bitboard().0 | Rank::Eighth.bitboard().0);
+        
+        moves.to &= their_pieces
+            | ep_square.map_or(Bitboard::EMPTY, |sq| sq.bitboard())
+            | PROMOTION_MASK;
     } else {
-        moves.to &= mask;
+        moves.to &= their_pieces;
     }
 }
 
+#[inline]
+fn mask_quiets(moves: &mut PieceMoves, their_pieces: Bitboard, ep_square: Option<Square>) {
+    if moves.piece == Piece::Pawn {
+        const PROMOTION_MASK: Bitboard = Bitboard(Rank::First.bitboard().0 | Rank::Eighth.bitboard().0);
+
+        moves.to &= !(their_pieces
+            | ep_square.map_or(Bitboard::EMPTY, |sq| sq.bitboard())
+            | PROMOTION_MASK);
+    } else {
+        moves.to &= !their_pieces;
+    }
+}
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Phase {
     HashMove,
     GenPieceMoves,
-    GenCaptures,
-    YieldGoodCaptures,
+    GenTactics,
+    YieldGoodTactics,
     GenQuiets,
     YieldQuiets,
-    YieldBadCaptures,
+    YieldBadTactics,
     Finished
 }
 
@@ -52,8 +68,8 @@ pub struct MovePicker {
     phase: Phase,
     hash_move: Option<Move>,
     piece_moves: ArrayVec<PieceMoves, 20>,
-    good_captures: ArrayVec<ScoredMove, MAX_MOVES>,
-    bad_captures: ArrayVec<ScoredMove, MAX_MOVES>,
+    good_tactics: ArrayVec<ScoredMove, MAX_MOVES>,
+    bad_tactics: ArrayVec<ScoredMove, MAX_MOVES>,
     quiets: ArrayVec<ScoredMove, MAX_MOVES>,
 }
 
@@ -64,8 +80,8 @@ impl MovePicker {
             phase: Phase::HashMove,
             hash_move,
             piece_moves: ArrayVec::new(),
-            good_captures: ArrayVec::new(),
-            bad_captures: ArrayVec::new(),
+            good_tactics: ArrayVec::new(),
+            bad_tactics: ArrayVec::new(),
             quiets: ArrayVec::new(),
         }
     }
@@ -80,7 +96,7 @@ impl MovePicker {
     #[inline]
     pub fn skip_quiets(&mut self) {
         self.phase = match self.phase {
-            Phase::GenQuiets | Phase::YieldQuiets => Phase::YieldBadCaptures,
+            Phase::GenQuiets | Phase::YieldQuiets => Phase::YieldBadTactics,
             _ => self.phase
         }
     }
@@ -105,7 +121,7 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.phase == Phase::GenPieceMoves {
-            self.phase = Phase::GenCaptures;
+            self.phase = Phase::GenTactics;
             
             pos.board().gen_moves(|moves| {
                 self.piece_moves.push(moves);
@@ -115,26 +131,26 @@ impl MovePicker {
 
         /*----------------------------------------------------------------*/
 
-        if self.phase == Phase::GenCaptures {
-            self.phase = Phase::YieldGoodCaptures;
+        if self.phase == Phase::GenTactics {
+            self.phase = Phase::YieldGoodTactics;
             
             let board = pos.board();
-            let mask = board.colors(!board.stm());
-            let ep_mask = board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
+            let their_pieces = board.colors(!board.stm());
+            let ep_square = board.ep_square();
 
             for mut moves in self.piece_moves.iter().copied() {
-                mask_captures(&mut moves, mask, ep_mask);
+                mask_tactics(&mut moves, their_pieces, ep_square);
 
                 for mv in moves {
                     if self.hash_move == Some(mv) {
                         continue;
                     }
 
-                    let score = history.get_capture(board, mv);
+                    let score = history.get_tactical(board, mv);
                     if board.cmp_see(mv, 0)  {
-                        self.good_captures.push(ScoredMove(mv, score));
+                        self.good_tactics.push(ScoredMove(mv, score));
                     } else {
-                        self.bad_captures.push(ScoredMove(mv, score));
+                        self.bad_tactics.push(ScoredMove(mv, score));
                     }
                 }
             }
@@ -142,9 +158,9 @@ impl MovePicker {
 
         /*----------------------------------------------------------------*/
 
-        if self.phase == Phase::YieldGoodCaptures {
-            if let Some(index) = select_next(&self.good_captures) {
-                return self.good_captures.swap_pop(index).map(|mv| mv.0);
+        if self.phase == Phase::YieldGoodTactics {
+            if let Some(index) = select_next(&self.good_tactics) {
+                return self.good_tactics.swap_pop(index).map(|mv| mv.0);
             }
             
             self.phase = Phase::GenQuiets;
@@ -154,21 +170,18 @@ impl MovePicker {
 
         if self.phase == Phase::GenQuiets {
             let board = pos.board();
-            let mask = !board.colors(!board.stm());
+            let their_pieces = board.colors(!board.stm());
+            let ep_square = board.ep_square();
 
             for mut moves in self.piece_moves.iter().copied() {
-                if moves.piece == Piece::Pawn {
-                    moves.to &= mask & !board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
-                } else {
-                    moves.to &= mask;
-                }
+                mask_quiets(&mut moves, their_pieces, ep_square);
 
                 for mv in moves {
                     if self.hash_move == Some(mv) {
                         continue;
                     }
 
-                    self.quiets.push(ScoredMove(mv, history.get_move(board, mv, indices, weights)));
+                    self.quiets.push(ScoredMove(mv, history.get_non_tactical(board, mv, indices, weights)));
                 }
             }
 
@@ -182,14 +195,14 @@ impl MovePicker {
                 return self.quiets.swap_pop(index).map(|mv| mv.0);
             }
             
-            self.phase = Phase::YieldBadCaptures;
+            self.phase = Phase::YieldBadTactics;
         }
 
         /*----------------------------------------------------------------*/
 
-        if self.phase == Phase::YieldBadCaptures {
-            if let Some(index) = select_next(&self.bad_captures) {
-                return self.bad_captures.swap_pop(index).map(|mv| mv.0);
+        if self.phase == Phase::YieldBadTactics {
+            if let Some(index) = select_next(&self.bad_tactics) {
+                return self.bad_tactics.swap_pop(index).map(|mv| mv.0);
             }
             
             self.phase = Phase::Finished;
@@ -208,8 +221,8 @@ pub enum QPhase {
     GenPieceMoves,
     GenEvasions,
     YieldEvasions,
-    GenCaptures,
-    YieldCaptures,
+    GenTactics,
+    YieldTactics,
     Finished,
 }
 
@@ -218,7 +231,7 @@ pub struct QMovePicker {
     phase: QPhase,
     piece_moves: ArrayVec<PieceMoves, 20>,
     evasions: ArrayVec<ScoredMove, MAX_MOVES>,
-    captures: ArrayVec<ScoredMove, MAX_MOVES>,
+    tactics: ArrayVec<ScoredMove, MAX_MOVES>,
 }
 
 impl QMovePicker {
@@ -228,7 +241,7 @@ impl QMovePicker {
             phase: QPhase::GenPieceMoves,
             piece_moves: ArrayVec::new(),
             evasions: ArrayVec::new(),
-            captures: ArrayVec::new(),
+            tactics: ArrayVec::new(),
         }
     }
 
@@ -248,7 +261,7 @@ impl QMovePicker {
             if pos.in_check() {
                 self.phase = QPhase::GenEvasions;
             } else {
-                self.phase = QPhase::GenCaptures;
+                self.phase = QPhase::GenTactics;
             }
         }
         
@@ -257,7 +270,13 @@ impl QMovePicker {
 
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
-                    self.evasions.push(ScoredMove(mv, history.get_move(board, mv, indices, weights)));
+                    let score = if board.is_tactical(mv) {
+                        history.get_tactical(board, mv)
+                    } else {
+                        history.get_non_tactical(board, mv, indices, weights)
+                    };
+                    
+                    self.evasions.push(ScoredMove(mv, score));
                 }
             }
 
@@ -272,27 +291,27 @@ impl QMovePicker {
             self.phase = QPhase::Finished;
         }
         
-        if self.phase == QPhase::GenCaptures {
+        if self.phase == QPhase::GenTactics {
             let board = pos.board();
-            let mask = board.colors(!board.stm());
-            let ep_mask = board.ep_square().map_or(Bitboard::EMPTY, |sq| sq.bitboard());
+            let their_pieces = board.colors(!board.stm());
+            let ep_square = board.ep_square();
 
             for mut moves in self.piece_moves.iter().copied() {
-                mask_captures(&mut moves, mask, ep_mask);
+                mask_tactics(&mut moves, their_pieces, ep_square);
 
                 for mv in moves {
-                    self.captures.push(ScoredMove(mv, history.get_capture(board, mv)));
+                    self.tactics.push(ScoredMove(mv, history.get_tactical(board, mv)));
                 }
             }
 
-            self.phase = QPhase::YieldCaptures;
+            self.phase = QPhase::YieldTactics;
         }
 
         /*----------------------------------------------------------------*/
 
-        if self.phase == QPhase::YieldCaptures {
-            if let Some(index) = select_next(&self.captures) {
-                return self.captures.swap_pop(index).map(|mv| mv.0);
+        if self.phase == QPhase::YieldTactics {
+            if let Some(index) = select_next(&self.tactics) {
+                return self.tactics.swap_pop(index).map(|mv| mv.0);
             }
             
             self.phase = QPhase::Finished;

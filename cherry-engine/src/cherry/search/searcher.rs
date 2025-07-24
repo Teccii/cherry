@@ -83,27 +83,22 @@ impl ThreadContext {
 pub struct MoveData {
     pub piece: Piece,
     pub victim: Option<Piece>,
+    pub promotion: Option<Piece>,
     pub from: Square,
     pub to: Square,
-    pub promotion: Option<Piece>,
+
 }
 
 impl MoveData {
     pub fn new(board: &Board, mv: Move) -> MoveData {
         let (from, to, promotion) = (mv.from(), mv.to(), mv.promotion());
-        
+
         MoveData {
             piece: board.piece_on(from).unwrap(),
-            victim: if board.is_en_passant(mv) {
-                Some(Piece::Pawn)
-            } else if board.is_capture(mv) {
-                Some(board.piece_on(to).unwrap())
-            } else {
-                None
-            },
+            victim: board.victim(mv),
+            promotion,
             from,
             to,
-            promotion
         }
     }
 }

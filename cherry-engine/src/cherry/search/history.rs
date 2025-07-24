@@ -57,7 +57,7 @@ impl ContIndices {
 #[derive(Debug, Clone)]
 pub struct History {
     quiets: Box<ButterflyTable>,
-    captures: Box<PieceToTable>,
+    tactical: Box<PieceToTable>,
     counter_move: Box<ContinuationTable>, //use for 1-ply, 3-ply, 5-ply, etc.
     follow_up: Box<ContinuationTable>, //use for 2-ply, 4-ply, 6-ply, etc.
     pawn_corr: Box<CorrectionTable<PAWN_CORRECTION_SIZE>>,
@@ -68,7 +68,7 @@ impl History {
     pub fn new() -> History {
         History {
             quiets: Box::new([move_to(0); Color::COUNT]),
-            captures: Box::new([piece_to(0); Color::COUNT]),
+            tactical: Box::new([piece_to(0); Color::COUNT]),
             counter_move: Box::new([piece_to(piece_to(0)); Color::COUNT]),
             follow_up: Box::new([piece_to(piece_to(0)); Color::COUNT]),
             pawn_corr: Box::new([[0; PAWN_CORRECTION_SIZE]; Color::COUNT]),
@@ -78,7 +78,7 @@ impl History {
     #[inline]
     pub fn reset(&mut self) {
         self.quiets = Box::new([move_to(0); Color::COUNT]);
-        self.captures = Box::new([piece_to(0); Color::COUNT]);
+        self.tactical = Box::new([piece_to(0); Color::COUNT]);
         self.counter_move = Box::new([piece_to(piece_to(0)); Color::COUNT]);
         self.follow_up = Box::new([piece_to(piece_to(0)); Color::COUNT]);
         self.pawn_corr = Box::new([[0; PAWN_CORRECTION_SIZE]; Color::COUNT]);
@@ -103,15 +103,15 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_capture(&self, board: &Board, mv: Move) -> i32 {
-        self.captures[board.stm() as usize]
+    pub fn get_tactical(&self, board: &Board, mv: Move) -> i32 {
+        self.tactical[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
             [mv.to() as usize]
     }
 
     #[inline]
-    fn get_capture_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
-        &mut self.captures[board.stm() as usize]
+    fn get_tactical_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
+        &mut self.tactical[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
             [mv.to() as usize]
     }
@@ -175,21 +175,17 @@ impl History {
     /*----------------------------------------------------------------*/
     
     #[inline]
-    pub fn get_move(
+    pub fn get_non_tactical(
         &self,
         board: &Board,
         mv: Move,
         indices: &ContIndices,
         weights: &SearchWeights,
     ) -> i32 {
-        if board.is_capture(mv) {
-            self.get_capture(board, mv)
-        } else {
-            self.get_quiet(board, mv)
-                + weights.cont1_frac * self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() / 512
-                + weights.cont2_frac * self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default() / 512
-                + weights.cont3_frac * self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default() / 512
-        }
+        self.get_quiet(board, mv)
+            + weights.cont1_frac * self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() / 512
+            + weights.cont3_frac * self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default() / 512
+            + weights.cont2_frac * self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default() / 512
     }
 
     #[inline]
@@ -209,15 +205,13 @@ impl History {
         weights: &SearchWeights,
         best_move: Move,
         quiets: &[Move],
-        captures: &[Move],
+        tactics: &[Move],
         depth: u8
     ) {
-        let is_capture = board.is_capture(best_move);
-        
-        if is_capture {
+        if board.is_tactical(best_move) {
             History::update_value(
-                self.get_capture_mut(board, best_move),
-                delta(weights.capt_bonus_base, weights.capt_bonus_mul, depth)
+                self.get_tactical_mut(board, best_move),
+                delta(weights.tactic_bonus_base, weights.tactic_bonus_mul, depth)
             );
         } else {
             History::update_value(
@@ -275,10 +269,10 @@ impl History {
             }
         }
 
-        for &mv in captures {
+        for &mv in tactics {
             History::update_value(
-                self.get_capture_mut(board, mv),
-                -delta(weights.capt_malus_base, weights.capt_malus_mul, depth)
+                self.get_tactical_mut(board, mv),
+                -delta(weights.tactic_malus_base, weights.tactic_malus_mul, depth)
             );
         }
     }

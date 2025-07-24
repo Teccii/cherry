@@ -235,7 +235,7 @@ pub fn search<Node: NodeType>(
     let mut moves_seen = 0;
     let mut move_exists = false;
     let mut quiets: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
-    let mut captures: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
+    let mut tactics: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
     let mut move_picker = MovePicker::new(best_move);
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
@@ -250,8 +250,12 @@ pub fn search<Node: NodeType>(
         }
 
         let nodes = ctx.nodes.local();
-        let is_capture = pos.board().is_capture(mv);
-        let stat_score = ctx.history.get_move(pos.board(), mv, &cont_indices, w);
+        let is_tactical = pos.board().is_tactical(mv);
+        let stat_score = if is_tactical {
+            ctx.history.get_tactical(pos.board(), mv)
+        } else {
+            ctx.history.get_non_tactical(pos.board(), mv, &cont_indices, w)
+        };
         
         ctx.ss[ply as usize].stat_score = stat_score;
 
@@ -268,11 +272,11 @@ pub fn search<Node: NodeType>(
         if !Node::PV && ply != 0 && pos.non_pawn_material()
             && best_score.map_or(false, |s: Score| !s.is_decisive()) {
 
-            if is_capture {
+            if is_tactical {
                 //SEE pruning
                 let see_margin = w.see_margin * depth as i16 * depth as i16 - (stat_score / w.see_hist) as i16;
                 if depth < w.see_depth
-                    && move_picker.phase() == Phase::YieldBadCaptures
+                    && move_picker.phase() == Phase::YieldBadTactics
                     && !pos.board().cmp_see(mv, see_margin) {
                     continue;
                 }
@@ -405,15 +409,15 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             if !ctx.abort_now {
-                ctx.history.update(pos.board(), &cont_indices, w, mv, &quiets, &captures, depth);
+                ctx.history.update(pos.board(), &cont_indices, w, mv, &quiets, &tactics, depth);
             }
             
             break;
         }
         
         if Some(mv) != best_move {
-            if is_capture {
-                captures.push(mv);
+            if is_tactical {
+                tactics.push(mv);
             } else {
                 quiets.push(mv);
             }
@@ -446,8 +450,8 @@ pub fn search<Node: NodeType>(
             _ => TTBound::Exact,
         };
 
-        let is_capture = best_move.is_some_and(|mv| !pos.board().is_capture(mv));
-        if !in_check && !is_capture && (
+        let is_tactic = best_move.is_some_and(|mv| !pos.board().is_tactical(mv));
+        if !in_check && !is_tactic && (
             (best_score < static_eval && best_score < beta) || (best_score > static_eval && best_score > initial_alpha)
         ) {
             ctx.history.update_corr(pos.board(), best_score, static_eval, depth);

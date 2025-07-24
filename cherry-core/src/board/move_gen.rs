@@ -350,29 +350,38 @@ impl Board {
 
     /*----------------------------------------------------------------*/
 
+    #[inline]
+    pub fn is_en_passant(&self, mv: Move) -> bool {
+        mv.is_en_passant() || (
+            Some(mv.to()) == self.ep_square() && self.piece_on(mv.from()).unwrap() == Piece::Pawn
+        )
+    }
+
+    #[inline]
     pub fn is_capture(&self, mv: Move) -> bool {
         self.colors(!self.stm).has(mv.to()) || self.is_en_passant(mv)
     }
 
-    pub fn is_quiet(&self, mv: Move) -> bool {
-        !self.is_capture(mv)
+    #[inline]
+    pub fn is_tactical(&self, mv: Move) -> bool {
+        self.is_capture(mv) || mv.is_promotion()
     }
 
+    #[inline]
+    pub fn is_quiet(&self, mv: Move) -> bool {
+        !self.is_tactical(mv)
+    }
+
+    #[inline]
+    pub fn is_castling(&self, mv: Move) -> bool {
+        mv.is_castling() || (self.king(self.stm) == mv.from() && self.colors(self.stm).has(mv.to()))
+    }
+    
     pub fn is_check(&self, mv: Move) -> bool {
         let mut board = self.clone();
         board.make_move(mv);
 
         board.in_check()
-    }
-
-    pub fn is_castling(&self, mv: Move) -> bool {
-        mv.is_castling() || (self.king(self.stm) == mv.from() && self.colors(self.stm).has(mv.to()))
-    }
-
-    pub fn is_en_passant(&self, mv: Move) -> bool {
-        mv.is_en_passant() || (
-            Some(mv.to()) == self.ep_square() && self.piece_on(mv.from()).unwrap() == Piece::Pawn
-        )
     }
 
     pub fn victim(&self, mv: Move) -> Option<Piece> {

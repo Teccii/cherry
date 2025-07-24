@@ -24,10 +24,10 @@ weights! {
     quiet_malus_base: i32 => QUIET_MALUS_BASE,
     quiet_malus_mul: i32 => QUIET_MALUS_MUL,
 
-    capt_bonus_base: i32 => CAPT_BONUS_BASE,
-    capt_bonus_mul: i32 => CAPT_BONUS_MUL,
-    capt_malus_base: i32 => CAPT_MALUS_BASE,
-    capt_malus_mul: i32 => CAPT_MALUS_MUL,
+    tactic_bonus_base: i32 => TACTIC_BONUS_BASE,
+    tactic_bonus_mul: i32 => TACTIC_BONUS_MUL,
+    tactic_malus_base: i32 => TACTIC_MALUS_BASE,
+    tactic_malus_mul: i32 => TACTIC_MALUS_MUL,
 
     cont1_bonus_base: i32 => CONT1_BONUS_BASE,
     cont1_bonus_mul: i32 => CONT1_BONUS_MUL,
@@ -78,10 +78,10 @@ pub const QUIET_BONUS_MUL: i32 = 14;
 pub const QUIET_MALUS_BASE: i32 = 0;
 pub const QUIET_MALUS_MUL: i32 = 14;
 
-pub const CAPT_BONUS_BASE: i32 = 0;
-pub const CAPT_BONUS_MUL: i32 = 14;
-pub const CAPT_MALUS_BASE: i32 = 0;
-pub const CAPT_MALUS_MUL: i32 = 14;
+pub const TACTIC_BONUS_BASE: i32 = 0;
+pub const TACTIC_BONUS_MUL: i32 = 14;
+pub const TACTIC_MALUS_BASE: i32 = 0;
+pub const TACTIC_MALUS_MUL: i32 = 14;
 
 pub const CONT1_BONUS_BASE: i32 = 0;
 pub const CONT1_BONUS_MUL: i32 = 14;
