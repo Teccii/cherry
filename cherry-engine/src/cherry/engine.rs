@@ -235,7 +235,7 @@ impl Engine {
                 let limits = vec![SearchLimit::MaxDepth(depth)];
 
                 searcher.resize_ttable(hash as usize);
-                searcher.set_threads(threads);
+                searcher.threads = threads;
 
                 let start_time = Instant::now();
                 for pos in BENCH_POSITIONS.iter().map(|fen| fen.parse::<Board>().unwrap()) {

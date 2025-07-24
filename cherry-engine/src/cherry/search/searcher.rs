@@ -271,33 +271,8 @@ impl Searcher {
     }
 
     #[inline]
-    pub fn set_threads(&mut self, count: u16) {
-        self.threads = count.max(1);
-    }
-
-    #[inline]
-    pub fn set_chess960(&mut self, value: bool) {
-        self.chess960 = value;
-    }
-
-    #[inline]
-    pub fn set_ponder(&mut self, value: bool) {
-        self.ponder = value;
-    }
-
-    #[inline]
-    pub fn set_debug(&mut self, value: bool) {
-        self.debug = value;
-    }
-
-    #[inline]
     pub fn set_syzygy_path(&mut self, path: &str) {
         self.shared_ctx.syzygy = Arc::new(Some(TableBases::<SyzygyAdapter>::new(path).unwrap()));
-    }
-    
-    #[inline]
-    pub fn set_syzygy_depth(&mut self, depth: u8) {
-        self.shared_ctx.syzygy_depth = depth;
     }
 }
 

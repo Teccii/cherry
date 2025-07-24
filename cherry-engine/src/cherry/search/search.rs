@@ -264,8 +264,7 @@ pub fn search<Node: NodeType>(
         let mut score;
 
         /*
-        Late Move Reduction (LMR): Reduce the depth of moves ordered near the end.
-        History Reduction: Increase or decrease the reduction based on the history of the move
+        Late Move Reductions (LMR): Reduce the depth of moves ordered near the end.
         */
         reduction += shared_ctx.lmr_lookup.get(depth as usize, moves_seen as usize);
 
@@ -273,7 +272,10 @@ pub fn search<Node: NodeType>(
             && best_score.map_or(false, |s: Score| !s.is_decisive()) {
 
             if is_tactical {
-                //SEE pruning
+                /*
+                Tactical SEE Pruning: Skip tactical moves whose SEE score
+                is below a depth-dependent margin.
+                */
                 let see_margin = w.see_margin * depth as i16 * depth as i16 - (stat_score / w.see_hist) as i16;
                 if depth < w.see_depth
                     && move_picker.phase() == Phase::YieldBadTactics
@@ -281,7 +283,10 @@ pub fn search<Node: NodeType>(
                     continue;
                 }
             } else {
-                //Late Move Pruning
+                /*
+                Late Move Pruning: Start skipping quiet moves after
+                a depth-dependent amount of moves.
+                */
                 let lmp_margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16);
                 if moves_seen >= lmp_margin {
                     move_picker.skip_quiets();
@@ -289,19 +294,31 @@ pub fn search<Node: NodeType>(
 
                 let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
 
-                //History Pruning
+                /*
+                History Pruning: Skip quiet moves whose history score
+                is below an LMR depth-dependent margin.
+                */
                 if r_depth < w.hist_depth && stat_score < w.hist_margin * r_depth as i32 {
                     move_picker.skip_quiets();
                     continue;
                 }
 
-                //Futility Pruning
+                /*
+                Futility Pruning: Start skipping quiet moves if
+                the static evaluation is below alpha by an
+                LMR depth-dependent margin.
+                */
                 let futile_margin = w.futile_base + w.futile_margin * r_depth as i16;
                 if r_depth < w.futile_depth && static_eval <= alpha - futile_margin {
                     move_picker.skip_quiets();
                 }
 
-                //SEE Pruning for Quiets
+                /*
+                Quiet SEE Pruning: Skip quiet moves whose SEE score
+                is below a depth-dependent margin. SEE works for quiets as
+                well because for example, you can just lose your queen after
+                moving it to an attacked square.
+                */
                 let see_margin = w.see_margin * r_depth as i16 * r_depth as i16;
                 if r_depth < w.see_depth && !pos.board().cmp_see(mv, see_margin) {
                     continue;
@@ -573,7 +590,7 @@ pub fn q_search<Node: NodeType>(
             break;
         }
     }
-    
+
     if moves_seen == 0 && in_check {
         return Score::new_mated(ply);
     }
