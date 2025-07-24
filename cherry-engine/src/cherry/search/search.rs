@@ -329,6 +329,7 @@ pub fn search<Node: NodeType>(
             }
         }
 
+        reduction += w.tt_pv_reduction * tt_pv as i32;
         reduction += w.non_pv_reduction * !Node::PV as i32;
         reduction += w.not_improving_reduction * !improving as i32;
         reduction += w.cut_node_reduction * cut_node as i32;

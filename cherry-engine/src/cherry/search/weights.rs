@@ -60,6 +60,7 @@ weights! {
     futile_base: i16 => FUTILE_BASE,
     futile_margin: i16 => FUTILE_MARGIN,
 
+    tt_pv_reduction: i32 => TT_PV_REDUCTION,
     non_pv_reduction: i32 => NON_PV_REDUCTION,
     not_improving_reduction: i32 => NOT_IMPROVING_REDUCTION,
     cut_node_reduction: i32 => CUT_NODE_REDUCTION,
@@ -114,6 +115,7 @@ pub const FUTILE_DEPTH: u8 = 6;
 pub const FUTILE_BASE: i16 = 106;
 pub const FUTILE_MARGIN: i16 = 81;
 
+pub const TT_PV_REDUCTION: i32 = 926;
 pub const NON_PV_REDUCTION: i32 = 926;
 pub const NOT_IMPROVING_REDUCTION: i32 = 926;
 pub const CUT_NODE_REDUCTION: i32 = 2113;
