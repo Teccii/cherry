@@ -219,8 +219,6 @@ impl MovePicker {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum QPhase {
     GenPieceMoves,
-    GenEvasions,
-    YieldEvasions,
     GenTactics,
     YieldTactics,
     Finished,
@@ -230,7 +228,6 @@ pub enum QPhase {
 pub struct QMovePicker {
     phase: QPhase,
     piece_moves: ArrayVec<PieceMoves, 20>,
-    evasions: ArrayVec<ScoredMove, MAX_MOVES>,
     tactics: ArrayVec<ScoredMove, MAX_MOVES>,
 }
 
@@ -240,7 +237,6 @@ impl QMovePicker {
         QMovePicker {
             phase: QPhase::GenPieceMoves,
             piece_moves: ArrayVec::new(),
-            evasions: ArrayVec::new(),
             tactics: ArrayVec::new(),
         }
     }
@@ -249,46 +245,14 @@ impl QMovePicker {
         &mut self,
         pos: &mut Position,
         history: &History,
-        indices: &ContIndices,
-        weights: &SearchWeights,
     ) -> Option<Move> {
         if self.phase == QPhase::GenPieceMoves {
             pos.board().gen_moves(|moves| {
                 self.piece_moves.push(moves);
                 false
             });
-            
-            if pos.in_check() {
-                self.phase = QPhase::GenEvasions;
-            } else {
-                self.phase = QPhase::GenTactics;
-            }
-        }
-        
-        if self.phase == QPhase::GenEvasions {
-            let board = pos.board();
 
-            for moves in self.piece_moves.iter().copied() {
-                for mv in moves {
-                    let score = if board.is_tactical(mv) {
-                        history.get_tactical(board, mv)
-                    } else {
-                        history.get_non_tactical(board, mv, indices, weights)
-                    };
-                    
-                    self.evasions.push(ScoredMove(mv, score));
-                }
-            }
-
-            self.phase = QPhase::YieldEvasions;
-        }
-        
-        if self.phase == QPhase::YieldEvasions {
-            if let Some(index) = select_next(&self.evasions) {
-                return self.evasions.swap_pop(index).map(|mv| mv.0);
-            }
-            
-            self.phase = QPhase::Finished;
+            self.phase = QPhase::GenTactics;
         }
         
         if self.phase == QPhase::GenTactics {

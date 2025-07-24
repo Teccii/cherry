@@ -539,9 +539,8 @@ pub fn q_search<Node: NodeType>(
     let mut best_move = None;
     let mut best_score = None;
     let mut move_picker = QMovePicker::new();
-    let cont_indices = ContIndices::new(&ctx.ss, ply);
 
-    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices, &shared_ctx.weights) {
+    while let Some(mv) = move_picker.next(pos, &ctx.history) {
         if !pos.board().cmp_see(mv, 0) {
             continue;
         }
