@@ -329,12 +329,6 @@ pub fn search<Node: NodeType>(
             }
         }
 
-        reduction += w.tt_pv_reduction * tt_pv as i32;
-        reduction += w.non_pv_reduction * !Node::PV as i32;
-        reduction += w.not_improving_reduction * !improving as i32;
-        reduction += w.cut_node_reduction * cut_node as i32;
-        reduction -= stat_score / w.hist_reduction;
-
         ctx.ss[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv);
         shared_ctx.t_table.prefetch(pos.board());
@@ -362,6 +356,12 @@ pub fn search<Node: NodeType>(
                 false,
             );
         } else {
+            reduction += w.tt_pv_reduction * tt_pv as i32;
+            reduction += w.non_pv_reduction * !Node::PV as i32;
+            reduction += w.not_improving_reduction * !improving as i32;
+            reduction += w.cut_node_reduction * cut_node as i32;
+            reduction -= stat_score / w.hist_reduction;
+
             ctx.ss[ply as usize].reduction = reduction / 1024;
             let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
 
