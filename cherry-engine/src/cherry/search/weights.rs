@@ -69,7 +69,7 @@ weights! {
 
 /*----------------------------------------------------------------*/
 
-pub const PAWN_CORR_FRAC: i16 = 66;
+pub const PAWN_CORR_FRAC: i16 = 132;
 pub const CONT1_FRAC: i32 = 512;
 pub const CONT2_FRAC: i32 = 512;
 pub const CONT3_FRAC: i32 = 512;
@@ -119,4 +119,4 @@ pub const TT_PV_REDUCTION: i32 = 926;
 pub const NON_PV_REDUCTION: i32 = 926;
 pub const NOT_IMPROVING_REDUCTION: i32 = 926;
 pub const CUT_NODE_REDUCTION: i32 = 2113;
-pub const HIST_REDUCTION: i32 = 131;
+pub const HIST_REDUCTION: i32 = 63;

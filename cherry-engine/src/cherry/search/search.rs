@@ -262,14 +262,12 @@ pub fn search<Node: NodeType>(
         
         ctx.ss[ply as usize].stat_score = stat_score;
 
-        let mut extension: i16 = 0;
-        let mut reduction: i32 = 0;
-        let mut score;
-
         /*
         Late Move Reductions (LMR): Reduce the depth of moves ordered near the end.
         */
-        reduction += shared_ctx.lmr_lookup.get(depth as usize, moves_seen as usize);
+        let mut reduction = shared_ctx.lmr_lookup.get(depth as usize, moves_seen as usize);
+        let mut extension: i16 = 0;
+        let mut score;
 
         if !Node::PV && ply != 0 && pos.non_pawn_material()
             && best_score.map_or(false, |s: Score| !s.is_decisive()) {
@@ -307,7 +305,7 @@ pub fn search<Node: NodeType>(
                 }
 
                 /*
-                Futility Pruning: Start skipping quiet moves if
+                Futility Pruning: Skip quiet moves if
                 the static evaluation is below alpha by an
                 LMR depth-dependent margin.
                 */

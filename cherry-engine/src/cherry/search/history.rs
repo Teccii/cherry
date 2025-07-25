@@ -193,7 +193,7 @@ impl History {
         let pawn_hash = board.pawn_hash();
         let stm = board.stm();
 
-        weights.pawn_corr_frac * self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE] / 512
+        weights.pawn_corr_frac * self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE] / MAX_CORRECTION
     }
     
     /*----------------------------------------------------------------*/
