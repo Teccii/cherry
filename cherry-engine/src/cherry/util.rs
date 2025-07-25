@@ -4,6 +4,7 @@ use std::sync::{Arc, atomic::*};
 
 pub const MAX_DEPTH: u8 = 128;
 pub const MAX_PLY: u16 = 256;
+pub const REDUCTION_SCALE: i32 = 1024;
 
 /*----------------------------------------------------------------*/
 

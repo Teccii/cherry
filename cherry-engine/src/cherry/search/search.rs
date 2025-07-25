@@ -359,9 +359,10 @@ pub fn search<Node: NodeType>(
             reduction += w.not_improving_reduction * !improving as i32;
             reduction += w.cut_node_reduction * cut_node as i32;
             reduction -= stat_score / w.hist_reduction;
+            reduction /= REDUCTION_SCALE;
 
-            ctx.ss[ply as usize].reduction = reduction / 1024;
-            let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
+            ctx.ss[ply as usize].reduction = reduction;
+            let r_depth = (depth as i32).saturating_sub(reduction).clamp(1, MAX_DEPTH as i32) as u8;
 
             score = -search::<NonPV>(
                 pos,
