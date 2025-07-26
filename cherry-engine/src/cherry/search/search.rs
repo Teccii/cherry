@@ -265,7 +265,11 @@ pub fn search<Node: NodeType>(
         /*
         Late Move Reductions (LMR): Reduce the depth of moves ordered near the end.
         */
-        let mut reduction = shared_ctx.lmr_lookup.get(depth as usize, moves_seen as usize);
+        let mut reduction = if is_tactical {
+            shared_ctx.lmr_tactical.get(depth as usize, moves_seen as usize)
+        } else {
+            shared_ctx.lmr_quiet.get(depth as usize, moves_seen as usize)
+        };
         let mut extension: i16 = 0;
         let mut score;
 

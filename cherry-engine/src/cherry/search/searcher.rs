@@ -17,7 +17,8 @@ pub struct SharedContext {
     pub syzygy_depth: u8,
     pub search_moves: ArrayVec<Move, MAX_MOVES>,
     pub weights: Arc<SearchWeights>,
-    pub lmr_lookup: Arc<LmrLookup>,
+    pub lmr_quiet: Arc<LmrLookup>,
+    pub lmr_tactical: Arc<LmrLookup>,
 }
 
 /*----------------------------------------------------------------*/
@@ -169,9 +170,12 @@ impl Searcher {
                 syzygy_depth: 1,
                 search_moves: ArrayVec::new(),
                 weights: Arc::new(SearchWeights::default()),
-                lmr_lookup: Arc::new(LookUp::new(|i, j|
+                lmr_quiet: Arc::new(LookUp::new(|i, j|
                     1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5) as i32
                 )),
+                lmr_tactical: Arc::new(LookUp::new(|i, j|
+                    1024 * (0.4 + (i as f32).ln() * (j as f32).ln() / 3.5) as i32
+                ))
             },
             main_ctx: ThreadContext {
                 qnodes: BatchedAtomicCounter::new(),
