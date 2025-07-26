@@ -29,11 +29,6 @@ pub const fn piece_to<T: Copy>(default: T) -> PieceTo<T> {
     [[default; Square::COUNT]; Piece::COUNT]
 }
 
-#[inline]
-fn delta(base: i32, mul: i32, depth: u8) -> i32 {
-    (base + mul * depth as i32).min(MAX_HISTORY)
-}
-
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone)]
@@ -211,31 +206,31 @@ impl History {
         if board.is_tactical(best_move) {
             History::update_value(
                 self.get_tactical_mut(board, best_move),
-                delta(weights.tactic_bonus_base, weights.tactic_bonus_mul, depth)
+                weights.tactic_bonus_base + weights.tactic_bonus_mul * depth as i32
             );
         } else {
             History::update_value(
                 self.get_quiet_mut(board, best_move),
-                delta(weights.quiet_bonus_base, weights.quiet_bonus_mul, depth)
+                weights.quiet_bonus_base + weights.quiet_bonus_mul * depth as i32
             );
             
             for &mv in quiets {
                 History::update_value(
                     self.get_quiet_mut(board, mv),
-                    -delta(weights.quiet_malus_base, weights.quiet_malus_mul, depth)
+                    -weights.quiet_malus_base - weights.quiet_malus_mul * depth as i32
                 );
             }
             
             if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move) {
                 History::update_value(
                     value,
-                    delta(weights.cont1_bonus_base, weights.cont1_bonus_mul, depth)
+                    weights.cont1_bonus_base + weights.cont1_bonus_mul * depth as i32
                 );
                 
                 for &mv in quiets {
                     History::update_value(
                         self.get_counter_move_mut(board, mv, indices.counter_move).unwrap(),
-                        -delta(weights.cont1_malus_base, weights.cont1_malus_mul, depth)
+                        -weights.cont1_malus_base - weights.cont1_malus_mul * depth as i32
                     );
                 }
             }
@@ -243,13 +238,13 @@ impl History {
             if let Some(value) = self.get_follow_up_mut(board, best_move, indices.follow_up) {
                 History::update_value(
                     value,
-                    delta(weights.cont2_bonus_base, weights.cont2_bonus_mul, depth)
+                    weights.cont2_bonus_base + weights.cont2_bonus_mul * depth as i32
                 );
 
                 for &mv in quiets {
                     History::update_value(
                         self.get_follow_up_mut(board, mv, indices.follow_up).unwrap(),
-                        -delta(weights.cont2_malus_base, weights.cont2_malus_mul, depth)
+                        -weights.cont2_malus_base - weights.cont2_malus_mul * depth as i32
                     );
                 }
             }
@@ -257,13 +252,13 @@ impl History {
             if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move2) {
                 History::update_value(
                     value,
-                    delta(weights.cont3_bonus_base, weights.cont3_bonus_mul, depth)
+                    -weights.cont3_bonus_base - weights.cont3_bonus_mul * depth as i32
                 );
 
                 for &mv in quiets {
                     History::update_value(
                         self.get_counter_move_mut(board, mv, indices.counter_move2).unwrap(),
-                        -delta(weights.cont3_malus_base, weights.cont3_malus_mul, depth)
+                        -weights.cont3_malus_base - weights.cont3_malus_mul * depth as i32
                     );
                 }
             }
@@ -272,7 +267,7 @@ impl History {
         for &mv in tactics {
             History::update_value(
                 self.get_tactical_mut(board, mv),
-                -delta(weights.tactic_malus_base, weights.tactic_malus_mul, depth)
+                -weights.tactic_malus_base - weights.tactic_malus_mul * depth as i32
             );
         }
     }

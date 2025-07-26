@@ -106,15 +106,11 @@ pub fn search<Node: NodeType>(
 
             match entry.flag {
                 TTBound::Exact => return score,
-                TTBound::UpperBound => {
-                    if score <= alpha {
-                        return score;
-                    }
+                TTBound::UpperBound => if score <= alpha {
+                    return score;
                 }
-                TTBound::LowerBound => {
-                    if score >= beta {
-                        return score;
-                    }
+                TTBound::LowerBound => if score >= beta {
+                    return score;
                 },
                 TTBound::None => unreachable!()
             }
@@ -178,18 +174,13 @@ pub fn search<Node: NodeType>(
         None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
     };
     let static_eval = raw_eval + corr;
-    ctx.ss[ply as usize].eval = raw_eval;
-
-    let prev_eval = match ply {
-        2.. => Some(ctx.ss[ply as usize - 2].eval),
-        _ => None,
-    };
-
+    let prev_eval = (ply >= 2).then(|| ctx.ss[ply as usize - 2].eval);
     let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
     let tt_pv = tt_entry.is_some_and(|e| e.flag == TTBound::Exact);
-    ctx.ss[ply as usize].tt_pv = tt_pv;
-    
     let w = &shared_ctx.weights;
+
+    ctx.ss[ply as usize].eval = raw_eval;
+    ctx.ss[ply as usize].tt_pv = tt_pv;
 
     if !Node::PV && !in_check && skip_move.is_none() {
         /*
