@@ -277,13 +277,7 @@ impl History {
         }
     }
 
-    pub fn update_corr(
-        &mut self,
-        board: &Board,
-        best_score: Score,
-        static_eval: Score,
-        depth: u8,
-    ) {
+    pub fn update_corr(&mut self, board: &Board, depth: u8, best_score: Score, static_eval: Score) {
         let amount = (best_score - static_eval).0 * depth as i16 / 8;
         let pawn_hash = board.pawn_hash();
         let stm = board.stm();

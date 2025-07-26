@@ -361,9 +361,9 @@ pub fn search<Node: NodeType>(
             reduction -= stat_score / w.hist_reduction;
             reduction /= REDUCTION_SCALE;
 
-            ctx.ss[ply as usize].reduction = reduction;
             let r_depth = (depth as i32).saturating_sub(reduction).clamp(1, MAX_DEPTH as i32) as u8;
 
+            ctx.ss[ply as usize].reduction = reduction;
             score = -search::<NonPV>(
                 pos,
                 ctx,
@@ -471,10 +471,8 @@ pub fn search<Node: NodeType>(
         };
 
         let is_tactic = best_move.is_some_and(|mv| !pos.board().is_tactical(mv));
-        if !in_check && !is_tactic && (
-            (best_score < static_eval && best_score < beta) || (best_score > static_eval && best_score > initial_alpha)
-        ) {
-            ctx.history.update_corr(pos.board(), best_score, static_eval, depth);
+        if !in_check && !is_tactic && flag == TTBound::Exact && best_score != static_eval {
+            ctx.history.update_corr(pos.board(), depth, best_score, static_eval);
         }
 
         shared_ctx.t_table.store(
