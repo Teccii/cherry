@@ -21,7 +21,6 @@ pub struct TimeManager {
     target_time: AtomicU64,
     max_time: AtomicU64,
     move_overhead: AtomicU64,
-    no_manage: AtomicBool,
     
     prev_move: Mutex<Option<Move>>,
     move_stability: AtomicU16,
@@ -29,10 +28,10 @@ pub struct TimeManager {
     moves_to_go: AtomicU16,
     max_depth: AtomicU8,
     max_nodes: AtomicU64,
-    
+
+    no_manage: AtomicBool,
     pondering: AtomicBool,
     infinite: AtomicBool,
-    
     abort_now: AtomicBool,
 }
 
@@ -45,14 +44,14 @@ impl TimeManager {
             target_time: AtomicU64::new(0),
             max_time: AtomicU64::new(0),
             move_overhead: AtomicU64::new(MOVE_OVERHEAD),
-            no_manage: AtomicBool::new(true),
             prev_move: Mutex::new(None),
             move_stability: AtomicU16::new(0),
             moves_to_go: AtomicU16::new(EXPECTED_MOVES),
             max_depth: AtomicU8::new(MAX_DEPTH),
             max_nodes: AtomicU64::new(u64::MAX),
-            infinite: AtomicBool::new(true),
+            no_manage: AtomicBool::new(true),
             pondering: AtomicBool::new(false),
+            infinite: AtomicBool::new(true),
             abort_now: AtomicBool::new(false),
         }
     }
@@ -165,11 +164,10 @@ impl TimeManager {
         let mut prev_move = self.prev_move.lock().unwrap();
         let mut move_stability = self.move_stability.load(Ordering::Relaxed);
 
-        move_stability = if Some(mv) == *prev_move {
-            (move_stability + 1).min(4)
-        } else {
-            0
-        };
+        move_stability = (move_stability + 1).min(4);
+        if *prev_move != Some(mv) {
+            move_stability = 0;
+        }
 
         *prev_move = Some(mv);
         self.move_stability.store(move_stability, Ordering::Relaxed);

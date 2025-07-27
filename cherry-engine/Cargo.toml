@@ -11,8 +11,7 @@ nnue = []
 [dependencies]
 cherry-core = { path = "../cherry-core" }
 bullet = { git = "https://github.com/jw1912/bullet", package = "bullet_lib", optional = true }
-pyrrhic-rs = "0.2.0"
-indexmap = "2.10.0"
-arrayvec = "0.7.6"
 atomic-time = "0.1.5"
+pyrrhic-rs = "0.2.0"
+arrayvec = "0.7.6"
 rayon =  "1.10.0"

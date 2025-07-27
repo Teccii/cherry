@@ -118,20 +118,26 @@ impl Score {
 
 impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.is_infinite() {
-            if self.0 > 0 {
-                write!(f, "+INF")
+        if f.alternate() {
+            if self.is_infinite() {
+                if self.0 > 0 {
+                    write!(f, "+INF")
+                } else {
+                    write!(f, "-INF")
+                }
+            } else if let Some(ply) = self.decisive_in() {
+                write!(f, "#{}", (ply + ply.signum()) / 2)
+            } else if self.0 > 0 {
+                write!(f, "+{:.1}", self.0 as f32 / 100.0)
             } else {
-                write!(f, "-INF")
+                write!(f, "{:.1}", self.0 as f32 / 100.0)
             }
-        } else if let Some(ply) = self.mate_in() {
-            write!(f, "#{}", ply)
-        } else if let Some(ply) = self.tb_in() {
-            write!(f, "#{}", ply)
-        } else if self.0 > 0 {
-            write!(f, "+{:.1}", self.0 as f32 / 100.0)
         } else {
-            write!(f, "{:.1}", self.0 as f32 / 100.0)
+            if let Some(ply) = self.decisive_in() {
+                write!(f, "mate {}", (ply + ply.signum()) / 2)
+            } else {
+                write!(f, "{}", self.0)
+            }
         }
     }
 }

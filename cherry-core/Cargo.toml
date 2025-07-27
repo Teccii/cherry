@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 cherry-types = { path = "../cherry-types" }
-arrayvec = "0.7.6"
 
 [build-dependencies]
 cherry-types = { path = "../cherry-types" }

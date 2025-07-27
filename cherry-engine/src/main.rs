@@ -11,6 +11,8 @@ use cherry::*;
 /*----------------------------------------------------------------*/
 
 fn main() {
+    println!("Cherry v{} by Tecci", ENGINE_VERSION);
+
     let mut buffer = String::new();
     let mut engine = Engine::new();
     let args = env::args()

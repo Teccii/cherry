@@ -17,7 +17,6 @@ pub enum UciCommand {
         name: String,
         value: String,
     },
-    Debug(bool),
     Display,
     Bench {
         depth: u8,
@@ -30,7 +29,6 @@ pub enum UciCommand {
         queue_size: usize,
         file_paths: Vec<String>,
     },
-    Help(Option<String>),
     Stop,
     Quit
 }
@@ -71,6 +69,11 @@ impl UciCommand {
             "quit" | "q" => Ok(UciCommand::Quit),
             "display" | "d" => Ok(UciCommand::Display),
             "ponderhit" => Ok(UciCommand::PonderHit),
+            "bench" => Ok(UciCommand::Bench {
+                depth: reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(12),
+                threads: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1),
+                hash: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(16)
+            }),
             "position" => {
                 let board_kind = reader.next().ok_or(UciParseError::InvalidArguments)?;
                 let mut moves_token_passed = false;
@@ -222,23 +225,6 @@ impl UciCommand {
                     queue_size,
                     file_paths
                 })
-            },
-            "bench" => {
-                let depth = reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(12);
-                let threads = reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1);
-                let hash = reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(16);
-
-                Ok(UciCommand::Bench { depth, threads, hash })
-            },
-            "debug" => {
-                let value = reader.next().is_some_and(|s| s == "on");
-                
-                Ok(UciCommand::Debug(value))
-            },
-            "help" => {
-                let command = reader.next().map(str::to_owned);
-                
-                Ok(UciCommand::Help(command))
             },
             _ => Err(UciParseError::InvalidCommand),
         }

@@ -5,7 +5,6 @@ use std::{
     rc::Rc,
 };
 use std::time::Instant;
-use indexmap::IndexMap;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -71,7 +70,6 @@ pub enum ThreadCommand {
     Go(Arc<Mutex<Searcher>>, Vec<SearchLimit>),
     SetOption(Arc<Mutex<Searcher>>, String, String),
     Position(Arc<Mutex<Searcher>>, Board, Vec<Move>),
-    Debug(Arc<Mutex<Searcher>>, bool),
     NewGame(Arc<Mutex<Searcher>>),
     Quit,
 }
@@ -99,12 +97,7 @@ impl Engine {
                         let mut searcher = searcher.lock().unwrap();
                         let mut output = String::new();
 
-                        let (mv, ponder, _, _, _) = if searcher.debug {
-                            searcher.search::<DebugInfo>(limits)
-                        } else {
-                            searcher.search::<UciInfo>(limits)
-                        };
-
+                        let (mv, ponder, _, _, _) = searcher.search::<UciInfo>(limits);
                         write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.chess960)).unwrap();
 
                         if let Some(ponder) = ponder {
@@ -133,10 +126,6 @@ impl Engine {
                             "UCI_Chess960" => searcher.chess960 = value.parse::<bool>().unwrap(),
                             _ => { }
                         }
-                    },
-                    ThreadCommand::Debug(searcher, value) => {
-                        let mut searcher = searcher.lock().unwrap();
-                        searcher.debug = value;
                     },
                     ThreadCommand::NewGame(searcher) => {
                         let mut searcher = searcher.lock().unwrap();
@@ -168,7 +157,7 @@ impl Engine {
 
         match cmd {
             UciCommand::Uci => {
-                println!("id name Cherry {}", ENGINE_VERSION);
+                println!("id name Cherry v{}", ENGINE_VERSION);
                 println!("id author Tecci");
                 println!("option name Threads type spin default 1 min 1 max 65535");
                 println!("option name Hash type spin default 16 min 1 max 65535");
@@ -180,27 +169,21 @@ impl Engine {
                 println!("uciok");
             },
             UciCommand::IsReady => println!("readyok"),
-            #[cfg(feature = "tune")] UciCommand::Tune {
-                threads,
-                buffer_size,
-                queue_size,
-                file_paths
-            } => {
-                let file_paths = file_paths.iter().map(String::as_str).collect::<Vec<_>>();
-
-                tune(threads, buffer_size, queue_size, &file_paths);
-            },
             UciCommand::PonderHit => self.time_man.ponderhit(),
-            UciCommand::NewGame => self.sender.send(
-                ThreadCommand::NewGame(Arc::clone(&self.searcher))
-            ).unwrap(),
-            UciCommand::Position(board, moves) => self.sender.send(
-                ThreadCommand::Position(
-                    Arc::clone(&self.searcher),
-                    board,
-                    moves
-                )
-            ).unwrap(),
+            UciCommand::Stop => self.time_man.stop(),
+            UciCommand::NewGame => self.sender.send(ThreadCommand::NewGame(Arc::clone(&self.searcher))).unwrap(),
+            UciCommand::Display => {
+                let searcher = self.searcher.lock().unwrap();
+                let board = searcher.pos.board();
+
+                println!("\n{:?}", board);
+                println!("FEN: {}", board);
+            },
+            UciCommand::Position(board, moves) => self.sender.send(ThreadCommand::Position(
+                Arc::clone(&self.searcher),
+                board,
+                moves
+            )).unwrap(),
             UciCommand::Go(limits) => self.sender.send(ThreadCommand::Go(
                 Arc::clone(&self.searcher),
                 limits
@@ -218,17 +201,6 @@ impl Engine {
                     value
                 )).unwrap();
             },
-            UciCommand::Debug(value) => self.sender.send(ThreadCommand::Debug(
-                Arc::clone(&self.searcher),
-                value
-            )).unwrap(),
-            UciCommand::Display => {
-                let searcher = self.searcher.lock().unwrap();
-                let board = searcher.pos.board();
-
-                println!("\n{:?}", board);
-                println!("FEN: {}", board);
-            },
             UciCommand::Bench { depth, threads, hash } => {
                 let mut searcher = self.searcher.lock().unwrap();
                 let mut bench_data = Vec::new();
@@ -243,12 +215,7 @@ impl Engine {
                     searcher.clean_ttable();
 
                     let start_time = Instant::now();
-                    let (best_move, _, score, _, nodes) = if searcher.debug {
-                        searcher.search::<DebugInfo>(limits.clone())
-                    } else {
-                        searcher.search::<NoInfo>(limits.clone())
-                    };
-
+                    let (best_move, _, score, _, nodes) = searcher.search::<NoInfo>(limits.clone());
                     bench_data.push((
                         best_move.display(&pos, false),
                         start_time.elapsed().as_millis() as u64,
@@ -280,117 +247,16 @@ impl Engine {
                     (total_nodes / total_time) * 1000
                 );
             },
-            UciCommand::Help(cmd) => {
-                println!();
+            #[cfg(feature = "tune")] UciCommand::Tune {
+                threads,
+                buffer_size,
+                queue_size,
+                file_paths
+            } => {
+                let file_paths = file_paths.iter().map(String::as_str).collect::<Vec<_>>();
 
-                if let Some(cmd) = cmd {
-                    match cmd.as_str() {
-                        "uci" => println!(
-                            "Usage: uci\n\
-                            Description: Performs the UCI handshake."
-                        ),
-                        "ucinewgame" | "newgame" => println!(
-                            "Usage: ucinewgame\n\
-                            Aliases: newgame\n\
-                            Description: Signals the start of a new game, and resets the internal state of the Engine."
-                        ),
-                        "isready" => println!(
-                            "Usage:isready\n\
-                            Description: Synchronises the interface with the engine. Waits until the Engine is ready again."
-                        ),
-                        "ponderhit" => println!(
-                            "Usage: ponderhit\n
-                            Description: Signals that the expected move has been played."
-                        ),
-                        "position" => println!(
-                            "Usage: position (startpos | fen <fen>) [moves <move1> ... <moveN>]\n\
-                            Description: Resets the board to a new position.\n\
-                            Options:\n\
-                            \t- startpos: Start from the standard chess starting position.\n\
-                            \t- fen: Start from a specific chess position.\n\
-                            \t- moves <move1>...<moveN>: Play a sequence of moves after the initial position."
-                        ),
-                        "go" => println!(
-                            "Usage: go [options]\n\
-                            Description: Start searching for the best move from the current position.\n\
-                            Options:\n\
-                            \t- searchmoves <move1>...<moveN>: Limits the search to the given root moves.\n\
-                            \t- wtime/btime <ms>: Time left for White/Black in milliseconds.\n\
-                            \t- winc/binc <ms>: Increment per move for White/Black.\n\
-                            \t- movetime <ms>: Search for exactly this amount of time.\n\
-                            \t- movestogo <n>: Moves remaining until the next time control.\n\
-                            \t- maxdepth <n>: Limit search depth.\n\
-                            \t- maxnodes <n>: Limit number of nodes searched.\n\
-                            \t- infinite: Search until 'stop' is received.\n\
-                            \t- ponder: Start the search in ponder mode."
-                        ),
-                        "setoption" => println!(
-                            "Usage: setoption name <name> value <value>\n\
-                            Description: Sets a UCI option to the specified value.\n\
-                            Options:\n\
-                            \t- name: The name of the UCI option.\n\
-                            \t- value: The new value of the UCI option."
-                        ),
-                        "debug" => println!(
-                            "Usage: debug <on|off>\n\
-                            Description: Toggles debug mode on or off. In debug mode, the Engine prints a more detailed output."
-                        ),
-                        "display" => println!(
-                            "Usage: display\n\
-                            Aliases: d\n\
-                            Description: Displays the current board."
-                        ),
-                        "bench" => println!(
-                            "Usage: bench [depth] [threads] [hash]\n\
-                            Description: Runs a performance benchmark.\n\
-                            Options:\n\
-                            \t- depth: The maximum depth for the benchmark. [default: 12]\n\
-                            \t- threads: The number of threads to use for the benchmark. [default: 1]\n\
-                            \t- hash: The size of the transposition table for the benchmark. [default: 16]"
-                        ),
-                        #[cfg(feature = "tune")] "tune" => println!(
-                            "Usage: tune <threads> <buffer_size> <queue_size> <file_path1> ... <file_pathN>\n\
-                            Description: Runs the NNUE trainer with the specified settings.\n\
-                            Options:\n\
-                            \t- threads: The number of threads to use for the data loader.\n\
-                            \t- buffer_size: The size of the data loader's buffer in megabytes.\n\
-                            \t- queue_size: The size of the batch queue in the number of batches.\n\
-                            \t- file_path1...file_pathN: The list of file paths for the training data."
-                        ),
-                        "help" => println!(
-                            "Usage: help [command]\n\
-                            Description: Displays either information about a specific command, or a list of commands."
-                        ),
-                        "stop" => println!(
-                            "Usage: stop\n\
-                            Description: Halts the current search immediately."
-                        ),
-                        "quit" => println!(
-                            "Usage: quit\n\
-                            Description: Quits the program immediately."
-                        ),
-                        x => println!("Unknown command: {}", x)
-                    }
-                } else {
-                    println!("Available commands:");
-                    println!("\tuci\t\t- Perform the UCI handshake");
-                    println!("\tucinewgame\t\t- Signal the start of a new game");
-                    println!("\tisready\t\t- Check if the Engine is ready");
-                    println!("\tponderhit\t\t- Inform the Engine that the expected move was played");
-                    println!("\tposition\t\t- Reset the board to a new position");
-                    println!("\tgo\t\t- Start searching for the best move");
-                    println!("\tsetoption\t\t- Set an Engine option");
-                    println!("\tdebug\t\t- Toggle debug mode");
-                    println!("\tdisplay\t\t- Display the current board");
-                    println!("\tbench\t\t- Run a performance benchmark");
-                    #[cfg(feature = "tune")] println!("\ttune\t\t- Run the NNUE trainer");
-                    println!("\thelp\t\t- Show information about a command");
-                    println!("\tstop\t\t- Halt the current search immediately");
-                    println!("\tquit\t\t- Quit the program immediately");
-                    println!("\nType 'help <command>' to get detailed information about a specific command");
-                }
+                tune(threads, buffer_size, queue_size, &file_paths);
             },
-            UciCommand::Stop => self.time_man.stop(),
             UciCommand::Quit => {
                 self.time_man.stop();
                 self.sender.send(ThreadCommand::Quit).unwrap();

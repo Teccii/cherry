@@ -155,7 +155,6 @@ pub struct Searcher {
     pub threads: u16,
     pub chess960: bool,
     pub ponder: bool,
-    pub debug: bool,
 }
 
 impl Searcher {
@@ -208,7 +207,6 @@ impl Searcher {
             threads: 1,
             chess960: false,
             ponder: false,
-            debug: false,
         }
     }
 
@@ -296,7 +294,7 @@ fn search_worker<Info: SearchInfo>(
         let mut window = Window::new(10);
         let mut best_move: Option<Move> = None;
         let mut ponder_move: Option<Move> = None;
-        let mut eval: Option<Score> = None;
+        let mut eval = -Score::INFINITE;
         let mut depth = 1;
 
         'id: loop {
@@ -305,7 +303,7 @@ fn search_worker<Info: SearchInfo>(
 
             'asp: loop {
                 let (alpha, beta) = if depth > 4
-                    && eval.is_some_and(|e| e.abs() < 1000)
+                    && eval.abs() < 1000
                     && fails < 10 {
                     window.get()
                 } else {
@@ -342,7 +340,7 @@ fn search_worker<Info: SearchInfo>(
                     ctx.root_pv = ctx.ss[0].pv.clone();
                     ponder_move = ctx.ss[0].pv.moves[1];
                     best_move = Some(root_move);
-                    eval = Some(score);
+                    eval = score;
 
                     break 'asp;
                 }
@@ -356,7 +354,7 @@ fn search_worker<Info: SearchInfo>(
                 }
             }
 
-            Info::push(
+            Info::update(
                 thread,
                 pos.board(),
                 &ctx,
@@ -373,10 +371,9 @@ fn search_worker<Info: SearchInfo>(
             depth += 1;
         }
 
-        while depth == MAX_DEPTH
-            && shared_ctx.time_man.is_infinite()
-            && !(shared_ctx.time_man.abort_now() || shared_ctx.time_man.timeout_id()) {
-            Info::push(
+        while depth == MAX_DEPTH && shared_ctx.time_man.is_infinite()
+            && !(shared_ctx.time_man.abort_now() || shared_ctx.time_man.timeout_id())  {
+            Info::update(
                 thread,
                 pos.board(),
                 &ctx,
@@ -387,7 +384,7 @@ fn search_worker<Info: SearchInfo>(
             );
         }
 
-        Info::push(
+        Info::update(
             thread,
             pos.board(),
             &ctx,
@@ -397,105 +394,34 @@ fn search_worker<Info: SearchInfo>(
             chess960
         );
 
-        if let Some(best_score) = eval {
-            (best_move, ponder_move, best_score, depth)
-        } else {
-            panic!("Search Worker {} has failed!", thread);
-        }
+        (best_move, ponder_move, eval, depth)
     }
 }
 
 /*----------------------------------------------------------------*/
 
 pub trait SearchInfo {
-    fn push(
+    fn update(
         thread: u16,
         board: &Board,
         ctx: &ThreadContext,
         shared_ctx: &SharedContext,
-        eval: Option<Score>,
+        score: Score,
         depth: u8,
         chess960: bool,
     );
 }
 
-pub struct DebugInfo;
 pub struct UciInfo;
 pub struct NoInfo;
 
-impl SearchInfo for DebugInfo {
-    fn push(
-        thread: u16,
-        board: &Board,
-        ctx: &ThreadContext,
-        shared_ctx: &SharedContext,
-        eval: Option<Score>,
-        depth: u8,
-        chess960: bool,
-    ) {
-        if thread != 0 {
-            return;
-        }
-        
-        let mut info = format!("info depth {} seldepth {} ", depth, ctx.sel_depth);
-
-        if let Some(eval) = eval {
-            if let Some(ply) = eval.mate_in() {
-                write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
-            } else {
-                write!(info, "score cp {} ", eval.0).unwrap();
-            }
-        }
-        
-        let nodes = ctx.nodes.global();
-        let time = shared_ctx.time_man.elapsed();
-        
-        write!(info, "nodes {} qnodes {} time {} ", nodes, ctx.qnodes.global(), time).unwrap();
-
-        if time != 0 {
-            write!(info, "nps {} ", (nodes / time) * 1000).unwrap();
-        }
-
-        write!(
-            info,
-            "tthits {} ttmisses {} tbhits {} ",
-            ctx.tt_hits.global(),
-            ctx.tt_misses.global(),
-            ctx.tb_hits.global(),
-        ).unwrap();
-        
-        let mut board = board.clone();
-        let root_pv = &ctx.root_pv;
-
-        if root_pv.len != 0 {
-            write!(info, "pv ").unwrap();
-            let len = usize::min(root_pv.len, depth as usize);
-            
-            for &mv in root_pv.moves[..len].iter() {
-                if let Some(mv) = mv {
-                    if !board.is_legal(mv) {
-                        break;
-                    }
-
-                    write!(info, "{} ", mv.display(&board, chess960)).unwrap();
-                    board.make_move(mv);
-                } else {
-                    break;
-                }
-            }
-        }
-
-        println!("{}", info);
-    }
-}
-
 impl SearchInfo for UciInfo {
-    fn push(
+    fn update(
         thread: u16,
         board: &Board,
         ctx: &ThreadContext,
         shared_ctx: &SharedContext,
-        eval: Option<Score>,
+        score: Score,
         depth: u8,
         chess960: bool,
     ) {
@@ -503,32 +429,12 @@ impl SearchInfo for UciInfo {
             return;
         }
 
-        let mut info = format!("info depth {} seldepth {} ", depth, ctx.sel_depth);
-
-        if let Some(eval) = eval {
-            if let Some(ply) = eval.mate_in() {
-                write!(info, "score mate {} ", (ply + 1) / 2).unwrap();
-            } else {
-                write!(info, "score cp {} ", eval.0).unwrap();
-            }
-        }
-
-        let nodes = ctx.nodes.global();
-        let time = shared_ctx.time_man.elapsed();
-
-        write!(info, "nodes {} time {} ", nodes, time).unwrap();
-        
-        if time != 0 {
-            write!(info, "nps {} ", (nodes / time) * 1000).unwrap();
-        }
-
-        write!(info, "tbhits {} ", ctx.tb_hits.global()).unwrap();
-
         let mut board = board.clone();
+        let mut pv_text = String::new();
         let root_pv = &ctx.root_pv;
 
         if root_pv.len != 0 {
-            write!(info, "pv ").unwrap();
+            write!(pv_text, "pv ").unwrap();
             let len = usize::min(root_pv.len, depth as usize);
 
             for &mv in root_pv.moves[..len].iter() {
@@ -537,7 +443,7 @@ impl SearchInfo for UciInfo {
                         break;
                     }
 
-                    write!(info, "{} ", mv.display(&board, chess960)).unwrap();
+                    write!(pv_text, "{} ", mv.display(&board, chess960)).unwrap();
                     board.make_move(mv);
                 } else {
                     break;
@@ -545,17 +451,29 @@ impl SearchInfo for UciInfo {
             }
         }
 
-        println!("{}", info);
+        let nodes = ctx.nodes.global();
+        let time = shared_ctx.time_man.elapsed();
+
+        println!(
+            "info depth {} seldepth {} score {} time {} nodes {} nps {} {}",
+            depth,
+            ctx.sel_depth,
+            score,
+            time,
+            nodes,
+            nodes / time.max(1) * 1000,
+            pv_text
+        );
     }
 }
 
 impl SearchInfo for NoInfo {
-    fn push(
+    fn update(
         _: u16,
         _: &Board,
         _: &ThreadContext,
         _: &SharedContext,
-        _: Option<Score>,
+        _: Score,
         _: u8,
         _: bool,
     ) { }
