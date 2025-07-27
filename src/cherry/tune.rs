@@ -49,7 +49,7 @@ pub fn tune(
         });
 
     let schedule = TrainingSchedule {
-        net_id: String::from("cherry_768-1024"),
+        net_id: String::from("cherry_768-256"),
         eval_scale: EVAL_SCALE as f32,
         wdl_scheduler: wdl::ConstantWDL { value: 0.1 },
         lr_scheduler: lr::StepLR { start: 0.001, gamma: 0.1, step: 18 },

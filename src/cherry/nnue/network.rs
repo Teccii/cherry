@@ -6,7 +6,7 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 pub const INPUT: usize = 768;
-pub const HL: usize = 1024;
+pub const HL: usize = 256;
 pub const L1: usize = HL * 2;
 
 pub const EVAL_SCALE: i16 = 400;

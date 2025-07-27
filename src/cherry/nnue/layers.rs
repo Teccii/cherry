@@ -11,6 +11,7 @@ pub fn activate_ft(
     screlu(them, &mut output[HL..].try_into().unwrap());
 }
 
+#[inline]
 pub fn feed_forward<const L: usize, const NL: usize>(
     input: &[u8; L],
     weights: &[i16; L * NL],
@@ -33,6 +34,7 @@ pub fn feed_forward<const L: usize, const NL: usize>(
     screlu(&values, output);
 }
 
+#[inline]
 pub fn feed_forward_one<const L: usize>(
     input: &[u8; L],
     weights: &[i16; L],
@@ -55,6 +57,7 @@ pub fn feed_forward_one<const L: usize>(
     }
 }
 
+#[inline]
 pub fn screlu<const N: usize>(input: &[i16; N], output: &mut [u8; N]) {
     let zero = I16Reg::splat(0);
     let qa = I16Reg::splat(QA);

@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
+nnue = []
 tune = ["dep:bullet", "nnue"]
 tune-hip = ["tune", "bullet/hip"]
-nnue = []
 
 [dependencies]
 cherry-chess = { path = "cherry-chess" }
