@@ -1,10 +1,24 @@
+[package]
+name = "cherry"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+tune = ["dep:bullet", "nnue"]
+tune-hip = ["tune", "bullet/hip"]
+nnue = []
+
+[dependencies]
+cherry-chess = { path = "cherry-chess" }
+bullet = { git = "https://github.com/jw1912/bullet", package = "bullet_lib", optional = true }
+atomic-time = "0.1.5"
+pyrrhic-rs = "0.2.0"
+arrayvec = "0.7.6"
+rayon =  "1.10.0"
+
 [workspace]
 resolver = "3"
-members = [
-    "cherry-core",
-    "cherry-engine",
-    "cherry-types",
-]
+members = ["cherry-chess", "cherry-types"]
 
 [profile.release]
 lto="fat"

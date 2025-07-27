@@ -1,4 +1,4 @@
-use cherry_core::*;
+use cherry_chess::*;
 use std::ops::*;
 use crate::Score;
 

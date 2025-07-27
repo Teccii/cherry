@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------
 MIT License | Copyright (c) 2021 analog-hors
 
-Most of cherry-core directly copies, or at the very least
+Most of cherry-chess directly copies, or at the very least
 uses a substantial portion of the source code of the wonderful
 cozy-chess library written and distributed by analog-hors.
 

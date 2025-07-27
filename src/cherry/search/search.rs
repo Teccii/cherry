@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 use pyrrhic_rs::WdlProbeResult;
-use cherry_core::*;
+use cherry_chess::*;
 use crate::*;
 
 /*----------------------------------------------------------------*/

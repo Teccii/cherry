@@ -1,7 +1,7 @@
 use std::{fmt::Write, sync::Arc};
 use arrayvec::ArrayVec;
 use pyrrhic_rs::TableBases;
-use cherry_core::*;
+use cherry_chess::*;
 use crate::*;
 
 /*----------------------------------------------------------------*/

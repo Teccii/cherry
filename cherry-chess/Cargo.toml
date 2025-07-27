@@ -1,5 +1,5 @@
 [package]
-name = "cherry-core"
+name = "cherry-chess"
 version = "0.1.0"
 edition = "2024"
 

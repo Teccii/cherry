@@ -1,4 +1,4 @@
-use cherry_core::*;
+use cherry_chess::*;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -140,13 +140,6 @@ pub struct Evaluator {
 }
 
 impl Evaluator {
-    #[inline]
-    pub fn new(weights: EvalWeights) -> Evaluator {
-        Evaluator { weights }
-    }
-
-    /*----------------------------------------------------------------*/
-
     pub fn eval(&self, board: &Board) -> Score {
         let phase = calc_phase(board);
         let stm = board.stm().sign();

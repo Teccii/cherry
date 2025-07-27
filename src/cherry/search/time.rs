@@ -230,22 +230,14 @@ impl TimeManager {
     }
 
     #[inline]
-    pub fn start_time(&self) -> Instant {
-        self.start.load(Ordering::Relaxed)
-    }
-
-    #[inline]
     pub fn elapsed(&self) -> u64 {
-        self.start_time().elapsed().as_millis() as u64
+        self.start.load(Ordering::Relaxed)
+            .elapsed()
+            .as_millis() as u64
     }
 
     #[inline]
     pub fn is_infinite(&self) -> bool {
         self.infinite.load(Ordering::Relaxed)
-    }
-
-    #[inline]
-    pub fn no_manage(&self) -> bool {
-        self.no_manage.load(Ordering::Relaxed)
     }
 }

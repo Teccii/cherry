@@ -1,10 +1,9 @@
 use pyrrhic_rs::{
-    DtzProbeResult,
     EngineAdapter,
     TableBases,
     WdlProbeResult
 };
-use cherry_core::*;
+use cherry_chess::*;
 
 #[derive(Clone)]
 pub struct SyzygyAdapter;

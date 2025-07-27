@@ -1,5 +1,5 @@
 use std::sync::atomic::*;
-use cherry_core::*;
+use cherry_chess::*;
 use crate::*;
 
 /*----------------------------------------------------------------*/

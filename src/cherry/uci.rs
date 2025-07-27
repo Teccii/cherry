@@ -1,5 +1,5 @@
-use std::{fmt, str::FromStr, time::Duration};
-use cherry_core::*;
+use std::{str::FromStr, time::Duration};
+use cherry_chess::*;
 
 /*----------------------------------------------------------------*/
 
