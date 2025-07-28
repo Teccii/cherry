@@ -1,5 +1,4 @@
-use rand::{Rng, SeedableRng};
-use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng, rngs::StdRng};
 use cherry_chess::{Board, BoardStatus};
 use super::*;
 
