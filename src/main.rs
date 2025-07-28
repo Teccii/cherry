@@ -12,8 +12,6 @@ use cherry::*;
 /*----------------------------------------------------------------*/
 
 fn main() {
-    println!("Cherry v{} by Tecci", ENGINE_VERSION);
-
     let mut buffer = String::new();
     let mut engine = Engine::new();
     let args = env::args()
@@ -25,6 +23,8 @@ fn main() {
         engine.input(args.trim(), args.len());
         return;
     }
+
+    println!("Cherry v{} by Tecci", ENGINE_VERSION);
     
     while let Ok(bytes) = io::stdin().read_line(&mut buffer) {
         if !engine.input(buffer.trim(), bytes) {
