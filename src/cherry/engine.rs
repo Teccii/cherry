@@ -112,7 +112,7 @@ impl Engine {
                         let mut searcher = searcher.lock().unwrap();
                         let searcher = &mut *searcher; //???
 
-                        #[cfg(not(feature = "nnue"))] searcher.pos.reset(board);
+                        #[cfg(not(feature = "nnue"))] searcher.pos.set_board(board);
                         #[cfg(feature = "nnue")] searcher.pos.set_board(board, &searcher.shared_ctx.nnue_weights);
 
                         for mv in moves {
@@ -219,7 +219,7 @@ impl Engine {
 
                 let start_time = Instant::now();
                 for pos in BENCH_POSITIONS.iter().map(|fen| fen.parse::<Board>().unwrap()) {
-                    #[cfg(not(feature = "nnue"))] searcher.pos.reset(pos.clone());
+                    #[cfg(not(feature = "nnue"))] searcher.pos.set_board(pos.clone());
                     #[cfg(feature = "nnue")] searcher.pos.set_board(pos.clone(), &searcher.shared_ctx.nnue_weights);
                     searcher.clean_ttable();
 
@@ -256,6 +256,11 @@ impl Engine {
                     (total_nodes / total_time) * 1000
                 );
             },
+            #[cfg(feature = "datagen")] UciCommand::DataGen {
+                count,
+                seed,
+                moves,
+            } => datagen(count, seed, moves),
             #[cfg(feature = "tune")] UciCommand::Tune {
                 threads,
                 buffer_size,

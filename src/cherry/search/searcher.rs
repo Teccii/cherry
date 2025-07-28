@@ -231,7 +231,7 @@ impl Searcher {
         }
         
         self.main_ctx.reset();
-        self.pos.reset(&self.shared_ctx.nnue_weights);
+        #[cfg(feature = "nnue")] self.pos.reset(&self.shared_ctx.nnue_weights);
 
         let mut result = (None, None, Score::ZERO, 0);
         rayon::scope(|s| {
