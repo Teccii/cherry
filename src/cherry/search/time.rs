@@ -26,6 +26,8 @@ pub struct TimeManager {
     move_stability: AtomicU16,
 
     moves_to_go: AtomicU16,
+    use_max_depth: AtomicBool,
+    use_max_nodes: AtomicBool,
     max_depth: AtomicU8,
     max_nodes: AtomicU64,
 
@@ -47,6 +49,8 @@ impl TimeManager {
             prev_move: Mutex::new(None),
             move_stability: AtomicU16::new(0),
             moves_to_go: AtomicU16::new(EXPECTED_MOVES),
+            use_max_depth: AtomicBool::new(false),
+            use_max_nodes: AtomicBool::new(false),
             max_depth: AtomicU8::new(MAX_DEPTH),
             max_nodes: AtomicU64::new(u64::MAX),
             no_manage: AtomicBool::new(true),
@@ -69,8 +73,8 @@ impl TimeManager {
         let mut b_inc = 0;
         let mut move_time = None;
         let mut moves_to_go = None;
-        let mut max_depth = MAX_DEPTH;
-        let mut max_nodes = u64::MAX;
+        let mut max_depth = None;
+        let mut max_nodes = None;
         let mut infinite = true;
         let mut pondering = false;
 
@@ -101,10 +105,10 @@ impl TimeManager {
                     moves_to_go = Some(*moves);
                 },
                 SearchLimit::MaxDepth(depth ) => {
-                    max_depth = *depth;
+                    max_depth = Some(*depth);
                 },
                 SearchLimit::MaxNodes(nodes ) => {
-                    max_nodes = *nodes;
+                    max_nodes = Some(*nodes);
                 },
                 SearchLimit::Infinite => {
                     infinite = true;
@@ -121,8 +125,10 @@ impl TimeManager {
 
         self.pondering.store(pondering, Ordering::Relaxed);
         self.infinite.store(infinite, Ordering::Relaxed);
-        self.max_depth.store(max_depth, Ordering::Relaxed);
-        self.max_nodes.store(max_nodes, Ordering::Relaxed);
+        self.use_max_depth.store(max_depth.is_some(), Ordering::Relaxed);
+        self.use_max_nodes.store(max_nodes.is_some(), Ordering::Relaxed);
+        self.max_depth.store(max_depth.unwrap_or(MAX_DEPTH), Ordering::Relaxed);
+        self.max_nodes.store(max_nodes.unwrap_or(u64::MAX), Ordering::Relaxed);
         
         let moves_to_go = moves_to_go.unwrap_or(EXPECTED_MOVES) + 1;
         self.moves_to_go.store(moves_to_go, Ordering::Relaxed);
@@ -209,14 +215,14 @@ impl TimeManager {
     #[inline]
     pub fn abort_search(&self, nodes: u64) -> bool {
         self.abort_now() || self.timeout_search()
-        || self.max_nodes.load(Ordering::Relaxed) <= nodes
+            || (self.use_max_nodes.load(Ordering::Relaxed) && self.max_nodes.load(Ordering::Relaxed) <= nodes)
     }
 
     #[inline]
     pub fn abort_id(&self, depth: u8, nodes: u64) -> bool {
         self.abort_now() || self.timeout_id()
-        || self.max_depth.load(Ordering::Relaxed) <= depth
-        || self.max_nodes.load(Ordering::Relaxed) <= nodes
+            || (self.use_max_depth.load(Ordering::Relaxed) && self.max_depth.load(Ordering::Relaxed) <= depth)
+            || (self.use_max_nodes.load(Ordering::Relaxed) && self.max_nodes.load(Ordering::Relaxed) <= nodes)
     }
 
     #[inline]
@@ -234,6 +240,16 @@ impl TimeManager {
         self.start.load(Ordering::Relaxed)
             .elapsed()
             .as_millis() as u64
+    }
+    
+    #[inline]
+    pub fn use_max_depth(&self) -> bool {
+        self.use_max_depth.load(Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn use_max_nodes(&self) -> bool {
+        self.use_max_nodes.load(Ordering::Relaxed)
     }
 
     #[inline]

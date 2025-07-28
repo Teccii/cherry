@@ -333,7 +333,7 @@ fn search_worker<Info: SearchInfo>(
                 if depth > 1 && ctx.abort_now {
                     break 'id;
                 }
-
+                
                 window.set_midpoint(score);
                 let root_move = ctx.ss[0].pv.moves[0].unwrap();
 
@@ -379,8 +379,10 @@ fn search_worker<Info: SearchInfo>(
             depth += 1;
         }
 
-        while depth == MAX_DEPTH && shared_ctx.time_man.is_infinite()
-            && !(shared_ctx.time_man.abort_now() || shared_ctx.time_man.timeout_id())  {
+        while depth == MAX_DEPTH
+            && shared_ctx.time_man.is_infinite()
+            && !(shared_ctx.time_man.use_max_depth() || shared_ctx.time_man.use_max_nodes())
+            && !ctx.abort_now {
             Info::update(
                 thread,
                 pos.board(),
