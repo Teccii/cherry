@@ -15,11 +15,17 @@ pub fn datagen(count: usize, seed: u64, moves: usize) {
 }
 
 fn gen_fen(rng: &mut StdRng, moves: usize, #[cfg(feature = "nnue")]weights: &NetworkWeights) -> String {
+    macro_rules! try_again {
+        ($e:expr) => {
+            if $e {
+                return gen_fen(rng, moves, #[cfg(feature = "nnue")]weights);
+            }
+        }
+    }
+
     let mut board = Board::default();
     for _ in 0..moves {
-        if matches!(board.status(), BoardStatus::Checkmate | BoardStatus::Draw) {
-            return gen_fen(rng, moves, #[cfg(feature = "nnue")]weights);
-        }
+        try_again!(matches!(board.status(), BoardStatus::Checkmate | BoardStatus::Draw));
 
         let mut legals = Vec::new();
         board.gen_moves(|moves| {
@@ -30,13 +36,8 @@ fn gen_fen(rng: &mut StdRng, moves: usize, #[cfg(feature = "nnue")]weights: &Net
         board.make_move(legals[rng.random_range(0..legals.len())]);
     }
 
-    if matches!(board.status(), BoardStatus::Checkmate | BoardStatus::Draw) {
-        return gen_fen(rng, moves, #[cfg(feature = "nnue")]weights);
-    }
-
-    if Position::new(board, #[cfg(feature = "nnue")]weights).eval(#[cfg(feature = "nnue")]weights).abs() >= 1000 {
-        return gen_fen(rng, moves, #[cfg(feature = "nnue")]weights);
-    }
+    try_again!(matches!(board.status(), BoardStatus::Checkmate | BoardStatus::Draw));
+    try_again!(Position::new(board, #[cfg(feature = "nnue")]weights).eval(#[cfg(feature = "nnue")]weights).abs() > 1000);
 
     board.to_string()
 }
