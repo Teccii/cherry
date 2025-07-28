@@ -29,7 +29,7 @@ pub enum UciCommand {
         queue_size: usize,
         file_paths: Vec<String>,
     },
-    #[cfg(feature = "datagen")] DataGen {
+    DataGen {
         count: usize,
         seed: u64,
         moves: usize,
@@ -79,16 +79,15 @@ impl UciCommand {
                 threads: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1),
                 hash: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(16)
             }),
-            #[cfg(feature = "datagen")] "genfens" => {
+            "genfens" => {
                 let count = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;
                 reader.next().ok_or(UciParseError::InvalidArguments)?;
                 let seed = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
                 reader.next().ok_or(UciParseError::InvalidArguments)?;
                 reader.next().ok_or(UciParseError::InvalidArguments)?;
-                let moves = {
-                    reader.next().ok_or(UciParseError::InvalidArguments)?;
-                    reader.next().and_then(|s| s.parse::<usize>().ok())
-                }.unwrap_or(8);
+                let moves = reader.next()
+                    .and_then(|_| reader.next().and_then(|s| s.parse::<usize>().ok()))
+                    .unwrap_or(8);
 
                 Ok(UciCommand::DataGen { count, seed, moves })
             },

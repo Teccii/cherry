@@ -186,6 +186,21 @@ impl Engine {
                 println!("\n{:?}", board);
                 println!("FEN: {}", board);
             },
+            UciCommand::DataGen {
+                count,
+                seed,
+                moves,
+            } => datagen(count, seed, moves),
+            #[cfg(feature = "tune")] UciCommand::Tune {
+                threads,
+                buffer_size,
+                queue_size,
+                file_paths
+            } => {
+                let file_paths = file_paths.iter().map(String::as_str).collect::<Vec<_>>();
+
+                tune(threads, buffer_size, queue_size, &file_paths);
+            },
             UciCommand::Position(board, moves) => self.sender.send(ThreadCommand::Position(
                 Arc::clone(&self.searcher),
                 board,
@@ -255,21 +270,6 @@ impl Engine {
                     total_nodes,
                     (total_nodes / total_time) * 1000
                 );
-            },
-            #[cfg(feature = "datagen")] UciCommand::DataGen {
-                count,
-                seed,
-                moves,
-            } => datagen(count, seed, moves),
-            #[cfg(feature = "tune")] UciCommand::Tune {
-                threads,
-                buffer_size,
-                queue_size,
-                file_paths
-            } => {
-                let file_paths = file_paths.iter().map(String::as_str).collect::<Vec<_>>();
-
-                tune(threads, buffer_size, queue_size, &file_paths);
             },
             UciCommand::Quit => {
                 self.time_man.stop();
