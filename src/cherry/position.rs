@@ -8,11 +8,13 @@ pub struct Position {
     board: Board,
     board_history: Vec<Board>,
     move_history: Vec<Option<Move>>,
-    evaluator: Evaluator,
+    #[cfg(not(feature = "nnue"))] evaluator: Evaluator,
+    #[cfg(feature = "nnue")] nnue: Nnue,
 }
 
 impl Position {
     #[inline]
+    #[cfg(not(feature = "nnue"))]
     pub fn new(board: Board) -> Position {
         Position {
             board,
@@ -21,12 +23,39 @@ impl Position {
             evaluator: Evaluator::default(),
         }
     }
+
+    #[inline]
+    #[cfg(feature = "nnue")]
+    pub fn new(board: Board, weights: &NetworkWeights) -> Position {
+        Position {
+            board,
+            board_history: Vec::new(),
+            move_history: Vec::new(),
+            nnue: Nnue::new(&board, weights),
+        }
+    }
     
     #[inline]
-    pub fn reset(&mut self, board: Board) {
+    #[cfg(not(feature = "nnue"))]
+    pub fn set_board(&mut self, board: Board) {
         self.board = board;
         self.board_history.clear();
         self.move_history.clear();
+    }
+
+    #[inline]
+    #[cfg(feature = "nnue")]
+    pub fn set_board(&mut self, board: Board, weights: &NetworkWeights) {
+        self.board = board;
+        self.nnue.reset(&board, weights);
+        self.board_history.clear();
+        self.move_history.clear();
+    }
+
+    #[inline]
+    #[cfg(feature = "nnue")]
+    pub fn reset(&mut self, weights: &NetworkWeights) {
+        self.nnue.reset(&self.board, weights);
     }
 
     /*----------------------------------------------------------------*/
@@ -69,11 +98,22 @@ impl Position {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    #[cfg(not(feature = "nnue"))]
     pub fn make_move(&mut self, mv: Move) {
         self.board_history.push(self.board.clone());
         self.move_history.push(Some(mv));
         self.board.make_move(mv);
     }
+
+    #[inline]
+    #[cfg(feature = "nnue")]
+    pub fn make_move(&mut self, mv: Move) {
+        self.board_history.push(self.board.clone());
+        self.move_history.push(Some(mv));
+        self.nnue.make_move(&self.board, mv);
+        self.board.make_move(mv);
+    }
+
 
     #[inline]
     pub fn null_move(&mut self) -> bool {
@@ -89,8 +129,17 @@ impl Position {
     }
 
     #[inline]
+    #[cfg(not(feature = "nnue"))]
     pub fn unmake_move(&mut self) {
         self.board = self.board_history.pop().unwrap();
+        self.move_history.pop();
+    }
+
+    #[inline]
+    #[cfg(feature = "nnue")]
+    pub fn unmake_move(&mut self) {
+        self.board = self.board_history.pop().unwrap();
+        self.nnue.unmake_move();
         self.move_history.pop();
     }
     
@@ -103,8 +152,17 @@ impl Position {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    #[cfg(not(feature = "nnue"))]
     pub fn eval(&self) -> Score {
         self.evaluator.eval(&self.board)
+    }
+
+    #[inline]
+    #[cfg(feature = "nnue")]
+    pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
+        self.nnue.apply_updates(weights);
+
+        Score::new(self.nnue.eval(weights, self.stm()))
     }
     
     /*----------------------------------------------------------------*/

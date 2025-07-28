@@ -171,7 +171,7 @@ pub fn search<Node: NodeType>(
     let corr = ctx.history.get_corr(pos.board(), &shared_ctx.weights);
     let raw_eval = match skip_move {
         Some(_) => ctx.ss[ply as usize].eval,
-        None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval())
+        None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(#[cfg(feature = "nnue")] &shared_ctx.nnue_weights)),
     };
     let static_eval = raw_eval + corr;
     let prev_eval = (ply >= 2).then(|| ctx.ss[ply as usize - 2].eval);
@@ -508,7 +508,7 @@ pub fn q_search<Node: NodeType>(
     }
 
     if ply >= MAX_PLY {
-        return pos.eval() + ctx.history.get_corr(pos.board(), &shared_ctx.weights);
+        return pos.eval(#[cfg(feature = "nnue")] &shared_ctx.nnue_weights) + ctx.history.get_corr(pos.board(), &shared_ctx.weights);
     }
 
     let tt_entry = shared_ctx.t_table.probe(pos.board());
@@ -536,7 +536,7 @@ pub fn q_search<Node: NodeType>(
 
     let in_check = pos.in_check();
     let corr = ctx.history.get_corr(pos.board(), &shared_ctx.weights);
-    let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval());
+    let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(#[cfg(feature = "nnue")] &shared_ctx.nnue_weights));
     let static_eval = raw_eval + corr;
 
     if !in_check {

@@ -8,7 +8,7 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-pub const MOVE_OVERHEAD: u64 = 100;
+pub const MOVE_OVERHEAD: u64 = 200;
 const EXPECTED_MOVES: u16 = 64;
 const STABILITY_FACTOR: [f32; 5] = [2.5, 1.2, 0.9, 0.8, 0.75];
 
@@ -139,7 +139,7 @@ impl TimeManager {
             };
             let move_overhead = self.move_overhead.load(Ordering::Relaxed);
             let max_time = (time * 3 / 5).min(time.saturating_sub(move_overhead));
-            let target_time = (time / moves_to_go as u64 + inc).saturating_sub(move_overhead).min(max_time);
+            let target_time = ((time / moves_to_go as u64).saturating_sub(move_overhead) + inc).min(max_time);
 
             self.base_time.store(target_time, Ordering::Relaxed);
             self.target_time.store(target_time, Ordering::Relaxed);
