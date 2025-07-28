@@ -13,6 +13,7 @@ pub type SyzygyTable = Option<TableBases<SyzygyAdapter>>;
 pub struct SharedContext {
     pub t_table: Arc<TTable>,
     pub time_man: Arc<TimeManager>,
+    #[cfg(feature = "nnue")] pub nnue_weights: Arc<NetworkWeights>,
     pub syzygy: Arc<SyzygyTable>,
     pub syzygy_depth: u8,
     pub search_moves: ArrayVec<Move, MAX_MOVES>,
@@ -159,12 +160,18 @@ pub struct Searcher {
 
 impl Searcher {
     #[inline]
-    pub fn new(board: Board, time_man: Arc<TimeManager>) -> Searcher {
+    pub fn new(
+        board: Board,
+        time_man: Arc<TimeManager>,
+        #[cfg(feature = "nnue")] weights: NetworkWeights
+    ) -> Searcher {
         Searcher {
-            pos: Position::new(board),
+            #[cfg(not(feature = "nnue"))] pos: Position::new(board),
+            #[cfg(feature = "nnue")] pos: Position::new(board, &weights),
             shared_ctx: SharedContext {
                 t_table: Arc::new(TTable::new(16)),
                 time_man,
+                #[cfg(feature = "nnue")] nnue_weights: Arc::new(weights),
                 syzygy: Arc::new(None),
                 syzygy_depth: 1,
                 search_moves: ArrayVec::new(),
@@ -224,6 +231,7 @@ impl Searcher {
         }
         
         self.main_ctx.reset();
+        #[cfg(feature = "nnue")] self.pos.reset(&self.shared_ctx.nnue_weights);
 
         let mut result = (None, None, Score::ZERO, 0);
         rayon::scope(|s| {

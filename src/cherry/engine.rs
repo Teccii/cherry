@@ -83,10 +83,12 @@ pub struct Engine {
 
 impl Engine {
     pub fn new() -> Engine {
+        #[cfg(feature = "nnue")] let nnue_weights = NetworkWeights::default();
         let time_man = Arc::new(TimeManager::new());
         let searcher = Arc::new(Mutex::new(Searcher::new(
             Board::default(),
             Arc::clone(&time_man),
+            #[cfg(feature = "nnue")] nnue_weights,
         )));
 
         let (tx, rx): (Sender<ThreadCommand>, Receiver<ThreadCommand>) = channel();
@@ -108,10 +110,15 @@ impl Engine {
                     },
                     ThreadCommand::Position(searcher, board, moves) => {
                         let mut searcher = searcher.lock().unwrap();
-                        searcher.pos.reset(board);
+                        let searcher = &mut *searcher; //???
+
+                        #[cfg(not(feature = "nnue"))] searcher.pos.set_board(board);
+                        #[cfg(feature = "nnue")] searcher.pos.set_board(board, &searcher.shared_ctx.nnue_weights);
 
                         for mv in moves {
                             searcher.pos.make_move(mv);
+
+                            #[cfg(feature = "nnue")] searcher.pos.reset(&searcher.shared_ctx.nnue_weights);
                         }
                     },
                     ThreadCommand::SetOption(searcher, name, value) => {
@@ -203,6 +210,7 @@ impl Engine {
             },
             UciCommand::Bench { depth, threads, hash } => {
                 let mut searcher = self.searcher.lock().unwrap();
+                let searcher = &mut *searcher;
                 let mut bench_data = Vec::new();
                 let limits = vec![SearchLimit::MaxDepth(depth)];
 
@@ -211,7 +219,8 @@ impl Engine {
 
                 let start_time = Instant::now();
                 for pos in BENCH_POSITIONS.iter().map(|fen| fen.parse::<Board>().unwrap()) {
-                    searcher.pos.reset(pos.clone());
+                    #[cfg(not(feature = "nnue"))] searcher.pos.set_board(pos.clone());
+                    #[cfg(feature = "nnue")] searcher.pos.set_board(pos.clone(), &searcher.shared_ctx.nnue_weights);
                     searcher.clean_ttable();
 
                     let start_time = Instant::now();
@@ -247,6 +256,11 @@ impl Engine {
                     (total_nodes / total_time) * 1000
                 );
             },
+            #[cfg(feature = "datagen")] UciCommand::DataGen {
+                count,
+                seed,
+                moves,
+            } => datagen(count, seed, moves),
             #[cfg(feature = "tune")] UciCommand::Tune {
                 threads,
                 buffer_size,

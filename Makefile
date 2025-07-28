@@ -5,6 +5,5 @@ else
 NAME := $(EXE)
 endif
 
-
 native:
 	cargo rustc --release -p cherry -- -C target-cpu=native --emit link=$(NAME)

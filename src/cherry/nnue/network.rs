@@ -9,13 +9,13 @@ pub const INPUT: usize = 768;
 pub const HL: usize = 256;
 pub const L1: usize = HL * 2;
 
-pub const EVAL_SCALE: i16 = 400;
-pub const QA: i16 = 255;
-pub const QB: i16 = 64;
+pub const EVAL_SCALE: i32 = 400;
+pub const QA: i32 = 255;
+pub const QB: i32 = 64;
 
 /*----------------------------------------------------------------*/
 
-const NNUE_BYTES: &[u8] = /*include_bytes!("../../data/cherry_nnue.bin");*/ &[0];
+const NETWORK_BYTES: &[u8] = &[];
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -66,7 +66,7 @@ impl NetworkWeights {
 impl Default for NetworkWeights {
     #[inline]
     fn default() -> Self {
-        Self::new(NNUE_BYTES)
+        Self::new(NETWORK_BYTES)
     }
 }
 
@@ -74,19 +74,19 @@ impl Default for NetworkWeights {
 
 #[derive(Debug, Clone)]
 pub struct Nnue {
-    pub acc_stack: [Accumulator; MAX_PLY as usize + 1],
+    pub acc_stack: Box<[Accumulator; MAX_PLY as usize + 1]>,
     pub acc_index: usize,
 }
 
 impl Nnue {
     pub fn new(board: &Board, weights: &NetworkWeights) -> Nnue {
         let mut nnue = Nnue {
-            acc_stack: std::array::from_fn(|_| Accumulator {
+            acc_stack: Box::new(std::array::from_fn(|_| Accumulator {
                 white: Align64([0; HL]),
                 black: Align64([0; HL]),
                 update_buffer: UpdateBuffer::default(),
                 dirty: [false; Color::COUNT],
-            }),
+            })),
             acc_index: 0,
         };
 
@@ -95,7 +95,7 @@ impl Nnue {
     }
 
     pub fn reset(&mut self, board: &Board, weights: &NetworkWeights) {
-        for acc in &mut self.acc_stack {
+        for acc in &mut *self.acc_stack {
             acc.white = weights.ft_bias.clone();
             acc.black = weights.ft_bias.clone();
         }
@@ -174,13 +174,11 @@ impl Nnue {
         let acc = self.acc();
         let (us, them) = (acc.select(stm), acc.select(!stm));
 
-        let mut ft_output = Align64([0u8; L1]);
-        let mut l1_output = 0;
+        let mut output = 0;
+        feed_forward(them, &weights.out_weights[HL..].try_into().unwrap(), &mut output);
+        feed_forward(us, &weights.out_weights[..HL].try_into().unwrap(), &mut output);
 
-        activate_ft(us, them, &mut ft_output);
-        feed_forward_one(&ft_output, &weights.out_weights, weights.out_bias, &mut l1_output);
-
-        (l1_output as i32 * EVAL_SCALE as i32 / (QA as i32 * QB as i32)) as i16
+        ((output / QA + weights.out_bias as i32) * EVAL_SCALE / (QA * QB)) as i16
     }
     
     /*----------------------------------------------------------------*/

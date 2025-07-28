@@ -1,31 +1,21 @@
+use crate::{EVAL_SCALE, HL, L1, QA, QB};
 use bullet::{
+    LocalSettings, TrainingSchedule, TrainingSteps,
     game::{
         formats::sfbinpack::{
-            chess::{
-                piecetype::PieceType,
-                r#move::MoveType,
-            },
             TrainingDataEntry,
+            chess::{r#move::MoveType, piecetype::PieceType},
         },
         inputs,
     },
-    value::{loader, ValueTrainerBuilder},
-    trainer::save::SavedFormat,
+    lr::{self, CosineDecayLR},
     nn::optimiser,
+    trainer::save::SavedFormat,
+    value::{ValueTrainerBuilder, loader},
     wdl,
-    lr,
-    LocalSettings,
-    TrainingSchedule,
-    TrainingSteps,
 };
-use crate::{HL, L1, QA, QB, EVAL_SCALE};
 
-pub fn tune(
-    threads: usize,
-    buffer_size: usize,
-    queue_size: usize,
-    file_paths: &[&str]
-) {
+pub fn tune(threads: usize, buffer_size: usize, queue_size: usize, file_paths: &[&str]) {
     let mut trainer = ValueTrainerBuilder::default()
         .dual_perspective()
         .optimiser(optimiser::AdamW)
@@ -51,8 +41,12 @@ pub fn tune(
     let schedule = TrainingSchedule {
         net_id: String::from("cherry_768-256"),
         eval_scale: EVAL_SCALE as f32,
-        wdl_scheduler: wdl::ConstantWDL { value: 0.1 },
-        lr_scheduler: lr::StepLR { start: 0.001, gamma: 0.1, step: 18 },
+        wdl_scheduler: wdl::ConstantWDL { value: 0.75 },
+        lr_scheduler: CosineDecayLR {
+            initial_lr: 0.001,
+            final_lr: 0.001 * 0.3f32.powi(5),
+            final_superbatch: 64,
+        },
         steps: TrainingSteps {
             batch_size: 16384,
             batches_per_superbatch: 4096,
@@ -78,12 +72,7 @@ pub fn tune(
                 && entry.pos.piece_at(entry.mv.to()).piece_type() == PieceType::None
         }
 
-        loader::SfBinpackLoader::new_concat_multiple(
-            file_paths,
-            buffer_size,
-            threads,
-            filter,
-        )
+        loader::SfBinpackLoader::new_concat_multiple(file_paths, buffer_size, threads, |_| true)
     };
 
     trainer.run(&schedule, &settings, &data_loader);

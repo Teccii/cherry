@@ -1,4 +1,4 @@
-mod eval {
+#[cfg(not(feature = "nnue"))] mod eval {
     mod eval;
     mod weights;
     
@@ -13,13 +13,11 @@ Cherry's NNUE is heavily based on code from the engines Viridithas and Black Mar
 #[cfg(feature="nnue")] mod nnue {
     mod accumulator;
     mod features;
-    mod layers;
     mod network;
     mod util;
     
     pub use accumulator::*;
     pub use features::*;
-    pub use layers::*; 
     pub use network::*;
     pub use util::*;
 }
@@ -44,6 +42,7 @@ mod search {
     pub use window::*;
 }
 
+#[cfg(feature = "datagen")] mod datagen;
 mod engine;
 mod position;
 mod score;
@@ -52,7 +51,8 @@ mod syzygy;
 mod uci;
 mod util;
 
-pub use eval::*;
+#[cfg(feature = "datagen")] pub use datagen::*;
+#[cfg(not(feature = "nnue"))] pub use eval::*;
 pub use engine::*;
 #[cfg(feature = "nnue")] pub use nnue::*;
 pub use position::*;
