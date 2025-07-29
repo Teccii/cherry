@@ -1,6 +1,4 @@
 use arrayvec::ArrayVec;
-use cherry_chess::*;
-use super::*;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -100,7 +98,7 @@ impl Nnue {
             acc.black = weights.ft_bias.clone();
         }
 
-        let mut adds = ArrayVec::<_, 64>::new();
+        let mut adds = ArrayVec::<_, 32>::new();
         for sq in board.occupied() {
             let piece = board.piece_on(sq).unwrap();
             let color = board.color_on(sq).unwrap();

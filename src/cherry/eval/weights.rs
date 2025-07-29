@@ -1,6 +1,5 @@
-use cherry_chess::*;
 use std::ops::*;
-use crate::Score;
+use crate::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct T(pub i16, pub i16);

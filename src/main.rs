@@ -6,7 +6,6 @@
 mod cherry;
 
 use std::{env, io};
-use cherry_chess::*;
 use cherry::*;
 
 /*----------------------------------------------------------------*/

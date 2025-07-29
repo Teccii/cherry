@@ -1,6 +1,5 @@
 use rand::{Rng, SeedableRng, rngs::StdRng};
-use cherry_chess::{Board, BoardStatus};
-use super::*;
+use crate::*;
 
 pub fn datagen(count: usize, seed: u64, moves: usize) {
     let mut rng = StdRng::seed_from_u64(seed);

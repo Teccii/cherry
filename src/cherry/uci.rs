@@ -1,5 +1,5 @@
 use std::{str::FromStr, time::Duration};
-use cherry_chess::*;
+use crate::*;
 
 /*----------------------------------------------------------------*/
 

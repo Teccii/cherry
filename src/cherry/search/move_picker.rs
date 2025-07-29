@@ -1,5 +1,4 @@
 use arrayvec::ArrayVec;
-use cherry_chess::*;
 use crate::*;
 
 /*----------------------------------------------------------------*/

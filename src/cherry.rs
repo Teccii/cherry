@@ -1,3 +1,5 @@
+pub use cherry_chess::*;
+
 #[cfg(not(feature = "nnue"))] mod eval {
     mod eval;
     mod weights;

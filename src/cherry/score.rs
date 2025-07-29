@@ -1,5 +1,5 @@
 use std::{cmp::Ordering, fmt, ops::*};
-use super::*;
+use crate::MAX_PLY;
 
 /*----------------------------------------------------------------*/
 

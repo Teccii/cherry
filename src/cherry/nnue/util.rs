@@ -1,6 +1,5 @@
-use std::ops::{Deref, DerefMut};
 use std::simd::{prelude::*, Simd};
-use super::*;
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
@@ -8,7 +7,7 @@ use super::*;
 #[repr(C, align(64))]
 pub struct Align64<T>(pub T);
 
-impl<T> Deref for Align64<T> {
+impl<T> std::ops::Deref for Align64<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -16,7 +15,7 @@ impl<T> Deref for Align64<T> {
     }
 }
 
-impl<T> DerefMut for Align64<T> {
+impl<T> std::ops::DerefMut for Align64<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }
@@ -35,6 +34,8 @@ impl<T> DerefMut for Align64<T> {
 )] pub const CHUNK_SIZE: usize = 16;
 pub type I16Reg = Simd<i16, CHUNK_SIZE>;
 pub type I32Reg = Simd<i32, CHUNK_SIZE>;
+
+/*----------------------------------------------------------------*/
 
 pub fn feed_forward<const L: usize>(
     input: &[i16; L],

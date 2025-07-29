@@ -3,7 +3,7 @@ use pyrrhic_rs::{
     TableBases,
     WdlProbeResult
 };
-use cherry_chess::*;
+use crate::*;
 
 #[derive(Clone)]
 pub struct SyzygyAdapter;
