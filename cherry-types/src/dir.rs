@@ -1,12 +1,14 @@
-use crate::{Bitboard, File, Rank};
-
-/*----------------------------------------------------------------*/
-
 pub trait Direction {
-    const MASK: Bitboard;
-    const SHIFT: isize;
     const DX: i8;
     const DY: i8;
+}
+
+pub(crate) const fn horizontal_shift_mask(shift: i8) -> u64 {
+    0x101010101010101u64 * if shift > 0 {
+        0xFFu8 << shift
+    } else {
+        0xFFu8 >> -shift
+    } as u64
 }
 
 /*----------------------------------------------------------------*/
@@ -24,57 +26,41 @@ pub struct DownLeft;
 /*----------------------------------------------------------------*/
 
 impl Direction for Up {
-    const MASK: Bitboard = Bitboard::FULL;
-    const SHIFT: isize = 8;
     const DX: i8 = 0;
     const DY: i8 = 1;
 }
 
 impl Direction for Down {
-    const MASK: Bitboard = Bitboard::FULL;
-    const SHIFT: isize = -8;
     const DX: i8 = 0;
     const DY: i8 = -1;
 }
 
 impl Direction for Right {
-    const MASK: Bitboard = Bitboard(!File::H.bitboard().0);
-    const SHIFT: isize = 1;
     const DX: i8 = 1;
     const DY: i8 = 0;
 }
 
 impl Direction for Left {
-    const MASK: Bitboard = Bitboard(!File::A.bitboard().0);
-    const SHIFT: isize = -1;
     const DX: i8 = -1;
     const DY: i8 = 0;
 }
 
 impl Direction for UpRight {
-    const MASK: Bitboard = Bitboard(!File::H.bitboard().0 & !Rank::Eighth.bitboard().0);
-    const SHIFT: isize = 9;
     const DX: i8 = 1;
     const DY: i8 = 1;
 }
 
 impl Direction for UpLeft {
-    const MASK: Bitboard = Bitboard(!File::A.bitboard().0 & !Rank::Eighth.bitboard().0);
-    const SHIFT: isize = 7;
     const DX: i8 = -1;
     const DY: i8 = 1;
 }
 
 impl Direction for DownRight {
-    const MASK: Bitboard = Bitboard(!File::H.bitboard().0 & !Rank::First.bitboard().0);
-    const SHIFT: isize = -7;
     const DX: i8 = 1;
     const DY: i8 = -1;
 }
 
 impl Direction for DownLeft {
-    const MASK: Bitboard = Bitboard(!File::A.bitboard().0 & !Rank::First.bitboard().0);
-    const SHIFT: isize = -9;
     const DX: i8 = -1;
     const DY: i8 = -1;
 }

@@ -94,7 +94,7 @@ impl Rank {
     
     #[inline]
     pub const fn above(self) -> Bitboard {
-        Bitboard(0xFFFFFFFFFFFFFF00).shift::<Up>(self as usize)
+        Bitboard(0xFFFFFFFFFFFFFF00).shift::<Up>(self as i8)
     }
     
     #[inline]

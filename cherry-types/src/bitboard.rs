@@ -8,27 +8,21 @@ pub struct Bitboard(pub u64);
 
 impl Bitboard {
     #[inline]
-    pub const fn shift<D: Direction>(self, steps: usize) -> Bitboard {
+    pub const fn shift<D: Direction>(self, steps: i8) -> Bitboard {
         /*
         For some reason, `shl` takes an `isize` as a parameter but then panics if you try to shift
         by a negative number. This makes no sense. It should just do `shr` if it's negative, or just
         not take in an `isize` if it's not supposed to be negative...
         */
 
-        let mut result = self;
-        let mut i = 0;
+        let mask = horizontal_shift_mask(D::DX * steps);
+        let shift = (D::DX + D::DY * 8) * steps;
 
-        while i < steps {
-            result = if D::SHIFT > 0 {
-                Bitboard((result.0 & D::MASK.0) << D::SHIFT)
-            } else {
-                Bitboard((result.0 & D::MASK.0) >> -D::SHIFT)
-            };
-            
-            i += 1;
-        }
-
-        result
+        Bitboard(if shift > 0 {
+            (self.0 << shift) & mask
+        } else {
+            (self.0 >> -shift) & mask
+        })
     }
     
     #[inline]
@@ -108,6 +102,16 @@ impl Bitboard {
     #[inline]
     pub const fn is_disjoint(self, rhs: Bitboard) -> bool {
         self.0 & rhs.0 == 0
+    }
+
+    #[inline]
+    pub const fn intersection(self, rhs: Bitboard) -> Bitboard {
+        Bitboard(self.0 & rhs.0)
+    }
+
+    #[inline]
+    pub const fn union(self, rhs: Bitboard) -> Bitboard {
+        Bitboard(self.0 & rhs.0)
     }
 
     /*----------------------------------------------------------------*/
@@ -227,38 +231,6 @@ impl Not for Bitboard {
     }
 }
 
-impl Shl<usize> for Bitboard {
-    type Output = Bitboard;
-    
-    #[inline]
-    fn shl(self, rhs: usize) -> Self::Output {
-        Bitboard(self.0 << rhs)
-    }
-}
-
-impl Shr<usize> for Bitboard {
-    type Output = Bitboard;
-
-    #[inline]
-    fn shr(self, rhs: usize) -> Self::Output {
-        Bitboard(self.0 >> rhs)
-    }
-}
-
-impl ShlAssign<usize> for Bitboard {
-    #[inline]
-    fn shl_assign(&mut self, rhs: usize) {
-        self.0 <<= rhs;
-    }
-}
-
-impl ShrAssign<usize> for Bitboard {
-    #[inline]
-    fn shr_assign(&mut self, rhs: usize) {
-        self.0 >>= rhs;
-    }
-}
-
 /*----------------------------------------------------------------*/
 
 macro_rules! impl_bb_ops {
@@ -326,6 +298,42 @@ macro_rules! impl_bb_assign_ops {
     )*}
 }
 
+macro_rules! impl_bb_shift_ops {
+    ($($ty:ty,)*) => {$(
+        impl Shl<$ty> for Bitboard {
+            type Output = Bitboard;
+
+            #[inline]
+            fn shl(self, rhs: $ty) -> Self::Output {
+                Bitboard(self.0 << rhs)
+            }
+        }
+
+        impl Shr<$ty> for Bitboard {
+            type Output = Bitboard;
+
+            #[inline]
+            fn shr(self, rhs: $ty) -> Self::Output {
+                Bitboard(self.0 >> rhs)
+            }
+        }
+
+        impl ShlAssign<$ty> for Bitboard {
+            #[inline]
+            fn shl_assign(&mut self, rhs: $ty) {
+                self.0 <<= rhs;
+            }
+        }
+
+        impl ShrAssign<$ty> for Bitboard {
+            #[inline]
+            fn shr_assign(&mut self, rhs: $ty) {
+                self.0 >>= rhs;
+            }
+        }
+    )*}
+}
+
 /*----------------------------------------------------------------*/
 
 impl_bb_ops! {
@@ -338,6 +346,11 @@ impl_bb_assign_ops! {
     BitAndAssign, bitand_assign;
     BitOrAssign, bitor_assign;
     BitXorAssign, bitxor_assign;
+}
+
+impl_bb_shift_ops! {
+    u8, u16, u32, u64, usize,
+    i8, i16, i32, i64, isize,
 }
 
 /*----------------------------------------------------------------*/
