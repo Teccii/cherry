@@ -12,6 +12,7 @@ pub enum UciCommand {
     IsReady,
     PonderHit,
     Position(Board, Vec<Move>),
+    Analyse(Vec<SearchLimit>),
     Go(Vec<SearchLimit>),
     SetOption {
         name: String,
@@ -160,8 +161,8 @@ impl UciCommand {
                 
                 Ok(UciCommand::Position(board, moves))
             },
-            "go" => {
-                let mut options= Vec::new();
+            "analyse" | "go" => {
+                let mut limits = Vec::new();
                 let mut tokens = reader.peekable();
                 let keywords = &[
                     "searchmoves", "wtime", "btime", "winc", "binc", "movetime",
@@ -171,7 +172,7 @@ impl UciCommand {
                 while let Some(&token) = tokens.peek() {
                     tokens.next();
 
-                    options.push(match token {
+                    limits.push(match token {
                         "searchmoves" => {
                             let mut moves = Vec::new();
 
@@ -223,7 +224,11 @@ impl UciCommand {
                     });
                 }
 
-                Ok(UciCommand::Go(options))
+                Ok(if token == "go" {
+                    UciCommand::Go(limits)
+                } else {
+                    UciCommand::Analyse(limits)
+                })
             },
             "setoption" => {
                 reader.next().filter(|&s| s == "name").ok_or(UciParseError::InvalidArguments)?;

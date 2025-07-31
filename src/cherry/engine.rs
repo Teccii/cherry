@@ -1,9 +1,4 @@
-use std::{
-    sync::{Arc, Mutex, mpsc::*},
-    cell::RefCell,
-    fmt::Write,
-    rc::Rc,
-};
+use std::{fmt::Write, sync::{Arc, Mutex, mpsc::*}};
 use std::time::Instant;
 use crate::*;
 
@@ -78,7 +73,7 @@ pub struct Engine {
     searcher: Arc<Mutex<Searcher>>,
     time_man: Arc<TimeManager>,
     sender: Sender<ThreadCommand>,
-    chess960: Rc<RefCell<bool>>,
+    chess960: bool,
 }
 
 impl Engine {
@@ -147,13 +142,13 @@ impl Engine {
             searcher,
             time_man,
             sender: tx,
-            chess960: Rc::new(RefCell::new(false)),
+            chess960: false,
         }
     }
 
     pub fn input(&mut self, input: &str, bytes: usize) -> bool {
         let cmd = if bytes == 0 { UciCommand::Quit } else {
-            match UciCommand::parse(input, *self.chess960.borrow()) {
+            match UciCommand::parse(input, self.chess960) {
                 Ok(cmd) => cmd,
                 Err(e) => {
                     println!("{:?}", e);
@@ -170,7 +165,7 @@ impl Engine {
                 println!("option name Hash type spin default 16 min 1 max 65535");
                 println!("option name SyzygyPath type string default <empty>");
                 println!("option name SyzygyProbeDepth type spin default 1 min 0 max 128");
-                println!("option name Move Overhead type spin default 100 min 0 max 5000");
+                println!("option name MoveOverhead type spin default 100 min 0 max 5000");
                 println!("option name Ponder type check default false");
                 println!("option name UCI_Chess960 type check default false");
                 println!("uciok");
@@ -183,8 +178,7 @@ impl Engine {
                 let searcher = self.searcher.lock().unwrap();
                 let board = searcher.pos.board();
 
-                println!("\n{:?}", board);
-                println!("FEN: {}", board);
+                println!("{}", board.pretty_print(self.chess960));
             },
             UciCommand::DataGen {
                 count,
@@ -213,7 +207,7 @@ impl Engine {
             UciCommand::SetOption { name, value } => {
                 match name.as_str() {
                     "Move Overhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
-                    "Chess960" => *self.chess960.borrow_mut() = value.parse::<bool>().unwrap(),
+                    "Chess960" => self.chess960 = value.parse::<bool>().unwrap(),
                     _ => { }
                 }
 
@@ -222,6 +216,88 @@ impl Engine {
                     name,
                     value
                 )).unwrap();
+            },
+
+            //Idea from Jackal https://github.com/TomaszJaworski777/Jackal
+            UciCommand::Analyse(limits) => {
+                let mut searcher = self.searcher.lock().unwrap();
+                let searcher = &mut *searcher;
+                let board = searcher.pos.board().clone();
+
+                let score = searcher.search::<NoInfo>(limits.clone()).2;
+                let mut diffs = [0; Square::COUNT];
+
+                let occ = board.occupied();
+                let white = board.colors(Color::White);
+                let pawns = board.pieces(Piece::Pawn);
+                let rooks = board.pieces(Piece::Rook);
+                let kings = board.pieces(Piece::King);
+                let pinned = board.pinned(Color::White) | board.pinned(Color::Black);
+
+                let removable = board.occupied() & !kings & !pinned;
+                for sq in removable {
+                    let mut builder = BoardBuilder::from_board(&board);
+                    builder.set_piece(sq, None);
+
+                    if rooks.has(sq) {
+                        if white.has(sq) {
+                            let short = board.king(Color::White).file() < sq.file();
+                            builder.set_castle_rights(Color::White, None, short);
+                        } else {
+                            let short = board.king(Color::Black).file() < sq.file();
+                            builder.set_castle_rights(Color::Black, None, short);
+                        }
+                    }
+
+                    if board.en_passant().is_some() && pawns.has(sq) {
+                        let file = board.en_passant().unwrap();
+
+                        if sq == Square::new(file, Rank::Fifth.relative_to(board.stm())) {
+                            builder.set_en_passant(None);
+                        }
+                    }
+
+                    let new_board = builder.build().unwrap();
+                    searcher.pos.set_board(new_board, #[cfg(feature = "nnue")]&searcher.shared_ctx.nnue_weights);
+
+                    diffs[sq as usize] = (score - searcher.search::<NoInfo>(limits.clone()).2).0;
+                }
+
+                println!("+-------+-------+-------+-------+-------+-------+-------+-------+");
+
+                for &rank in Rank::ALL.iter().rev() {
+                    println!("|       |       |       |       |       |       |       |       |");
+                    print!("|");
+                    for &file in &File::ALL {
+                        let sq = Square::new(file, rank);
+
+                        if !occ.has(sq) {
+                            print!("       |");
+                        } else {
+                            let piece: char = board.piece_on(sq).unwrap().into();
+                            if white.has(sq) {
+                                print!("   {}   |", piece.to_ascii_uppercase());
+                            } else {
+                                print!("   {}   |", piece);
+                            }
+                        }
+                    }
+
+                    print!("\n|");
+                    for &file in &File::ALL {
+                        let sq = Square::new(file, rank);
+
+                        if !occ.has(sq) || kings.has(sq) {
+                            print!("       |");
+                        } else if pinned.has(sq) {
+                            print!("  PIN  |");
+                        } else {
+                            print!("{:^7}|", diffs[sq as usize]);
+                        }
+                    }
+
+                    println!("\n+-------+-------+-------+-------+-------+-------+-------+-------+");
+                }
             },
             UciCommand::Bench { depth, threads, hash } => {
                 let mut searcher = self.searcher.lock().unwrap();

@@ -1,6 +1,7 @@
 mod builder;
 mod move_gen;
 mod parse;
+mod print;
 mod sanity;
 mod see;
 
@@ -32,7 +33,7 @@ impl CastleRights {
     };
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Board {
     colors: [Bitboard; Color::COUNT],
     pieces: [Bitboard; Piece::COUNT],
@@ -456,7 +457,7 @@ impl Board {
             &mut self.castle_rights[color as usize].long
         };
 
-        if let Some(prev) = std::mem::replace(rights, file) {
+        if let Some(prev) = ::core::mem::replace(rights, file) {
             self.hash ^= ZOBRIST.castle_rights(prev, color);
         }
 
@@ -467,7 +468,7 @@ impl Board {
 
     #[inline]
     fn set_en_passant(&mut self, file: Option<File>) {
-        if let Some(prev) = std::mem::replace(&mut self.en_passant, file) {
+        if let Some(prev) = ::core::mem::replace(&mut self.en_passant, file) {
             self.hash ^= ZOBRIST.en_passant(prev);
         }
 
@@ -487,32 +488,6 @@ impl Default for Board {
     #[inline]
     fn default() -> Self {
         BoardBuilder::startpos().build().unwrap()
-    }
-}
-
-impl fmt::Debug for Board {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for &rank in Rank::ALL.iter().rev() {
-            for &file in File::ALL.iter() {
-                let sq = Square::new(file, rank);
-
-                if !self.occupied().has(sq) {
-                    write!(f, ". ")?;
-                } else {
-                    let piece: char = self.piece_on(sq).unwrap().into();
-
-                    if self.colors(Color::White).has(sq) {
-                        write!(f, "{} ", piece.to_ascii_uppercase())?;
-                    } else {
-                        write!(f, "{} " , piece)?;
-                    }
-                }
-            }
-
-            writeln!(f)?;
-        }
-
-        Ok(())
     }
 }
 

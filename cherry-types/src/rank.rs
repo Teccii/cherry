@@ -18,39 +18,31 @@ pub enum Rank {
 impl Rank {
     #[inline]
     pub const fn index(i: usize) -> Rank {
-        match i {
-            0 => Rank::First,
-            1 => Rank::Second,
-            2 => Rank::Third,
-            3 => Rank::Fourth,
-            4 => Rank::Fifth,
-            5 => Rank::Sixth,
-            6 => Rank::Seventh,
-            7 => Rank::Eighth,
-            _ => panic!("Rank::index(): Index out of bounds")
+        if i < Rank::COUNT {
+            return unsafe {
+                ::core::mem::transmute::<u8, Rank>(i as u8)
+            };
         }
+        
+        panic!("Rank::index(): Index out of bounds");
     }
 
     #[inline]
     pub const fn try_index(i: usize) -> Option<Rank> {
-        match i {
-            0 => Some(Rank::First),
-            1 => Some(Rank::Second),
-            2 => Some(Rank::Third),
-            3 => Some(Rank::Fourth),
-            4 => Some(Rank::Fifth),
-            5 => Some(Rank::Sixth),
-            6 => Some(Rank::Seventh),
-            7 => Some(Rank::Eighth),
-            _ => None
+        if i < Rank::COUNT {
+            return Some(unsafe {
+                ::core::mem::transmute::<u8, Rank>(i as u8)
+            });
         }
+
+        None
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub const fn offset(self, dx: i8) -> Rank {
-        let i = self as i8 + dx;
+    pub const fn offset(self, dy: i8) -> Rank {
+        let i = self as i8 + dy;
 
         if i < 0 || i >= Rank::COUNT as i8 {
             panic!("Rank::offset(): New index out of bounds")
@@ -60,8 +52,8 @@ impl Rank {
     }
 
     #[inline]
-    pub const fn try_offset(self, dx: i8) -> Option<Rank> {
-        let i = self as i8 + dx;
+    pub const fn try_offset(self, dy: i8) -> Option<Rank> {
+        let i = self as i8 + dy;
 
         if i < 0 || i >= Rank::COUNT as i8 {
             return None;

@@ -53,7 +53,7 @@ impl TTData {
     #[inline]
     pub fn from_bits(bits: u64) -> TTData {
         let packed = unsafe {
-            std::mem::transmute::<u64, TTPackedData>(bits)
+            ::core::mem::transmute::<u64, TTPackedData>(bits)
         };
         
         TTData {
@@ -68,7 +68,7 @@ impl TTData {
     #[inline]
     pub fn to_bits(self) -> u64 {
         unsafe {
-            std::mem::transmute::<TTPackedData, u64>(TTPackedData {
+            ::core::mem::transmute::<TTPackedData, u64>(TTPackedData {
                 depth: self.depth,
                 score: self.score,
                 eval: self.eval.unwrap_or(Score::INFINITE),
@@ -134,7 +134,7 @@ impl TTable {
 
     pub fn prefetch(&self, board: &Board) {
         #[cfg(target_feature = "sse")] {
-            use std::arch::x86_64::*;
+            use ::core::arch::x86_64::*;
 
             let hash = board.hash();
             let index = self.index(hash);

@@ -1,5 +1,3 @@
-#![feature(generic_const_exprs)]
-
 mod bitboard;
 mod color;
 mod dir;

@@ -18,32 +18,23 @@ pub enum File {
 impl File {
     #[inline]
     pub const fn index(i: usize) -> File {
-        match i {
-            0 => File::A,
-            1 => File::B,
-            2 => File::C,
-            3 => File::D,
-            4 => File::E,
-            5 => File::F,
-            6 => File::G,
-            7 => File::H,
-            _ => panic!("File::index(): Index out of bounds")
+        if i < File::COUNT {
+            return unsafe {
+                ::core::mem::transmute::<u8, File>(i as u8)
+            };
         }
+        panic!("File::index(): Index out of bounds");
     }
 
     #[inline]
     pub const fn try_index(i: usize) -> Option<File> {
-        match i {
-            0 => Some(File::A),
-            1 => Some(File::B),
-            2 => Some(File::C),
-            3 => Some(File::D),
-            4 => Some(File::E),
-            5 => Some(File::F),
-            6 => Some(File::G),
-            7 => Some(File::H),
-            _ => None
+        if i < File::COUNT {
+            return Some(unsafe {
+                ::core::mem::transmute::<u8, File>(i as u8)
+            });
         }
+        
+        None
     }
 
     /*----------------------------------------------------------------*/

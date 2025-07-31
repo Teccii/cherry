@@ -18,32 +18,29 @@ pub enum Piece {
 impl Piece {
     #[inline]
     pub const fn index(i: usize) -> Piece {
-        match i {
-            0 => Piece::Pawn,
-            1 => Piece::Knight,
-            2 => Piece::Bishop,
-            3 => Piece::Rook,
-            4 => Piece::Queen,
-            5 => Piece::King,
-            _ => panic!("Piece::index(): Index out of bounds")
+        if i < Piece::COUNT {
+            return unsafe {
+                ::core::mem::transmute::<u8, Piece>(i as u8)
+            };
         }
+        
+        panic!("Piece::index(): Index out of bounds");
     }
 
     #[inline]
     pub const fn try_index(i: usize) -> Option<Piece> {
-        match i {
-            0 => Some(Piece::Pawn),
-            1 => Some(Piece::Knight),
-            2 => Some(Piece::Bishop),
-            3 => Some(Piece::Rook),
-            4 => Some(Piece::Queen),
-            5 => Some(Piece::King),
-            _ => None
+        if i < Piece::COUNT {
+            return Some(unsafe {
+                ::core::mem::transmute::<u8, Piece>(i as u8)
+            });
         }
+        
+        None
     }
 
     /*----------------------------------------------------------------*/
 
+    #[inline]
     pub fn see_value(self) -> i16 {
         match self {
             Piece::Pawn => 100,

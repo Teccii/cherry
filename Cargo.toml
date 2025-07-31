@@ -11,11 +11,12 @@ tune-hip = ["tune", "bullet/hip"]
 [dependencies]
 cherry-chess = { path = "cherry-chess" }
 bullet = { git = "https://github.com/jw1912/bullet", package = "bullet_lib", optional = true }
-rand = "0.9.2"
 atomic-time = "0.1.5"
 pyrrhic-rs = "0.2.0"
 arrayvec = "0.7.6"
+colored = "3.0.0"
 rayon =  "1.10.0"
+rand = "0.9.2"
 
 [workspace]
 resolver = "3"

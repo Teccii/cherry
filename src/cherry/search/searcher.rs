@@ -1,4 +1,4 @@
-use std::{fmt::Write, sync::Arc};
+use std::sync::Arc;
 use arrayvec::ArrayVec;
 use pyrrhic_rs::TableBases;
 use crate::*;
@@ -15,7 +15,7 @@ pub struct SharedContext {
     #[cfg(feature = "nnue")] pub nnue_weights: Arc<NetworkWeights>,
     pub syzygy: Arc<SyzygyTable>,
     pub syzygy_depth: u8,
-    pub search_moves: ArrayVec<Move, MAX_MOVES>,
+    pub root_moves: ArrayVec<Move, MAX_MOVES>,
     pub weights: Arc<SearchWeights>,
     pub lmr_quiet: Arc<LmrLookup>,
     pub lmr_tactical: Arc<LmrLookup>,
@@ -173,7 +173,7 @@ impl Searcher {
                 #[cfg(feature = "nnue")] nnue_weights: Arc::new(weights),
                 syzygy: Arc::new(None),
                 syzygy_depth: 1,
-                search_moves: ArrayVec::new(),
+                root_moves: ArrayVec::new(),
                 weights: Arc::new(SearchWeights::default()),
                 lmr_quiet: Arc::new(LookUp::new(|i, j|
                     1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5) as i32
@@ -217,19 +217,19 @@ impl Searcher {
     }
 
     pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u8, u64) {
+        self.main_ctx.reset();
         self.shared_ctx.time_man.init(self.pos.stm(), &limits);
-        self.shared_ctx.search_moves.clear();
+        self.shared_ctx.root_moves.clear();
 
         for limit in &limits {
             match limit {
                 SearchLimit::SearchMoves(moves) => for mv in moves {
-                    self.shared_ctx.search_moves.push(Move::parse(self.pos.board(), self.chess960, mv).unwrap());
+                    self.shared_ctx.root_moves.push(Move::parse(self.pos.board(), self.chess960, mv).unwrap());
                 },
                 _ => { }
             }
         }
-        
-        self.main_ctx.reset();
+
         #[cfg(feature = "nnue")] self.pos.reset(&self.shared_ctx.nnue_weights);
 
         let mut result = (None, None, Score::ZERO, 0);
@@ -405,85 +405,4 @@ fn search_worker<Info: SearchInfo>(
 
         (best_move, ponder_move, eval, depth)
     }
-}
-
-/*----------------------------------------------------------------*/
-
-pub trait SearchInfo {
-    fn update(
-        thread: u16,
-        board: &Board,
-        ctx: &ThreadContext,
-        shared_ctx: &SharedContext,
-        score: Score,
-        depth: u8,
-        chess960: bool,
-    );
-}
-
-pub struct UciInfo;
-pub struct NoInfo;
-
-impl SearchInfo for UciInfo {
-    fn update(
-        thread: u16,
-        board: &Board,
-        ctx: &ThreadContext,
-        shared_ctx: &SharedContext,
-        score: Score,
-        depth: u8,
-        chess960: bool,
-    ) {
-        if thread != 0 {
-            return;
-        }
-
-        let mut board = board.clone();
-        let mut pv_text = String::new();
-        let root_pv = &ctx.root_pv;
-
-        if root_pv.len != 0 {
-            write!(pv_text, "pv ").unwrap();
-            let len = usize::min(root_pv.len, depth as usize);
-
-            for &mv in root_pv.moves[..len].iter() {
-                if let Some(mv) = mv {
-                    if !board.is_legal(mv) {
-                        break;
-                    }
-
-                    write!(pv_text, "{} ", mv.display(&board, chess960)).unwrap();
-                    board.make_move(mv);
-                } else {
-                    break;
-                }
-            }
-        }
-
-        let nodes = ctx.nodes.global();
-        let time = shared_ctx.time_man.elapsed();
-
-        println!(
-            "info depth {} seldepth {} score {} time {} nodes {} nps {} {}",
-            depth,
-            ctx.sel_depth,
-            score,
-            time,
-            nodes,
-            nodes / time.max(1) * 1000,
-            pv_text
-        );
-    }
-}
-
-impl SearchInfo for NoInfo {
-    fn update(
-        _: u16,
-        _: &Board,
-        _: &ThreadContext,
-        _: &SharedContext,
-        _: Score,
-        _: u8,
-        _: bool,
-    ) { }
 }

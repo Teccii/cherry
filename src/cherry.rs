@@ -11,6 +11,8 @@ pub use cherry_chess::*;
 /*
 MIT License | Copyright (c) 2022-2023 Cosmo Bobak
 Cherry's NNUE is heavily based on code from the engines Viridithas and Black Marlin.
+https://github.com/cosmobobak/viridithas
+https://github.com/jnlt3/blackmarlin
 */
 #[cfg(feature="nnue")] mod nnue {
     mod accumulator;
@@ -26,6 +28,7 @@ Cherry's NNUE is heavily based on code from the engines Viridithas and Black Mar
 
 mod search {
     mod history;
+    mod info;
     mod move_picker;
     mod search;
     mod searcher;
@@ -35,6 +38,7 @@ mod search {
     mod window;
 
     pub use history::*;
+    pub use info::*;
     pub use move_picker::*;
     pub use search::*;
     pub use searcher::*;

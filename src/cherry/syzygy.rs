@@ -1,8 +1,4 @@
-use pyrrhic_rs::{
-    EngineAdapter,
-    TableBases,
-    WdlProbeResult
-};
+use pyrrhic_rs::{EngineAdapter, TableBases, WdlProbeResult};
 use crate::*;
 
 #[derive(Clone)]

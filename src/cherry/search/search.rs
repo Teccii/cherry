@@ -10,20 +10,18 @@ pub trait NodeType {
 }
 
 pub struct PV;
+pub struct NonPV;
+pub struct NoNMP;
 
 impl NodeType for PV {
     const PV: bool = true;
     const NMP: bool = false;
 }
 
-pub struct NonPV;
-
 impl NodeType for NonPV {
     const PV: bool = false;
     const NMP: bool = true;
 }
-
-pub struct NoNMP;
 
 impl NodeType for NoNMP {
     const PV: bool = false;
@@ -238,7 +236,7 @@ pub fn search<Node: NodeType>(
         }
 
         move_exists = true;
-        if ply == 0 && (!shared_ctx.search_moves.is_empty() && !shared_ctx.search_moves.contains(&mv)){
+        if ply == 0 && (!shared_ctx.root_moves.is_empty() && !shared_ctx.root_moves.contains(&mv)){
             continue;
         }
 

@@ -23,160 +23,24 @@ impl Square {
     
     #[inline]
     pub const fn index(i: usize) -> Square {
-        match i {
-            0 => Square::A1,
-            1 => Square::B1,
-            2 => Square::C1,
-            3 => Square::D1,
-            4 => Square::E1,
-            5 => Square::F1,
-            6 => Square::G1,
-            7 => Square::H1,
-
-            8 => Square::A2,
-            9 => Square::B2,
-            10 => Square::C2,
-            11 => Square::D2,
-            12 => Square::E2,
-            13 => Square::F2,
-            14 => Square::G2,
-            15 => Square::H2,
-
-            16 => Square::A3,
-            17 => Square::B3,
-            18 => Square::C3,
-            19 => Square::D3,
-            20 => Square::E3,
-            21 => Square::F3,
-            22 => Square::G3,
-            23 => Square::H3,
-
-            24 => Square::A4,
-            25 => Square::B4,
-            26 => Square::C4,
-            27 => Square::D4,
-            28 => Square::E4,
-            29 => Square::F4,
-            30 => Square::G4,
-            31 => Square::H4,
-
-            32 => Square::A5,
-            33 => Square::B5,
-            34 => Square::C5,
-            35 => Square::D5,
-            36 => Square::E5,
-            37 => Square::F5,
-            38 => Square::G5,
-            39 => Square::H5,
-
-            40 => Square::A6,
-            41 => Square::B6,
-            42 => Square::C6,
-            43 => Square::D6,
-            44 => Square::E6,
-            45 => Square::F6,
-            46 => Square::G6,
-            47 => Square::H6,
-
-            48 => Square::A7,
-            49 => Square::B7,
-            50 => Square::C7,
-            51 => Square::D7,
-            52 => Square::E7,
-            53 => Square::F7,
-            54 => Square::G7,
-            55 => Square::H7,
-
-            56 => Square::A8,
-            57 => Square::B8,
-            58 => Square::C8,
-            59 => Square::D8,
-            60 => Square::E8,
-            61 => Square::F8,
-            62 => Square::G8,
-            63 => Square::H8,
-
-            _ => panic!("Square::index(): Index out of bounds")
+        if i < Square::COUNT {
+            return unsafe {
+                ::core::mem::transmute::<u8, Square>(i as u8)
+            };
         }
+
+        panic!("Square::index(): Index out of bounds");
     }
 
     #[inline]
     pub const fn try_index(i: usize) -> Option<Square> {
-        match i {
-            0 => Some(Square::A1),
-            1 => Some(Square::B1),
-            2 => Some(Square::C1),
-            3 => Some(Square::D1),
-            4 => Some(Square::E1),
-            5 => Some(Square::F1),
-            6 => Some(Square::G1),
-            7 => Some(Square::H1),
-
-            8 => Some(Square::A2),
-            9 => Some(Square::B2),
-            10 => Some(Square::C2),
-            11 => Some(Square::D2),
-            12 => Some(Square::E2),
-            13 => Some(Square::F2),
-            14 => Some(Square::G2),
-            15 => Some(Square::H2),
-
-            16 => Some(Square::A3),
-            17 => Some(Square::B3),
-            18 => Some(Square::C3),
-            19 => Some(Square::D3),
-            20 => Some(Square::E3),
-            21 => Some(Square::F3),
-            22 => Some(Square::G3),
-            23 => Some(Square::H3),
-
-            24 => Some(Square::A4),
-            25 => Some(Square::B4),
-            26 => Some(Square::C4),
-            27 => Some(Square::D4),
-            28 => Some(Square::E4),
-            29 => Some(Square::F4),
-            30 => Some(Square::G4),
-            31 => Some(Square::H4),
-
-            32 => Some(Square::A5),
-            33 => Some(Square::B5),
-            34 => Some(Square::C5),
-            35 => Some(Square::D5),
-            36 => Some(Square::E5),
-            37 => Some(Square::F5),
-            38 => Some(Square::G5),
-            39 => Some(Square::H5),
-
-            40 => Some(Square::A6),
-            41 => Some(Square::B6),
-            42 => Some(Square::C6),
-            43 => Some(Square::D6),
-            44 => Some(Square::E6),
-            45 => Some(Square::F6),
-            46 => Some(Square::G6),
-            47 => Some(Square::H6),
-
-            48 => Some(Square::A7),
-            49 => Some(Square::B7),
-            50 => Some(Square::C7),
-            51 => Some(Square::D7),
-            52 => Some(Square::E7),
-            53 => Some(Square::F7),
-            54 => Some(Square::G7),
-            55 => Some(Square::H7),
-
-            56 => Some(Square::A8),
-            57 => Some(Square::B8),
-            58 => Some(Square::C8),
-            59 => Some(Square::D8),
-            60 => Some(Square::E8),
-            61 => Some(Square::F8),
-            62 => Some(Square::G8),
-            63 => Some(Square::H8),
-
-            _ => None
+        if i < Square::COUNT {
+            return Some(unsafe {
+                ::core::mem::transmute::<u8, Square>(i as u8)
+            });
         }
+
+        None
     }
 
     /*----------------------------------------------------------------*/

@@ -8,12 +8,16 @@ use bullet::{
         },
         inputs,
     },
-    lr::{self, CosineDecayLR},
-    nn::optimiser,
+    value::{loader, ValueTrainerBuilder},
     trainer::save::SavedFormat,
-    value::{ValueTrainerBuilder, loader},
+    nn::optimiser,
     wdl,
+    lr,
 };
+
+const INITIAL_LR: f32 = 0.001f32;
+const FINAL_LR: f32 = 0.001f32 * 0.3f32.powi(5);
+const SUPER_BATCHES: usize = 800;
 
 pub fn tune(threads: usize, buffer_size: usize, queue_size: usize, file_paths: &[&str]) {
     let mut trainer = ValueTrainerBuilder::default()
@@ -42,18 +46,18 @@ pub fn tune(threads: usize, buffer_size: usize, queue_size: usize, file_paths: &
         net_id: String::from("cherry_768-256"),
         eval_scale: EVAL_SCALE as f32,
         wdl_scheduler: wdl::ConstantWDL { value: 0.75 },
-        lr_scheduler: CosineDecayLR {
-            initial_lr: 0.001,
-            final_lr: 0.001 * 0.3f32.powi(5),
-            final_superbatch: 64,
+        lr_scheduler: lr::CosineDecayLR {
+            final_superbatch: SUPER_BATCHES,
+            initial_lr: INITIAL_LR,
+            final_lr: FINAL_LR,
         },
         steps: TrainingSteps {
             batch_size: 16384,
             batches_per_superbatch: 4096,
+            end_superbatch: SUPER_BATCHES,
             start_superbatch: 1,
-            end_superbatch: 64,
         },
-        save_rate: 10,
+        save_rate: 20,
     };
 
     let settings = LocalSettings {
