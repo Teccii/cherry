@@ -48,7 +48,7 @@ mod search {
     pub use window::*;
 }
 
-mod datagen;
+#[cfg(feature = "datagen")] mod datagen;
 mod engine;
 mod position;
 mod score;
@@ -57,7 +57,7 @@ mod syzygy;
 mod uci;
 mod util;
 
-pub use datagen::*;
+#[cfg(feature = "datagen")] pub use datagen::*;
 #[cfg(not(feature = "nnue"))] pub use eval::*;
 pub use engine::*;
 #[cfg(feature = "nnue")] pub use nnue::*;

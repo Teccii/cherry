@@ -180,7 +180,7 @@ impl Position {
 
     /*----------------------------------------------------------------*/
     
-    fn insufficient_material(&self) -> bool {
+    pub fn insufficient_material(&self) -> bool {
         match self.board.occupied().popcnt() {
             2 => true,
             3 => (self.board.pieces(Piece::Knight) | self.board.pieces(Piece::Bishop)).popcnt() > 0,
@@ -197,7 +197,7 @@ impl Position {
         }
     }
 
-    fn repetition(&self) -> bool {
+    pub fn repetition(&self) -> bool {
         let hash = self.hash();
         let hm = self.board.halfmove_clock() as usize;
 

@@ -103,6 +103,11 @@ impl Bitboard {
     pub const fn is_disjoint(self, rhs: Bitboard) -> bool {
         self.0 & rhs.0 == 0
     }
+    
+    #[inline]
+    pub const fn invert(self) -> Bitboard {
+        Bitboard(!self.0)
+    }
 
     #[inline]
     pub const fn intersection(self, rhs: Bitboard) -> Bitboard {
@@ -111,7 +116,7 @@ impl Bitboard {
 
     #[inline]
     pub const fn union(self, rhs: Bitboard) -> Bitboard {
-        Bitboard(self.0 & rhs.0)
+        Bitboard(self.0 | rhs.0)
     }
 
     /*----------------------------------------------------------------*/

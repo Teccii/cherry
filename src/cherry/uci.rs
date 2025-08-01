@@ -30,10 +30,10 @@ pub enum UciCommand {
         queue_size: usize,
         file_paths: Vec<String>,
     },
-    DataGen {
+    #[cfg(feature = "datagen")] DataGen {
         count: usize,
-        seed: u64,
-        moves: usize,
+        threads: usize,
+        dfrc: bool,
     },
     Stop,
     Quit
@@ -80,18 +80,11 @@ impl UciCommand {
                 threads: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1),
                 hash: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(16)
             }),
-            "genfens" => {
-                let count = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                reader.next().ok_or(UciParseError::InvalidArguments)?;
-                let seed = reader.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                reader.next().ok_or(UciParseError::InvalidArguments)?;
-                reader.next().ok_or(UciParseError::InvalidArguments)?;
-                let moves = reader.next()
-                    .and_then(|_| reader.next().and_then(|s| s.parse::<usize>().ok()))
-                    .unwrap_or(8);
-
-                Ok(UciCommand::DataGen { count, seed, moves })
-            },
+            #[cfg(feature = "datagen")] "datagen" => Ok(UciCommand::DataGen {
+                count: reader.next().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100_000),
+                threads: reader.next().and_then(|s| s.parse::<usize>().ok()).unwrap_or(1),
+                dfrc: reader.next().and_then(|s| s.parse::<bool>().ok()).unwrap_or(false),
+            }),
             #[cfg(feature = "tune")] "tune" => {
                 let threads = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;
                 let buffer_size = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;

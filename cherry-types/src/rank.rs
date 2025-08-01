@@ -1,5 +1,5 @@
-use crate::{Bitboard, Color, Up};
 use std::{fmt, str::FromStr};
+use crate::*;
 
 /*----------------------------------------------------------------*/
 

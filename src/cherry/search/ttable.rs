@@ -190,6 +190,6 @@ impl TTable {
 
     #[inline]
     fn index(&self, hash: u64) -> usize {
-        (hash % self.size) as usize
+        ((u128::from(hash) * u128::from(self.size)) >> 64) as usize
     }
 }

@@ -180,11 +180,15 @@ impl Engine {
 
                 println!("{}", board.pretty_print(self.chess960));
             },
-            UciCommand::DataGen {
+            #[cfg(feature = "datagen")] UciCommand::DataGen {
                 count,
-                seed,
-                moves,
-            } => datagen(count, seed, moves),
+                threads,
+                dfrc
+            } => {
+                datagen(count, threads, dfrc);
+                self.sender.send(ThreadCommand::Quit).unwrap();
+                return false;
+            },
             #[cfg(feature = "tune")] UciCommand::Tune {
                 threads,
                 buffer_size,

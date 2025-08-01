@@ -295,14 +295,14 @@ impl Board {
             }
 
             match moved {
-                Piece::Knight => self.checkers |= knight_moves(their_king) & to.bitboard(),
+                Piece::Knight => self.checkers |= knight_moves(their_king) & to,
                 Piece::Pawn => {
                     if let Some(promotion) = promotion {
                         self.xor_square(Piece::Pawn, self.stm, to);
                         self.xor_square(promotion, self.stm, to);
 
                         if promotion == Piece::Knight {
-                            self.checkers |= knight_moves(their_king) & to.bitboard();
+                            self.checkers |= knight_moves(their_king) & to;
                         }
                     } else {
                         const DOUBLE_PUSH_FROM: Bitboard = Bitboard(Rank::Second.bitboard().0 | Rank::Seventh.bitboard().0);
@@ -318,7 +318,7 @@ impl Board {
                             self.xor_square(Piece::Pawn, !self.stm, victim_square);
                         }
 
-                        self.checkers |= pawn_attacks(their_king, !self.stm) & to.bitboard();
+                        self.checkers |= pawn_attacks(their_king, !self.stm) & to;
                     }
                 }
                 Piece::King => {
@@ -349,7 +349,7 @@ impl Board {
         for sq in our_attackers {
             let between = between(sq, their_king) & occ;
             match between.popcnt() {
-                0 => self.checkers |= sq.bitboard(),
+                0 => self.checkers |= sq,
                 1 => self.pinned[!self.stm as usize] |= between,
                 _ => {}
             }

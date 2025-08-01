@@ -131,7 +131,7 @@ impl Board {
             let between = between(sq, our_king) & occ;
 
             match between.popcnt() {
-                0 => checkers |= sq.bitboard(),
+                0 => checkers |= sq,
                 1 => pinned[color as usize] |= between,
                 _ => ()
             }

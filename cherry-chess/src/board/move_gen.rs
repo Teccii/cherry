@@ -2,7 +2,7 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-mod slider {
+/*mod slider {
     use super::*;
 
     pub trait SlidingPiece {
@@ -31,7 +31,7 @@ mod slider {
         Rook => rook_moves(sq, blockers),
         Queen => queen_moves(sq, blockers)
     }
-}
+}*/
 
 /*----------------------------------------------------------------*/
 
@@ -56,7 +56,7 @@ impl Board {
                 panic!("Board {}", self);
             });
             let our_king = self.king(self.stm);
-            between(checker, our_king) | checker.bitboard()
+            between(checker, our_king) | checker
         } else {
             Bitboard::FULL
         };
@@ -66,18 +66,26 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     fn add_slider_legals<
-        P: slider::SlidingPiece, F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool
+        const DIAG: bool, F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool
     >(&self, mask: Bitboard, listener: &mut F) -> bool {
-        let pieces = self.color_pieces(P::PIECE, self.stm) & mask;
+        let pieces = if DIAG {
+            self.color_diag_sliders(self.stm) & mask
+        } else {
+            self.color_orth_sliders(self.stm) & mask
+        };
         let target_squares = self.target_squares::<IN_CHECK>();
         let pinned = self.pinned(self.stm);
         let blockers = self.occupied();
 
         for piece in pieces & !pinned {
-            let moves = P::pseudo_legals(piece, blockers) & target_squares;
+            let moves = if DIAG {
+                bishop_moves(piece, blockers) & target_squares
+            } else {
+                rook_moves(piece, blockers) & target_squares
+            };
             if !moves.is_empty() {
                 abort_if!(listener(PieceMoves {
-                    piece: P::PIECE,
+                    piece: self.piece_on(piece).unwrap(),
                     from: piece,
                     to: moves,
                     flag: MoveFlag::None
@@ -91,10 +99,15 @@ impl Board {
             for piece in pieces & pinned {
                 //If we're not in check, we can still slide along the pinned ray.
                 let target_squares = target_squares & line(our_king, piece);
-                let moves = P::pseudo_legals(piece, blockers) & target_squares;
+                let moves = if DIAG {
+                    bishop_moves(piece, blockers) & target_squares
+                } else {
+                    rook_moves(piece, blockers) & target_squares
+                };
+
                 if !moves.is_empty() {
                     abort_if!(listener(PieceMoves {
-                        piece: P::PIECE,
+                        piece: self.piece_on(piece).unwrap(),
                         from: piece,
                         to: moves,
                         flag: MoveFlag::None
@@ -189,10 +202,7 @@ impl Board {
 
             for piece in pawn_attacks(dest, !self.stm) & pieces {
                 //Simulate the capture and update the pieces accordingly.
-                let blockers = blockers
-                    ^ victim.bitboard()
-                    ^ piece.bitboard()
-                    | dest.bitboard();
+                let blockers = blockers ^ victim ^ piece | dest;
                 //First test a basic ray to prevent an expensive magic lookup
                 let on_ray = !(bishop_rays(our_king) & diag).is_empty();
                 if on_ray && !(bishop_moves(our_king, blockers) & diag).is_empty() {
@@ -227,17 +237,11 @@ impl Board {
         }
 
         let their_pieces = self.colors(!self.stm);
-        let blockers = self.occupied()
-            ^ self.color_pieces(Piece::King, self.stm)
-            | square.bitboard();
+        let blockers = self.occupied() ^ self.king(self.stm) | square;
 
         short_circuit! {
-            bishop_moves(square, blockers) & their_pieces & (
-                self.pieces(Piece::Bishop) | self.pieces(Piece::Queen)
-            ),
-            rook_moves(square, blockers) & their_pieces & (
-                self.pieces(Piece::Rook) | self.pieces(Piece::Queen)
-            ),
+            bishop_moves(square, blockers) & their_pieces & self.diag_sliders(),
+            rook_moves(square, blockers) & their_pieces & self.orth_sliders(),
             knight_moves(square) & their_pieces & self.pieces(Piece::Knight),
             king_moves(square) & their_pieces & self.pieces(Piece::King),
             pawn_attacks(square, self.stm) & their_pieces & self.pieces(Piece::Pawn)
@@ -248,13 +252,13 @@ impl Board {
         let our_king = self.king(self.stm);
         let back_rank = Rank::First.relative_to(self.stm);
         let rook = Square::new(rook, back_rank);
-        let blockers = self.occupied() ^ our_king.bitboard() ^ rook.bitboard();
+        let blockers = self.occupied() ^ our_king ^ rook;
         let king_dest = Square::new(king_dest, back_rank);
         let rook_dest = Square::new(rook_dest, back_rank);
         let king_to_rook = between(our_king, rook);
         let king_to_dest = between(our_king, king_dest);
-        let must_be_safe = king_to_dest | king_dest.bitboard();
-        let must_be_empty = must_be_safe | king_to_rook | rook_dest.bitboard();
+        let must_be_safe = king_to_dest | king_dest;
+        let must_be_empty = must_be_safe | king_to_rook | rook_dest;
 
         !self.pinned(self.stm).has(rook)
             && (blockers & must_be_empty).is_empty()
@@ -274,7 +278,7 @@ impl Board {
         let mut moves = Bitboard::EMPTY;
         for to in king_moves(our_king) & !our_pieces {
             if self.king_safe_on(to) {
-                moves |= to.bitboard();
+                moves |= to;
             }
         }
 
@@ -294,12 +298,12 @@ impl Board {
 
             if let Some(rook) = rights.short {
                 if self.can_castle(rook, File::G, File::F) {
-                    moves |= Square::new(rook, back_rank).bitboard();
+                    moves |= Square::new(rook, back_rank);
                 }
             }
             if let Some(rook) = rights.long {
                 if self.can_castle(rook, File::C, File::D) {
-                    moves |= Square::new(rook, back_rank).bitboard();
+                    moves |= Square::new(rook, back_rank);
                 }
             }
 
@@ -324,9 +328,8 @@ impl Board {
         abort_if! {
             self.add_pawn_legals::<_, IN_CHECK>(mask, listener),
             self.add_knight_legals::<_, IN_CHECK>(mask, listener),
-            self.add_slider_legals::<slider::Bishop, _, IN_CHECK>(mask, listener),
-            self.add_slider_legals::<slider::Rook, _, IN_CHECK>(mask, listener),
-            self.add_slider_legals::<slider::Queen, _, IN_CHECK>(mask, listener),
+            self.add_slider_legals::<false, _, IN_CHECK>(mask, listener),
+            self.add_slider_legals::<true, _, IN_CHECK>(mask, listener),
             self.add_king_legals::<_, IN_CHECK>(mask, listener)
         }
         false

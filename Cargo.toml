@@ -5,17 +5,20 @@ edition = "2024"
 
 [features]
 nnue = []
+datagen = ["chrono", "viriformat"]
 tune = ["dep:bullet", "nnue"]
 tune-hip = ["tune", "bullet/hip"]
 
 [dependencies]
 cherry-chess = { path = "cherry-chess" }
 bullet = { git = "https://github.com/jw1912/bullet", package = "bullet_lib", optional = true }
+viriformat = { version = "2.0.0", optional = true }
+chrono = { version = "0.4.41", optional = true }
 atomic-time = "0.1.5"
 pyrrhic-rs = "0.2.0"
 arrayvec = "0.7.6"
-colored = "3.0.0"
 rayon =  "1.10.0"
+ctrlc = "3.4.7"
 rand = "0.9.2"
 
 [workspace]

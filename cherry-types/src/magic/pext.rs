@@ -1,4 +1,4 @@
-use std::arch::x86_64::_pext_u64;
+use ::core::arch::x86_64::_pext_u64;
 use crate::*;
 
 struct PextEntry {

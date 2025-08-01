@@ -120,7 +120,6 @@ pub fn search<Node: NodeType>(
     if shared_ctx.syzygy.is_some()
         && ply != 0 && skip_move.is_none()
         && depth >= shared_ctx.syzygy_depth
-        && pos.board().halfmove_clock() == 0
         && !pos.can_castle() {
         if let Some(wdl) = Option::as_ref(&shared_ctx.syzygy)
             .and_then(|tb| probe_wdl(tb, pos.board())) {
@@ -184,7 +183,6 @@ pub fn search<Node: NodeType>(
         Reverse Futility Pruning: Similar to Razoring, if the static evaluation of the position is *above*
         beta by a significant margin, we can assume that we can reach at least beta.
         */
-
         if depth < w.rfp_depth && static_eval >= beta + w.rfp_margin * depth as i16 {
             return (static_eval + beta) / 2
         }
