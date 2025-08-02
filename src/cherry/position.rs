@@ -114,7 +114,8 @@ impl Position {
     pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
         self.nnue.apply_updates(weights);
 
-        Score::new(self.nnue.eval(weights, self.stm()))
+        let eval = self.nnue.eval(weights, self.stm());
+        Score::new(eval.clamp(-Score::MIN_TB_WIN.0 + 1, Score::MIN_TB_WIN.0 - 1))
     }
     
     /*----------------------------------------------------------------*/
