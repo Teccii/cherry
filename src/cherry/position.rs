@@ -114,7 +114,14 @@ impl Position {
     pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
         self.nnue.apply_updates(weights);
 
-        let eval = self.nnue.eval(weights, self.stm());
+        let mut eval = self.nnue.eval(weights, self.stm());
+        let material = Piece::Pawn.see_value() as usize * self.board.pieces(Piece::Pawn).popcnt()
+            + Piece::Knight.see_value() as usize * self.board.pieces(Piece::Knight).popcnt()
+            + Piece::Bishop.see_value() as usize * self.board.pieces(Piece::Bishop).popcnt()
+            + Piece::Rook.see_value() as usize * self.board.pieces(Piece::Rook).popcnt()
+            + Piece::Queen.see_value() as usize * self.board.pieces(Piece::Queen).popcnt();
+        eval = (i32::from(eval) * (26000 + material as i32) / 33360) as i16;
+
         Score::new(eval.clamp(-Score::MIN_TB_WIN.0 + 1, Score::MIN_TB_WIN.0 - 1))
     }
     
