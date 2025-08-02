@@ -116,9 +116,9 @@ impl Board {
         self.fullmove_count > 0
     }
 
-    pub fn checks_and_pins(&self, color: Color) -> (Bitboard, [Bitboard; Color::COUNT]) {
+    pub fn checks_and_pins(&self, color: Color) -> (Bitboard, Bitboard) {
         let mut checkers = Bitboard::EMPTY;
-        let mut pinned = [Bitboard::EMPTY; Color::COUNT];
+        let mut pinned = Bitboard::EMPTY;
 
         let our_king = self.king(color);
         let (diag, orth) = (self.diag_sliders(), self.orth_sliders());
@@ -132,7 +132,7 @@ impl Board {
 
             match between.popcnt() {
                 0 => checkers |= sq,
-                1 => pinned[color as usize] |= between,
+                1 => pinned |= between,
                 _ => ()
             }
         }
@@ -141,12 +141,12 @@ impl Board {
         let our_attackers = self.colors(color) & (
             (bishop_rays(their_king) & diag) | (rook_rays(their_king) & orth)
         );
-        
+
         for sq in our_attackers {
             let between = between(sq, their_king) & occ;
-            
+
             if between.popcnt() == 1 {
-                pinned[!color as usize] |= between;
+                pinned |= between;
             }
         }
 

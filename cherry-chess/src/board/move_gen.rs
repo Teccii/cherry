@@ -1,40 +1,5 @@
 use crate::*;
 
-/*----------------------------------------------------------------*/
-
-/*mod slider {
-    use super::*;
-
-    pub trait SlidingPiece {
-        const PIECE: Piece;
-
-        fn pseudo_legals(square: Square, blockers: Bitboard) -> Bitboard;
-    }
-
-    macro_rules! impl_sliding_piece {
-        ($square:ident,$color:ident,$blockers:ident; $($type:ident => $impl:expr),*) => {
-            $(pub struct $type;
-
-            impl SlidingPiece for $type {
-                const PIECE: Piece = Piece::$type;
-
-                fn pseudo_legals($square: Square, $blockers: Bitboard) -> Bitboard {
-                    $impl
-                }
-            })*
-        };
-    }
-
-    impl_sliding_piece! {
-        sq, color, blockers;
-        Bishop => bishop_moves(sq, blockers),
-        Rook => rook_moves(sq, blockers),
-        Queen => queen_moves(sq, blockers)
-    }
-}*/
-
-/*----------------------------------------------------------------*/
-
 macro_rules! abort_if {
     ($($expr:expr),*) => {
         $(if $expr {
@@ -43,19 +8,15 @@ macro_rules! abort_if {
     }
 }
 
-/*----------------------------------------------------------------*/
-
-
 impl Board {
     // Squares we can land on. When we're in check, we have to block
     // or capture the checker. In any case, we can't land on our own
     // pieces. Assumed to only be called if there is only one checker.
     fn target_squares<const IN_CHECK: bool>(&self) -> Bitboard {
         let targets = if IN_CHECK {
-            let checker = self.checkers().try_next_square().unwrap_or_else(|| {
-                panic!("Board {}", self);
-            });
+            let checker = self.checkers().next_square();
             let our_king = self.king(self.stm);
+
             between(checker, our_king) | checker
         } else {
             Bitboard::FULL
@@ -74,8 +35,8 @@ impl Board {
             self.color_orth_sliders(self.stm) & mask
         };
         let target_squares = self.target_squares::<IN_CHECK>();
-        let pinned = self.pinned(self.stm);
         let blockers = self.occupied();
+        let pinned = self.pinned();
 
         for piece in pieces & !pinned {
             let moves = if DIAG {
@@ -128,9 +89,8 @@ impl Board {
 
         let pieces = self.color_pieces(PIECE, self.stm) & mask;
         let target_squares = self.target_squares::<IN_CHECK>();
-        let pinned = self.pinned(self.stm);
 
-        for piece in pieces & !pinned {
+        for piece in pieces & !self.pinned {
             let moves = knight_moves(piece) & target_squares;
             if !moves.is_empty() {
                 abort_if!(listener(PieceMoves {
@@ -156,10 +116,9 @@ impl Board {
         let target_squares = self.target_squares::<IN_CHECK>();
         let pieces = self.color_pieces(PIECE, self.stm) & mask;
         let their_pieces = self.colors(!self.stm);
-        let pinned = self.pinned(self.stm);
         let blockers = self.occupied();
 
-        for piece in pieces & !pinned {
+        for piece in pieces & !self.pinned {
             let moves = (
                 pawn_quiets(piece, self.stm, blockers) | (pawn_attacks(piece, self.stm) & their_pieces)
             ) & target_squares;
@@ -175,7 +134,7 @@ impl Board {
         }
 
         if !IN_CHECK {
-            for piece in pieces & pinned {
+            for piece in pieces & self.pinned {
                 //If we're not in check, we can still slide along the pinned ray.
                 let target_squares = target_squares & line(our_king, piece);
                 let moves = (
@@ -226,26 +185,29 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn king_safe_on(&self, square: Square) -> bool {
-        macro_rules! short_circuit {
-            ($($attackers:expr),*) => {
-                $(if !$attackers.is_empty() {
-                    return false;
-                })*
-                true
-            }
+    fn king_safe_on(&self, sq: Square) -> bool {
+        if !(pawn_attacks(sq, self.stm) & self.color_pieces(Piece::Pawn, !self.stm)).is_empty() {
+            return false;
         }
 
-        let their_pieces = self.colors(!self.stm);
-        let blockers = self.occupied() ^ self.king(self.stm) | square;
-
-        short_circuit! {
-            bishop_moves(square, blockers) & their_pieces & self.diag_sliders(),
-            rook_moves(square, blockers) & their_pieces & self.orth_sliders(),
-            knight_moves(square) & their_pieces & self.pieces(Piece::Knight),
-            king_moves(square) & their_pieces & self.pieces(Piece::King),
-            pawn_attacks(square, self.stm) & their_pieces & self.pieces(Piece::Pawn)
+        if !(knight_moves(sq) & self.color_pieces(Piece::Knight, !self.stm)).is_empty() {
+            return false;
         }
+
+        let blockers = self.occupied() ^ self.king(self.stm);
+        let diag = self.color_diag_sliders(!self.stm);
+        let orth = self.color_orth_sliders(!self.stm);
+
+        let on_ray = !(bishop_rays(sq) & diag).is_empty();
+        if on_ray && !(bishop_moves(sq, blockers) & diag).is_empty() {
+            return false;
+        }
+        let on_ray = !(rook_rays(sq) & orth).is_empty();
+        if on_ray && !(rook_moves(sq, blockers) & orth).is_empty() {
+            return false;
+        }
+
+        !king_moves(sq).has(self.king(!self.stm))
     }
 
     fn can_castle(&self, rook: File, king_dest: File, rook_dest: File) -> bool {
@@ -260,7 +222,7 @@ impl Board {
         let must_be_safe = king_to_dest | king_dest;
         let must_be_empty = must_be_safe | king_to_rook | rook_dest;
 
-        !self.pinned(self.stm).has(rook)
+        !self.pinned.has(rook)
             && (blockers & must_be_empty).is_empty()
             && must_be_safe.iter().all(|square| self.king_safe_on(square))
     }
@@ -387,6 +349,7 @@ impl Board {
         board.in_check()
     }
 
+    #[inline]
     pub fn victim(&self, mv: Move) -> Option<Piece> {
         if self.is_en_passant(mv) {
             Some(Piece::Pawn)
@@ -446,7 +409,7 @@ impl Board {
             return self.king_is_legal(mv);
         }
 
-        if self.pinned(self.stm).has(from) && !line(king_sq, from).has(to) {
+        if self.pinned().has(from) && !line(king_sq, from).has(to) {
             return false;
         }
 

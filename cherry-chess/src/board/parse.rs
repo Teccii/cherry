@@ -20,7 +20,7 @@ impl Board {
             colors: [Bitboard::EMPTY; Color::COUNT],
             pieces: [Bitboard::EMPTY; Piece::COUNT],
             castle_rights: [CastleRights { short: None, long: None }; Color::COUNT],
-            pinned: [Bitboard::EMPTY; Color::COUNT],
+            pinned: Bitboard::EMPTY,
             checkers: Bitboard::EMPTY,
             en_passant: None,
             fullmove_count: 0,

@@ -24,12 +24,6 @@ pub enum UciCommand {
         threads: u16,
         hash: u16,
     },
-    #[cfg(feature = "tune")] Tune {
-        threads: usize,
-        buffer_size: usize,
-        queue_size: usize,
-        file_paths: Vec<String>,
-    },
     #[cfg(feature = "datagen")] DataGen {
         count: usize,
         threads: usize,
@@ -85,27 +79,6 @@ impl UciCommand {
                 threads: reader.next().and_then(|s| s.parse::<usize>().ok()).unwrap_or(1),
                 dfrc: reader.next().and_then(|s| s.parse::<bool>().ok()).unwrap_or(false),
             }),
-            #[cfg(feature = "tune")] "tune" => {
-                let threads = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                let buffer_size = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                let queue_size = reader.next().and_then(|s| s.parse::<usize>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                let mut file_paths = Vec::new();
-
-                while let Some(file_path) = reader.next() {
-                    file_paths.push(file_path.to_owned());
-                }
-
-                if file_paths.is_empty() {
-                    return Err(UciParseError::InvalidArguments);
-                }
-
-                Ok(UciCommand::Tune {
-                    threads,
-                    buffer_size,
-                    queue_size,
-                    file_paths
-                })
-            },
             "position" => {
                 let board_kind = reader.next().ok_or(UciParseError::InvalidArguments)?;
                 let mut moves_token_passed = false;

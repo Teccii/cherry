@@ -1,3 +1,8 @@
+use std::{
+    mem::MaybeUninit,
+    sync::Arc,
+    ptr
+};
 use arrayvec::ArrayVec;
 use crate::*;
 
@@ -13,7 +18,7 @@ pub const QB: i32 = 64;
 
 /*----------------------------------------------------------------*/
 
-const NETWORK_BYTES: &[u8] = &[];
+const NETWORK_BYTES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/network.bin"));
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -25,45 +30,29 @@ pub struct NetworkWeights {
 }
 
 impl NetworkWeights {
-    pub fn new(mut bytes: &[u8]) -> NetworkWeights {
+    pub fn new(mut bytes: &[u8]) -> Arc<NetworkWeights> {
+
         const I16_SIZE: usize = size_of::<i16>();
 
-        debug_assert!(bytes.len() == I16_SIZE * (
-            INPUT * HL + HL + L1 + 1
-        ));
+        debug_assert_eq!(bytes.len(), (I16_SIZE * (INPUT * HL + HL + L1 + 1)).next_multiple_of(64));
 
-        let ft_weights = Self::aligned_from_bytes::<{INPUT * HL}>(bytes);
-        bytes = &bytes[(INPUT * HL * I16_SIZE)..];
-        let ft_bias = Self::aligned_from_bytes::<HL>(bytes);
-        bytes = &bytes[(HL * I16_SIZE)..];
-        let out_weights = Self::aligned_from_bytes::<L1>(bytes);
-        bytes = &bytes[(L1 * I16_SIZE)..];
-        let out_bias = i16::from_le_bytes([bytes[0], bytes[1]]);
+        let mut weights: Arc<MaybeUninit<NetworkWeights>> = Arc::new_uninit();
+        unsafe {
+            let ptr = Arc::get_mut(&mut weights).unwrap().as_mut_ptr();
 
-        NetworkWeights {
-            ft_weights,
-            ft_bias,
-            out_weights,
-            out_bias,
-        }
+            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).ft_weights).cast(), INPUT * HL * I16_SIZE);
+            bytes = &bytes[(INPUT * HL * I16_SIZE)..];
+            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).ft_bias).cast(), HL * I16_SIZE);
+            bytes = &bytes[(HL * I16_SIZE)..];
+            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_weights).cast(), L1 * I16_SIZE);
+            bytes = &bytes[(L1 * I16_SIZE)..];
+            ptr::addr_of_mut!((*ptr).out_bias).write(i16::from_le_bytes([bytes[0], bytes[1]]));
+        };
+
+        unsafe { weights.assume_init() }
     }
 
-    fn aligned_from_bytes<const N: usize>(bytes: &[u8]) -> Align64<[i16; N]> {
-        let mut values = Align64([0; N]);
-
-        for (chunk, value) in bytes.chunks_exact(2)
-            .zip(&mut values.0)
-            .take(N) {
-            *value = i16::from_le_bytes([chunk[0], chunk[1]]);
-        }
-
-        values
-    }
-}
-
-impl Default for NetworkWeights {
-    #[inline]
-    fn default() -> Self {
+    pub fn default() -> Arc<NetworkWeights> {
         Self::new(NETWORK_BYTES)
     }
 }

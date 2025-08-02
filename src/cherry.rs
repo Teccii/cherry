@@ -1,20 +1,12 @@
 pub use cherry_chess::*;
 
-#[cfg(not(feature = "nnue"))] mod eval {
-    mod eval;
-    mod weights;
-    
-    pub use eval::*;
-    pub use weights::*;
-}
-
 /*
 MIT License | Copyright (c) 2022-2023 Cosmo Bobak
 Cherry's NNUE is heavily based on code from the engines Viridithas and Black Marlin.
 https://github.com/cosmobobak/viridithas
 https://github.com/jnlt3/blackmarlin
 */
-#[cfg(feature="nnue")] mod nnue {
+mod nnue {
     mod accumulator;
     mod features;
     mod network;
@@ -53,18 +45,15 @@ mod engine;
 mod position;
 mod score;
 mod syzygy;
-#[cfg(feature = "tune")] mod tune;
 mod uci;
 mod util;
 
 #[cfg(feature = "datagen")] pub use datagen::*;
-#[cfg(not(feature = "nnue"))] pub use eval::*;
 pub use engine::*;
-#[cfg(feature = "nnue")] pub use nnue::*;
+pub use nnue::*;
 pub use position::*;
 pub use score::*;
 pub use search::*;
 pub use syzygy::*;
-#[cfg(feature = "tune")] pub use tune::*;
 pub use uci::*;
 pub use util::*;

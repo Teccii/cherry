@@ -89,7 +89,7 @@ impl BoardBuilder {
             colors: [Bitboard::EMPTY; Color::COUNT],
             pieces: [Bitboard::EMPTY; Piece::COUNT],
             castle_rights: [CastleRights::EMPTY; Color::COUNT],
-            pinned: [Bitboard::EMPTY; Color::COUNT],
+            pinned: Bitboard::EMPTY,
             checkers: Bitboard::EMPTY,
             en_passant: None,
             fullmove_count: 0,

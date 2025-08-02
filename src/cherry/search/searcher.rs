@@ -12,7 +12,7 @@ pub type SyzygyTable = Option<TableBases<SyzygyAdapter>>;
 pub struct SharedContext {
     pub t_table: Arc<TTable>,
     pub time_man: Arc<TimeManager>,
-    #[cfg(feature = "nnue")] pub nnue_weights: Arc<NetworkWeights>,
+    pub nnue_weights: Arc<NetworkWeights>,
     pub syzygy: Arc<SyzygyTable>,
     pub syzygy_depth: u8,
     pub root_moves: ArrayVec<Move, MAX_MOVES>,
@@ -158,28 +158,24 @@ pub struct Searcher {
 }
 
 impl Searcher {
-    #[inline]
-    pub fn new(
-        board: Board,
-        time_man: Arc<TimeManager>,
-        #[cfg(feature = "nnue")] weights: NetworkWeights
-    ) -> Searcher {
+    pub fn new(board: Board, time_man: Arc<TimeManager>) -> Searcher {
+        let nnue_weights = NetworkWeights::default();
+        
         Searcher {
-            #[cfg(not(feature = "nnue"))] pos: Position::new(board),
-            #[cfg(feature = "nnue")] pos: Position::new(board, &weights),
+            pos: Position::new(board, &nnue_weights),
             shared_ctx: SharedContext {
                 t_table: Arc::new(TTable::new(16)),
                 time_man,
-                #[cfg(feature = "nnue")] nnue_weights: Arc::new(weights),
+                nnue_weights,
                 syzygy: Arc::new(None),
                 syzygy_depth: 1,
                 root_moves: ArrayVec::new(),
                 weights: Arc::new(SearchWeights::default()),
                 lmr_quiet: Arc::new(LookUp::new(|i, j|
-                    1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5) as i32
+                    1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5).clamp(0.0, 256.0) as i32
                 )),
                 lmr_tactical: Arc::new(LookUp::new(|i, j|
-                    1024 * (0.4 + (i as f32).ln() * (j as f32).ln() / 3.5) as i32
+                    1024 * (0.4 + (i as f32).ln() * (j as f32).ln() / 3.5).clamp(0.0, 256.0) as i32
                 ))
             },
             main_ctx: ThreadContext {
@@ -230,7 +226,7 @@ impl Searcher {
             }
         }
 
-        #[cfg(feature = "nnue")] self.pos.reset(&self.shared_ctx.nnue_weights);
+        self.pos.reset(&self.shared_ctx.nnue_weights);
 
         let mut result = (None, None, Score::ZERO, 0);
         rayon::scope(|s| {

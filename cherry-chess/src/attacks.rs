@@ -1,4 +1,4 @@
-#[cfg(target_feature = "bmi2")] use std::arch::x86_64::_pdep_u64;
+#[cfg(target_feature = "bmi2")] use ::core::arch::x86_64::_pdep_u64;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -7,24 +7,12 @@ include!(concat!(env!("OUT_DIR"), "/slider_moves.rs"));
 
 #[inline]
 pub fn bishop_moves(sq: Square, blockers: Bitboard) -> Bitboard {
-    #[cfg(not(target_feature = "bmi2"))] {
-        SLIDER_MOVES[bishop_magic_index(sq, blockers)]
-    }
-
-    #[cfg(target_feature = "bmi2")] unsafe {
-        Bitboard(_pdep_u64(SLIDER_MOVES[bishop_magic_index(sq, blockers)] as u64, bishop_rays(sq).0))
-    }
+    SLIDER_MOVES[bishop_magic_index(sq, blockers)]
 }
 
 #[inline]
 pub fn rook_moves(sq: Square, blockers: Bitboard) -> Bitboard {
-    #[cfg(not(target_feature = "bmi2"))] {
-        SLIDER_MOVES[rook_magic_index(sq, blockers)]
-    }
-
-    #[cfg(target_feature = "bmi2")] unsafe {
-        Bitboard(_pdep_u64(SLIDER_MOVES[rook_magic_index(sq, blockers)] as u64, rook_rays(sq).0))
-    }
+    SLIDER_MOVES[rook_magic_index(sq, blockers)]
 }
 
 #[inline]

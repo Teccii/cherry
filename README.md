@@ -14,7 +14,6 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - History Heuristic
 - Capture History Heuristic
 - Continuation History Heuristic
-- Captures and Evasions in QSearch
 
 ### Search
 - Iterative Deepening
@@ -24,7 +23,7 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - Lockless
 - Syzygy Endgame Tablebases (via [`pyrrhic-rs`](https://github.com/Algorhythm-sxv/pyrrhic-rs))
 - Principal Variation Search
-- Quiescence Search for Captures and Evasions
+- Quiescence Search for Captures, Promotions, and Evasions
 - Extensions
   - Check Extensions
 - Reductions
@@ -41,24 +40,12 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - SEE Pruning
 
 ### Evaluation
-- Bishop Pair
-- Piece-Square Tables
-- Rook/Queen on Open/Semiopen File
-- Minor Piece behind Pawn
-- Threats to Minor and Major Pieces
-- Mobility and Center Control
-- Pawn Structure Evaluation
-  - Passed Pawns
-  - Connected Pawns
-  - Isolated Pawns
-  - Backwards Pawns
-  - Doubled Pawns
-- King Safety
-  - Attack Units
-- Tapered Evaluation
-- Correction History Heuristic
+- NNUE `(768->256)x2->1`
+  - Trained with [`bullet`](https://github.com/jw1912/bullet)
+  - Standard dual perspective NNUE with piece-square inputs
+  - Self-generated training data (8 random moves, 5000 nodes per move)
+- Static Evaluation Correction History
   - Pawn Structure
-- NNUE (WIP)
 
 ### Time Management
 - Optimal and Maximum Time Limits

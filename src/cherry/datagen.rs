@@ -101,7 +101,6 @@ fn datagen_worker(
     let mut searcher = Searcher::new(
         Board::default(),
         Arc::new(TimeManager::new()),
-        #[cfg(feature = "nnue")]NetworkWeights::default(),
     );
 
     let start = Instant::now();
@@ -123,7 +122,7 @@ fn datagen_worker(
             DfrcOpeningGenerator::gen_opening(&mut rng)
         } else {
             StdOpeningGenerator::gen_opening(&mut rng)
-        }, #[cfg(feature = "nnue")]&searcher.shared_ctx.nnue_weights);
+        }, &searcher.shared_ctx.nnue_weights);
 
         let eval = searcher.search::<NoInfo>(limits.clone()).2;
         if eval.abs() > 1000 {
@@ -167,7 +166,7 @@ fn datagen_worker(
             }
 
             searcher.pos.make_move(mv);
-            #[cfg(feature = "nnue")]searcher.pos.reset(&searcher.shared_ctx.nnue_weights);
+            searcher.pos.reset(&searcher.shared_ctx.nnue_weights);
 
             if searcher.pos.is_draw() || searcher.pos.board().fullmove_count() >= 300 {
                 result = if searcher.pos.insufficient_material() {

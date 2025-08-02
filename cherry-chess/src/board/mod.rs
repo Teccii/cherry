@@ -38,7 +38,7 @@ pub struct Board {
     colors: [Bitboard; Color::COUNT],
     pieces: [Bitboard; Piece::COUNT],
     castle_rights: [CastleRights; Color::COUNT],
-    pinned: [Bitboard; Color::COUNT],
+    pinned: Bitboard,
     checkers: Bitboard,
     en_passant: Option<File>,
     fullmove_count: u16,
@@ -132,9 +132,7 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub const fn pinned(&self, color: Color) -> Bitboard {
-        self.pinned[color as usize]
-    }
+    pub const fn pinned(&self) -> Bitboard { self.pinned }
 
     #[inline]
     pub const fn checkers(&self) -> Bitboard { self.checkers }
@@ -237,7 +235,7 @@ impl Board {
 
     pub fn make_move(&mut self, mv: Move) {
         self.checkers = Bitboard::EMPTY;
-        self.pinned = [Bitboard::EMPTY; Color::COUNT];
+        self.pinned = Bitboard::EMPTY;
 
         let (from, to, promotion) = (mv.from(), mv.to(), mv.promotion());
         let moved = self.piece_on(from).unwrap();
@@ -350,7 +348,7 @@ impl Board {
             let between = between(sq, their_king) & occ;
             match between.popcnt() {
                 0 => self.checkers |= sq,
-                1 => self.pinned[!self.stm as usize] |= between,
+                1 => self.pinned |= between,
                 _ => {}
             }
         }
@@ -363,7 +361,7 @@ impl Board {
             let between = between(sq, our_king) & occ;
 
             if between.popcnt() == 1 {
-                self.pinned[self.stm as usize] |= between;
+                self.pinned |= between & self.colors(self.stm);
             }
         }
 
@@ -385,11 +383,9 @@ impl Board {
         board.set_en_passant(None);
         board.toggle_stm();
 
-        board.pinned = [Bitboard::EMPTY; Color::COUNT];
-
+        board.pinned = Bitboard::EMPTY;
         let our_king = board.king(board.stm);
         let (diag, orth) = (self.diag_sliders(), self.orth_sliders());
-
         let their_attackers = board.colors(!board.stm) & (
             (bishop_rays(our_king) & diag) | (rook_rays(our_king) & orth)
         );
@@ -399,7 +395,7 @@ impl Board {
             let between = between(sq, our_king) & occ;
 
             if between.popcnt() == 1 {
-                board.pinned[board.stm as usize] |= between;
+                board.pinned |= between;
             }
         }
 
@@ -412,7 +408,7 @@ impl Board {
             let between = between(sq, their_king) & occ;
 
             if between.popcnt() == 1 {
-                board.pinned[!board.stm as usize] |= between;
+                board.pinned |= between;
             }
         }
 

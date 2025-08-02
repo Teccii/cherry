@@ -1,4 +1,4 @@
-use std::{fmt::Write, sync::{Arc, Mutex, mpsc::*}};
+use std::{fmt::Write, fs, sync::{Arc, Mutex, mpsc::*}};
 use std::time::Instant;
 use crate::*;
 
@@ -78,12 +78,10 @@ pub struct Engine {
 
 impl Engine {
     pub fn new() -> Engine {
-        #[cfg(feature = "nnue")] let nnue_weights = NetworkWeights::default();
         let time_man = Arc::new(TimeManager::new());
         let searcher = Arc::new(Mutex::new(Searcher::new(
             Board::default(),
             Arc::clone(&time_man),
-            #[cfg(feature = "nnue")] nnue_weights,
         )));
 
         let (tx, rx): (Sender<ThreadCommand>, Receiver<ThreadCommand>) = channel();
@@ -107,13 +105,10 @@ impl Engine {
                         let mut searcher = searcher.lock().unwrap();
                         let searcher = &mut *searcher; //???
 
-                        #[cfg(not(feature = "nnue"))] searcher.pos.set_board(board);
-                        #[cfg(feature = "nnue")] searcher.pos.set_board(board, &searcher.shared_ctx.nnue_weights);
-
+                        searcher.pos.set_board(board, &searcher.shared_ctx.nnue_weights);
                         for mv in moves {
                             searcher.pos.make_move(mv);
-
-                            #[cfg(feature = "nnue")] searcher.pos.reset(&searcher.shared_ctx.nnue_weights);
+                            searcher.pos.reset(&searcher.shared_ctx.nnue_weights);
                         }
                     },
                     ThreadCommand::SetOption(searcher, name, value) => {
@@ -121,6 +116,7 @@ impl Engine {
 
                         match name.as_str() {
                             "Threads" => searcher.threads = value.parse::<u16>().unwrap(),
+                            "EvalFile" => searcher.shared_ctx.nnue_weights = NetworkWeights::new(&fs::read(value).unwrap()),
                             "Hash" => searcher.resize_ttable(value.parse::<usize>().unwrap()),
                             "SyzygyPath" => searcher.set_syzygy_path(value.as_str()),
                             "SyzygyProbeDepth" => searcher.shared_ctx.syzygy_depth = value.parse::<u8>().unwrap(),
@@ -163,6 +159,7 @@ impl Engine {
                 println!("id author Tecci");
                 println!("option name Threads type spin default 1 min 1 max 65535");
                 println!("option name Hash type spin default 16 min 1 max 65535");
+                println!("option name EvalFile type string default <default>");
                 println!("option name SyzygyPath type string default <empty>");
                 println!("option name SyzygyProbeDepth type spin default 1 min 0 max 128");
                 println!("option name MoveOverhead type spin default 100 min 0 max 5000");
@@ -188,16 +185,6 @@ impl Engine {
                 datagen(count, threads, dfrc);
                 self.sender.send(ThreadCommand::Quit).unwrap();
                 return false;
-            },
-            #[cfg(feature = "tune")] UciCommand::Tune {
-                threads,
-                buffer_size,
-                queue_size,
-                file_paths
-            } => {
-                let file_paths = file_paths.iter().map(String::as_str).collect::<Vec<_>>();
-
-                tune(threads, buffer_size, queue_size, &file_paths);
             },
             UciCommand::Position(board, moves) => self.sender.send(ThreadCommand::Position(
                 Arc::clone(&self.searcher),
@@ -236,7 +223,7 @@ impl Engine {
                 let pawns = board.pieces(Piece::Pawn);
                 let rooks = board.pieces(Piece::Rook);
                 let kings = board.pieces(Piece::King);
-                let pinned = board.pinned(Color::White) | board.pinned(Color::Black);
+                let pinned = board.pinned();
 
                 let removable = board.occupied() & !kings & !pinned;
                 for sq in removable {
@@ -262,7 +249,7 @@ impl Engine {
                     }
 
                     let new_board = builder.build().unwrap();
-                    searcher.pos.set_board(new_board, #[cfg(feature = "nnue")]&searcher.shared_ctx.nnue_weights);
+                    searcher.pos.set_board(new_board, &searcher.shared_ctx.nnue_weights);
 
                     diffs[sq as usize] = (score - searcher.search::<NoInfo>(limits.clone()).2).0;
                 }
@@ -314,8 +301,7 @@ impl Engine {
 
                 let start_time = Instant::now();
                 for pos in BENCH_POSITIONS.iter().map(|fen| fen.parse::<Board>().unwrap()) {
-                    #[cfg(not(feature = "nnue"))] searcher.pos.set_board(pos.clone());
-                    #[cfg(feature = "nnue")] searcher.pos.set_board(pos.clone(), &searcher.shared_ctx.nnue_weights);
+                    searcher.pos.set_board(pos.clone(), &searcher.shared_ctx.nnue_weights);
                     searcher.clean_ttable();
 
                     let start_time = Instant::now();

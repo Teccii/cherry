@@ -1,4 +1,6 @@
 EXE = Cherry
+EVALFILE = networks/cherry_768-256-v1.bin
+
 ifeq ($(OS),Windows_NT)
 NAME := $(EXE).exe
 else

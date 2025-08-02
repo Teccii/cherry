@@ -36,8 +36,8 @@ impl Board {
 
         let (diag, orth) = (self.diag_sliders(), self.orth_sliders());
         let (w_pinned, b_pinned) = (
-            self.pinned(Color::White),
-            self.pinned(Color::Black)
+            self.pinned() & self.colors(Color::White),
+            self.pinned() & self.colors(Color::Black),
         );
         let (w_checks, b_checks) = (
             queen_rays(self.king(Color::White)),

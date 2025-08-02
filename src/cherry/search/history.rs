@@ -71,11 +71,11 @@ impl History {
 
     #[inline]
     pub fn reset(&mut self) {
-        self.quiets = Box::new([move_to(0); Color::COUNT]);
-        self.tactical = Box::new([piece_to(0); Color::COUNT]);
-        self.counter_move = Box::new([piece_to(piece_to(0)); Color::COUNT]);
-        self.follow_up = Box::new([piece_to(piece_to(0)); Color::COUNT]);
-        self.pawn_corr = Box::new([[0; PAWN_CORRECTION_SIZE]; Color::COUNT]);
+        self.quiets.fill(move_to(0));
+        self.tactical.fill(piece_to(0));
+        self.counter_move.fill(piece_to(piece_to(0)));
+        self.follow_up.fill(piece_to(piece_to(0)));
+        self.pawn_corr.fill([0; PAWN_CORRECTION_SIZE]);
     }
 
     /*----------------------------------------------------------------*/
