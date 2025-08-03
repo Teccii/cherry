@@ -3,7 +3,7 @@ mod move_gen;
 mod parse;
 mod print;
 mod sanity;
-mod see;
+mod attacks;
 
 pub use builder::*;
 pub use parse::*;
@@ -168,28 +168,6 @@ impl Board {
 
     #[inline]
     pub const fn stm(&self) -> Color { self.stm }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn attackers(&self, sq: Square, blockers: Bitboard) -> Bitboard {
-        (knight_moves(sq) & self.pieces(Piece::Knight))
-            | (king_moves(sq) & self.pieces(Piece::King))
-            | (bishop_moves(sq, blockers) & self.diag_sliders())
-            | (rook_moves(sq, blockers) & self.orth_sliders())
-            | (pawn_attacks(sq, Color::White) & self.color_pieces(Piece::Pawn, Color::Black))
-            | (pawn_attacks(sq, Color::Black) & self.color_pieces(Piece::Pawn, Color::White))
-    }
-
-    #[inline]
-    pub fn pawn_attacks(&self, color: Color) -> Bitboard {
-        let pawns = self.color_pieces(Piece::Pawn, color);
-
-        match color {
-            Color::White => pawns | pawns.shift::<UpLeft>(1) | pawns.shift::<UpRight>(1),
-            Color::Black => pawns | pawns.shift::<DownLeft>(1) | pawns.shift::<DownRight>(1),
-        }
-    }
 
     /*----------------------------------------------------------------*/
 

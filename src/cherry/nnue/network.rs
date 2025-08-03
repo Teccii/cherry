@@ -34,8 +34,13 @@ impl NetworkWeights {
 
         const I16_SIZE: usize = size_of::<i16>();
 
-        debug_assert_eq!(bytes.len(), (I16_SIZE * (INPUT * HL + HL + L1 + 1)).next_multiple_of(64));
-
+        assert_eq!(bytes.len(), (I16_SIZE * (INPUT * HL + HL + L1 + 1)).next_multiple_of(64));
+        
+        /*
+        Required for larger networks, otherwise we would overflow the stack
+        even if we try to create it via `Arc::new(NetworkWeights::new(...))`
+        because Rust is funky sometimes.
+        */
         let mut weights: Arc<MaybeUninit<NetworkWeights>> = Arc::new_uninit();
         unsafe {
             let ptr = Arc::get_mut(&mut weights).unwrap().as_mut_ptr();
