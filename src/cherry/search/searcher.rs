@@ -84,11 +84,11 @@ impl ThreadContext {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MoveData {
     pub piece: Piece,
+    pub color: Color,
     pub victim: Option<Piece>,
     pub promotion: Option<Piece>,
     pub from: Square,
     pub to: Square,
-
 }
 
 impl MoveData {
@@ -97,10 +97,25 @@ impl MoveData {
 
         MoveData {
             piece: board.piece_on(from).unwrap(),
+            color: board.color_on(from).unwrap(),
             victim: board.victim(mv),
             promotion,
             from,
             to,
+        }
+    }
+}
+
+impl Default for MoveData {
+    #[inline]
+    fn default() -> Self {
+        MoveData {
+            piece: Piece::Pawn,
+            color: Color::White,
+            victim: None,
+            promotion: None,
+            from: Square::A1,
+            to: Square::A1,
         }
     }
 }

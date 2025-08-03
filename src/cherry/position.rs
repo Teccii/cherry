@@ -81,7 +81,6 @@ impl Position {
         self.board.make_move(mv);
     }
 
-
     #[inline]
     pub fn null_move(&mut self) -> bool {
         if let Some(new_board) = self.board.null_move() {
@@ -112,7 +111,7 @@ impl Position {
     
     #[inline]
     pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
-        self.nnue.apply_updates(weights);
+        self.nnue.apply_updates(&self.board, weights);
 
         let mut eval = self.nnue.eval(weights, self.stm());
         let material = Piece::Pawn.see_value() as usize * self.board.pieces(Piece::Pawn).popcnt()

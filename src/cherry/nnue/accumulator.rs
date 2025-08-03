@@ -7,7 +7,8 @@ use crate::*;
 pub struct Accumulator {
     pub white: Align64<[i16; HL]>,
     pub black: Align64<[i16; HL]>,
-    
+
+    pub mv: MoveData,
     pub update_buffer: UpdateBuffer,
     pub dirty: [bool; Color::COUNT],
 }
@@ -32,17 +33,74 @@ impl Accumulator {
 
 /*----------------------------------------------------------------*/
 
-pub fn vec_add(
+#[derive(Debug, Clone)]
+pub struct AccumulatorCache {
+    pub layouts: [PieceLayout; Color::COUNT],
+    pub acc: Accumulator,
+}
+
+impl AccumulatorCache {
+    pub fn load_accumulator(
+        &mut self,
+        acc: &mut Accumulator,
+        board: &Board,
+        weights: &NetworkWeights,
+        perspective: Color,
+    ) {
+        let layout = board.layout();
+        let king = board.king(perspective);
+        let cache = self.acc.select_mut(perspective);
+
+        let mut adds = ArrayVec::<_, 32>::new();
+        let mut subs = ArrayVec::<_, 32>::new();
+        self.layouts[perspective as usize].iter_diff(&layout, |sq, piece, color, add| if add {
+            adds.push(FeatureUpdate { piece, color, sq }.to_index(king, perspective));
+        } else {
+            subs.push(FeatureUpdate { piece, color, sq }.to_index(king, perspective));
+        });
+
+        self.layouts[perspective as usize] = layout;
+
+        vec_update(cache, weights, &adds, &subs);
+        *acc.select_mut(perspective) = cache.clone();
+        acc.dirty[perspective as usize] = false;
+    }
+}
+
+impl Default for AccumulatorCache {
+    #[inline]
+    fn default() -> Self {
+        AccumulatorCache {
+            layouts: [PieceLayout::default(); Color::COUNT],
+            acc: Accumulator {
+                white: Align64([0; HL]),
+                black: Align64([0; HL]),
+                update_buffer: UpdateBuffer::default(),
+                dirty: [false; Color::COUNT],
+                mv: MoveData::default(),
+            },
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+pub fn vec_update(
     acc: &mut Align64<[i16; HL]>,
     weights: &NetworkWeights,
     adds: &[usize],
+    subs: &[usize],
 ) {
     for i in 0..(HL/CHUNK_SIZE) {
         let offset = i * CHUNK_SIZE;
         let mut value = I16Reg::from_slice(&acc[offset..]);
-        
+
         for &index in adds {
             value += I16Reg::from_slice(&weights.ft_weights[(index * HL + offset)..]);
+        }
+
+        for &index in subs {
+            value -= I16Reg::from_slice(&weights.ft_weights[(index * HL + offset)..]);
         }
 
         value.copy_to_slice(&mut acc[offset..]);
@@ -51,6 +109,10 @@ pub fn vec_add(
     for i in (HL - HL % CHUNK_SIZE)..HL {
         for &index in adds {
             acc[i] += weights.ft_weights[index * HL + i];
+        }
+
+        for &index in subs {
+            acc[i] -= weights.ft_weights[index * HL + i];
         }
     }
 }

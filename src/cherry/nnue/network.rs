@@ -1,9 +1,4 @@
-use std::{
-    mem::MaybeUninit,
-    sync::Arc,
-    ptr
-};
-use arrayvec::ArrayVec;
+use std::{mem::MaybeUninit, sync::Arc, ptr};
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -66,6 +61,7 @@ impl NetworkWeights {
 
 #[derive(Debug, Clone)]
 pub struct Nnue {
+    pub cache: AccumulatorCache,
     pub acc_stack: Box<[Accumulator; MAX_PLY as usize + 1]>,
     pub acc_index: usize,
 }
@@ -73,11 +69,13 @@ pub struct Nnue {
 impl Nnue {
     pub fn new(board: &Board, weights: &NetworkWeights) -> Nnue {
         let mut nnue = Nnue {
+            cache: AccumulatorCache::default(),
             acc_stack: Box::new(std::array::from_fn(|_| Accumulator {
                 white: Align64([0; HL]),
                 black: Align64([0; HL]),
                 update_buffer: UpdateBuffer::default(),
                 dirty: [false; Color::COUNT],
+                mv: MoveData::default(),
             })),
             acc_index: 0,
         };
@@ -87,28 +85,17 @@ impl Nnue {
     }
 
     pub fn reset(&mut self, board: &Board, weights: &NetworkWeights) {
-        for acc in &mut *self.acc_stack {
-            acc.white = weights.ft_bias.clone();
-            acc.black = weights.ft_bias.clone();
+        self.cache.acc.white = weights.ft_bias.clone();
+        self.cache.acc.black = weights.ft_bias.clone();
+
+        for layout in &mut self.cache.layouts {
+            *layout = PieceLayout::default();
         }
-
-        let mut adds = ArrayVec::<_, 32>::new();
-        for sq in board.occupied() {
-            let piece = board.piece_on(sq).unwrap();
-            let color = board.color_on(sq).unwrap();
-
-            adds.push(FeatureUpdate { piece, color, sq });
-        }
-
-        let (w_add, b_add): (Vec<_>, Vec<_>) = adds.iter()
-            .map(|f| (f.to_index(Color::White), f.to_index(Color::Black)))
-            .unzip();
 
         self.acc_index = 0;
-        let acc = self.acc_mut();
-        vec_add(acc.select_mut(Color::White), weights, &w_add);
-        vec_add(acc.select_mut(Color::Black), weights, &b_add);
-        acc.dirty = [false; Color::COUNT];
+        for &color in &Color::ALL {
+            self.cache.load_accumulator(&mut self.acc_stack[0], board, weights, color);
+        }
     }
 
     pub fn make_move(&mut self, board: &Board, mv: Move) {
@@ -125,7 +112,6 @@ impl Nnue {
             };
             
             let back_rank = Rank::First.relative_to(color);
-            
             update.move_piece(Piece::King, color, from, Square::new(king, back_rank));
             update.move_piece(Piece::Rook, color, to, Square::new(rook, back_rank));
         } else if let Some(promotion) = mv.promotion() {
@@ -153,6 +139,7 @@ impl Nnue {
         }
         
         self.acc_mut().update_buffer = update;
+        self.acc_mut().mv = MoveData::new(board, mv);
         self.acc_index += 1;
         self.acc_mut().dirty = [true; Color::COUNT];
     }
@@ -175,15 +162,41 @@ impl Nnue {
     
     /*----------------------------------------------------------------*/
 
-    pub fn apply_updates(&mut self, weights: &NetworkWeights) {
-        for &color in &Color::ALL {
-            if self.acc().dirty[color as usize] {
-                self.lazy_update(weights, color);
+    pub fn can_update(&self, perspective: Color) -> bool {
+        let mut index = self.acc_index;
+
+        loop {
+            index -= 1;
+
+            let mv = self.acc_stack[index].mv;
+            if mv.color == perspective && mv.piece == Piece::King && (mv.from.file() > File::D) != (mv.to.file() > File::D) {
+                return false;
+            }
+
+            if !self.acc_stack[index].dirty[perspective as usize] {
+                return true;
             }
         }
     }
 
-    fn lazy_update(&mut self, weights: &NetworkWeights, perspective: Color) {
+    pub fn apply_updates(&mut self, board: &Board, weights: &NetworkWeights) {
+        for &color in &Color::ALL {
+            if self.acc().dirty[color as usize] {
+                if self.can_update(color) {
+                    self.lazy_update(board, weights, color);
+                } else {
+                    self.cache.load_accumulator(
+                        &mut self.acc_stack[self.acc_index],
+                        board,
+                        weights,
+                        color,
+                    );
+                }
+            }
+        }
+    }
+
+    fn lazy_update(&mut self, board: &Board, weights: &NetworkWeights, perspective: Color) {
         let mut index = self.acc_index;
 
         //Find the first non-dirty accumulator
@@ -195,10 +208,12 @@ impl Nnue {
             }
         }
 
+        let king = board.king(perspective);
+
         //Recalculate all accumulators from thereon
         loop {
             index += 1;
-            self.next_acc(weights, perspective, index);
+            self.next_acc(weights, king, perspective, index);
             self.acc_stack[index].dirty[perspective as usize] = false;
 
             if index == self.acc_index {
@@ -207,7 +222,7 @@ impl Nnue {
         }
     }
     
-    fn next_acc(&mut self, weights: &NetworkWeights, perspective: Color, index: usize) {
+    fn next_acc(&mut self, weights: &NetworkWeights, king: Square, perspective: Color, index: usize) {
         let (prev, next) = self.acc_stack.split_at_mut(index);
         let src = prev.last().unwrap();
         let target = next.first_mut().unwrap();
@@ -215,8 +230,8 @@ impl Nnue {
         match (src.update_buffer.adds(), src.update_buffer.subs()) {
             //quiet moves, including promotions
             (&[add], &[sub]) => {
-                let add = add.to_index(perspective);
-                let sub = sub.to_index(perspective);
+                let add = add.to_index(king, perspective);
+                let sub = sub.to_index(king, perspective);
                 
                 vec_add_sub(
                     src.select(perspective),
@@ -228,9 +243,9 @@ impl Nnue {
             },
             //captures, including promotions and en passant
             (&[add], &[sub1, sub2]) => {
-                let add = add.to_index(perspective);
-                let sub1 = sub1.to_index(perspective);
-                let sub2 = sub2.to_index(perspective);
+                let add = add.to_index(king, perspective);
+                let sub1 = sub1.to_index(king, perspective);
+                let sub2 = sub2.to_index(king, perspective);
                 
                 vec_add_sub2(
                     src.select(perspective),
@@ -243,10 +258,10 @@ impl Nnue {
             },
             //castling
             (&[add1, add2], &[sub1, sub2]) => {
-                let add1 = add1.to_index(perspective);
-                let add2 = add2.to_index(perspective);
-                let sub1 = sub1.to_index(perspective);
-                let sub2 = sub2.to_index(perspective);
+                let add1 = add1.to_index(king, perspective);
+                let add2 = add2.to_index(king, perspective);
+                let sub1 = sub1.to_index(king, perspective);
+                let sub2 = sub2.to_index(king, perspective);
 
                 vec_add2_sub2(
                     src.select(perspective),
@@ -264,12 +279,10 @@ impl Nnue {
 
     /*----------------------------------------------------------------*/
 
-    #[inline]
     fn acc(&self) -> &Accumulator {
         &self.acc_stack[self.acc_index]
     }
 
-    #[inline]
     fn acc_mut(&mut self) -> &mut Accumulator {
         &mut self.acc_stack[self.acc_index]
     }

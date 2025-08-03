@@ -86,8 +86,7 @@ impl BoardBuilder {
 
     pub fn build(&self) -> Result<Board, BoardBuilderError> {
         let mut board = Board {
-            colors: [Bitboard::EMPTY; Color::COUNT],
-            pieces: [Bitboard::EMPTY; Piece::COUNT],
+            layout: PieceLayout::default(),
             castle_rights: [CastleRights::EMPTY; Color::COUNT],
             pinned: Bitboard::EMPTY,
             checkers: Bitboard::EMPTY,

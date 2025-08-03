@@ -17,8 +17,7 @@ impl Board {
     pub fn from_fen(fen: &str, shredder: bool) -> Result<Board, FenParseError> {
         let mut reader = fen.split(' ');
         let mut board = Board {
-            colors: [Bitboard::EMPTY; Color::COUNT],
-            pieces: [Bitboard::EMPTY; Piece::COUNT],
+            layout: PieceLayout::default(),
             castle_rights: [CastleRights { short: None, long: None }; Color::COUNT],
             pinned: Bitboard::EMPTY,
             checkers: Bitboard::EMPTY,

@@ -12,6 +12,7 @@ pub use parse::*;
 
 use crate::*;
 use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BoardStatus {
@@ -19,6 +20,8 @@ pub enum BoardStatus {
     Checkmate,
     Ongoing
 }
+
+/*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CastleRights {
@@ -33,25 +36,18 @@ impl CastleRights {
     };
 }
 
+/*----------------------------------------------------------------*/
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Board {
-    colors: [Bitboard; Color::COUNT],
-    pieces: [Bitboard; Piece::COUNT],
-    castle_rights: [CastleRights; Color::COUNT],
-    pinned: Bitboard,
-    checkers: Bitboard,
-    en_passant: Option<File>,
-    fullmove_count: u16,
-    halfmove_clock: u8,
-    pawn_hash: u64,
-    hash: u64,
-    stm: Color,
+pub struct PieceLayout {
+    pub colors: [Bitboard; Color::COUNT],
+    pub pieces: [Bitboard; Piece::COUNT],
 }
 
-impl Board {
+impl PieceLayout {
     #[inline]
-    pub const fn occupied(&self) -> Bitboard {
-        Bitboard(self.colors[0].0 | self.colors[1].0)
+    pub fn occupied(&self) -> Bitboard {
+        self.colors[0] | self.colors[1]
     }
 
     #[inline]
@@ -112,6 +108,178 @@ impl Board {
     pub const fn color_orth_sliders(&self, color: Color) -> Bitboard {
         Bitboard(self.colors(color).0 & self.orth_sliders().0)
     }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn king(&self, color: Color) -> Square {
+        self.color_pieces(Piece::King, color).next_square()
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn piece_on(&self, sq: Square) -> Option<Piece> {
+        let bb = sq.bitboard();
+
+        if self.occupied().is_disjoint(bb) {
+            return None;
+        }
+
+        if bb.is_subset(self.pieces(Piece::Pawn)) {
+            Some(Piece::Pawn)
+        } else if bb.is_subset(self.pieces(Piece::Knight)) {
+            Some(Piece::Knight)
+        } else if bb.is_subset(self.pieces(Piece::Bishop)) {
+            Some(Piece::Bishop)
+        } else if bb.is_subset(self.pieces(Piece::Rook)) {
+            Some(Piece::Rook)
+        } else if bb.is_subset(self.pieces(Piece::Queen)) {
+            Some(Piece::Queen)
+        } else {
+            Some(Piece::King)
+        }
+    }
+
+    #[inline]
+    pub fn color_on(&self, sq: Square) -> Option<Color> {
+        let bb = sq.bitboard();
+
+        if self.occupied().is_disjoint(bb) {
+            return None;
+        }
+
+        if bb.is_subset(self.colors(Color::White)) {
+            Some(Color::White)
+        } else {
+            Some(Color::Black)
+        }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    pub fn iter_diff(&self, other: &PieceLayout, mut f: impl FnMut(Square, Piece, Color, bool)) {
+        for &color in &Color::ALL {
+            for &piece in &Piece::ALL {
+                let our_pieces = self.color_pieces(piece, color);
+                let their_pieces = other.color_pieces(piece, color);
+
+                let added = their_pieces & !our_pieces;
+                let removed = our_pieces & !their_pieces;
+
+                for sq in added {
+                    f(sq, piece, other.color_on(sq).unwrap(), true);
+                }
+
+                for sq in removed {
+                    f(sq, piece, self.color_on(sq).unwrap(), false);
+                }
+            }
+        }
+    }
+}
+
+impl Default for PieceLayout {
+    #[inline]
+    fn default() -> Self {
+        PieceLayout {
+            colors: [Bitboard::EMPTY; Color::COUNT],
+            pieces: [Bitboard::EMPTY; Piece::COUNT],
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Board {
+    layout: PieceLayout,
+    /*colors: [Bitboard; Color::COUNT],
+    pieces: [Bitboard; Piece::COUNT],*/
+    castle_rights: [CastleRights; Color::COUNT],
+    pinned: Bitboard,
+    checkers: Bitboard,
+    en_passant: Option<File>,
+    fullmove_count: u16,
+    halfmove_clock: u8,
+    pawn_hash: u64,
+    hash: u64,
+    stm: Color,
+}
+
+impl Board {
+    #[inline]
+    pub const fn layout(&self) -> PieceLayout {
+        self.layout
+    }
+    
+    /*#[inline]
+    pub const fn occupied(&self) -> Bitboard {
+        Bitboard(self.layout.colors[0].0 | self.layout.colors[1].0)
+    }
+
+    
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub const fn colors(&self, color: Color) -> Bitboard {
+        self.colors[color as usize]
+    }
+
+    #[inline]
+    pub const fn pieces(&self, piece: Piece) -> Bitboard {
+        self.pieces[piece as usize]
+    }
+
+    #[inline]
+    pub const fn color_pieces(&self, piece: Piece, color: Color) -> Bitboard {
+        Bitboard(self.colors(color).0 & self.pieces(piece).0)
+    }*/
+
+    /*----------------------------------------------------------------*/
+
+    /*#[inline]
+    pub const fn minors(&self) -> Bitboard {
+        Bitboard(self.pieces(Piece::Knight).0 | self.pieces(Piece::Bishop).0)
+    }
+
+    #[inline]
+    pub const fn color_minors(&self, color: Color) -> Bitboard {
+        Bitboard(self.colors(color).0 & self.minors().0)
+    }
+
+    #[inline]
+    pub const fn majors(&self) -> Bitboard {
+        Bitboard(self.pieces(Piece::Rook).0 | self.pieces(Piece::Queen).0)
+    }
+
+    #[inline]
+    pub const fn color_majors(&self, color: Color) -> Bitboard {
+        Bitboard(self.colors(color).0 & self.majors().0)
+    }*/
+
+    /*----------------------------------------------------------------*/
+
+    /*#[inline]
+    pub const fn diag_sliders(&self) -> Bitboard {
+        Bitboard(self.pieces(Piece::Bishop).0 | self.pieces(Piece::Queen).0)
+    }
+
+    #[inline]
+    pub const fn color_diag_sliders(&self, color: Color) -> Bitboard {
+        Bitboard(self.colors(color).0 & self.diag_sliders().0)
+    }
+
+    #[inline]
+    pub const fn orth_sliders(&self) -> Bitboard {
+        Bitboard(self.pieces(Piece::Rook).0 | self.pieces(Piece::Queen).0)
+    }
+
+    #[inline]
+    pub const fn color_orth_sliders(&self, color: Color) -> Bitboard {
+        Bitboard(self.colors(color).0 & self.orth_sliders().0)
+    }*/
 
     /*----------------------------------------------------------------*/
 
@@ -456,6 +624,18 @@ impl Board {
         self.stm = !self.stm;
         self.hash ^= ZOBRIST.stm;
     }
+}
+
+impl Deref for Board {
+    type Target = PieceLayout;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target { &self.layout }
+}
+
+impl DerefMut for Board {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.layout }
 }
 
 impl Default for Board {
