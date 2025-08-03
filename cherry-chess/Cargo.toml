@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 cherry-types = { path = "../cherry-types" }
+colored = "3.0.0"
 
 [build-dependencies]
 cherry-types = { path = "../cherry-types" }

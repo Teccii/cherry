@@ -1,5 +1,5 @@
-use std::{fmt::Write, fs, sync::{Arc, Mutex, mpsc::*}};
-use std::time::Instant;
+use std::{fs, fmt::Write, time::Instant, sync::{Arc, Mutex, mpsc::*}};
+use colored::Colorize;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -215,6 +215,14 @@ impl Engine {
                 let searcher = &mut *searcher;
                 let board = searcher.pos.board().clone();
 
+                println!("{}", board.pretty_print(self.chess960));
+                println!(
+                    "{} [{}] {}%",
+                    "Analysis".bright_green(),
+                    ".".repeat(50),
+                    "0".bright_green()
+                );
+
                 let score = searcher.search::<NoInfo>(limits.clone()).2;
                 let mut diffs = [0; Square::COUNT];
 
@@ -226,7 +234,9 @@ impl Engine {
                 let pinned = board.pinned();
 
                 let removable = board.occupied() & !kings & !pinned;
-                for sq in removable {
+                let count = removable.popcnt();
+
+                for (i, sq) in removable.iter().enumerate() {
                     let mut builder = BoardBuilder::from_board(&board);
                     builder.set_piece(sq, None);
 
@@ -252,7 +262,24 @@ impl Engine {
                     searcher.pos.set_board(new_board, &searcher.shared_ctx.nnue_weights);
 
                     diffs[sq as usize] = (score - searcher.search::<NoInfo>(limits.clone()).2).0;
+
+                    let progress = 50 * i / count;
+
+                    println!(
+                        "\x1B[1F{} [{}{}] {}%",
+                        "Analysis".bright_green(),
+                        "#".blue().repeat(progress),
+                        ".".repeat(50 - progress),
+                        format!("{}", 100 * i / count).bright_green()
+                    )
                 }
+
+                println!(
+                    "\x1B[1F{} [{}] {}%",
+                    "Analysis".bright_green(),
+                    "#".blue().repeat(50),
+                    format!("{}", 100).bright_green()
+                );
 
                 println!("+-------+-------+-------+-------+-------+-------+-------+-------+");
 
@@ -267,9 +294,9 @@ impl Engine {
                         } else {
                             let piece: char = board.piece_on(sq).unwrap().into();
                             if white.has(sq) {
-                                print!("   {}   |", piece.to_ascii_uppercase());
+                                print!("   {}   |", String::from(piece.to_ascii_uppercase()).bright_green());
                             } else {
-                                print!("   {}   |", piece);
+                                print!("   {}   |", String::from(piece).blue());
                             }
                         }
                     }
@@ -281,9 +308,14 @@ impl Engine {
                         if !occ.has(sq) || kings.has(sq) {
                             print!("       |");
                         } else if pinned.has(sq) {
-                            print!("  PIN  |");
+                            print!("  {}  |", "PIN".bright_black());
                         } else {
-                            print!("{:^7}|", diffs[sq as usize]);
+                            let diff = diffs[sq as usize];
+                            print!("{:^7}|", format!("{}", diff).truecolor(
+                                ((-diff + 250).clamp(0, 500) * 255 / 500) as u8,
+                                ((diff + 250).clamp(0, 500) * 255 / 500) as u8,
+                                127
+                            ));
                         }
                     }
 

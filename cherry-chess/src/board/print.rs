@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use colored::Colorize;
 use crate::*;
 
 impl Board {
@@ -56,15 +57,15 @@ impl Board {
                     let piece: char = self.piece_on(sq).unwrap().into();
 
                     if self.colors(Color::White).has(sq) {
-                        write!(&mut result, " {}", piece.to_ascii_uppercase()).unwrap();
+                        write!(&mut result, " {}", String::from(piece.to_ascii_uppercase()).bright_green()).unwrap();
                     } else {
-                        write!(&mut result, " {}" , piece).unwrap();
+                        write!(&mut result, " {}" , String::from(piece).bright_blue()).unwrap();
                     }
                 }
             }
 
             if let Some(feature) = features.get(7 - rank as usize) {
-                writeln!(&mut result, " | {}", feature).unwrap();
+                writeln!(&mut result, " | {}", feature.bright_green()).unwrap();
             } else {
                 writeln!(&mut result, " |").unwrap();
             }
