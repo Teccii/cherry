@@ -217,8 +217,7 @@ impl Engine {
 
                 println!("{}", board.pretty_print(self.chess960));
                 println!(
-                    "{} [{}] {}%",
-                    "Analysis".bright_green(),
+                    "\n\n[{}] {}%",
                     ".".repeat(50),
                     "0".bright_green()
                 );
@@ -266,60 +265,59 @@ impl Engine {
                     let progress = 50 * i / count;
 
                     println!(
-                        "\x1B[1F{} [{}{}] {}%",
-                        "Analysis".bright_green(),
-                        "#".blue().repeat(progress),
-                        ".".repeat(50 - progress),
+                        "\x1B[1F{} {}%",
+                        progress_bar(progress, 50),
                         format!("{}", 100 * i / count).bright_green()
-                    )
+                    );
                 }
 
-                println!(
-                    "\x1B[1F{} [{}] {}%",
-                    "Analysis".bright_green(),
-                    "#".blue().repeat(50),
-                    format!("{}", 100).bright_green()
-                );
-
-                println!("+-------+-------+-------+-------+-------+-------+-------+-------+");
-
+                let (min, max) = (i32::from(*diffs.iter().min().unwrap()), i32::from(*diffs.iter().max().unwrap()));
+                println!("\x1B[1F\x1B[2K╔═══════╤═══════╤═══════╤═══════╤═══════╤═══════╤═══════╤═══════╗");
                 for &rank in Rank::ALL.iter().rev() {
-                    println!("|       |       |       |       |       |       |       |       |");
-                    print!("|");
+                    println!("║       │       │       │       │       │       │       │       ║");
+                    print!("║");
                     for &file in &File::ALL {
                         let sq = Square::new(file, rank);
 
                         if !occ.has(sq) {
-                            print!("       |");
+                            print!("    ");
                         } else {
                             let piece: char = board.piece_on(sq).unwrap().into();
                             if white.has(sq) {
-                                print!("   {}   |", String::from(piece.to_ascii_uppercase()).bright_green());
+                                print!("   {}", String::from(piece.to_ascii_uppercase()).bright_green());
                             } else {
-                                print!("   {}   |", String::from(piece).blue());
+                                print!("   {}", String::from(piece).blue());
                             }
                         }
+
+                        print!("   {}", if file == File::H { '║' } else { '│' });
                     }
 
-                    print!("\n|");
+                    print!("\n║");
                     for &file in &File::ALL {
                         let sq = Square::new(file, rank);
 
                         if !occ.has(sq) || kings.has(sq) {
-                            print!("       |");
+                            print!("       ");
                         } else if pinned.has(sq) {
-                            print!("  {}  |", "PIN".bright_black());
+                            print!("  {}  ", "PIN".bright_black());
                         } else {
-                            let diff = diffs[sq as usize];
-                            print!("{:^7}|", format!("{}", diff).truecolor(
-                                ((-diff + 250).clamp(0, 500) * 255 / 500) as u8,
-                                ((diff + 250).clamp(0, 500) * 255 / 500) as u8,
-                                127
-                            ));
+                            let diff = i32::from(diffs[sq as usize]);
+                            print!("{:^7}", if diff < 0 {
+                                format!("{}", diff).truecolor(255, (255i32 * (diff - min) / -min) as u8, 0)
+                            } else {
+                                format!("{}", diff).truecolor((255i32 * (max - diff) / max) as u8,255,0)
+                            });
                         }
+
+                        print!("{}", if file == File::H { '║' } else { '│' });
                     }
 
-                    println!("\n+-------+-------+-------+-------+-------+-------+-------+-------+");
+                    println!("\n{}", if rank == Rank::First {
+                        "╚═══════╧═══════╧═══════╧═══════╧═══════╧═══════╧═══════╧═══════╝"
+                    } else {
+                        "╟───────┼───────┼───────┼───────┼───────┼───────┼───────┼───────╢"
+                    });
                 }
             },
             UciCommand::Bench { depth, threads, hash } => {

@@ -1,5 +1,5 @@
 use std::sync::{Arc, atomic::*};
-
+use colored::Colorize;
 /*----------------------------------------------------------------*/
 
 pub const MAX_DEPTH: u8 = 128;
@@ -107,4 +107,18 @@ impl<T: Copy + Default, const M: usize, const N: usize> LookUp<T, M, N> {
 
         self.table[i][j]
     }
+}
+
+/*----------------------------------------------------------------*/
+
+pub fn progress_bar(progress: usize, max: usize) -> String {
+    format!("[{}{}]", "#".repeat(progress).bright_green(), ".".repeat(max - progress))
+}
+
+#[allow(dead_code)]
+pub fn secs_to_hms(seconds: u32) -> (u32, u32, u32) {
+    let minutes = seconds / 60;
+    let hours = minutes / 60;
+
+    (hours, minutes - hours * 60, seconds - minutes * 60)
 }

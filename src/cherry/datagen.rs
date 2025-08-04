@@ -6,6 +6,7 @@ use std::{
 };
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::time::Instant;
+use colored::Colorize;
 use rand::{Rng, rngs::ThreadRng};
 use viriformat::{
     chess::{
@@ -58,13 +59,23 @@ impl GameStats {
 pub fn datagen(count: usize, threads: usize, dfrc: bool) {
     println!("Starting data generation...");
 
+    if count % threads != 0 {
+        println!(
+            "{}: Number of games is not evenly divisible by the number of threads. Only {}/{} games will be generated.",
+            String::from("Warning").yellow(),
+            (count / threads * threads).to_string().yellow(),
+            count.to_string().bright_green()
+        )
+    }
+
     let options = DataGenOptions { count, threads, dfrc };
     let data_dir = PathBuf::from("data")
         .join(chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string());
     fs::create_dir_all(&data_dir).unwrap();
 
-    println!("Generated data will be stored in {}", data_dir.display());
+    println!("Generated data will be stored in {}", data_dir.display().to_string().bright_green());
     println!("You can safely stop generating by pressing Ctrl+C");
+    println!("--------------------------------------------------");
 
     let stats = Arc::new(GameStats::new());
     let counter = Arc::new(AtomicUsize::new(0));
@@ -208,10 +219,27 @@ fn datagen_worker(
         if !abort.load(Ordering::Relaxed) && curr != 0 && curr % 10 == 0 {
             let percentage = 100f32 * (curr as f32 / options.count as f32);
             let elapsed = start.elapsed().as_secs_f32();
+            let progress = percentage as usize / 2;
+            let seconds = (options.count - curr) as f32 * (elapsed / curr as f32);
+            let (hours, minutes, seconds) = secs_to_hms(seconds as u32);
 
-            println!("Generated {}/{} Games ({:.1}%). ", curr, options.count, percentage);
-            println!("Average Time Per Game: {:.2} seconds. ", elapsed / curr as f32);
-            println!("Estimated Time Remaining: {:.2} seconds. ", (options.count - curr) as f32 * (elapsed / curr as f32));
+            println!(
+                "Generated {}/{} Games {} ({:.1}%). ",
+                curr.to_string().bright_green(),
+                options.count.to_string().bright_green(),
+                progress_bar(progress, 50),
+                percentage.to_string().bright_green()
+            );
+            println!(
+                "Average Time Per Game: {} seconds.       ",
+                format!("{:.2}", elapsed / curr as f32).bright_green()
+            );
+            println!(
+                "Estimated Time Remaining: {}h {}m {}s        ",
+                hours.to_string().bright_green(),
+                minutes.to_string().bright_green(),
+                seconds.to_string().bright_green()
+            );
 
             let white_wins = stats.white_wins.load(Ordering::Relaxed);
             let black_wins = stats.black_wins.load(Ordering::Relaxed);
@@ -221,9 +249,9 @@ fn datagen_worker(
             let black_percentage = 100f32 * (black_wins as f32 / curr as f32);
             let draw_percentage = 100f32 * (draws as f32 / curr as f32);
 
-            println!("White Wins: {} ({:.1}%)", white_wins, white_percentage);
-            println!("Black Wins: {} ({:.1}%)", black_wins, black_percentage);
-            println!("Draws: {} ({:.1}%)", draws, draw_percentage);
+            println!("White Wins: {} ({:.1}%)", white_wins.to_string().bright_green(), white_percentage.to_string().bright_green());
+            println!("Black Wins: {} ({:.1}%)", black_wins.to_string().bright_green(), black_percentage.to_string().bright_green());
+            println!("Draws: {} ({:.1}%)", draws.to_string().bright_green(), draw_percentage.to_string().bright_green());
             println!("\x1B[7A"); //Move cursor up 7 lines
 
             io::stdout().flush().unwrap();

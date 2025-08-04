@@ -7,10 +7,10 @@ impl Board {
         let mut result = String::new();
         let mut features = Vec::new();
 
-        features.push(format!("FEN: {}", self));
+        features.push(format!("{}: {}", String::from("FEN").bright_green(), self));
 
         if let Some(sq) = self.ep_square() {
-            features.push(format!("En Passant Square: {}", sq));
+            features.push(format!("{}: {}", String::from("En Passant").bright_green(), sq));
         }
 
         if self.castle_rights[0] != CastleRights::EMPTY || self.castle_rights[1] != CastleRights::EMPTY {
@@ -36,17 +36,17 @@ impl Board {
                 write_rights(self.castle_rights[color as usize].long, 'q');
             }
 
-            features.push(format!("Castle Rights: {}", rights));
+            features.push(format!("{}: {}", String::from("Castle Rights").bright_green(), rights));
         }
 
-        features.push(format!("Full Move Count: {}", self.fullmove_count));
-        features.push(format!("Halfmove Clock: {}", self.halfmove_clock));
-        features.push(format!("Side To Move: {:?}", self.stm));
+        features.push(format!("{}: {}", String::from("Full Move Count").bright_green(), self.fullmove_count));
+        features.push(format!("{}: {}", String::from("Halfmove Clock").bright_green(), self.halfmove_clock));
+        features.push(format!("{}: {:?}", String::from("Side To Move").bright_green(), self.stm));
 
-        writeln!(&mut result, "+-----------------+").unwrap();
+        writeln!(&mut result, "╔═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╗").unwrap();
 
         for &rank in Rank::ALL.iter().rev() {
-            write!(&mut result, "|").unwrap();
+            write!(&mut result, "║").unwrap();
 
             for &file in File::ALL.iter() {
                 let sq = Square::new(file, rank);
@@ -62,16 +62,27 @@ impl Board {
                         write!(&mut result, " {}" , String::from(piece).bright_blue()).unwrap();
                     }
                 }
+
+                write!(&mut result, " {}", if file == File::H { '║' } else { '│' }).unwrap();
             }
 
             if let Some(feature) = features.get(7 - rank as usize) {
-                writeln!(&mut result, " | {}", feature.bright_green()).unwrap();
+                writeln!(&mut result, " {}\t{}", rank, feature).unwrap();
             } else {
-                writeln!(&mut result, " |").unwrap();
+                writeln!(&mut result, " {}", rank).unwrap();
             }
+
+            writeln!(&mut result, "{}", if rank == Rank::First {
+                "╚═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╝"
+            } else {
+                "╟───┼───┼───┼───┼───┼───┼───┼───╢"
+            }).unwrap();
         }
 
-        writeln!(&mut result, "+-----------------+").unwrap();
+        for &file in &File::ALL {
+            write!(&mut result, "  {:?} ", file).unwrap();
+        }
+
         result
     }
 }
