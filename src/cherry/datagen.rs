@@ -206,9 +206,7 @@ fn datagen_worker(
             _ => { }
         }
 
-        counter.fetch_add(1, Ordering::Relaxed);
-        let curr = counter.load(Ordering::Relaxed);
-
+        let curr = counter.fetch_add(1, Ordering::Relaxed) + 1;
         if !abort.load(Ordering::Relaxed) && curr != 0 && curr % 10 == 0 {
             let percentage = 100f32 * (curr as f32 / options.count as f32);
             let elapsed = start.elapsed().as_secs_f32();
@@ -217,11 +215,11 @@ fn datagen_worker(
             let (hours, minutes, seconds) = secs_to_hms(seconds as u32);
 
             println!(
-                "Generated {}/{} Games {} ({:.1}%).",
+                "Generated {}/{} Games {} ({}%).",
                 curr.to_string().bright_green(),
                 options.count.to_string().bright_green(),
                 progress_bar(progress, 50),
-                percentage.to_string().bright_green()
+                format!("{:.1}", percentage).bright_green()
             );
             println!(
                 "Average Time Per Game: {} seconds.       ",
@@ -242,9 +240,9 @@ fn datagen_worker(
             let black_percentage = 100f32 * (black_wins as f32 / curr as f32);
             let draw_percentage = 100f32 * (draws as f32 / curr as f32);
 
-            println!("White Wins: {} ({:.1}%)", white_wins.to_string().bright_green(), white_percentage.to_string().bright_green());
-            println!("Black Wins: {} ({:.1}%)", black_wins.to_string().bright_green(), black_percentage.to_string().bright_green());
-            println!("Draws: {} ({:.1}%)", draws.to_string().bright_green(), draw_percentage.to_string().bright_green());
+            println!("White Wins: {} ({}%)", white_wins.to_string().bright_green(), format!("{:.1}", white_percentage).bright_green());
+            println!("Black Wins: {} ({}%)", black_wins.to_string().bright_green(), format!("{:.1}", black_percentage).bright_green());
+            println!("Draws: {} ({}%)", draws.to_string().bright_green(), format!("{:.1}", draw_percentage).bright_green());
             println!("\x1B[7A"); //Move cursor up 7 lines
 
             io::stdout().flush().unwrap();

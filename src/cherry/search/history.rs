@@ -212,7 +212,7 @@ impl History {
                 self.get_quiet_mut(board, best_move),
                 weights.quiet_bonus_base + weights.quiet_bonus_mul * depth as i32
             );
-            
+
             for &mv in quiets {
                 History::update_value(
                     self.get_quiet_mut(board, mv),
