@@ -212,6 +212,8 @@ impl Searcher {
         }
     }
 
+    /*----------------------------------------------------------------*/
+
     pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u8, u64) {
         self.main_ctx.reset();
         self.shared_ctx.time_man.init(self.pos.stm(), &limits);
@@ -226,7 +228,7 @@ impl Searcher {
             }
         }
 
-        self.pos.reset(&self.shared_ctx.nnue_weights);
+        self.reset_nnue();
 
         let mut result = (None, None, Score::ZERO, 0);
         rayon::scope(|s| {
@@ -270,6 +272,8 @@ impl Searcher {
         (best_move.unwrap(), ponder_move.filter(|_| self.ponder), best_score, depth, self.main_ctx.nodes.global())
     }
 
+    /*----------------------------------------------------------------*/
+
     #[inline]
     pub fn clean_ttable(&mut self) {
         self.shared_ctx.t_table.clean();
@@ -283,6 +287,23 @@ impl Searcher {
     #[inline]
     pub fn set_syzygy_path(&mut self, path: &str) {
         self.shared_ctx.syzygy = Arc::new(Some(TableBases::<SyzygyAdapter>::new(path).unwrap()));
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn set_board(&mut self, board: Board) {
+        self.pos.set_board(board, &self.shared_ctx.nnue_weights);
+    }
+
+    #[inline]
+    pub fn make_move(&mut self, mv: Move) {
+        self.pos.make_move(mv, &self.shared_ctx.nnue_weights);
+    }
+
+    #[inline]
+    pub fn reset_nnue(&mut self) {
+        self.pos.reset(&self.shared_ctx.nnue_weights);
     }
 }
 

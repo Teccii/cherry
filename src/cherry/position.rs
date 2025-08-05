@@ -24,14 +24,14 @@ impl Position {
     #[inline]
     pub fn set_board(&mut self, board: Board, weights: &NetworkWeights) {
         self.board = board;
-        self.nnue.reset(&board, weights);
+        self.nnue.full_reset(&board, weights);
         self.board_history.clear();
         self.move_history.clear();
     }
 
     #[inline]
     pub fn reset(&mut self, weights: &NetworkWeights) {
-        self.nnue.reset(&self.board, weights);
+        self.nnue.full_reset(&self.board, weights);
     }
 
     /*----------------------------------------------------------------*/
@@ -74,11 +74,12 @@ impl Position {
     /*----------------------------------------------------------------*/
     
     #[inline]
-    pub fn make_move(&mut self, mv: Move) {
+    pub fn make_move(&mut self, mv: Move, weights: &NetworkWeights) {
         self.board_history.push(self.board.clone());
         self.move_history.push(Some(mv));
-        self.nnue.make_move(&self.board, mv);
         self.board.make_move(mv);
+
+        self.nnue.make_move(self.board_history.last().unwrap(), &self.board, weights, mv);
     }
 
 
@@ -112,7 +113,7 @@ impl Position {
     
     #[inline]
     pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
-        self.nnue.apply_updates(weights);
+        self.nnue.apply_updates(&self.board, weights);
 
         let mut eval = self.nnue.eval(weights, self.stm());
         let material = Piece::Pawn.see_value() as usize * self.board.pieces(Piece::Pawn).popcnt()

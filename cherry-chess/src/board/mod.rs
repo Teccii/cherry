@@ -124,9 +124,7 @@ impl Board {
 
     #[inline]
     pub fn king(&self, color: Color) -> Square {
-        self.color_pieces(Piece::King, color).try_next_square().unwrap_or_else(|| {
-            panic!("Board {}", self);
-        })
+        self.color_pieces(Piece::King, color).next_square()
     }
 
     /*----------------------------------------------------------------*/

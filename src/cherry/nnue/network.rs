@@ -16,6 +16,8 @@ pub const EVAL_SCALE: i32 = 400;
 pub const QA: i32 = 255;
 pub const QB: i32 = 64;
 
+pub const HORIZONTAL_MIRRORING: bool = false;
+
 /*----------------------------------------------------------------*/
 
 const NETWORK_BYTES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/network.bin"));
@@ -82,14 +84,21 @@ impl Nnue {
             acc_index: 0,
         };
 
-        nnue.reset(board, weights);
+        nnue.full_reset(board, weights);
         nnue
     }
 
-    pub fn reset(&mut self, board: &Board, weights: &NetworkWeights) {
-        for acc in &mut *self.acc_stack {
-            acc.white = weights.ft_bias.clone();
-            acc.black = weights.ft_bias.clone();
+    pub fn full_reset(&mut self, board: &Board, weights: &NetworkWeights) {
+        self.acc_index = 0;
+        self.reset(board, weights, Color::White);
+        self.reset(board, weights, Color::Black);
+    }
+
+    pub fn reset(&mut self, board: &Board, weights: &NetworkWeights, perspective: Color) {
+        let acc = self.acc_mut();
+        match perspective {
+            Color::White => acc.white = weights.ft_bias.clone(),
+            Color::Black => acc.black = weights.ft_bias.clone(),
         }
 
         let mut adds = ArrayVec::<_, 32>::new();
@@ -100,61 +109,67 @@ impl Nnue {
             adds.push(FeatureUpdate { piece, color, sq });
         }
 
-        let (w_add, b_add): (Vec<_>, Vec<_>) = adds.iter()
-            .map(|f| (f.to_index(Color::White), f.to_index(Color::Black)))
-            .unzip();
+        let king = board.king(perspective);
+        let adds: Vec<usize> = adds.iter().map(|f| f.to_index(king, perspective)).collect();
 
-        self.acc_index = 0;
-        let acc = self.acc_mut();
-        vec_add(acc.select_mut(Color::White), weights, &w_add);
-        vec_add(acc.select_mut(Color::Black), weights, &b_add);
-        acc.dirty = [false; Color::COUNT];
+        vec_add(acc.select_mut(perspective), weights, &adds);
+        acc.dirty[perspective as usize] = false;
     }
 
-    pub fn make_move(&mut self, board: &Board, mv: Move) {
+    pub fn make_move(
+        &mut self,
+        old_board: &Board,
+        new_board: &Board,
+        weights: &NetworkWeights,
+        mv: Move
+    ) {
         let mut update = UpdateBuffer::default();
         let (from, to) = (mv.from(), mv.to());
-        let piece = board.piece_on(from).unwrap();
-        let color = board.stm();
-        
-        if board.is_castling(mv) {
+        let piece = old_board.piece_on(from).unwrap();
+        let color = old_board.stm();
+
+        if old_board.is_castling(mv) {
             let (king, rook) = if from.file() < to.file() {
                 (File::G, File::F)
             } else {
                 (File::C, File::D)
             };
-            
+
             let back_rank = Rank::First.relative_to(color);
-            
+
             update.move_piece(Piece::King, color, from, Square::new(king, back_rank));
             update.move_piece(Piece::Rook, color, to, Square::new(rook, back_rank));
         } else if let Some(promotion) = mv.promotion() {
             update.remove_piece(piece, color, from);
             update.add_piece(promotion, color, to);
-            
-            if board.is_capture(mv) {
-                update.remove_piece(board.piece_on(to).unwrap(), !color, to); 
+
+            if old_board.is_capture(mv) {
+                update.remove_piece(old_board.piece_on(to).unwrap(), !color, to);
             }
         } else {
             update.move_piece(piece, color, from, to);
-            
-            if let Some(victim) = board.victim(mv) {
-                let sq = if board.is_en_passant(mv) {
+
+            if let Some(victim) = old_board.victim(mv) {
+                let sq = if old_board.is_en_passant(mv) {
                     Square::new(
-                        board.en_passant().unwrap(), 
-                        Rank::Fifth.relative_to(board.stm())
+                        old_board.en_passant().unwrap(),
+                        Rank::Fifth.relative_to(old_board.stm())
                     )
                 } else {
                     mv.to()
                 };
-                
+
                 update.remove_piece(victim, !color, sq);
             }
         }
-        
+
         self.acc_mut().update_buffer = update;
         self.acc_index += 1;
         self.acc_mut().dirty = [true; Color::COUNT];
+
+        if HORIZONTAL_MIRRORING && piece == Piece::King && (from.file() > File::D) != (to.file() > File::D) {
+            self.reset(new_board, weights, color);
+        }
     }
 
     #[inline]
@@ -175,30 +190,31 @@ impl Nnue {
     
     /*----------------------------------------------------------------*/
 
-    pub fn apply_updates(&mut self, weights: &NetworkWeights) {
+    pub fn apply_updates(&mut self, board: &Board, weights: &NetworkWeights) {
         for &color in &Color::ALL {
             if self.acc().dirty[color as usize] {
-                self.lazy_update(weights, color);
+                self.lazy_update(board, weights, color);
             }
         }
     }
 
-    fn lazy_update(&mut self, weights: &NetworkWeights, perspective: Color) {
+    fn lazy_update(&mut self, board: &Board, weights: &NetworkWeights, perspective: Color) {
         let mut index = self.acc_index;
 
         //Find the first non-dirty accumulator
         loop {
             index -= 1;
-
             if !self.acc_stack[index].dirty[perspective as usize] {
                 break;
             }
         }
 
+        let king = board.king(perspective);
+
         //Recalculate all accumulators from thereon
         loop {
             index += 1;
-            self.next_acc(weights, perspective, index);
+            self.next_acc(weights, king, perspective, index);
             self.acc_stack[index].dirty[perspective as usize] = false;
 
             if index == self.acc_index {
@@ -207,7 +223,7 @@ impl Nnue {
         }
     }
     
-    fn next_acc(&mut self, weights: &NetworkWeights, perspective: Color, index: usize) {
+    fn next_acc(&mut self, weights: &NetworkWeights, king: Square, perspective: Color, index: usize) {
         let (prev, next) = self.acc_stack.split_at_mut(index);
         let src = prev.last().unwrap();
         let target = next.first_mut().unwrap();
@@ -215,8 +231,8 @@ impl Nnue {
         match (src.update_buffer.adds(), src.update_buffer.subs()) {
             //quiet moves, including promotions
             (&[add], &[sub]) => {
-                let add = add.to_index(perspective);
-                let sub = sub.to_index(perspective);
+                let add = add.to_index(king, perspective);
+                let sub = sub.to_index(king, perspective);
                 
                 vec_add_sub(
                     src.select(perspective),
@@ -228,9 +244,9 @@ impl Nnue {
             },
             //captures, including promotions and en passant
             (&[add], &[sub1, sub2]) => {
-                let add = add.to_index(perspective);
-                let sub1 = sub1.to_index(perspective);
-                let sub2 = sub2.to_index(perspective);
+                let add = add.to_index(king, perspective);
+                let sub1 = sub1.to_index(king, perspective);
+                let sub2 = sub2.to_index(king, perspective);
                 
                 vec_add_sub2(
                     src.select(perspective),
@@ -243,10 +259,10 @@ impl Nnue {
             },
             //castling
             (&[add1, add2], &[sub1, sub2]) => {
-                let add1 = add1.to_index(perspective);
-                let add2 = add2.to_index(perspective);
-                let sub1 = sub1.to_index(perspective);
-                let sub2 = sub2.to_index(perspective);
+                let add1 = add1.to_index(king, perspective);
+                let add2 = add2.to_index(king, perspective);
+                let sub1 = sub1.to_index(king, perspective);
+                let sub2 = sub2.to_index(king, perspective);
 
                 vec_add2_sub2(
                     src.select(perspective),

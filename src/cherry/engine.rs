@@ -105,10 +105,10 @@ impl Engine {
                         let mut searcher = searcher.lock().unwrap();
                         let searcher = &mut *searcher; //???
 
-                        searcher.pos.set_board(board, &searcher.shared_ctx.nnue_weights);
+                        searcher.set_board(board);
                         for mv in moves {
-                            searcher.pos.make_move(mv);
-                            searcher.pos.reset(&searcher.shared_ctx.nnue_weights);
+                            searcher.make_move(mv);
+                            searcher.reset_nnue();
                         }
                     },
                     ThreadCommand::SetOption(searcher, name, value) => {

@@ -318,7 +318,7 @@ pub fn search<Node: NodeType>(
         }
 
         ctx.ss[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
-        pos.make_move(mv);
+        pos.make_move(mv, &shared_ctx.nnue_weights);
         shared_ctx.t_table.prefetch(pos.board());
 
         /*
@@ -555,7 +555,7 @@ pub fn q_search<Node: NodeType>(
             continue;
         }
 
-        pos.make_move(mv);
+        pos.make_move(mv, &shared_ctx.nnue_weights);
         shared_ctx.t_table.prefetch(pos.board());
 
         let score = -q_search::<Node>(

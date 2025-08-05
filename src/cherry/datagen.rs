@@ -57,25 +57,18 @@ impl GameStats {
 /*----------------------------------------------------------------*/
 
 pub fn datagen(count: usize, threads: usize, dfrc: bool) {
-    println!("Starting data generation...");
-
-    if count % threads != 0 {
-        println!(
-            "{}: Number of games is not evenly divisible by the number of threads. Only {}/{} games will be generated.",
-            String::from("Warning").yellow(),
-            (count / threads * threads).to_string().yellow(),
-            count.to_string().bright_green()
-        )
-    }
+    println!();
+    println!("Count: {}", count.to_string().bright_green());
+    println!("Threads: {}", threads.to_string().bright_green());
+    println!("DFRC: {}", dfrc.to_string().bright_green());
 
     let options = DataGenOptions { count, threads, dfrc };
     let data_dir = PathBuf::from("data")
         .join(chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string());
     fs::create_dir_all(&data_dir).unwrap();
 
-    println!("Generated data will be stored in {}", data_dir.display().to_string().bright_green());
-    println!("You can safely stop generating by pressing Ctrl+C");
-    println!("--------------------------------------------------");
+    println!("Output Directory: {}", data_dir.display().to_string().bright_green());
+    println!();
 
     let stats = Arc::new(GameStats::new());
     let counter = Arc::new(AtomicUsize::new(0));
@@ -176,8 +169,8 @@ fn datagen_worker(
                 break 'game;
             }
 
-            searcher.pos.make_move(mv);
-            searcher.pos.reset(&searcher.shared_ctx.nnue_weights);
+            searcher.make_move(mv);
+            searcher.reset_nnue();
 
             if searcher.pos.is_draw() || searcher.pos.board().fullmove_count() >= 300 {
                 result = if searcher.pos.insufficient_material() {
@@ -224,7 +217,7 @@ fn datagen_worker(
             let (hours, minutes, seconds) = secs_to_hms(seconds as u32);
 
             println!(
-                "Generated {}/{} Games {} ({:.1}%). ",
+                "Generated {}/{} Games {} ({:.1}%).",
                 curr.to_string().bright_green(),
                 options.count.to_string().bright_green(),
                 progress_bar(progress, 50),
