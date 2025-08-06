@@ -1,13 +1,10 @@
 use std::{
     io::{BufWriter, Write},
     path::PathBuf,
-    sync::{Arc, atomic::Ordering},
+    time::Instant,
+    sync::{Arc, atomic::*},
     fs,
 };
-use std::sync::atomic::{AtomicBool, AtomicUsize};
-use std::time::Instant;
-use colored::Colorize;
-use rand::{Rng, rngs::ThreadRng};
 use viriformat::{
     chess::{
         board::{
@@ -25,6 +22,8 @@ use viriformat::{
     },
     dataformat::Game,
 };
+use rand::{Rng, rngs::ThreadRng};
+use colored::Colorize;
 use cherry_chess::*;
 use crate::*;
 
@@ -77,18 +76,18 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
 
     viriformat::chess::CHESS960.store(options.dfrc, Ordering::Relaxed);
     ctrlc::set_handler(move || a.store(true, Ordering::Relaxed)).unwrap();
-    rayon::scope(|s| {
+    std::thread::scope(|s| {
         for thread in 0..threads {
             let data_dir = &data_dir;
             let stats = Arc::clone(&stats);
             let counter = Arc::clone(&counter);
             let abort = Arc::clone(&abort);
 
-            s.spawn(move |_| datagen_worker(thread, options, data_dir, stats, counter, abort));
+            s.spawn(move || datagen_worker(thread, options, data_dir, stats, counter, abort));
         }
     });
 
-    println!("\x1B[7BData Generation Finished!"); //Move cursor down 7 lines
+    println!("Data Generation Finished!"); //Move cursor down 7 lines
 }
 
 fn datagen_worker(
@@ -115,7 +114,7 @@ fn datagen_worker(
     while i < count {
         if abort.load(Ordering::Relaxed) {
             if thread == 0 {
-                println!("\x1B[7BReceived Ctrl+C, aborting..."); //Move cursor down 7 lines
+                println!("\x1B[7EReceived Ctrl+C, aborting..."); //Move cursor down 7 lines
             }
 
             break;
@@ -206,7 +205,7 @@ fn datagen_worker(
             _ => { }
         }
 
-        let curr = counter.fetch_add(1, Ordering::Relaxed) + 1;
+        let curr = counter.fetch_add(1, Ordering::Relaxed);
         if !abort.load(Ordering::Relaxed) && curr != 0 && curr % 10 == 0 {
             let percentage = 100f32 * (curr as f32 / options.count as f32);
             let elapsed = start.elapsed().as_secs_f32();
@@ -215,18 +214,18 @@ fn datagen_worker(
             let (hours, minutes, seconds) = secs_to_hms(seconds as u32);
 
             println!(
-                "Generated {}/{} Games {} ({}%).",
+                "\x1b[0JGenerated {}/{} Games {} ({}%).",
                 curr.to_string().bright_green(),
                 options.count.to_string().bright_green(),
                 progress_bar(progress, 50),
                 format!("{:.1}", percentage).bright_green()
             );
             println!(
-                "Average Time Per Game: {} seconds.       ",
-                format!("{:.3}", elapsed / curr as f32).bright_green()
+                "Games Per Second: {}",
+                format!("{:.3}", curr as f32 / elapsed).bright_green()
             );
             println!(
-                "Estimated Time Remaining: {}h {}m {}s        ",
+                "Estimated Time Remaining: {}h {}m {}s",
                 hours.to_string().bright_green(),
                 minutes.to_string().bright_green(),
                 seconds.to_string().bright_green()
@@ -243,12 +242,16 @@ fn datagen_worker(
             println!("White Wins: {} ({}%)", white_wins.to_string().bright_green(), format!("{:.1}", white_percentage).bright_green());
             println!("Black Wins: {} ({}%)", black_wins.to_string().bright_green(), format!("{:.1}", black_percentage).bright_green());
             println!("Draws: {} ({}%)", draws.to_string().bright_green(), format!("{:.1}", draw_percentage).bright_green());
-            println!("\x1B[7A"); //Move cursor up 7 lines
+            println!("\x1B[7F");
 
             io::stdout().flush().unwrap();
         }
 
         i += 1;
+    }
+
+    if !abort.load(Ordering::Relaxed) {
+        println!("\x1B[7F");
     }
 
     writer.flush().unwrap();

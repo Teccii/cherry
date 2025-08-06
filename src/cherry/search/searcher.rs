@@ -351,7 +351,8 @@ fn search_worker<Info: SearchInfo>(
                 }
                 
                 window.set_midpoint(score);
-                let root_move = ctx.ss[0].pv.moves[0].unwrap();
+                let root_pv = &ctx.ss[0].pv;
+                let root_move = root_pv.moves[0].unwrap();
 
                 shared_ctx.time_man.deepen(
                     thread,
@@ -361,8 +362,8 @@ fn search_worker<Info: SearchInfo>(
                     root_move,
                 );
                 if (score > alpha && score < beta) || score.is_decisive() {
-                    ctx.root_pv = ctx.ss[0].pv.clone();
-                    ponder_move = ctx.ss[0].pv.moves[1];
+                    ctx.root_pv = root_pv.clone();
+                    ponder_move = root_pv.moves[1].filter(|_| root_pv.len > 1);
                     best_move = Some(root_move);
                     eval = score;
 
