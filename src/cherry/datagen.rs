@@ -87,7 +87,7 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
         }
     });
 
-    println!("Data Generation Finished!"); //Move cursor down 7 lines
+    println!("Data Generation Finished!");
 }
 
 fn datagen_worker(
@@ -214,7 +214,7 @@ fn datagen_worker(
             let (hours, minutes, seconds) = secs_to_hms(seconds as u32);
 
             println!(
-                "\x1b[0JGenerated {}/{} Games {} ({}%).",
+                "\x1B[0JGenerated {}/{} Games {} ({}%).",
                 curr.to_string().bright_green(),
                 options.count.to_string().bright_green(),
                 progress_bar(progress, 50),
@@ -251,7 +251,7 @@ fn datagen_worker(
     }
 
     if !abort.load(Ordering::Relaxed) {
-        println!("\x1B[7F");
+        println!("\x1B[7E");
     }
 
     writer.flush().unwrap();

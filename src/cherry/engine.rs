@@ -185,8 +185,8 @@ impl Engine {
                 threads,
                 dfrc
             } => {
-                datagen(count, threads, dfrc);
                 self.sender.send(ThreadCommand::Quit).unwrap();
+                datagen(count, threads, dfrc);
                 return false;
             },
             UciCommand::Position(board, moves) => self.sender.send(ThreadCommand::Position(

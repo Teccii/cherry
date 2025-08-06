@@ -6,7 +6,6 @@ use crate::*;
 pub struct Position {
     board: Board,
     board_history: Vec<Board>,
-    move_history: Vec<Option<Move>>,
     nnue: Nnue,
 }
 
@@ -16,7 +15,6 @@ impl Position {
         Position {
             board,
             board_history: Vec::new(),
-            move_history: Vec::new(),
             nnue: Nnue::new(&board, weights),
         }
     }
@@ -26,7 +24,6 @@ impl Position {
         self.board = board;
         self.nnue.full_reset(&board, weights);
         self.board_history.clear();
-        self.move_history.clear();
     }
 
     #[inline]
@@ -76,7 +73,6 @@ impl Position {
     #[inline]
     pub fn make_move(&mut self, mv: Move, weights: &NetworkWeights) {
         self.board_history.push(self.board.clone());
-        self.move_history.push(Some(mv));
         self.board.make_move(mv);
 
         self.nnue.make_move(self.board_history.last().unwrap(), &self.board, weights, mv);
@@ -87,7 +83,6 @@ impl Position {
     pub fn null_move(&mut self) -> bool {
         if let Some(new_board) = self.board.null_move() {
             self.board_history.push(self.board.clone());
-            self.move_history.push(None);
             self.board = new_board;
 
             return true;
@@ -100,13 +95,11 @@ impl Position {
     pub fn unmake_move(&mut self) {
         self.board = self.board_history.pop().unwrap();
         self.nnue.unmake_move();
-        self.move_history.pop();
     }
     
     #[inline]
     pub fn unmake_null_move(&mut self) {
         self.board = self.board_history.pop().unwrap();
-        self.move_history.pop();
     }
 
     /*----------------------------------------------------------------*/

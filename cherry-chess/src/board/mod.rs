@@ -279,10 +279,11 @@ impl Board {
                             self.checkers |= knight_moves(their_king) & to;
                         }
                     } else {
-                        const DOUBLE_PUSH_FROM: Bitboard = Bitboard(Rank::Second.bitboard().0 | Rank::Seventh.bitboard().0);
-                        const DOUBLE_PUSH_TO: Bitboard = Bitboard(Rank::Fourth.bitboard().0 | Rank::Fifth.bitboard().0);
+                        let double_push_from = Rank::Second.relative_to(self.stm).bitboard();
+                        let double_push_to = Rank::Fourth.relative_to(self.stm).bitboard();
 
-                        if DOUBLE_PUSH_FROM.has(from) && DOUBLE_PUSH_TO.has(to) {
+                        let their_pawns = double_push_to & self.color_pieces(Piece::Pawn, !self.stm) & to.file().adjacent();
+                        if double_push_from.has(from) && double_push_to.has(to) && !their_pawns.is_empty() {
                             new_en_passant = Some(to.file());
                         } else if Some(to) == self.ep_square() {
                             let victim_square = Square::new(
