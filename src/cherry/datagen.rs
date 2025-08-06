@@ -223,7 +223,7 @@ fn datagen_worker(
             );
             println!(
                 "Average Time Per Game: {} seconds.       ",
-                format!("{:.2}", elapsed / curr as f32).bright_green()
+                format!("{:.3}", elapsed / curr as f32).bright_green()
             );
             println!(
                 "Estimated Time Remaining: {}h {}m {}s        ",
