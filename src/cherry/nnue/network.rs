@@ -16,7 +16,7 @@ pub const EVAL_SCALE: i32 = 400;
 pub const QA: i32 = 255;
 pub const QB: i32 = 64;
 
-pub const HORIZONTAL_MIRRORING: bool = false;
+pub const HORIZONTAL_MIRRORING: bool = true;
 
 /*----------------------------------------------------------------*/
 

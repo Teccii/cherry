@@ -1,4 +1,4 @@
-use std::{fs, fmt::Write, time::Instant, sync::{Arc, Mutex, mpsc::*}};
+use std::{fs, fmt::Write, io::Write as _, time::Instant, sync::{Arc, Mutex, mpsc::*}};
 use colored::Colorize;
 use crate::*;
 
@@ -100,6 +100,7 @@ impl Engine {
                         }
 
                         println!("{}", output);
+                        io::stdout().flush().unwrap();
                     },
                     ThreadCommand::Position(searcher, board, moves) => {
                         let mut searcher = searcher.lock().unwrap();
@@ -166,6 +167,8 @@ impl Engine {
                 println!("option name Ponder type check default false");
                 println!("option name UCI_Chess960 type check default false");
                 println!("uciok");
+
+                io::stdout().flush().unwrap();
             },
             UciCommand::IsReady => println!("readyok"),
             UciCommand::PonderHit => self.time_man.ponderhit(),
