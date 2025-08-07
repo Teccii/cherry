@@ -8,6 +8,7 @@ impl Board {
         let mut features = Vec::new();
 
         features.push(format!("{}: {}", String::from("FEN").bright_green(), self));
+        features.push(format!("{}: {:#016X}", String::from("Zobrist Key").bright_green(), self.hash));
 
         if let Some(sq) = self.ep_square() {
             features.push(format!("{}: {}", String::from("En Passant").bright_green(), sq));
@@ -23,7 +24,7 @@ impl Board {
                         } else {
                             right_char
                         };
-
+                        
                         if color == Color::White {
                             right = right.to_ascii_uppercase();
                         }

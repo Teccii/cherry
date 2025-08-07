@@ -1,36 +1,111 @@
 use std::fmt::Write;
+use colored::Colorize;
 use crate::*;
 
 /*----------------------------------------------------------------*/
 
 pub trait SearchInfo {
+    fn new(chess960: bool) -> Self;
+
     fn update(
+        &mut self,
         thread: u16,
         board: &Board,
         ctx: &ThreadContext,
         shared_ctx: &SharedContext,
         score: Score,
         depth: u8,
-        chess960: bool,
     );
 }
 
 /*----------------------------------------------------------------*/
 
-pub struct UciInfo;
+pub struct PrettyInfo {
+    chess960: bool,
+}
+pub struct UciInfo {
+    chess960: bool,
+}
 pub struct NoInfo;
 
 /*----------------------------------------------------------------*/
 
-impl SearchInfo for UciInfo {
+impl SearchInfo for PrettyInfo {
+    #[inline]
+    fn new(chess960: bool) -> Self {
+        Self { chess960 }
+    }
+
     fn update(
+        &mut self,
         thread: u16,
         board: &Board,
         ctx: &ThreadContext,
         shared_ctx: &SharedContext,
         score: Score,
         depth: u8,
-        chess960: bool,
+    ) {
+        if thread != 0 {
+            return;
+        }
+
+        if depth <= 1 {
+            println!("{}", board.pretty_print(self.chess960));
+            println!("{}", String::from("\nDepth\tSeldepth\tTime\t\t\tNodes\t\tNPS\t\tScore\tPV").bright_green());
+        }
+
+        let nodes = ctx.nodes.global();
+        let time = shared_ctx.time_man.elapsed();
+        let nps = nodes / time.max(1) * 1000;
+
+        let mut board = board.clone();
+        let mut pv_text = String::new();
+        let root_pv = &ctx.root_pv;
+
+        if root_pv.len != 0 {
+            let len = usize::min(root_pv.len, depth as usize);
+
+            for &mv in root_pv.moves[..len].iter() {
+                if let Some(mv) = mv {
+                    if !board.is_legal(mv) {
+                        break;
+                    }
+
+                    write!(pv_text, "{} ", mv.display(&board, self.chess960)).unwrap();
+                    board.make_move(mv);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        println!(
+            "{}\t{}\t\t{}\t\t{}\t\t{}\t\t{:#}\t{}",
+            depth,
+            ctx.sel_depth,
+            fmt_time(time),
+            fmt_big_num(nodes),
+            fmt_big_num(nps),
+            score,
+            pv_text
+        );
+    }
+}
+
+impl SearchInfo for UciInfo {
+    #[inline]
+    fn new(chess960: bool) -> Self {
+        Self { chess960 }
+    }
+
+    fn update(
+        &mut self,
+        thread: u16,
+        board: &Board,
+        ctx: &ThreadContext,
+        shared_ctx: &SharedContext,
+        score: Score,
+        depth: u8,
     ) {
         if thread != 0 {
             return;
@@ -50,7 +125,7 @@ impl SearchInfo for UciInfo {
                         break;
                     }
 
-                    write!(pv_text, "{} ", mv.display(&board, chess960)).unwrap();
+                    write!(pv_text, "{} ", mv.display(&board, self.chess960)).unwrap();
                     board.make_move(mv);
                 } else {
                     break;
@@ -77,13 +152,18 @@ impl SearchInfo for UciInfo {
 /*----------------------------------------------------------------*/
 
 impl SearchInfo for NoInfo {
+    #[inline]
+    fn new(_: bool) -> Self {
+        Self
+    }
+
     fn update(
+        &mut self,
         _: u16,
         _: &Board,
         _: &ThreadContext,
         _: &SharedContext,
         _: Score,
         _: u8,
-        _: bool,
     ) { }
 }

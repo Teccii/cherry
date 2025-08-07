@@ -115,6 +115,21 @@ pub fn progress_bar(progress: usize, max: usize) -> String {
     format!("[{}{}]", "#".repeat(progress).bright_green(), ".".repeat(max - progress))
 }
 
+pub fn fmt_big_num(num: u64) -> String {
+    match num {
+        0..1000 => format!("{}", num),
+        1000..1_000_000 => format!("{:.2}K", num as f32 / 1000.0),
+        1_000_000..1_000_000_000 => format!("{:.2}M", num as f32 / 1_000_000.0),
+        _ => format!("{:.2}B", num as f32 / 1_000_000_000.0),
+    }
+}
+
+pub fn fmt_time(millis: u64) -> String {
+    let (h, m, s) = secs_to_hms((millis / 1000) as u32);
+
+    format!("{}h {}m {}s {}ms", h, m, s, millis % 1000)
+}
+
 #[allow(dead_code)]
 pub fn secs_to_hms(seconds: u32) -> (u32, u32, u32) {
     let minutes = seconds / 60;

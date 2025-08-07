@@ -155,6 +155,7 @@ pub struct Searcher {
     pub threads: u16,
     pub chess960: bool,
     pub ponder: bool,
+    pub uci: bool,
 }
 
 impl Searcher {
@@ -209,6 +210,7 @@ impl Searcher {
             threads: 1,
             chess960: false,
             ponder: false,
+            uci: false,
         }
     }
 
@@ -240,12 +242,12 @@ impl Searcher {
                 let shared_ctx = self.shared_ctx.clone();
 
                 s.spawn(move |_| {
-                    let _ = search_worker::<Info>(
+                    let _ = search_worker(
                         pos,
                         ctx,
                         shared_ctx,
+                        Info::new(chess960),
                         i + 1,
-                        chess960,
                     )();
                 });
             }
@@ -254,12 +256,12 @@ impl Searcher {
             let ctx = self.main_ctx.clone();
             let shared_ctx = self.shared_ctx.clone();
 
-            result = search_worker::<Info>(
+            result = search_worker(
                 pos,
                 ctx,
                 shared_ctx,
+                Info::new(chess960),
                 0,
-                chess960,
             )();
         });
 
@@ -311,8 +313,8 @@ fn search_worker<Info: SearchInfo>(
     mut pos: Position,
     mut ctx: ThreadContext,
     shared_ctx: SharedContext,
+    mut info: Info,
     thread: u16,
-    chess960: bool,
 ) -> impl FnMut() -> (Option<Move>, Option<Move>, Score, u8) {
     move || {
         let mut window = Window::new(10);
@@ -379,14 +381,13 @@ fn search_worker<Info: SearchInfo>(
                 }
             }
 
-            Info::update(
+            info.update(
                 thread,
                 pos.board(),
                 &ctx,
                 &shared_ctx,
                 eval,
                 depth,
-                chess960
             );
 
             if shared_ctx.time_man.abort_id(depth, ctx.nodes.global()) {
@@ -400,25 +401,23 @@ fn search_worker<Info: SearchInfo>(
             && shared_ctx.time_man.is_infinite()
             && !(shared_ctx.time_man.use_max_depth() || shared_ctx.time_man.use_max_nodes())
             && !ctx.abort_now {
-            Info::update(
+            info.update(
                 thread,
                 pos.board(),
                 &ctx,
                 &shared_ctx,
                 eval,
                 depth,
-                chess960
             );
         }
 
-        Info::update(
+        info.update(
             thread,
             pos.board(),
             &ctx,
             &shared_ctx,
             eval,
             depth,
-            chess960
         );
 
         (best_move, ponder_move, eval, depth)

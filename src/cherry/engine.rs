@@ -66,6 +66,8 @@ pub enum ThreadCommand {
     SetOption(Arc<Mutex<Searcher>>, String, String),
     Position(Arc<Mutex<Searcher>>, Board, Vec<Move>),
     NewGame(Arc<Mutex<Searcher>>),
+    Uci(Arc<Mutex<Searcher>>),
+    Icu(Arc<Mutex<Searcher>>),
     Quit,
 }
 
@@ -92,15 +94,19 @@ impl Engine {
                         let mut searcher = searcher.lock().unwrap();
                         let mut output = String::new();
 
-                        let (mv, ponder, _, _, _) = searcher.search::<UciInfo>(limits);
-                        write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.chess960)).unwrap();
+                        if searcher.uci {
+                            let (mv, ponder, _, _, _) = searcher.search::<UciInfo>(limits);
+                            write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.chess960)).unwrap();
 
-                        if let Some(ponder) = ponder {
-                            write!(output, " ponder {}", ponder).unwrap();
+                            if let Some(ponder) = ponder {
+                                write!(output, " ponder {}", ponder).unwrap();
+                            }
+
+                            println!("{}", output);
+                            io::stdout().flush().unwrap();
+                        } else {
+                            searcher.search::<PrettyInfo>(limits);
                         }
-
-                        println!("{}", output);
-                        io::stdout().flush().unwrap();
                     },
                     ThreadCommand::Position(searcher, board, moves) => {
                         let mut searcher = searcher.lock().unwrap();
@@ -129,6 +135,14 @@ impl Engine {
                     ThreadCommand::NewGame(searcher) => {
                         let mut searcher = searcher.lock().unwrap();
                         searcher.clean_ttable();
+                    },
+                    ThreadCommand::Uci(searcher) => {
+                        let mut searcher = searcher.lock().unwrap();
+                        searcher.uci = true;
+                    },
+                    ThreadCommand::Icu(searcher) => {
+                        let mut searcher = searcher.lock().unwrap();
+                        searcher.uci = false;
                     },
                     ThreadCommand::Quit => return,
                 }
@@ -168,8 +182,10 @@ impl Engine {
                 println!("option name UCI_Chess960 type check default false");
                 println!("uciok");
 
+                self.sender.send(ThreadCommand::Uci(Arc::clone(&self.searcher))).unwrap();
                 io::stdout().flush().unwrap();
             },
+            UciCommand::Icu => self.sender.send(ThreadCommand::Icu(Arc::clone(&self.searcher))).unwrap(),
             UciCommand::IsReady => println!("readyok"),
             UciCommand::PonderHit => self.time_man.ponderhit(),
             UciCommand::Stop => self.time_man.stop(),

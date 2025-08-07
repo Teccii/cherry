@@ -8,6 +8,7 @@ pub type Result<T> = std::result::Result<T, UciParseError>;
 #[derive(Debug, Clone)]
 pub enum UciCommand {
     Uci,
+    Icu,
     NewGame,
     IsReady,
     PonderHit,
@@ -63,6 +64,7 @@ impl UciCommand {
         
         match token {
             "uci" => Ok(UciCommand::Uci),
+            "icu" => Ok(UciCommand::Icu),
             "ucinewgame" => Ok(UciCommand::NewGame),
             "isready" => Ok(UciCommand::IsReady),
             "stop" => Ok(UciCommand::Stop),

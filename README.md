@@ -41,9 +41,9 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 
 ### Evaluation
 - NNUE `(736->512)x2->1`
-  - Trained with [`bullet`](https://github.com/jw1912/bullet)
   - Standard dual perspective NNUE with piece-square inputs
   - Self-generated training data (8 random moves, 5000 nodes per move)
+  - Trained with [`bullet`](https://github.com/jw1912/bullet) on 414 million positions
 - Static Evaluation Correction History
   - Pawn Structure
 
