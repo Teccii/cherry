@@ -60,6 +60,10 @@ weights! {
     futile_base: i16 => FUTILE_BASE,
     futile_margin: i16 => FUTILE_MARGIN,
 
+    singular_depth: u8 => SINGULAR_DEPTH,
+    singular_tt: u8 => SINGULAR_TT,
+    singular_margin: i16 => SINGULAR_MARGIN,
+
     tt_pv_reduction: i32 => TT_PV_REDUCTION,
     non_pv_reduction: i32 => NON_PV_REDUCTION,
     not_improving_reduction: i32 => NOT_IMPROVING_REDUCTION,
@@ -114,6 +118,10 @@ pub const HIST_MARGIN: i32 = -4300;
 pub const FUTILE_DEPTH: u8 = 6;
 pub const FUTILE_BASE: i16 = 106;
 pub const FUTILE_MARGIN: i16 = 81;
+
+pub const SINGULAR_DEPTH: u8 = 10;
+pub const SINGULAR_TT: u8 = 2;
+pub const SINGULAR_MARGIN: i16 = 128;
 
 pub const TT_PV_REDUCTION: i32 = 926;
 pub const NON_PV_REDUCTION: i32 = 926;

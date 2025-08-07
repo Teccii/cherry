@@ -317,6 +317,33 @@ pub fn search<Node: NodeType>(
             }
         }
 
+        if let Some(entry) = tt_entry {
+            if ply != 0 && depth >= w.singular_depth
+                && entry.table_mv == Some(mv)
+                && entry.depth + w.singular_tt >= depth
+                && matches!(entry.flag, TTBound::Exact | TTBound::LowerBound) {
+                let s_beta = entry.score - (w.singular_margin * depth as i16) / 64;
+                let s_depth = (depth - 1) / 2;
+
+                ctx.ss[ply as usize].skip_move = Some(mv);
+                let s_score = search::<NonPV>(
+                    pos,
+                    ctx,
+                    shared_ctx,
+                    s_depth,
+                    ply,
+                    s_beta - 1,
+                    s_beta,
+                    cut_node
+                );
+                ctx.ss[ply as usize].skip_move = None;
+
+                if s_score < s_beta {
+                    extension = 1;
+                }
+            }
+        }
+
         ctx.ss[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv, &shared_ctx.nnue_weights);
         shared_ctx.t_table.prefetch(pos.board());
