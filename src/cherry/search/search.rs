@@ -321,6 +321,7 @@ pub fn search<Node: NodeType>(
             if ply != 0 && depth >= w.singular_depth
                 && entry.table_mv == Some(mv)
                 && entry.depth + w.singular_tt >= depth
+                && !entry.score.is_decisive()
                 && matches!(entry.flag, TTBound::Exact | TTBound::LowerBound) {
                 let s_beta = entry.score - (w.singular_margin * depth as i16) / 64;
                 let s_depth = (depth - 1) / 2;

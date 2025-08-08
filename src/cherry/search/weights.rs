@@ -121,7 +121,7 @@ pub const FUTILE_MARGIN: i16 = 81;
 
 pub const SINGULAR_DEPTH: u8 = 10;
 pub const SINGULAR_TT: u8 = 2;
-pub const SINGULAR_MARGIN: i16 = 128;
+pub const SINGULAR_MARGIN: i16 = 96;
 
 pub const TT_PV_REDUCTION: i32 = 926;
 pub const NON_PV_REDUCTION: i32 = 926;
