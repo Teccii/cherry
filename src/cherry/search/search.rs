@@ -319,6 +319,7 @@ pub fn search<Node: NodeType>(
 
         if let Some(entry) = tt_entry {
             if ply != 0 && depth >= w.singular_depth
+                && skip_move.is_none()
                 && entry.table_mv == Some(mv)
                 && entry.depth + w.singular_tt >= depth
                 && !entry.score.is_decisive()
@@ -341,6 +342,8 @@ pub fn search<Node: NodeType>(
 
                 if s_score < s_beta {
                     extension = 1;
+                } else if entry.score >= beta || cut_node {
+                    extension = -2;
                 }
             }
         }
