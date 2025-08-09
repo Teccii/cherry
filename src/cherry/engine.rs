@@ -123,7 +123,7 @@ impl Engine {
 
                         match name.as_str() {
                             "Threads" => searcher.threads = value.parse::<u16>().unwrap(),
-                            "EvalFile" => searcher.shared_ctx.nnue_weights = NetworkWeights::new(&fs::read(value).unwrap()),
+                            "EvalFile" => searcher.shared_ctx.weights = NetworkWeights::new(&fs::read(value).unwrap()),
                             "Hash" => searcher.resize_ttable(value.parse::<usize>().unwrap()),
                             "SyzygyPath" => searcher.set_syzygy_path(value.as_str()),
                             "SyzygyProbeDepth" => searcher.shared_ctx.syzygy_depth = value.parse::<u8>().unwrap(),
@@ -277,7 +277,7 @@ impl Engine {
                     }
 
                     let new_board = builder.build().unwrap();
-                    searcher.pos.set_board(new_board, &searcher.shared_ctx.nnue_weights);
+                    searcher.pos.set_board(new_board, &searcher.shared_ctx.weights);
 
                     diffs[sq as usize] = (score - searcher.search::<NoInfo>(limits.clone()).2).0;
 
@@ -350,7 +350,7 @@ impl Engine {
 
                 let start_time = Instant::now();
                 for pos in BENCH_POSITIONS.iter().map(|fen| fen.parse::<Board>().unwrap()) {
-                    searcher.pos.set_board(pos.clone(), &searcher.shared_ctx.nnue_weights);
+                    searcher.pos.set_board(pos.clone(), &searcher.shared_ctx.weights);
                     searcher.clean_ttable();
 
                     let start_time = Instant::now();

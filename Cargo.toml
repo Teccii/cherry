@@ -6,6 +6,7 @@ build = "build.rs"
 
 [features]
 datagen = ["chrono", "ctrlc", "rand", "viriformat"]
+tune = []
 
 [dependencies]
 cherry-chess = { path = "cherry-chess" }

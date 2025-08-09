@@ -164,16 +164,15 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.in_check();
-    let corr = ctx.history.get_corr(pos.board(), &shared_ctx.weights);
+    let corr = ctx.history.get_corr(pos.board());
     let raw_eval = match skip_move {
         Some(_) => ctx.ss[ply as usize].eval,
-        None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(&shared_ctx.nnue_weights)),
+        None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(&shared_ctx.weights)),
     };
     let static_eval = raw_eval + corr;
     let prev_eval = (ply >= 2).then(|| ctx.ss[ply as usize - 2].eval);
     let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
     let tt_pv = tt_entry.is_some_and(|e| e.flag == TTBound::Exact);
-    let w = &shared_ctx.weights;
 
     ctx.ss[ply as usize].eval = raw_eval;
     ctx.ss[ply as usize].tt_pv = tt_pv;
@@ -183,7 +182,7 @@ pub fn search<Node: NodeType>(
         Reverse Futility Pruning: Similar to Razoring, if the static evaluation of the position is *above*
         beta by a significant margin, we can assume that we can reach at least beta.
         */
-        if depth < w.rfp_depth && static_eval >= beta + w.rfp_margin * depth as i16 {
+        if depth < RFP_DEPTH && static_eval >= beta + W::rfp_margin() * depth as i16 {
             return (static_eval + beta) / 2
         }
 
@@ -192,7 +191,7 @@ pub fn search<Node: NodeType>(
         If a reduced search after a null move fails high, we can be quite confident that the best legal move
         would also fail high. This can make the engine blind to zugzwang, so we do an additional verification search.
         */
-        if Node::NMP && depth > w.nmp_depth
+        if Node::NMP && depth > NMP_DEPTH
             && ctx.ss[ply as usize - 1].move_played.is_some()
             && static_eval >= beta
             && tt_entry.is_none_or(|e| e.flag != TTBound::UpperBound || e.score >= beta)
@@ -228,7 +227,7 @@ pub fn search<Node: NodeType>(
     let mut move_picker = MovePicker::new(best_move);
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
-    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices, w) {
+    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
         if skip_move == Some(mv) {
             continue;
         }
@@ -243,7 +242,7 @@ pub fn search<Node: NodeType>(
         let stat_score = if is_tactical {
             ctx.history.get_tactical(pos.board(), mv)
         } else {
-            ctx.history.get_non_tactical(pos.board(), mv, &cont_indices, w)
+            ctx.history.get_non_tactical(pos.board(), mv, &cont_indices)
         };
         
         ctx.ss[ply as usize].stat_score = stat_score;
@@ -267,8 +266,8 @@ pub fn search<Node: NodeType>(
                 Tactical SEE Pruning: Skip tactical moves whose SEE score
                 is below a depth-dependent margin.
                 */
-                let see_margin = w.see_margin * depth as i16 * depth as i16 - (stat_score / w.see_hist) as i16;
-                if depth < w.see_depth
+                let see_margin = W::see_margin() * depth as i16 * depth as i16 - (stat_score / W::see_hist()) as i16;
+                if depth < SEE_DEPTH
                     && move_picker.phase() == Phase::YieldBadTactics
                     && !pos.board().cmp_see(mv, see_margin) {
                     continue;
@@ -289,7 +288,7 @@ pub fn search<Node: NodeType>(
                 History Pruning: Skip quiet moves whose history score
                 is below an LMR depth-dependent margin.
                 */
-                if r_depth < w.hist_depth && stat_score < w.hist_margin * r_depth as i32 {
+                if r_depth < HIST_DEPTH && stat_score < W::hist_margin() * r_depth as i32 {
                     move_picker.skip_quiets();
                     continue;
                 }
@@ -299,8 +298,8 @@ pub fn search<Node: NodeType>(
                 the static evaluation is below alpha by an
                 LMR depth-dependent margin.
                 */
-                let futile_margin = w.futile_base + w.futile_margin * r_depth as i16;
-                if r_depth < w.futile_depth && static_eval <= alpha - futile_margin {
+                let futile_margin = W::futile_base() + W::futile_margin() * r_depth as i16;
+                if r_depth < FUTILE_DEPTH && static_eval <= alpha - futile_margin {
                     move_picker.skip_quiets();
                 }
 
@@ -310,15 +309,15 @@ pub fn search<Node: NodeType>(
                 well because for example, you can just lose your queen after
                 moving it to an attacked square.
                 */
-                let see_margin = w.see_margin * r_depth as i16 * r_depth as i16;
-                if r_depth < w.see_depth && !pos.board().cmp_see(mv, see_margin) {
+                let see_margin = W::see_margin() * r_depth as i16 * r_depth as i16;
+                if r_depth < SEE_DEPTH && !pos.board().cmp_see(mv, see_margin) {
                     continue;
                 }
             }
         }
 
         ctx.ss[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
-        pos.make_move(mv, &shared_ctx.nnue_weights);
+        pos.make_move(mv, &shared_ctx.weights);
         shared_ctx.t_table.prefetch(pos.board());
 
         /*
@@ -344,11 +343,11 @@ pub fn search<Node: NodeType>(
                 false,
             );
         } else {
-            reduction += w.tt_pv_reduction * tt_pv as i32;
-            reduction += w.non_pv_reduction * !Node::PV as i32;
-            reduction += w.not_improving_reduction * !improving as i32;
-            reduction += w.cut_node_reduction * cut_node as i32;
-            reduction -= stat_score / w.hist_reduction;
+            reduction += W::tt_pv_reduction() * tt_pv as i32;
+            reduction += W::non_pv_reduction() * !Node::PV as i32;
+            reduction += W::not_improving_reduction() * !improving as i32;
+            reduction += W::cut_node_reduction() * cut_node as i32;
+            reduction -= stat_score / W::hist_reduction();
             reduction /= REDUCTION_SCALE;
 
             let r_depth = (depth as i32).saturating_sub(reduction).clamp(1, MAX_DEPTH as i32) as u8;
@@ -419,7 +418,7 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             if !ctx.abort_now {
-                ctx.history.update(pos.board(), &cont_indices, w, mv, &quiets, &tactics, depth);
+                ctx.history.update(pos.board(), &cont_indices, mv, &quiets, &tactics, depth);
             }
             
             break;
@@ -503,7 +502,7 @@ pub fn q_search<Node: NodeType>(
     }
 
     if ply >= MAX_PLY {
-        return pos.eval(&shared_ctx.nnue_weights) + ctx.history.get_corr(pos.board(), &shared_ctx.weights);
+        return pos.eval(&shared_ctx.weights) + ctx.history.get_corr(pos.board());
     }
 
     let tt_entry = shared_ctx.t_table.probe(pos.board());
@@ -530,8 +529,8 @@ pub fn q_search<Node: NodeType>(
     }
 
     let in_check = pos.in_check();
-    let corr = ctx.history.get_corr(pos.board(), &shared_ctx.weights);
-    let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(&shared_ctx.nnue_weights));
+    let corr = ctx.history.get_corr(pos.board());
+    let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(&shared_ctx.weights));
     let static_eval = raw_eval + corr;
 
     if !in_check {
@@ -550,12 +549,12 @@ pub fn q_search<Node: NodeType>(
     let mut move_picker = QMovePicker::new();
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
-    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices, &shared_ctx.weights) {
+    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
         if !pos.board().cmp_see(mv, 0) {
             continue;
         }
 
-        pos.make_move(mv, &shared_ctx.nnue_weights);
+        pos.make_move(mv, &shared_ctx.weights);
         shared_ctx.t_table.prefetch(pos.board());
 
         let score = -q_search::<Node>(

@@ -1,122 +1,74 @@
-macro_rules! weights {
-    ($($elem:ident: $ty:ty => $default:expr,)*) => {
-        #[derive(Debug, Clone)]
-        pub struct SearchWeights {
-            $(pub $elem: $ty,)*
-        }
+#[cfg(feature = "tune")]
+use std::cell::SyncUnsafeCell;
 
-        impl Default for SearchWeights {
-            fn default() -> Self {
-                SearchWeights { $($elem: $default,)* }
-            }
+macro_rules! weights {
+    ($($name:ident | $tunable:ident : $ty:ty => $default:expr,)*) => {
+        pub struct W;
+
+        $(
+            #[cfg(feature = "tune")]
+            static $tunable: SyncUnsafeCell<$ty> = SyncUnsafeCell::new($default);
+        )*
+
+        impl W {
+            $(
+
+                #[cfg(not(feature = "tune"))]
+                pub const fn $name() -> $ty { $default }
+                #[cfg(feature = "tune")]
+                pub const fn $name() -> $ty { unsafe { *$tunable.get() } }
+            )*
         }
     }
 }
 
 weights! {
-    pawn_corr_frac: i16 => PAWN_CORR_FRAC,
-    cont1_frac: i32 => CONT1_FRAC,
-    cont2_frac: i32 => CONT2_FRAC,
-    cont3_frac: i32 => CONT3_FRAC,
+    pawn_corr_frac | PAWN_CORR_FRAC: i16 => 132,
+    cont1_frac     | CONT1_FRAC: i32 => 512,
+    cont2_frac     | CONT2_FRAC: i32 => 512,
+    cont3_frac     | CONT3_FRAC: i32 => 512,
 
-    quiet_bonus_base: i32 => QUIET_BONUS_BASE,
-    quiet_bonus_mul: i32 => QUIET_BONUS_MUL,
-    quiet_malus_base: i32 => QUIET_MALUS_BASE,
-    quiet_malus_mul: i32 => QUIET_MALUS_MUL,
+    quiet_bonus_base | QUIET_BONUS_BASE: i32 => 0,
+    quiet_bonus_mul  | QUIET_BONUS_MUL: i32 => 14,
+    quiet_malus_base | QUIET_MALUS_BASE: i32 => 0,
+    quiet_malus_mul  | QUIET_MALUS_MUL: i32 => 14,
 
-    tactic_bonus_base: i32 => TACTIC_BONUS_BASE,
-    tactic_bonus_mul: i32 => TACTIC_BONUS_MUL,
-    tactic_malus_base: i32 => TACTIC_MALUS_BASE,
-    tactic_malus_mul: i32 => TACTIC_MALUS_MUL,
+    tactic_bonus_base | TACTIC_BONUS_BASE: i32 => 0,
+    tactic_bonus_mul  | TACTIC_BONUS_MUL: i32 => 14,
+    tactic_malus_base | TACTIC_MALUS_BASE: i32 => 0,
+    tactic_malus_mul  | TACTIC_MALUS_MUL: i32 => 14,
 
-    cont1_bonus_base: i32 => CONT1_BONUS_BASE,
-    cont1_bonus_mul: i32 => CONT1_BONUS_MUL,
-    cont1_malus_base: i32 => CONT1_MALUS_BASE,
-    cont1_malus_mul: i32 => CONT1_MALUS_MUL,
+    cont1_bonus_base | CONT1_BONUS_BASE: i32 => 0,
+    cont1_bonus_mul  | CONT1_BONUS_MUL: i32 => 14,
+    cont1_malus_base | CONT1_MALUS_BASE: i32 => 0,
+    cont1_malus_mul  | CONT1_MALUS_MUL: i32 => 14,
 
-    cont2_bonus_base: i32 => CONT2_BONUS_BASE,
-    cont2_bonus_mul: i32 => CONT2_BONUS_MUL,
-    cont2_malus_base: i32 => CONT2_MALUS_BASE,
-    cont2_malus_mul: i32 => CONT2_MALUS_MUL,
+    cont2_bonus_base | CONT2_BONUS_BASE: i32 => 0,
+    cont2_bonus_mul  | CONT2_BONUS_MUL: i32 => 14,
+    cont2_malus_base | CONT2_MALUS_BASE: i32 => 0,
+    cont2_malus_mul  | CONT2_MALUS_MUL: i32 => 14,
 
-    cont3_bonus_base: i32 => CONT3_BONUS_BASE,
-    cont3_bonus_mul: i32 => CONT3_BONUS_MUL,
-    cont3_malus_base: i32 => CONT3_MALUS_BASE,
-    cont3_malus_mul: i32 => CONT3_MALUS_MUL,
+    cont3_bonus_base | CONT3_BONUS_BASE: i32 => 0,
+    cont3_bonus_mul  | CONT3_BONUS_MUL: i32 => 14,
+    cont3_malus_base | CONT3_MALUS_BASE: i32 => 0,
+    cont3_malus_mul  | CONT3_MALUS_MUL: i32 => 14,
 
-    rfp_depth: u8 => RFP_DEPTH,
-    rfp_margin: i16 => RFP_MARGIN,
+    rfp_margin    | RFP_MARGIN: i16 => 93,
+    see_margin    | SEE_MARGIN: i16 => -91,
+    see_hist      | SEE_HIST: i32 => 61,
+    hist_margin   | HIST_MARGIN: i32 => -4300,
+    futile_base   | FUTILE_BASE: i16 => 106,
+    futile_margin | FUTILE_MARGIN: i16 => 81,
 
-    nmp_depth: u8 => NMP_DEPTH,
-    
-    see_depth: u8 => SEE_DEPTH,
-    see_margin: i16 => SEE_MARGIN,
-    see_hist: i32 => SEE_HIST,
-
-    hist_depth: u8 => HIST_DEPTH,
-    hist_margin: i32 => HIST_MARGIN,
-
-    futile_depth: u8 => FUTILE_DEPTH,
-    futile_base: i16 => FUTILE_BASE,
-    futile_margin: i16 => FUTILE_MARGIN,
-
-    tt_pv_reduction: i32 => TT_PV_REDUCTION,
-    non_pv_reduction: i32 => NON_PV_REDUCTION,
-    not_improving_reduction: i32 => NOT_IMPROVING_REDUCTION,
-    cut_node_reduction: i32 => CUT_NODE_REDUCTION,
-    hist_reduction: i32 => HIST_REDUCTION,
+    tt_pv_reduction         | TT_PV_REDUCTION: i32 => 926,
+    non_pv_reduction        | NON_PV_REDUCTION: i32 => 926,
+    not_improving_reduction | NOT_IMPROVING_REDUCTION: i32 => 926,
+    cut_node_reduction      | CUT_NODE_REDUCTION: i32 => 2113,
+    hist_reduction          | HIST_REDUCTION: i32 => 63,
 }
 
-/*----------------------------------------------------------------*/
-
-pub const PAWN_CORR_FRAC: i16 = 132;
-pub const CONT1_FRAC: i32 = 512;
-pub const CONT2_FRAC: i32 = 512;
-pub const CONT3_FRAC: i32 = 512;
-
-pub const QUIET_BONUS_BASE: i32 = 0;
-pub const QUIET_BONUS_MUL: i32 = 14;
-pub const QUIET_MALUS_BASE: i32 = 0;
-pub const QUIET_MALUS_MUL: i32 = 14;
-
-pub const TACTIC_BONUS_BASE: i32 = 0;
-pub const TACTIC_BONUS_MUL: i32 = 14;
-pub const TACTIC_MALUS_BASE: i32 = 0;
-pub const TACTIC_MALUS_MUL: i32 = 14;
-
-pub const CONT1_BONUS_BASE: i32 = 0;
-pub const CONT1_BONUS_MUL: i32 = 14;
-pub const CONT1_MALUS_BASE: i32 = 0;
-pub const CONT1_MALUS_MUL: i32 = 14;
-
-pub const CONT2_BONUS_BASE: i32 = 0;
-pub const CONT2_BONUS_MUL: i32 = 14;
-pub const CONT2_MALUS_BASE: i32 = 0;
-pub const CONT2_MALUS_MUL: i32 = 14;
-
-pub const CONT3_BONUS_BASE: i32 = 0;
-pub const CONT3_BONUS_MUL: i32 = 14;
-pub const CONT3_MALUS_BASE: i32 = 0;
-pub const CONT3_MALUS_MUL: i32 = 14;
-
 pub const RFP_DEPTH: u8 = 12;
-pub const RFP_MARGIN: i16 = 93;
-
 pub const NMP_DEPTH: u8 = 5;
-
 pub const SEE_DEPTH: u8 = 10;
-pub const SEE_MARGIN: i16 = -91;
-pub const SEE_HIST: i32 = 61;
-
 pub const HIST_DEPTH: u8 = 10;
-pub const HIST_MARGIN: i32 = -4300;
-
 pub const FUTILE_DEPTH: u8 = 6;
-pub const FUTILE_BASE: i16 = 106;
-pub const FUTILE_MARGIN: i16 = 81;
-
-pub const TT_PV_REDUCTION: i32 = 926;
-pub const NON_PV_REDUCTION: i32 = 926;
-pub const NOT_IMPROVING_REDUCTION: i32 = 926;
-pub const CUT_NODE_REDUCTION: i32 = 2113;
-pub const HIST_REDUCTION: i32 = 63;

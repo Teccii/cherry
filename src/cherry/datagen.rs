@@ -125,7 +125,7 @@ fn datagen_worker(
             DfrcOpeningGenerator::gen_opening(&mut rng)
         } else {
             StdOpeningGenerator::gen_opening(&mut rng)
-        }, &searcher.shared_ctx.nnue_weights);
+        }, &searcher.shared_ctx.weights);
 
         let eval = searcher.search::<NoInfo>(limits.clone()).2;
         if eval.abs() > 1000 {

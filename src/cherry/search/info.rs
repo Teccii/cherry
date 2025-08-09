@@ -51,7 +51,7 @@ impl SearchInfo for PrettyInfo {
 
         if depth <= 1 {
             println!("{}", board.pretty_print(self.chess960));
-            println!("{}", String::from("\nDepth\tSeldepth\tTime\t\t\tNodes\t\tNPS\t\tScore\tPV").bright_green());
+            println!("{}", String::from("\nDepth\tTime\t\tNodes\tNPS\t\tScore\tPV").bright_green());
         }
 
         let nodes = ctx.nodes.global();
@@ -80,14 +80,14 @@ impl SearchInfo for PrettyInfo {
         }
 
         println!(
-            "{}\t{}\t\t{}\t\t{}\t\t{}\t\t{:#}\t{}",
+            "{}/{}\t{}\t{}\t{}\t{:#}\t{}",
             depth,
             ctx.sel_depth,
-            fmt_time(time),
-            fmt_big_num(nodes),
-            fmt_big_num(nps),
+            fmt_time(time).bright_black(),
+            fmt_big_num(nodes).bright_black(),
+            format!("{}nps", fmt_big_num(nps).to_ascii_lowercase()).bright_black(),
             score,
-            pv_text
+            pv_text.bright_black()
         );
     }
 }

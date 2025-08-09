@@ -102,13 +102,7 @@ impl MovePicker {
 
     /*----------------------------------------------------------------*/
     
-    pub fn next(
-        &mut self,
-        pos: &mut Position,
-        history: &History,
-        indices: &ContIndices,
-        weights: &SearchWeights,
-    ) -> Option<Move> {
+    pub fn next(&mut self, pos: &mut Position, history: &History, indices: &ContIndices) -> Option<Move> {
         if self.phase == Phase::HashMove {
             self.phase = Phase::GenPieceMoves;
             
@@ -180,7 +174,7 @@ impl MovePicker {
                         continue;
                     }
 
-                    self.quiets.push(ScoredMove(mv, history.get_non_tactical(board, mv, indices, weights)));
+                    self.quiets.push(ScoredMove(mv, history.get_non_tactical(board, mv, indices)));
                 }
             }
 
@@ -244,13 +238,7 @@ impl QMovePicker {
         }
     }
 
-    pub fn next(
-        &mut self,
-        pos: &mut Position,
-        history: &History,
-        indices: &ContIndices,
-        weights: &SearchWeights,
-    ) -> Option<Move> {
+    pub fn next(&mut self, pos: &mut Position, history: &History, indices: &ContIndices) -> Option<Move> {
         if self.phase == QPhase::GenPieceMoves {
             pos.board().gen_moves(|moves| {
                 self.piece_moves.push(moves);
@@ -271,7 +259,7 @@ impl QMovePicker {
                     let score = if board.is_tactical(mv) {
                         history.get_tactical(board, mv)
                     } else {
-                        history.get_non_tactical(board, mv, indices, weights)
+                        history.get_non_tactical(board, mv, indices)
                     };
                     
                     self.evasions.push(ScoredMove(mv, score));

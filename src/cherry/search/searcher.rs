@@ -12,11 +12,10 @@ pub type SyzygyTable = Option<TableBases<SyzygyAdapter>>;
 pub struct SharedContext {
     pub t_table: Arc<TTable>,
     pub time_man: Arc<TimeManager>,
-    pub nnue_weights: Arc<NetworkWeights>,
+    pub weights: Arc<NetworkWeights>,
     pub syzygy: Arc<SyzygyTable>,
     pub syzygy_depth: u8,
     pub root_moves: ArrayVec<Move, MAX_MOVES>,
-    pub weights: Arc<SearchWeights>,
     pub lmr_quiet: Arc<LmrLookup>,
     pub lmr_tactical: Arc<LmrLookup>,
 }
@@ -167,11 +166,10 @@ impl Searcher {
             shared_ctx: SharedContext {
                 t_table: Arc::new(TTable::new(16)),
                 time_man,
-                nnue_weights,
+                weights: nnue_weights,
                 syzygy: Arc::new(None),
                 syzygy_depth: 1,
                 root_moves: ArrayVec::new(),
-                weights: Arc::new(SearchWeights::default()),
                 lmr_quiet: Arc::new(LookUp::new(|i, j|
                     1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5).clamp(0.0, 256.0) as i32
                 )),
@@ -295,17 +293,17 @@ impl Searcher {
 
     #[inline]
     pub fn set_board(&mut self, board: Board) {
-        self.pos.set_board(board, &self.shared_ctx.nnue_weights);
+        self.pos.set_board(board, &self.shared_ctx.weights);
     }
 
     #[inline]
     pub fn make_move(&mut self, mv: Move) {
-        self.pos.make_move(mv, &self.shared_ctx.nnue_weights);
+        self.pos.make_move(mv, &self.shared_ctx.weights);
     }
 
     #[inline]
     pub fn reset_nnue(&mut self) {
-        self.pos.reset(&self.shared_ctx.nnue_weights);
+        self.pos.reset(&self.shared_ctx.weights);
     }
 }
 

@@ -174,20 +174,19 @@ impl History {
         board: &Board,
         mv: Move,
         indices: &ContIndices,
-        weights: &SearchWeights,
     ) -> i32 {
         self.get_quiet(board, mv)
-            + weights.cont1_frac * self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() / 512
-            + weights.cont3_frac * self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default() / 512
-            + weights.cont2_frac * self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default() / 512
+            + W::cont1_frac() * self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() / 512
+            + W::cont3_frac() * self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default() / 512
+            + W::cont2_frac() * self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default() / 512
     }
 
     #[inline]
-    pub fn get_corr(&self, board: &Board, weights: &SearchWeights) -> i16 {
+    pub fn get_corr(&self, board: &Board) -> i16 {
         let pawn_hash = board.pawn_hash();
         let stm = board.stm();
 
-        weights.pawn_corr_frac * self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE] / MAX_CORRECTION
+        W::pawn_corr_frac() * self.pawn_corr[stm as usize][pawn_hash as usize % PAWN_CORRECTION_SIZE] / MAX_CORRECTION
     }
     
     /*----------------------------------------------------------------*/
@@ -196,7 +195,6 @@ impl History {
         &mut self,
         board: &Board,
         indices: &ContIndices,
-        weights: &SearchWeights,
         best_move: Move,
         quiets: &[Move],
         tactics: &[Move],
@@ -205,31 +203,31 @@ impl History {
         if board.is_tactical(best_move) {
             History::update_value(
                 self.get_tactical_mut(board, best_move),
-                weights.tactic_bonus_base + weights.tactic_bonus_mul * depth as i32
+                W::tactic_bonus_base() + W::tactic_bonus_mul() * depth as i32
             );
         } else {
             History::update_value(
                 self.get_quiet_mut(board, best_move),
-                weights.quiet_bonus_base + weights.quiet_bonus_mul * depth as i32
+                W::quiet_bonus_base() + W::quiet_bonus_mul() * depth as i32
             );
 
             for &mv in quiets {
                 History::update_value(
                     self.get_quiet_mut(board, mv),
-                    -weights.quiet_malus_base - weights.quiet_malus_mul * depth as i32
+                    -W::quiet_malus_base() - W::quiet_malus_mul() * depth as i32
                 );
             }
             
             if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move) {
                 History::update_value(
                     value,
-                    weights.cont1_bonus_base + weights.cont1_bonus_mul * depth as i32
+                    W::cont1_bonus_base() + W::cont1_bonus_mul() * depth as i32
                 );
                 
                 for &mv in quiets {
                     History::update_value(
                         self.get_counter_move_mut(board, mv, indices.counter_move).unwrap(),
-                        -weights.cont1_malus_base - weights.cont1_malus_mul * depth as i32
+                        -W::cont1_malus_base() - W::cont1_malus_mul() * depth as i32
                     );
                 }
             }
@@ -237,13 +235,13 @@ impl History {
             if let Some(value) = self.get_follow_up_mut(board, best_move, indices.follow_up) {
                 History::update_value(
                     value,
-                    weights.cont2_bonus_base + weights.cont2_bonus_mul * depth as i32
+                    W::cont2_bonus_base() + W::cont2_bonus_mul() * depth as i32
                 );
 
                 for &mv in quiets {
                     History::update_value(
                         self.get_follow_up_mut(board, mv, indices.follow_up).unwrap(),
-                        -weights.cont2_malus_base - weights.cont2_malus_mul * depth as i32
+                        -W::cont2_malus_base() - W::cont2_malus_mul() * depth as i32
                     );
                 }
             }
@@ -251,13 +249,13 @@ impl History {
             if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move2) {
                 History::update_value(
                     value,
-                    -weights.cont3_bonus_base - weights.cont3_bonus_mul * depth as i32
+                    -W::cont3_bonus_base() - W::cont3_bonus_mul() * depth as i32
                 );
 
                 for &mv in quiets {
                     History::update_value(
                         self.get_counter_move_mut(board, mv, indices.counter_move2).unwrap(),
-                        -weights.cont3_malus_base - weights.cont3_malus_mul * depth as i32
+                        -W::cont3_malus_base() - W::cont3_malus_mul() * depth as i32
                     );
                 }
             }
@@ -266,7 +264,7 @@ impl History {
         for &mv in tactics {
             History::update_value(
                 self.get_tactical_mut(board, mv),
-                -weights.tactic_malus_base - weights.tactic_malus_mul * depth as i32
+                -W::tactic_malus_base() - W::tactic_malus_mul() * depth as i32
             );
         }
     }
