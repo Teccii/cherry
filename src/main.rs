@@ -7,6 +7,7 @@
 mod cherry;
 
 use std::{env, io};
+use colored::Colorize;
 use cherry::*;
 
 /*----------------------------------------------------------------*/
@@ -24,7 +25,7 @@ fn main() {
         return;
     }
 
-    println!("Cherry v{} by Tecci", ENGINE_VERSION);
+    println!("Cherry v{} by Tecci", ENGINE_VERSION.bright_green());
     
     while let Ok(bytes) = io::stdin().read_line(&mut buffer) {
         if !engine.input(buffer.trim(), bytes) {

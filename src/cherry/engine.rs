@@ -170,6 +170,14 @@ impl Engine {
 
         match cmd {
             UciCommand::Uci => {
+                macro_rules! list_tunables {
+                    ($($name:ident => $default:expr, $min:expr, $max:expr;)*) => {
+                        #[cfg(feature = "tune")] $(
+                            println!("option name {} type spin default {} min {} max {}", stringify!($name), $default, $min, $max);
+                        )*
+                    }
+                }
+
                 println!("id name Cherry v{}", ENGINE_VERSION);
                 println!("id author Tecci");
                 println!("option name Threads type spin default 1 min 1 max 65535");
@@ -180,6 +188,48 @@ impl Engine {
                 println!("option name MoveOverhead type spin default 100 min 0 max 5000");
                 println!("option name Ponder type check default false");
                 println!("option name UCI_Chess960 type check default false");
+                list_tunables! {
+                    PAWN_CORR_FRAC => W::pawn_corr_frac(), 0, MAX_CORRECTION;
+                    CONT1_FRAC     => W::cont1_frac(),     0, 512;
+                    CONT2_FRAC     => W::cont2_frac(),     0, 512;
+                    CONT3_FRAC     => W::cont3_frac(),     0, 512;
+                    QUIET_BONUS_BASE => W::quiet_bonus_base(), -256, 256;
+                    QUIET_BONUS_MUL  => W::quiet_bonus_mul(),  -256, 256;
+                    QUIET_MALUS_BASE => W::quiet_malus_base(), -256, 256;
+                    QUIET_MALUS_MUL  => W::quiet_malus_mul(),  -256, 256;
+                    QUIET_HIST_MAX   => W::quiet_hist_max(),      1, 32768;
+                    TACTIC_BONUS_BASE => W::tactic_bonus_base(), -256, 256;
+                    TACTIC_BONUS_MUL  => W::tactic_bonus_mul(),  -256, 256;
+                    TACTIC_MALUS_BASE => W::tactic_malus_base(), -256, 256;
+                    TACTIC_MALUS_MUL  => W::tactic_malus_mul(),  -256, 256;
+                    TACTIC_HIST_MAX   => W::tactic_hist_max(),      1, 32768;
+                    CONT1_BONUS_BASE => W::cont1_bonus_base(), -256, 256;
+                    CONT1_BONUS_MUL  => W::cont1_bonus_mul(),  -256, 256;
+                    CONT1_MALUS_BASE => W::cont1_malus_base(), -256, 256;
+                    CONT1_MALUS_MUL  => W::cont1_malus_mul(),  -256, 256;
+                    CONT1_HIST_MAX   => W::cont1_hist_max(),      1, 32768;
+                    CONT2_BONUS_BASE => W::cont2_bonus_base(), -256, 256;
+                    CONT2_BONUS_MUL  => W::cont2_bonus_mul(),  -256, 256;
+                    CONT2_MALUS_BASE => W::cont2_malus_base(), -256, 256;
+                    CONT2_MALUS_MUL  => W::cont2_malus_mul(),  -256, 256;
+                    CONT2_HIST_MAX   => W::cont2_hist_max(),      1, 32768;
+                    CONT3_BONUS_BASE => W::cont3_bonus_base(), -256, 256;
+                    CONT3_BONUS_MUL  => W::cont3_bonus_mul(),  -256, 256;
+                    CONT3_MALUS_BASE => W::cont3_malus_base(), -256, 256;
+                    CONT3_MALUS_MUL  => W::cont3_malus_mul(),  -256, 256;
+                    CONT3_HIST_MAX   => W::cont3_hist_max(),      1, 32768;
+                    RFP_MARGIN    => W::rfp_margin(),   -1024, 1024;
+                    SEE_MARGIN    => W::see_margin(),   -1024, 1024;
+                    SEE_HIST      => W::see_hist(),         1, 512;
+                    HIST_MARGIN   => W::hist_margin(), -16384, 0;
+                    FUTILE_BASE   => W::futile_base(),   -1024, 1024;
+                    FUTILE_MARGIN => W::futile_margin(), -1024, 1024;
+                    TT_PV_REDUCTION         => W::tt_pv_reduction(),         -16384, 16384;
+                    NON_PV_REDUCTION        => W::non_pv_reduction(),        -16384, 16384;
+                    NOT_IMPROVING_REDUCTION => W::not_improving_reduction(), -16384, 16384;
+                    CUT_NODE_REDUCTION      => W::cut_node_reduction(),      -16384, 16384;
+                    HIST_REDUCTION          => W::hist_reduction(),               1, 512;
+                }
                 println!("uciok");
 
                 self.sender.send(ThreadCommand::Uci(Arc::clone(&self.searcher))).unwrap();
@@ -215,10 +265,68 @@ impl Engine {
                 limits
             )).unwrap(),
             UciCommand::SetOption { name, value } => {
+                macro_rules! set_tunables {
+                    ($($option:expr => $tunable:ident, $ty:ty;)*) => {
+                        #[cfg(feature = "tune")]
+                        match name.as_str() {
+                            $(
+                                $option => unsafe {
+                                    let tunable: &mut $ty = &mut *$tunable.get();
+                                    *tunable = value.parse::<$ty>().unwrap();
+                                },
+                            )*
+                            _ => { }
+                        }
+                    }
+                }
+
                 match name.as_str() {
                     "Move Overhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
                     "Chess960" => self.chess960 = value.parse::<bool>().unwrap(),
                     _ => { }
+                }
+
+                set_tunables! {
+                    "PAWN_CORR_FRAC" => PAWN_CORR_FRAC, i16;
+                    "CONT1_FRAC"     => CONT1_FRAC, i32;
+                    "CONT2_FRAC"     => CONT2_FRAC, i32;
+                    "CONT3_FRAC"     => CONT3_FRAC, i32;
+                    "QUIET_BONUS_BASE" => QUIET_BONUS_BASE, i32;
+                    "QUIET_BONUS_MUL"  => QUIET_BONUS_MUL, i32;
+                    "QUIET_MALUS_BASE" => QUIET_MALUS_BASE, i32;
+                    "QUIET_MALUS_MUL"  => QUIET_MALUS_MUL, i32;
+                    "QUIET_HIST_MAX"   => QUIET_HIST_MAX, i32;
+                    "TACTIC_BONUS_BASE" => TACTIC_BONUS_BASE, i32;
+                    "TACTIC_BONUS_MUL"  => TACTIC_BONUS_MUL, i32;
+                    "TACTIC_MALUS_BASE" => TACTIC_MALUS_BASE, i32;
+                    "TACTIC_MALUS_MUL"  => TACTIC_MALUS_MUL, i32;
+                    "TACTIC_HIST_MAX"   => TACTIC_HIST_MAX, i32;
+                    "CONT1_BONUS_BASE" => CONT1_BONUS_BASE, i32;
+                    "CONT1_BONUS_MUL"  => CONT1_BONUS_MUL, i32;
+                    "CONT1_MALUS_BASE" => CONT1_MALUS_BASE, i32;
+                    "CONT1_MALUS_MUL"  => CONT1_MALUS_MUL, i32;
+                    "CONT1_HIST_MAX"   => CONT1_HIST_MAX, i32;
+                    "CONT2_BONUS_BASE" => CONT2_BONUS_BASE, i32;
+                    "CONT2_BONUS_MUL"  => CONT2_BONUS_MUL, i32;
+                    "CONT2_MALUS_BASE" => CONT2_MALUS_BASE, i32;
+                    "CONT2_MALUS_MUL"  => CONT2_MALUS_MUL, i32;
+                    "CONT2_HIST_MAX"   => CONT2_HIST_MAX, i32;
+                    "CONT3_BONUS_BASE" => CONT3_BONUS_BASE, i32;
+                    "CONT3_BONUS_MUL"  => CONT3_BONUS_MUL, i32;
+                    "CONT3_MALUS_BASE" => CONT3_MALUS_BASE, i32;
+                    "CONT3_MALUS_MUL"  => CONT3_MALUS_MUL, i32;
+                    "CONT3_HIST_MAX"   => CONT3_HIST_MAX, i32;
+                    "RFP_MARGIN"    => RFP_MARGIN, i16;
+                    "SEE_MARGIN"    => SEE_MARGIN, i16;
+                    "SEE_HIST"      => SEE_HIST, i32;
+                    "HIST_MARGIN"   => HIST_MARGIN, i32;
+                    "FUTILE_BASE"   => FUTILE_BASE, i16;
+                    "FUTILE_MARGIN" => FUTILE_MARGIN, i16;
+                    "TT_PV_REDUCTION"         => TT_PV_REDUCTION, i32;
+                    "NON_PV_REDUCTION"        => NON_PV_REDUCTION, i32;
+                    "NOT_IMPROVING_REDUCTION" => NOT_IMPROVING_REDUCTION, i32;
+                    "CUT_NODE_REDUCTION"      => CUT_NODE_REDUCTION, i32;
+                    "HIST_REDUCTION"          => HIST_REDUCTION, i32;
                 }
 
                 self.sender.send(ThreadCommand::SetOption(

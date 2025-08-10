@@ -7,7 +7,7 @@ macro_rules! weights {
 
         $(
             #[cfg(feature = "tune")]
-            static $tunable: SyncUnsafeCell<$ty> = SyncUnsafeCell::new($default);
+            pub static $tunable: SyncUnsafeCell<$ty> = SyncUnsafeCell::new($default);
         )*
 
         impl W {
@@ -32,26 +32,31 @@ weights! {
     quiet_bonus_mul  | QUIET_BONUS_MUL: i32 => 14,
     quiet_malus_base | QUIET_MALUS_BASE: i32 => 0,
     quiet_malus_mul  | QUIET_MALUS_MUL: i32 => 14,
+    quiet_hist_max   | QUIET_HIST_MAX: i32 => 8192,
 
     tactic_bonus_base | TACTIC_BONUS_BASE: i32 => 0,
     tactic_bonus_mul  | TACTIC_BONUS_MUL: i32 => 14,
     tactic_malus_base | TACTIC_MALUS_BASE: i32 => 0,
     tactic_malus_mul  | TACTIC_MALUS_MUL: i32 => 14,
+    tactic_hist_max   | TACTIC_HIST_MAX: i32 => 8192,
 
     cont1_bonus_base | CONT1_BONUS_BASE: i32 => 0,
     cont1_bonus_mul  | CONT1_BONUS_MUL: i32 => 14,
     cont1_malus_base | CONT1_MALUS_BASE: i32 => 0,
     cont1_malus_mul  | CONT1_MALUS_MUL: i32 => 14,
+    cont1_hist_max   | CONT1_HIST_MAX: i32 => 8192,
 
     cont2_bonus_base | CONT2_BONUS_BASE: i32 => 0,
     cont2_bonus_mul  | CONT2_BONUS_MUL: i32 => 14,
     cont2_malus_base | CONT2_MALUS_BASE: i32 => 0,
     cont2_malus_mul  | CONT2_MALUS_MUL: i32 => 14,
+    cont2_hist_max   | CONT2_HIST_MAX: i32 => 8192,
 
     cont3_bonus_base | CONT3_BONUS_BASE: i32 => 0,
     cont3_bonus_mul  | CONT3_BONUS_MUL: i32 => 14,
     cont3_malus_base | CONT3_MALUS_BASE: i32 => 0,
     cont3_malus_mul  | CONT3_MALUS_MUL: i32 => 14,
+    cont3_hist_max   | CONT3_HIST_MAX: i32 => 8192,
 
     rfp_margin    | RFP_MARGIN: i16 => 93,
     see_margin    | SEE_MARGIN: i16 => -91,
