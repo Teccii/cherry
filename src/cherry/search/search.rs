@@ -1,5 +1,5 @@
-use arrayvec::ArrayVec;
 use pyrrhic_rs::WdlProbeResult;
+use smallvec::SmallVec;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -222,8 +222,8 @@ pub fn search<Node: NodeType>(
     let mut best_score = None;
     let mut moves_seen = 0;
     let mut move_exists = false;
-    let mut quiets: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
-    let mut tactics: ArrayVec<Move, MAX_MOVES> = ArrayVec::new();
+    let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
+    let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut move_picker = MovePicker::new(best_move);
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 

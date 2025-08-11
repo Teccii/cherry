@@ -1,11 +1,11 @@
 use std::sync::Arc;
-use arrayvec::ArrayVec;
 use pyrrhic_rs::TableBases;
+use smallvec::SmallVec;
 use crate::*;
 
 /*----------------------------------------------------------------*/
 
-pub type LmrLookup = LookUp<i32, {MAX_PLY as usize}, MAX_MOVES>;
+pub type LmrLookup = LookUp<i32, {MAX_PLY as usize}, {MAX_PLY as usize}>;
 pub type SyzygyTable = Option<TableBases<SyzygyAdapter>>;
 
 #[derive(Clone)]
@@ -15,7 +15,7 @@ pub struct SharedContext {
     pub weights: Arc<NetworkWeights>,
     pub syzygy: Arc<SyzygyTable>,
     pub syzygy_depth: u8,
-    pub root_moves: ArrayVec<Move, MAX_MOVES>,
+    pub root_moves: SmallVec<[Move; 64]>,
     pub lmr_quiet: Arc<LmrLookup>,
     pub lmr_tactical: Arc<LmrLookup>,
 }
@@ -169,7 +169,7 @@ impl Searcher {
                 weights: nnue_weights,
                 syzygy: Arc::new(None),
                 syzygy_depth: 1,
-                root_moves: ArrayVec::new(),
+                root_moves: SmallVec::new(),
                 lmr_quiet: Arc::new(LookUp::new(|i, j|
                     1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5).clamp(0.0, 256.0) as i32
                 )),

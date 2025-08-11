@@ -16,8 +16,6 @@ pub const EVAL_SCALE: i32 = 400;
 pub const QA: i32 = 255;
 pub const QB: i32 = 64;
 
-pub const HORIZONTAL_MIRRORING: bool = true;
-
 /*----------------------------------------------------------------*/
 
 const NETWORK_BYTES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/network.bin"));
@@ -167,7 +165,7 @@ impl Nnue {
         self.acc_index += 1;
         self.acc_mut().dirty = [true; Color::COUNT];
 
-        if HORIZONTAL_MIRRORING && piece == Piece::King && (from.file() > File::D) != (to.file() > File::D) {
+        if piece == Piece::King && (from.file() > File::D) != (to.file() > File::D) {
             self.reset(new_board, weights, color);
         }
     }
@@ -187,7 +185,7 @@ impl Nnue {
 
         ((output / QA + weights.out_bias as i32) * EVAL_SCALE / (QA * QB)) as i16
     }
-    
+
     /*----------------------------------------------------------------*/
 
     pub fn apply_updates(&mut self, board: &Board, weights: &NetworkWeights) {

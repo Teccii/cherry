@@ -16,7 +16,7 @@ impl FeatureUpdate {
             Color::Black => (self.sq.flip_rank(), !self.color),
         };
         
-        if HORIZONTAL_MIRRORING && king.file() > File::D {
+        if king.file() > File::D {
             sq = sq.flip_file();
         }
 

@@ -1,5 +1,7 @@
 use std::sync::{Arc, atomic::*};
+use smallvec::{Array, SmallVec};
 use colored::Colorize;
+
 /*----------------------------------------------------------------*/
 
 pub const MAX_DEPTH: u8 = 128;
@@ -107,6 +109,19 @@ impl<T: Copy + Default, const M: usize, const N: usize> LookUp<T, M, N> {
 
         self.table[i][j]
     }
+}
+
+/*----------------------------------------------------------------*/
+
+pub fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item>  {
+    let len = vec.len();
+
+    if index >= len {
+        return None;
+    }
+
+    vec.swap(index, len - 1);
+    vec.pop()
 }
 
 /*----------------------------------------------------------------*/
