@@ -11,7 +11,18 @@ use crate::*;
 #[derive(Debug, Copy, Clone)]
 pub struct ScoredMove(pub Move, pub i32);
 
-fn select_next(moves: &SmallVec<[ScoredMove; 64]>) -> Option<usize> {
+fn select_next_64(moves: &SmallVec<[ScoredMove; 64]>) -> Option<usize> {
+    if moves.is_empty() {
+        return None;
+    }
+
+    moves.iter()
+        .enumerate()
+        .max_by_key(|(_, mv)| mv.1)
+        .map(|(i, _)| i)
+}
+
+fn select_next_32(moves: &SmallVec<[ScoredMove; 32]>) -> Option<usize> {
     if moves.is_empty() {
         return None;
     }
@@ -68,8 +79,8 @@ pub struct MovePicker {
     phase: Phase,
     hash_move: Option<Move>,
     piece_moves: ArrayVec<PieceMoves, 20>,
-    good_tactics: SmallVec<[ScoredMove; 64]>,
-    bad_tactics: SmallVec<[ScoredMove; 64]>,
+    good_tactics: SmallVec<[ScoredMove; 32]>,
+    bad_tactics: SmallVec<[ScoredMove; 32]>,
     quiets: SmallVec<[ScoredMove; 64]>,
 }
 
@@ -153,7 +164,7 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.phase == Phase::YieldGoodTactics {
-            if let Some(index) = select_next(&self.good_tactics) {
+            if let Some(index) = select_next_32(&self.good_tactics) {
                 return swap_pop(&mut self.good_tactics, index).map(|mv| mv.0);
             }
             
@@ -185,7 +196,7 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.phase == Phase::YieldQuiets {
-            if let Some(index) = select_next(&self.quiets) {
+            if let Some(index) = select_next_64(&self.quiets) {
                 return swap_pop(&mut self.quiets, index).map(|mv| mv.0);
             }
             
@@ -195,7 +206,7 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.phase == Phase::YieldBadTactics {
-            if let Some(index) = select_next(&self.bad_tactics) {
+            if let Some(index) = select_next_32(&self.bad_tactics) {
                 return swap_pop(&mut self.bad_tactics, index).map(|mv| mv.0);
             }
             
@@ -224,8 +235,8 @@ pub enum QPhase {
 pub struct QMovePicker {
     phase: QPhase,
     piece_moves: ArrayVec<PieceMoves, 20>,
-    evasions: SmallVec<[ScoredMove; 64]>,
-    tactics: SmallVec<[ScoredMove; 64]>,
+    evasions: SmallVec<[ScoredMove; 32]>,
+    tactics: SmallVec<[ScoredMove; 32]>,
 }
 
 impl QMovePicker {
@@ -271,7 +282,7 @@ impl QMovePicker {
         }
         
         if self.phase == QPhase::YieldEvasions {
-            if let Some(index) = select_next(&self.evasions) {
+            if let Some(index) = select_next_32(&self.evasions) {
                 return swap_pop(&mut self.evasions, index).map(|mv| mv.0);
             }
 
@@ -297,7 +308,7 @@ impl QMovePicker {
         /*----------------------------------------------------------------*/
 
         if self.phase == QPhase::YieldTactics {
-            if let Some(index) = select_next(&self.tactics) {
+            if let Some(index) = select_next_32(&self.tactics) {
                 return swap_pop(&mut self.tactics, index).map(|mv| mv.0);
             }
             

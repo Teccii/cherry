@@ -15,7 +15,7 @@ pub struct SharedContext {
     pub weights: Arc<NetworkWeights>,
     pub syzygy: Arc<SyzygyTable>,
     pub syzygy_depth: u8,
-    pub root_moves: SmallVec<[Move; 64]>,
+    pub root_moves: Vec<Move>,
     pub lmr_quiet: Arc<LmrLookup>,
     pub lmr_tactical: Arc<LmrLookup>,
 }
@@ -169,7 +169,8 @@ impl Searcher {
                 weights: nnue_weights,
                 syzygy: Arc::new(None),
                 syzygy_depth: 1,
-                root_moves: SmallVec::new(),
+                //root_moves: SmallVec::new(),
+                root_moves: Vec::with_capacity(64),
                 lmr_quiet: Arc::new(LookUp::new(|i, j|
                     1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5).clamp(0.0, 256.0) as i32
                 )),
