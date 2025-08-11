@@ -460,7 +460,12 @@ pub fn search<Node: NodeType>(
         };
 
         let is_tactic = best_move.is_some_and(|mv| !pos.board().is_tactical(mv));
-        if !in_check && !is_tactic && flag == TTBound::Exact && best_score != static_eval {
+        if !in_check && !is_tactic && match flag {
+            TTBound::Exact => true,
+            TTBound::UpperBound => best_score < static_eval,
+            TTBound::LowerBound => best_score > static_eval,
+            _ => false,
+        } {
             ctx.history.update_corr(pos.board(), depth, best_score, static_eval);
         }
 
