@@ -123,7 +123,11 @@ impl Engine {
 
                         match name.as_str() {
                             "Threads" => searcher.threads = value.parse::<u16>().unwrap(),
-                            "EvalFile" => searcher.shared_ctx.weights = NetworkWeights::new(&fs::read(value).unwrap()),
+                            "EvalFile" => if value == "<default>" {
+                                searcher.shared_ctx.weights = NetworkWeights::default();
+                            } else {
+                                searcher.shared_ctx.weights = NetworkWeights::new(&fs::read(value).unwrap());
+                            },
                             "Hash" => searcher.resize_ttable(value.parse::<usize>().unwrap()),
                             "SyzygyPath" => searcher.set_syzygy_path(value.as_str()),
                             "SyzygyProbeDepth" => searcher.shared_ctx.syzygy_depth = value.parse::<u8>().unwrap(),
@@ -172,9 +176,9 @@ impl Engine {
             UciCommand::Uci => {
                 macro_rules! list_tunables {
                     ($($name:ident => $default:expr, $min:expr, $max:expr;)*) => {
-                        #[cfg(feature = "tune")] $(
+                        #[cfg(feature = "tune")] {$(
                             println!("option name {} type spin default {} min {} max {}", stringify!($name), $default, $min, $max);
-                        )*
+                        )*}
                     }
                 }
 
@@ -282,7 +286,7 @@ impl Engine {
 
                 match name.as_str() {
                     "Move Overhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
-                    "Chess960" => self.chess960 = value.parse::<bool>().unwrap(),
+                    "UCI_Chess960" => self.chess960 = value.parse::<bool>().unwrap(),
                     _ => { }
                 }
 
