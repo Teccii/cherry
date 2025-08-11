@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use pyrrhic_rs::TableBases;
-use smallvec::SmallVec;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -169,14 +168,17 @@ impl Searcher {
                 weights: nnue_weights,
                 syzygy: Arc::new(None),
                 syzygy_depth: 1,
-                //root_moves: SmallVec::new(),
                 root_moves: Vec::with_capacity(64),
-                lmr_quiet: Arc::new(LookUp::new(|i, j|
-                    1024 * (0.5 + (i as f32).ln() * (j as f32).ln() / 2.5).clamp(0.0, 256.0) as i32
-                )),
-                lmr_tactical: Arc::new(LookUp::new(|i, j|
-                    1024 * (0.4 + (i as f32).ln() * (j as f32).ln() / 3.5).clamp(0.0, 256.0) as i32
-                ))
+                lmr_quiet: Arc::new(LookUp::new(|i, j| {
+                    let i = if i != 0 { (i as f32).ln() } else { 0.0 };
+                    let j = if j != 0 { (j as f32).ln() } else { 0.0 };
+                    1024 * (0.5 + i * j / 2.5) as i32
+                })),
+                lmr_tactical: Arc::new(LookUp::new(|i, j| {
+                    let i = if i != 0 { (i as f32).ln() } else { 0.0 };
+                    let j = if j != 0 { (j as f32).ln() } else { 0.0 };
+                    1024 * (0.4 + i * j / 3.5) as i32
+                })),
             },
             main_ctx: ThreadContext {
                 qnodes: BatchedAtomicCounter::new(),
