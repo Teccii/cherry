@@ -303,7 +303,7 @@ impl Engine {
                 }
 
                 set_tunables! {
-                    "PAWN_CORR_FRAC" => PAWN_CORR_FRAC, i16;
+                    "PAWN_CORR_FRAC" => PAWN_CORR_FRAC, i32;
                     "CONT1_FRAC"     => CONT1_FRAC,     i32;
                     "CONT2_FRAC"     => CONT2_FRAC,     i32;
                     "CONT3_FRAC"     => CONT3_FRAC,     i32;

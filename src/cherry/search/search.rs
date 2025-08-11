@@ -169,7 +169,7 @@ pub fn search<Node: NodeType>(
         Some(_) => ctx.ss[ply as usize].eval,
         None => tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(&shared_ctx.weights)),
     };
-    let static_eval = raw_eval + corr;
+    let static_eval = raw_eval + corr as i16;
     let prev_eval = (ply >= 2).then(|| ctx.ss[ply as usize - 2].eval);
     let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
     let tt_pv = tt_entry.is_some_and(|e| e.flag == TTBound::Exact);
@@ -507,7 +507,7 @@ pub fn q_search<Node: NodeType>(
     }
 
     if ply >= MAX_PLY {
-        return pos.eval(&shared_ctx.weights) + ctx.history.get_corr(pos.board());
+        return pos.eval(&shared_ctx.weights) + ctx.history.get_corr(pos.board()) as i16;
     }
 
     let tt_entry = shared_ctx.t_table.probe(pos.board());
@@ -534,9 +534,8 @@ pub fn q_search<Node: NodeType>(
     }
 
     let in_check = pos.in_check();
-    let corr = ctx.history.get_corr(pos.board());
     let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(&shared_ctx.weights));
-    let static_eval = raw_eval + corr;
+    let static_eval = raw_eval + ctx.history.get_corr(pos.board()) as i16;
 
     if !in_check {
         if static_eval >= beta {

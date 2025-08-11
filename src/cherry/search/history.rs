@@ -2,7 +2,7 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-pub const MAX_CORRECTION: i16 = 1024;
+pub const MAX_CORRECTION: i32 = 1024;
 
 const PAWN_CORRECTION_SIZE: usize = 1024;
 
@@ -13,7 +13,7 @@ pub type PieceTo<T> = [[T; Square::COUNT]; Piece::COUNT];
 pub type ButterflyTable = [MoveTo<i32>; Color::COUNT];
 pub type PieceToTable = [PieceTo<i32>; Color::COUNT];
 pub type ContinuationTable = [PieceTo<PieceTo<i32>>; Color::COUNT];
-pub type CorrectionTable<const SIZE: usize> = [[i16; SIZE]; Color::COUNT];
+pub type CorrectionTable<const SIZE: usize> = [[i32; SIZE]; Color::COUNT];
 
 /*----------------------------------------------------------------*/
 
@@ -181,7 +181,7 @@ impl History {
     }
 
     #[inline]
-    pub fn get_corr(&self, board: &Board) -> i16 {
+    pub fn get_corr(&self, board: &Board) -> i32 {
         let pawn_hash = board.pawn_hash();
         let stm = board.stm();
 
@@ -279,7 +279,7 @@ impl History {
     }
 
     pub fn update_corr(&mut self, board: &Board, depth: u8, best_score: Score, static_eval: Score) {
-        let amount = (best_score - static_eval).0 * depth as i16 / 8;
+        let amount = (best_score - static_eval).0 as i32 * depth as i32 / 8;
         let pawn_hash = board.pawn_hash();
         let stm = board.stm();
 
@@ -300,9 +300,9 @@ impl History {
     }
 
     #[inline]
-    fn update_corr_value(value: &mut i16, amount: i16) {
+    fn update_corr_value(value: &mut i32, amount: i32) {
         let amount = amount.clamp(-MAX_CORRECTION / 4, MAX_CORRECTION / 4);
-        let decay = (*value as i32 * amount.abs() as i32 / MAX_CORRECTION as i32) as i16;
+        let decay = *value * amount.abs() / MAX_CORRECTION;
 
         *value += amount - decay;
     }
