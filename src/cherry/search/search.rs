@@ -269,7 +269,7 @@ pub fn search<Node: NodeType>(
                 let see_margin = W::see_margin() * depth as i16 * depth as i16 - (stat_score / W::see_hist()) as i16;
                 if depth < SEE_DEPTH
                     && move_picker.phase() == Phase::YieldBadTactics
-                    && !pos.board().cmp_see(mv, see_margin) {
+                    && !pos.cmp_see(mv, see_margin) {
                     continue;
                 }
             } else {
@@ -310,7 +310,7 @@ pub fn search<Node: NodeType>(
                 moving it to an attacked square.
                 */
                 let see_margin = W::see_margin() * r_depth as i16 * r_depth as i16;
-                if r_depth < SEE_DEPTH && !pos.board().cmp_see(mv, see_margin) {
+                if r_depth < SEE_DEPTH && !pos.cmp_see(mv, see_margin) {
                     continue;
                 }
             }
@@ -550,7 +550,7 @@ pub fn q_search<Node: NodeType>(
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
     while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
-        if !pos.board().cmp_see(mv, 0) {
+        if !pos.cmp_see(mv, 0) {
             continue;
         }
 

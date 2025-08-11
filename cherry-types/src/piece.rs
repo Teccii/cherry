@@ -42,20 +42,6 @@ impl Piece {
 
     /*----------------------------------------------------------------*/
 
-    #[inline]
-    pub fn see_value(self) -> i16 {
-        match self {
-            Piece::Pawn => 100,
-            Piece::Knight => 320,
-            Piece::Bishop => 330,
-            Piece::Rook => 580,
-            Piece::Queen => 920,
-            Piece::King => 20000,
-        }
-    }
-
-    /*----------------------------------------------------------------*/
-
     pub const COUNT: usize = 6;
     pub const ALL: [Piece; Self::COUNT] = [
         Piece::Pawn,

@@ -152,7 +152,7 @@ impl MovePicker {
                     }
 
                     let score = history.get_tactical(board, mv);
-                    if board.cmp_see(mv, 0)  {
+                    if pos.cmp_see(mv, 0)  {
                         self.good_tactics.push(ScoredMove(mv, score));
                     } else {
                         self.bad_tactics.push(ScoredMove(mv, score));
