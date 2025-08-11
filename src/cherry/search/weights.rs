@@ -63,14 +63,14 @@ weights! {
     bishop_see_value | BISHOP_SEE_VALUE: i16 => 330,
     rook_see_value   | ROOK_SEE_VALUE:   i16 => 580,
     queen_see_value  | QUEEN_SEE_VALUE:  i16 => 920,
-    
+
     pawn_mat_scale   | PAWN_MAT_SCALE:   i32 => 100,
     knight_mat_scale | KNIGHT_MAT_SCALE: i32 => 320,
     bishop_mat_scale | BISHOP_MAT_SCALE: i32 => 330,
     rook_mat_scale   | ROOK_MAT_SCALE:   i32 => 580,
     queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 920,
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 26000,
-    mat_scale_max    | MAT_SCALE_MAX:    i32 => 33360,
+    mat_scale_div    | MAT_SCALE_DIV:    i32 => 33360,
 
     rfp_margin    | RFP_MARGIN:    i16 => 93,
     see_margin    | SEE_MARGIN:    i16 => -91,
