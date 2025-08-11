@@ -70,7 +70,8 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
     println!();
 
     let stats = Arc::new(GameStats::new());
-    let counter = Arc::new(AtomicUsize::new(0));
+    let pos_counter = Arc::new(AtomicU64::new(0));
+    let game_counter = Arc::new(AtomicUsize::new(0));
     let abort = Arc::new(AtomicBool::new(false));
     let a = Arc::clone(&abort);
 
@@ -80,10 +81,11 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
         for thread in 0..threads {
             let data_dir = &data_dir;
             let stats = Arc::clone(&stats);
-            let counter = Arc::clone(&counter);
+            let pos_counter = Arc::clone(&pos_counter);
+            let game_counter = Arc::clone(&game_counter);
             let abort = Arc::clone(&abort);
 
-            s.spawn(move || datagen_worker(thread, options, data_dir, stats, counter, abort));
+            s.spawn(move || datagen_worker(thread, options, data_dir, stats, pos_counter, game_counter, abort));
         }
     });
 
@@ -95,7 +97,8 @@ fn datagen_worker(
     options: DataGenOptions,
     data_dir: &PathBuf,
     stats: Arc<GameStats>,
-    counter: Arc<AtomicUsize>,
+    pos_counter: Arc<AtomicU64>,
+    game_counter: Arc<AtomicUsize>,
     abort: Arc<AtomicBool>,
 ) {
     let mut rng = rand::rng();
@@ -114,7 +117,7 @@ fn datagen_worker(
     while i < count {
         if abort.load(Ordering::Relaxed) {
             if thread == 0 {
-                println!("\x1B[7EReceived Ctrl+C, aborting..."); //Move cursor down 7 lines
+                println!("\x1B[9EReceived Ctrl+C, aborting..."); //Move cursor down 7 lines
             }
 
             break;
@@ -140,6 +143,7 @@ fn datagen_worker(
         }.as_str()).unwrap();
 
         let mut game = Game::new(&initial_board);
+        let mut game_len = 0;
         let result;
 
         'game: loop {
@@ -156,8 +160,9 @@ fn datagen_worker(
                 MoveFlag::Castling => ViriMove::new_with_flags(from, to, ViriMoveFlag::Castle),
             };
             let eval = eval * searcher.pos.stm().sign();
-
             game.add_move(viri_move, eval.0);
+            game_len += 1;
+
             if eval.is_decisive() {
                 result = if eval > 0 {
                     GameOutcome::WhiteWin(WinType::Mate)
@@ -205,7 +210,9 @@ fn datagen_worker(
             _ => { }
         }
 
-        let curr = counter.fetch_add(1, Ordering::Relaxed);
+        let curr = game_counter.fetch_add(1, Ordering::Relaxed);
+        let curr_pos = pos_counter.fetch_add(game_len, Ordering::Relaxed);
+
         if !abort.load(Ordering::Relaxed) && curr != 0 && curr % 10 == 0 {
             let percentage = 100f32 * (curr as f32 / options.count as f32);
             let elapsed = start.elapsed().as_secs_f32();
@@ -219,6 +226,11 @@ fn datagen_worker(
                 options.count.to_string().bright_green(),
                 progress_bar(progress, 50),
                 format!("{:.1}", percentage).bright_green()
+            );
+            println!("Number of Positions: {}", fmt_big_num(curr_pos).bright_green());
+            println!(
+                "Positions Per Second: {}",
+                format!("{}", (curr_pos as f32 / elapsed) as usize).bright_green()
             );
             println!(
                 "Games Per Second: {}",
@@ -242,7 +254,7 @@ fn datagen_worker(
             println!("White Wins: {} ({}%)", white_wins.to_string().bright_green(), format!("{:.1}", white_percentage).bright_green());
             println!("Black Wins: {} ({}%)", black_wins.to_string().bright_green(), format!("{:.1}", black_percentage).bright_green());
             println!("Draws: {} ({}%)", draws.to_string().bright_green(), format!("{:.1}", draw_percentage).bright_green());
-            println!("\x1B[7F");
+            println!("\x1B[9F");
 
             io::stdout().flush().unwrap();
         }
@@ -251,7 +263,7 @@ fn datagen_worker(
     }
 
     if !abort.load(Ordering::Relaxed) {
-        println!("\x1B[7E");
+        println!("\x1B[9E");
     }
 
     writer.flush().unwrap();
