@@ -459,7 +459,7 @@ pub fn search<Node: NodeType>(
             _ => TTBound::Exact,
         };
 
-        let is_tactic = best_move.is_some_and(|mv| !pos.board().is_tactical(mv));
+        let is_tactic = best_move.is_some_and(|mv| pos.board().is_tactical(mv));
         if !in_check && !is_tactic && match flag {
             TTBound::Exact => true,
             TTBound::UpperBound => best_score < static_eval,
