@@ -43,6 +43,7 @@ pub struct Board {
     en_passant: Option<File>,
     fullmove_count: u16,
     halfmove_clock: u8,
+    minor_hash: u64,
     pawn_hash: u64,
     hash: u64,
     stm: Color,
@@ -159,8 +160,11 @@ impl Board {
     pub const fn fullmove_count(&self) -> u16 { self.fullmove_count }
 
     #[inline]
+    pub const fn minor_hash(&self) -> u64 { self.minor_hash }
+
+    #[inline]
     pub const fn pawn_hash(&self) -> u64 { self.pawn_hash }
-    
+
     #[inline]
     pub const fn hash(&self) -> u64 { self.hash }
 
@@ -417,8 +421,10 @@ impl Board {
         let zobrist = ZOBRIST.piece(sq, piece, color);
         self.hash ^= zobrist;
 
-        if piece == Piece::Pawn {
-            self.pawn_hash ^= zobrist;
+        match piece {
+            Piece::Pawn => self.pawn_hash ^= zobrist,
+            Piece::Knight | Piece::Bishop => self.minor_hash ^= zobrist,
+            _ => { }
         }
     }
 
