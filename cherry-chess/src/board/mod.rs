@@ -423,7 +423,7 @@ impl Board {
 
         match piece {
             Piece::Pawn => self.pawn_hash ^= zobrist,
-            Piece::Knight | Piece::Bishop => self.minor_hash ^= zobrist,
+            Piece::Knight | Piece::Bishop | Piece::King => self.minor_hash ^= zobrist,
             _ => { }
         }
     }
