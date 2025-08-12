@@ -287,7 +287,7 @@ impl History {
     pub fn update_corr(&mut self, board: &Board, depth: u8, best_score: Score, static_eval: Score) {
         let stm = board.stm();
         let pawn_corr = &mut self.pawn_corr[stm as usize][board.pawn_hash() as usize % PAWN_CORR_SIZE];
-        let minor_corr = &mut self.minor_corr[stm as usize][board.minor_hash() as usize % PAWN_CORR_SIZE];
+        let minor_corr = &mut self.minor_corr[stm as usize][board.minor_hash() as usize % MINOR_CORR_SIZE];
         let amount = (best_score - static_eval).0 as i32 * depth as i32 / 8;
 
         History::update_corr_value(pawn_corr, amount);
