@@ -24,7 +24,7 @@ macro_rules! weights {
 
 weights! {
     pawn_corr_frac  | PAWN_CORR_FRAC:  i32 => 132,
-    minor_corr_frac | MINOR_CORR_FRAC: i32 => 66,
+    minor_corr_frac | MINOR_CORR_FRAC: i32 => 132,
     cont1_frac     | CONT1_FRAC:     i32 => 512,
     cont2_frac     | CONT2_FRAC:     i32 => 512,
     cont3_frac     | CONT3_FRAC:     i32 => 512,
