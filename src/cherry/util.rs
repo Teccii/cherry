@@ -125,6 +125,16 @@ pub fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item
     vec.pop()
 }
 
+pub fn murmur(mut x: u64) -> u64 {
+    x ^= x >> 33;
+    x *= 0xff51afd7ed558ccd;
+    x ^= x >> 33;
+    x *= 0xc4ceb9fe1a85ec53;
+    x ^= x >> 33;
+
+    x
+}
+
 #[inline]
 pub const fn see_value(piece: Piece) -> i16 {
     match piece {

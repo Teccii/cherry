@@ -24,8 +24,6 @@ impl Board {
 
     /*----------------------------------------------------------------*/
 
-    //It's a surprise tool that will help us later
-    #[allow(dead_code)]
     pub fn threats(&self, color: Color) -> Bitboard {
         let mut threats = Bitboard::EMPTY;
         let their_pieces = self.colors(!color);

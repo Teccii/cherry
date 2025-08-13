@@ -6,6 +6,7 @@ pub const MAX_CORR: i32 = 1024;
 
 const MINOR_CORR_SIZE: usize = 16384;
 const MAJOR_CORR_SIZE: usize = 16384;
+const THREAT_CORR_SIZE: usize = 16384;
 const PAWN_CORR_SIZE: usize = 1024;
 
 /*----------------------------------------------------------------*/
@@ -57,6 +58,7 @@ pub struct History {
     follow_up: Box<ContinuationTable>, //use for 2-ply, 4-ply, 6-ply, etc.
     minor_corr: Box<CorrectionTable<MINOR_CORR_SIZE>>,
     major_corr: Box<CorrectionTable<MAJOR_CORR_SIZE>>,
+    threat_corr: Box<CorrectionTable<THREAT_CORR_SIZE>>,
     pawn_corr: Box<CorrectionTable<PAWN_CORR_SIZE>>,
 }
 
@@ -70,6 +72,7 @@ impl History {
             follow_up: Box::new([piece_to(piece_to(0)); Color::COUNT]),
             minor_corr: Box::new([[0; MINOR_CORR_SIZE]; Color::COUNT]),
             major_corr: Box::new([[0; MAJOR_CORR_SIZE]; Color::COUNT]),
+            threat_corr: Box::new([[0; THREAT_CORR_SIZE]; Color::COUNT]),
             pawn_corr: Box::new([[0; PAWN_CORR_SIZE]; Color::COUNT]),
         }
     }
@@ -82,6 +85,7 @@ impl History {
         self.follow_up.fill(piece_to(piece_to(0)));
         self.minor_corr.fill([0; MINOR_CORR_SIZE]);
         self.major_corr.fill([0; MAJOR_CORR_SIZE]);
+        self.threat_corr.fill([0; THREAT_CORR_SIZE]);
         self.pawn_corr.fill([0; PAWN_CORR_SIZE]);
     }
 
@@ -194,6 +198,7 @@ impl History {
         let mut corr = 0;
         corr += W::pawn_corr_frac() * self.pawn_corr[stm as usize][board.pawn_hash() as usize % PAWN_CORR_SIZE];
         corr += W::minor_corr_frac() * self.minor_corr[stm as usize][board.minor_hash() as usize % MINOR_CORR_SIZE];
+        corr += W::threat_corr_frac() * self.threat_corr[stm as usize][murmur(board.threats(!stm).0) as usize % THREAT_CORR_SIZE];
         corr += W::major_corr_frac() * self.major_corr[stm as usize][board.major_hash() as usize % MAJOR_CORR_SIZE];
 
         corr / MAX_CORR
@@ -294,11 +299,13 @@ impl History {
         let pawn_corr = &mut self.pawn_corr[stm as usize][board.pawn_hash() as usize % PAWN_CORR_SIZE];
         let minor_corr = &mut self.minor_corr[stm as usize][board.minor_hash() as usize % MINOR_CORR_SIZE];
         let major_corr = &mut self.major_corr[stm as usize][board.major_hash() as usize % MAJOR_CORR_SIZE];
+        let threat_corr = &mut self.threat_corr[stm as usize][murmur(board.threats(!stm).0) as usize % THREAT_CORR_SIZE];
         let amount = (best_score - static_eval).0 as i32 * depth as i32 / 8;
 
         History::update_corr_value(pawn_corr, amount);
         History::update_corr_value(minor_corr, amount);
         History::update_corr_value(major_corr, amount);
+        History::update_corr_value(threat_corr, amount);
     }
 
     /*----------------------------------------------------------------*/
