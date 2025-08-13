@@ -347,6 +347,7 @@ pub fn search<Node: NodeType>(
             reduction += W::non_pv_reduction() * !Node::PV as i32;
             reduction += W::not_improving_reduction() * !improving as i32;
             reduction += W::cut_node_reduction() * cut_node as i32;
+            reduction -= W::high_corr_reduction() * (corr.abs() > W::high_corr_threshold()) as i32;
             reduction -= stat_score / W::hist_reduction();
             reduction /= REDUCTION_SCALE;
 

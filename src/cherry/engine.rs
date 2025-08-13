@@ -246,6 +246,8 @@ impl Engine {
                     NON_PV_REDUCTION        => W::non_pv_reduction(),        -16384, 16384;
                     NOT_IMPROVING_REDUCTION => W::not_improving_reduction(), -16384, 16384;
                     CUT_NODE_REDUCTION      => W::cut_node_reduction(),      -16384, 16384;
+                    HIGH_CORR_REDUCTION     => W::high_corr_reduction(),     -16384, 16384;
+                    HIGH_CORR_THRESHOLD     => W::high_corr_threshold(),          1, MAX_CORR;
                     HIST_REDUCTION          => W::hist_reduction(),               1, 512;
                 }
                 println!("uciok");
@@ -358,6 +360,8 @@ impl Engine {
                     "NON_PV_REDUCTION"        => NON_PV_REDUCTION,        i32;
                     "NOT_IMPROVING_REDUCTION" => NOT_IMPROVING_REDUCTION, i32;
                     "CUT_NODE_REDUCTION"      => CUT_NODE_REDUCTION,      i32;
+                    "HIGH_CORR_REDUCTION"     => HIGH_CORR_REDUCTION,     i32;
+                    "HIGH_CORR_THRESHOLD"     => HIGH_CORR_THRESHOLD,     i32;
                     "HIST_REDUCTION"          => HIST_REDUCTION,          i32;
                 }
 
