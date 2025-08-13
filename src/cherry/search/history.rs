@@ -191,13 +191,12 @@ impl History {
     #[inline]
     pub fn get_corr(&self, board: &Board) -> i32 {
         let stm = board.stm();
-        let minor_corr = self.minor_corr[stm as usize][board.minor_hash() as usize % MINOR_CORR_SIZE];
-        let major_corr = self.major_corr[stm as usize][board.major_hash() as usize % MAJOR_CORR_SIZE];
-        let pawn_corr = self.pawn_corr[stm as usize][board.pawn_hash() as usize % PAWN_CORR_SIZE];
+        let mut corr = 0;
+        corr += W::pawn_corr_frac() * self.pawn_corr[stm as usize][board.pawn_hash() as usize % PAWN_CORR_SIZE];
+        corr += W::minor_corr_frac() * self.minor_corr[stm as usize][board.minor_hash() as usize % MINOR_CORR_SIZE];
+        corr += W::major_corr_frac() * self.major_corr[stm as usize][board.major_hash() as usize % MAJOR_CORR_SIZE];
 
-        W::pawn_corr_frac() * pawn_corr / MAX_CORR
-            + W::minor_corr_frac() * minor_corr / MAX_CORR
-            + W::major_corr_frac() * major_corr / MAX_CORR
+        corr / MAX_CORR
     }
     
     /*----------------------------------------------------------------*/
@@ -267,7 +266,7 @@ impl History {
             if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move2) {
                 History::update_value(
                     value,
-                    -W::cont3_bonus_base() - W::cont3_bonus_mul() * depth as i32,
+                    W::cont3_bonus_base() + W::cont3_bonus_mul() * depth as i32,
                     W::cont3_hist_max()
                 );
 
