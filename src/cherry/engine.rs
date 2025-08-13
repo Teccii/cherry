@@ -195,6 +195,7 @@ impl Engine {
                 list_tunables! {
                     PAWN_CORR_FRAC  => W::pawn_corr_frac(),  0, MAX_CORR;
                     MINOR_CORR_FRAC => W::minor_corr_frac(), 0, MAX_CORR;
+                    MAJOR_CORR_FRAC => W::major_corr_frac(), 0, MAX_CORR;
                     CONT1_FRAC     => W::cont1_frac(),     0, 512;
                     CONT2_FRAC     => W::cont2_frac(),     0, 512;
                     CONT3_FRAC     => W::cont3_frac(),     0, 512;
@@ -306,6 +307,7 @@ impl Engine {
                 set_tunables! {
                     "PAWN_CORR_FRAC"  => PAWN_CORR_FRAC,  i32;
                     "MINOR_CORR_FRAC" => MINOR_CORR_FRAC, i32;
+                    "MAJOR_CORR_FRAC" => MAJOR_CORR_FRAC, i32;
                     "CONT1_FRAC"     => CONT1_FRAC,     i32;
                     "CONT2_FRAC"     => CONT2_FRAC,     i32;
                     "CONT3_FRAC"     => CONT3_FRAC,     i32;

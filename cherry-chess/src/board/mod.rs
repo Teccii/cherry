@@ -44,6 +44,7 @@ pub struct Board {
     fullmove_count: u16,
     halfmove_clock: u8,
     minor_hash: u64,
+    major_hash: u64,
     pawn_hash: u64,
     hash: u64,
     stm: Color,
@@ -161,6 +162,9 @@ impl Board {
 
     #[inline]
     pub const fn minor_hash(&self) -> u64 { self.minor_hash }
+
+    #[inline]
+    pub const fn major_hash(&self) -> u64 { self.major_hash }
 
     #[inline]
     pub const fn pawn_hash(&self) -> u64 { self.pawn_hash }
@@ -423,8 +427,12 @@ impl Board {
 
         match piece {
             Piece::Pawn => self.pawn_hash ^= zobrist,
-            Piece::Knight | Piece::Bishop | Piece::King => self.minor_hash ^= zobrist,
-            _ => { }
+            Piece::Knight | Piece::Bishop => self.minor_hash ^= zobrist,
+            Piece::Rook | Piece::Queen => self.major_hash ^= zobrist,
+            Piece::King => {
+                self.minor_hash ^= zobrist;
+                self.major_hash ^= zobrist;
+            }
         }
     }
 
