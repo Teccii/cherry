@@ -35,7 +35,7 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - Reverse Futility Pruning
   - Null Move Pruning
   - Late Move Pruning
-  - History Pruning
+  - Continuation History Pruning
   - Futility Pruning
   - SEE Pruning
 
@@ -47,6 +47,8 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - Trained with [`bullet`](https://github.com/jw1912/bullet) on 414 million positions
 - Static Evaluation Correction History
   - Pawn Structure
+  - Minor Pieces
+  - Major Pieces
 
 ### Time Management
 - Optimal and Maximum Time Limits

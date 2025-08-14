@@ -238,8 +238,7 @@ impl Engine {
                     MAT_SCALE_DIV    => W::mat_scale_div(),    1, 65536;
                     RFP_MARGIN    => W::rfp_margin(),   -1024, 1024;
                     SEE_MARGIN    => W::see_margin(),   -1024, 1024;
-                    SEE_HIST      => W::see_hist(),         1, 512;
-                    HIST_MARGIN   => W::hist_margin(), -16384, 0;
+                    CONT_MARGIN   => W::cont_margin(), -16384, 0;
                     FUTILE_BASE   => W::futile_base(),   -1024, 1024;
                     FUTILE_MARGIN => W::futile_margin(), -1024, 1024;
                     TT_PV_REDUCTION         => W::tt_pv_reduction(),         -16384, 16384;
@@ -353,8 +352,7 @@ impl Engine {
                     "RFP_MARGIN"        => RFP_MARGIN,        i16;
                     "SEE_TACTIC_MARGIN" => SEE_TACTIC_MARGIN, i16;
                     "SEE_QUIET_MARGIN"  => SEE_QUIET_MARGIN,  i16;
-                    "SEE_HIST"          => SEE_HIST,          i32;
-                    "HIST_MARGIN"       => HIST_MARGIN,       i32;
+                    "CONT_MARGIN"       => CONT_MARGIN,       i32;
                     "FUTILE_BASE"       => FUTILE_BASE,       i16;
                     "FUTILE_MARGIN"     => FUTILE_MARGIN,     i16;
                     "TT_PV_REDUCTION"         => TT_PV_REDUCTION,         i32;

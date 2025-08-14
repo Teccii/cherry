@@ -266,7 +266,7 @@ pub fn search<Node: NodeType>(
                 Tactical SEE Pruning: Skip tactical moves whose SEE score
                 is below a depth-dependent margin.
                 */
-                let see_margin = W::see_tactic_margin() * depth as i16 * depth as i16 - (stat_score / W::see_hist()) as i16;
+                let see_margin = W::see_tactic_margin() * depth as i16 * depth as i16;
                 if depth < SEE_DEPTH
                     && move_picker.phase() == Phase::YieldBadTactics
                     && !pos.cmp_see(mv, see_margin) {
@@ -285,10 +285,11 @@ pub fn search<Node: NodeType>(
                 let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
 
                 /*
-                History Pruning: Skip quiet moves whose history score
+                Continuation Pruning: Skip quiet moves whose continuation history score
                 is below an LMR depth-dependent margin.
                 */
-                if r_depth < HIST_DEPTH && stat_score < W::hist_margin() * r_depth as i32 {
+                let cont_score = stat_score - ctx.history.get_quiet(pos.board(), mv);
+                if r_depth < HIST_DEPTH && cont_score < W::cont_margin() * r_depth as i32 {
                     move_picker.skip_quiets();
                     continue;
                 }

@@ -77,8 +77,7 @@ weights! {
     rfp_margin        | RFP_MARGIN:        i16 => 93,
     see_quiet_margin  | SEE_QUIET_MARGIN:  i16 => -91,
     see_tactic_margin | SEE_TACTIC_MARGIN: i16 => -64,
-    see_hist          | SEE_HIST:          i32 => 61,
-    hist_margin       | HIST_MARGIN:       i32 => -4300,
+    cont_margin       | CONT_MARGIN:       i32 => -3600,
     futile_base       | FUTILE_BASE:       i16 => 106,
     futile_margin     | FUTILE_MARGIN:     i16 => 81,
 
@@ -88,8 +87,8 @@ weights! {
     cut_node_reduction      | CUT_NODE_REDUCTION:      i32 => 2113,
     high_corr_reduction     | HIGH_CORR_REDUCTION:     i32 => 1024,
     high_corr_threshold     | HIGH_CORR_THRESHOLD:     i32 => 128,
-    hist_tactic_reduction   | HIST_TACTIC_REDUCTION:   i32 => 63,
-    hist_quiet_reduction    | HIST_QUIET_REDUCTION:    i32 => 63,
+    hist_tactic_reduction   | HIST_TACTIC_REDUCTION:   i32 => 32,
+    hist_quiet_reduction    | HIST_QUIET_REDUCTION:    i32 => 32,
 }
 
 pub const RFP_DEPTH: u8 = 12;

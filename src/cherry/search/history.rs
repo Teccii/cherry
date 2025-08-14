@@ -97,7 +97,7 @@ impl History {
     #[inline]
     fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
         &mut self.quiets[board.stm() as usize]
-            [mv.to() as usize]
+            [mv.from() as usize]
             [mv.to() as usize]
     }
 
