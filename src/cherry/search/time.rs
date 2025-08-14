@@ -159,6 +159,8 @@ impl TimeManager {
         &self,
         thread: u16,
         depth: u8,
+        eval: Score,
+        static_eval: Score,
         move_nodes: u64,
         nodes: u64,
         mv: Move,
@@ -178,12 +180,19 @@ impl TimeManager {
         *prev_move = Some(mv);
         self.move_stability.store(move_stability, Ordering::Relaxed);
 
+        let complexity = if !eval.is_decisive() {
+            0.8 * f32::from((static_eval - eval).abs().0) * (depth as f32).ln()
+        } else {
+            1.0
+        };
+
         let stability_factor = STABILITY_FACTOR[move_stability as usize];
         let subtree_factor = 0.5 + 2.5 * (1.0 - move_nodes as f32 / nodes as f32);
+        let complexity_factor = f32::max(0.8 + complexity.clamp(0.0, 200.0) / 400.0, 1.0);
         
         let base_time = self.base_time.load(Ordering::Relaxed);
         let max_time = self.max_time.load(Ordering::Relaxed);
-        let new_target = (base_time as f32 * stability_factor * subtree_factor) as u64;
+        let new_target = (base_time as f32 * stability_factor * subtree_factor * complexity_factor) as u64;
         
         self.target_time.store(new_target.min(max_time), Ordering::Relaxed);
     }

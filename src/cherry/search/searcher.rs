@@ -318,6 +318,7 @@ fn search_worker<Info: SearchInfo>(
     thread: u16,
 ) -> impl FnMut() -> (Option<Move>, Option<Move>, Score, u8) {
     move || {
+        let static_eval = pos.eval(&shared_ctx.weights);
         let mut window = Window::new(10);
         let mut best_move: Option<Move> = None;
         let mut ponder_move: Option<Move> = None;
@@ -360,6 +361,8 @@ fn search_worker<Info: SearchInfo>(
                 shared_ctx.time_man.deepen(
                     thread,
                     depth,
+                    eval,
+                    static_eval,
                     ctx.root_nodes[root_move.from() as usize][root_move.to() as usize],
                     ctx.nodes.local(),
                     root_move,
