@@ -62,8 +62,14 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
     println!("DFRC: {}", dfrc.to_string().bright_green());
 
     let options = DataGenOptions { count, threads, dfrc };
-    let data_dir = PathBuf::from("data")
-        .join(chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string());
+    let time_stamp = chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+    let dir_name = if dfrc {
+        format!("DFRC-{}", time_stamp)
+    } else {
+        time_stamp
+    };
+
+    let data_dir = PathBuf::from("data").join(dir_name);
     fs::create_dir_all(&data_dir).unwrap();
 
     println!("Output Directory: {}", data_dir.display().to_string().bright_green());
