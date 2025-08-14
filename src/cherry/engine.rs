@@ -350,19 +350,21 @@ impl Engine {
                     "QUEEN_MAT_SCALE"  => QUEEN_MAT_SCALE,  i32;
                     "MAT_SCALE_BASE"   => MAT_SCALE_BASE,   i32;
                     "MAT_SCALE_DIV"    => MAT_SCALE_DIV,    i32;
-                    "RFP_MARGIN"    => RFP_MARGIN,    i16;
-                    "SEE_MARGIN"    => SEE_MARGIN,    i16;
-                    "SEE_HIST"      => SEE_HIST,      i32;
-                    "HIST_MARGIN"   => HIST_MARGIN,   i32;
-                    "FUTILE_BASE"   => FUTILE_BASE,   i16;
-                    "FUTILE_MARGIN" => FUTILE_MARGIN, i16;
+                    "RFP_MARGIN"        => RFP_MARGIN,        i16;
+                    "SEE_TACTIC_MARGIN" => SEE_TACTIC_MARGIN, i16;
+                    "SEE_QUIET_MARGIN"  => SEE_QUIET_MARGIN,  i16;
+                    "SEE_HIST"          => SEE_HIST,          i32;
+                    "HIST_MARGIN"       => HIST_MARGIN,       i32;
+                    "FUTILE_BASE"       => FUTILE_BASE,       i16;
+                    "FUTILE_MARGIN"     => FUTILE_MARGIN,     i16;
                     "TT_PV_REDUCTION"         => TT_PV_REDUCTION,         i32;
                     "NON_PV_REDUCTION"        => NON_PV_REDUCTION,        i32;
                     "NOT_IMPROVING_REDUCTION" => NOT_IMPROVING_REDUCTION, i32;
                     "CUT_NODE_REDUCTION"      => CUT_NODE_REDUCTION,      i32;
                     "HIGH_CORR_REDUCTION"     => HIGH_CORR_REDUCTION,     i32;
                     "HIGH_CORR_THRESHOLD"     => HIGH_CORR_THRESHOLD,     i32;
-                    "HIST_REDUCTION"          => HIST_REDUCTION,          i32;
+                    "HIST_TACTIC_REDUCTION"   => HIST_TACTIC_REDUCTION,   i32;
+                    "HIST_QUIET_REDUCTION"    => HIST_QUIET_REDUCTION,    i32;
                 }
 
                 self.sender.send(ThreadCommand::SetOption(

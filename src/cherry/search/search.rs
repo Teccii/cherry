@@ -266,7 +266,7 @@ pub fn search<Node: NodeType>(
                 Tactical SEE Pruning: Skip tactical moves whose SEE score
                 is below a depth-dependent margin.
                 */
-                let see_margin = W::see_margin() * depth as i16 * depth as i16 - (stat_score / W::see_hist()) as i16;
+                let see_margin = W::see_tactic_margin() * depth as i16 * depth as i16 - (stat_score / W::see_hist()) as i16;
                 if depth < SEE_DEPTH
                     && move_picker.phase() == Phase::YieldBadTactics
                     && !pos.cmp_see(mv, see_margin) {
@@ -309,7 +309,7 @@ pub fn search<Node: NodeType>(
                 well because for example, you can just lose your queen after
                 moving it to an attacked square.
                 */
-                let see_margin = W::see_margin() * r_depth as i16 * r_depth as i16;
+                let see_margin = W::see_quiet_margin() * r_depth as i16;
                 if r_depth < SEE_DEPTH && !pos.cmp_see(mv, see_margin) {
                     continue;
                 }
@@ -348,7 +348,11 @@ pub fn search<Node: NodeType>(
             reduction += W::not_improving_reduction() * !improving as i32;
             reduction += W::cut_node_reduction() * cut_node as i32;
             reduction -= W::high_corr_reduction() * (corr.abs() > W::high_corr_threshold()) as i32;
-            reduction -= stat_score / W::hist_reduction();
+            reduction -= if is_tactical {
+                stat_score / W::hist_tactic_reduction()
+            } else {
+                stat_score / W::hist_quiet_reduction()
+            };
             reduction /= REDUCTION_SCALE;
 
             let r_depth = (depth as i32).saturating_sub(reduction).clamp(1, MAX_DEPTH as i32) as u8;
