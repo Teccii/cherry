@@ -56,7 +56,7 @@ impl GameStats {
 /*----------------------------------------------------------------*/
 
 pub fn datagen(count: usize, threads: usize, dfrc: bool) {
-    println!();
+    println!("\n{}", "============ Data Generation Options ============".bright_green());
     println!("Count: {}", count.to_string().bright_green());
     println!("Threads: {}", threads.to_string().bright_green());
     println!("DFRC: {}", dfrc.to_string().bright_green());
@@ -64,7 +64,7 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
     let options = DataGenOptions { count, threads, dfrc };
     let time_stamp = chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
     let dir_name = if dfrc {
-        format!("DFRC-{}", time_stamp)
+        format!("DFRC_{}", time_stamp)
     } else {
         time_stamp
     };
@@ -73,13 +73,14 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
     fs::create_dir_all(&data_dir).unwrap();
 
     println!("Output Directory: {}", data_dir.display().to_string().bright_green());
-    println!();
+    println!("{}\n", "=================================================".bright_green());
 
     let stats = Arc::new(GameStats::new());
     let pos_counter = Arc::new(AtomicU64::new(0));
     let game_counter = Arc::new(AtomicUsize::new(0));
     let abort = Arc::new(AtomicBool::new(false));
     let a = Arc::clone(&abort);
+    let start = Instant::now();
 
     viriformat::chess::CHESS960.store(options.dfrc, Ordering::Relaxed);
     ctrlc::set_handler(move || a.store(true, Ordering::Relaxed)).unwrap();
@@ -95,7 +96,30 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
         }
     });
 
-    println!("Data Generation Finished!");
+    let games = game_counter.load(Ordering::Relaxed);
+    let white_wins = stats.white_wins.load(Ordering::Relaxed);
+    let black_wins = stats.black_wins.load(Ordering::Relaxed);
+    let draws = stats.draws.load(Ordering::Relaxed);
+
+    let white_percentage = 100f32 * (white_wins as f32 / games as f32);
+    let black_percentage = 100f32 * (black_wins as f32 / games as f32);
+    let draw_percentage = 100f32 * (draws as f32 / games as f32);
+
+    let (hours, minutes, seconds) = secs_to_hms(start.elapsed().as_secs() as u32);
+
+    println!("{}", "=== Data Generation Summary ===".bright_green());
+    println!("Total Games: {}", games.to_string().bright_green());
+    println!("Total Positions: {}", fmt_big_num(pos_counter.load(Ordering::Relaxed)).bright_green());
+    println!("\nWhite Wins: {} ({}%)", white_wins.to_string().bright_green(), format!("{:.1}", white_percentage).bright_green());
+    println!("Black Wins: {} ({}%)", black_wins.to_string().bright_green(), format!("{:.1}", black_percentage).bright_green());
+    println!("Draws:      {} ({}%)", draws.to_string().bright_green(), format!("{:.1}", draw_percentage).bright_green());
+    println!(
+        "\nTotal Time: {}h {}m {}s",
+         hours.to_string().bright_green(),
+         minutes.to_string().bright_green(),
+         seconds.to_string().bright_green()
+    );
+    println!("{}", "===============================".bright_green());
 }
 
 fn datagen_worker(
@@ -219,7 +243,7 @@ fn datagen_worker(
         let curr = game_counter.fetch_add(1, Ordering::Relaxed);
         let curr_pos = pos_counter.fetch_add(game_len, Ordering::Relaxed);
 
-        if !abort.load(Ordering::Relaxed) && curr != 0 && curr % 10 == 0 {
+        if thread == 0 && !abort.load(Ordering::Relaxed) && curr != 0 {
             let percentage = 100f32 * (curr as f32 / options.count as f32);
             let elapsed = start.elapsed().as_secs_f32();
             let progress = percentage as usize / 2;
@@ -259,7 +283,7 @@ fn datagen_worker(
 
             println!("White Wins: {} ({}%)", white_wins.to_string().bright_green(), format!("{:.1}", white_percentage).bright_green());
             println!("Black Wins: {} ({}%)", black_wins.to_string().bright_green(), format!("{:.1}", black_percentage).bright_green());
-            println!("Draws: {} ({}%)", draws.to_string().bright_green(), format!("{:.1}", draw_percentage).bright_green());
+            println!("Draws:      {} ({}%)", draws.to_string().bright_green(), format!("{:.1}", draw_percentage).bright_green());
             println!("\x1B[9F");
 
             io::stdout().flush().unwrap();
@@ -268,7 +292,7 @@ fn datagen_worker(
         i += 1;
     }
 
-    if !abort.load(Ordering::Relaxed) {
+    if thread == 0 && !abort.load(Ordering::Relaxed) {
         println!("\x1B[9E");
     }
 

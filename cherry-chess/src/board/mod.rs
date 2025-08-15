@@ -53,7 +53,7 @@ pub struct Board {
 impl Board {
     #[inline]
     pub const fn occupied(&self) -> Bitboard {
-        Bitboard(self.colors[0].0 | self.colors[1].0)
+        self.colors[0].union(self.colors[1])
     }
 
     #[inline]
@@ -68,51 +68,51 @@ impl Board {
 
     #[inline]
     pub const fn color_pieces(&self, piece: Piece, color: Color) -> Bitboard {
-        Bitboard(self.colors(color).0 & self.pieces(piece).0)
+        self.colors(color).intersection(self.pieces(piece))
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub const fn minors(&self) -> Bitboard {
-        Bitboard(self.pieces(Piece::Knight).0 | self.pieces(Piece::Bishop).0)
+        self.pieces(Piece::Knight).union(self.pieces(Piece::Bishop))
     }
 
     #[inline]
     pub const fn color_minors(&self, color: Color) -> Bitboard {
-        Bitboard(self.colors(color).0 & self.minors().0)
+        self.colors(color).intersection(self.minors())
     }
 
     #[inline]
     pub const fn majors(&self) -> Bitboard {
-        Bitboard(self.pieces(Piece::Rook).0 | self.pieces(Piece::Queen).0)
+        self.pieces(Piece::Rook).union(self.pieces(Piece::Queen))
     }
 
     #[inline]
     pub const fn color_majors(&self, color: Color) -> Bitboard {
-        Bitboard(self.colors(color).0 & self.majors().0)
+        self.colors(color).intersection(self.majors())
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub const fn diag_sliders(&self) -> Bitboard {
-        Bitboard(self.pieces(Piece::Bishop).0 | self.pieces(Piece::Queen).0)
+        self.pieces(Piece::Bishop).union(self.pieces(Piece::Queen))
     }
 
     #[inline]
     pub const fn color_diag_sliders(&self, color: Color) -> Bitboard {
-        Bitboard(self.colors(color).0 & self.diag_sliders().0)
+        self.colors(color).intersection(self.diag_sliders())
     }
 
     #[inline]
     pub const fn orth_sliders(&self) -> Bitboard {
-        Bitboard(self.pieces(Piece::Rook).0 | self.pieces(Piece::Queen).0)
+        self.pieces(Piece::Rook).union(self.pieces(Piece::Queen))
     }
 
     #[inline]
     pub const fn color_orth_sliders(&self, color: Color) -> Bitboard {
-        Bitboard(self.colors(color).0 & self.orth_sliders().0)
+        self.colors(color).intersection(self.orth_sliders())
     }
 
     /*----------------------------------------------------------------*/
