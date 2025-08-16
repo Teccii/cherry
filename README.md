@@ -56,4 +56,5 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - Aborts during the search if the maximum time limit is exceeded
 - Dynamically adjusts optimal time depending on
   - Best Move Stability
+  - Complexity of the Position
   - Ratio of the Best Move's Subtree to the Full Search Tree
