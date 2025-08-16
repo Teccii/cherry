@@ -243,6 +243,7 @@ impl Engine {
                     FUTILE_BASE   => W::futile_base(),   -1024, 1024;
                     FUTILE_MARGIN => W::futile_margin(), -1024, 1024;
                     TT_PV_REDUCTION         => W::tt_pv_reduction(),         -16384, 16384;
+                    TT_TACTIC_REDUCTION     => W::tt_tactic_reduction(),     -16384, 16384;
                     NON_PV_REDUCTION        => W::non_pv_reduction(),        -16384, 16384;
                     NOT_IMPROVING_REDUCTION => W::not_improving_reduction(), -16384, 16384;
                     CUT_NODE_REDUCTION      => W::cut_node_reduction(),      -16384, 16384;
@@ -357,6 +358,7 @@ impl Engine {
                     "FUTILE_BASE"       => FUTILE_BASE,       i16;
                     "FUTILE_MARGIN"     => FUTILE_MARGIN,     i16;
                     "TT_PV_REDUCTION"         => TT_PV_REDUCTION,         i32;
+                    "TT_TACTIC_REDUCTION"     => TT_TACTIC_REDUCTION,     i32;
                     "NON_PV_REDUCTION"        => NON_PV_REDUCTION,        i32;
                     "NOT_IMPROVING_REDUCTION" => NOT_IMPROVING_REDUCTION, i32;
                     "CUT_NODE_REDUCTION"      => CUT_NODE_REDUCTION,      i32;

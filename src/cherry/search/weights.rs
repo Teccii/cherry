@@ -82,6 +82,7 @@ weights! {
     futile_margin     | FUTILE_MARGIN:     i16 => 81,
 
     tt_pv_reduction         | TT_PV_REDUCTION:         i32 => 926,
+    tt_tactic_reduction     | TT_TACTIC_REDUCTION:     i32 => 1024,
     non_pv_reduction        | NON_PV_REDUCTION:        i32 => 926,
     not_improving_reduction | NOT_IMPROVING_REDUCTION: i32 => 926,
     cut_node_reduction      | CUT_NODE_REDUCTION:      i32 => 1024,

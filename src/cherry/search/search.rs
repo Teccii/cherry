@@ -173,6 +173,7 @@ pub fn search<Node: NodeType>(
     let prev_eval = (ply >= 2).then(|| ctx.ss[ply as usize - 2].eval);
     let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
     let tt_pv = tt_entry.is_some_and(|e| e.flag == TTBound::Exact);
+    let tt_tactic = best_move.is_some_and(|mv| pos.board().is_tactical(mv));
 
     ctx.ss[ply as usize].eval = raw_eval;
     ctx.ss[ply as usize].tt_pv = tt_pv;
@@ -348,6 +349,7 @@ pub fn search<Node: NodeType>(
             );
         } else {
             reduction += W::tt_pv_reduction() * tt_pv as i32;
+            reduction += W::tt_tactic_reduction() * (tt_tactic && !is_tactical) as i32;
             reduction += W::non_pv_reduction() * !Node::PV as i32;
             reduction += W::not_improving_reduction() * !improving as i32;
             reduction += W::cut_node_reduction() * cut_node as i32;
