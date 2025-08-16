@@ -101,12 +101,13 @@ impl Engine {
                             if let Some(ponder) = ponder {
                                 write!(output, " ponder {}", ponder).unwrap();
                             }
-
-                            println!("{}", output);
-                            io::stdout().flush().unwrap();
                         } else {
-                            searcher.search::<PrettyInfo>(limits);
+                            let (mv, _, _, _, _) = searcher.search::<PrettyInfo>(limits);
+                            write!(output, "\nBest Move: {}", format!("{}", mv.display(&searcher.pos.board(), searcher.chess960)).bright_black()).unwrap();
                         }
+
+                        println!("{}", output);
+                        io::stdout().flush().unwrap();
                     },
                     ThreadCommand::Position(searcher, board, moves) => {
                         let mut searcher = searcher.lock().unwrap();

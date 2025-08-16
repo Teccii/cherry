@@ -179,7 +179,7 @@ pub fn search<Node: NodeType>(
 
     if !Node::PV && !in_check && skip_move.is_none() {
         /*
-        Reverse Futility Pruning: Similar to Razoring, if the static evaluation of the position is *above*
+        Reverse Futility Pruning: If the static evaluation of the position is *above*
         beta by a significant margin, we can assume that we can reach at least beta.
         */
         if depth < RFP_DEPTH && static_eval >= beta + W::rfp_margin() * depth as i16 {
@@ -189,7 +189,7 @@ pub fn search<Node: NodeType>(
         /*
         Null Move Pruning: In almost every position, there is a better legal move than doing nothing.
         If a reduced search after a null move fails high, we can be quite confident that the best legal move
-        would also fail high. This can make the engine blind to zugzwang, so we do an additional verification search.
+        would also fail high.
         */
         if Node::NMP && depth > NMP_DEPTH
             && ctx.ss[ply as usize - 1].move_played.is_some()
@@ -248,7 +248,10 @@ pub fn search<Node: NodeType>(
         ctx.ss[ply as usize].stat_score = stat_score;
 
         /*
-        Late Move Reductions (LMR): Reduce the depth of moves ordered near the end.
+        Late Move Reductions (LMR): Reduce moves ordered near the end.
+        Due to sorting moves based on how likely we think they are to be good,
+        the worst moves will be ordered near the end, and we don't want to waste too much
+        time on them.
         */
         let mut reduction = if is_tactical {
             shared_ctx.lmr_tactical.get(depth as usize, moves_seen as usize)
@@ -277,12 +280,12 @@ pub fn search<Node: NodeType>(
                 Late Move Pruning: Start skipping quiet moves after
                 a depth-dependent amount of moves.
                 */
-                let lmp_margin = (3 + depth as u16 * depth as u16) / (2 - improving as u16);
+                let lmp_margin = 3 + depth as u16 * depth as u16;
                 if moves_seen >= lmp_margin {
                     move_picker.skip_quiets();
                 }
 
-                let r_depth = (depth as i32).saturating_sub(reduction / 1024).clamp(1, MAX_DEPTH as i32) as u8;
+                let r_depth = (depth as i32).saturating_sub(reduction / REDUCTION_SCALE).clamp(1, MAX_DEPTH as i32) as u8;
 
                 /*
                 Continuation Pruning: Skip quiet moves whose continuation history score
