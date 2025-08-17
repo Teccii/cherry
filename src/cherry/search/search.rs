@@ -45,7 +45,9 @@ pub fn search<Node: NodeType>(
         return Score::INFINITE;
     }
 
-    ctx.ss[ply as usize].pv.len = 0;
+    if Node::PV {
+        ctx.ss[ply as usize].pv.len = 0;
+    }
 
     if depth == 0 || ply >= MAX_PLY {
         return q_search::<Node>(
@@ -391,7 +393,7 @@ pub fn search<Node: NodeType>(
 
             if Node::PV && score > alpha {
                 ctx.ss[ply as usize].reduction = 0;
-                score = -search::<Node>(
+                score = -search::<PV>(
                     pos,
                     ctx,
                     shared_ctx,
@@ -415,16 +417,24 @@ pub fn search<Node: NodeType>(
             best_score = Some(score);
         }
 
-        if score > alpha {
-            alpha = score;
-            best_move = Some(mv);
-        }
-
-        if moves_seen == 1 || score > alpha {
+        //make sure we have a best move
+        if ply == 0 && moves_seen == 1 {
             let child = &ctx.ss[ply as usize + 1];
             let (child_pv, len) = (child.pv.moves, child.pv.len);
 
             ctx.ss[ply as usize].pv.update(mv, &child_pv[..len]);
+        }
+
+        if score > alpha {
+            alpha = score;
+            best_move = Some(mv);
+
+            if Node::PV && !ctx.abort_now {
+                let child = &ctx.ss[ply as usize + 1];
+                let (child_pv, len) = (child.pv.moves, child.pv.len);
+
+                ctx.ss[ply as usize].pv.update(mv, &child_pv[..len]);
+            }
         }
 
         if score >= beta {

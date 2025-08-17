@@ -28,7 +28,7 @@ pub struct ThreadContext {
     pub tt_hits: BatchedAtomicCounter,
     pub tt_misses: BatchedAtomicCounter,
     pub tb_hits: BatchedAtomicCounter,
-    pub root_pv: Pv,
+    pub root_pv: PrincipalVariation,
     pub root_nodes: MoveTo<u64>,
     pub ss: Vec<SearchStack>,
     pub history: History,
@@ -44,7 +44,7 @@ impl ThreadContext {
         self.tt_hits.reset();
         self.tt_misses.reset();
         self.tb_hits.reset();
-        self.root_pv = Pv::default();
+        self.root_pv = PrincipalVariation::default();
         self.root_nodes = move_to(0);
         self.ss = vec![
             SearchStack {
@@ -55,7 +55,7 @@ impl ThreadContext {
                 reduction: 0,
                 skip_move: None,
                 move_played: None,
-                pv: Pv::default(),
+                pv: PrincipalVariation::default(),
             };
             MAX_PLY as usize + 1
         ];
@@ -106,12 +106,12 @@ impl MoveData {
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone)]
-pub struct Pv {
+pub struct PrincipalVariation {
     pub moves: [Option<Move>; MAX_PLY as usize + 1],
     pub len: usize,
 }
 
-impl Pv {
+impl PrincipalVariation {
     #[inline]
     pub fn update(&mut self, best_move: Move, child_pv: &[Option<Move>]) {
         self.moves[0] = Some(best_move);
@@ -120,10 +120,10 @@ impl Pv {
     }
 }
 
-impl Default for Pv {
+impl Default for PrincipalVariation {
     #[inline]
     fn default() -> Self {
-        Pv {
+        PrincipalVariation {
             moves: [None; MAX_PLY as usize + 1],
             len: 0,
         }
@@ -141,7 +141,7 @@ pub struct SearchStack {
     pub stat_score: i32,
     pub skip_move: Option<Move>,
     pub move_played: Option<MoveData>,
-    pub pv: Pv,
+    pub pv: PrincipalVariation,
 }
 
 /*----------------------------------------------------------------*/
@@ -186,7 +186,7 @@ impl Searcher {
                 tt_hits: BatchedAtomicCounter::new(),
                 tt_misses: BatchedAtomicCounter::new(),
                 tb_hits: BatchedAtomicCounter::new(),
-                root_pv: Pv {
+                root_pv: PrincipalVariation {
                     moves: [None; MAX_PLY as usize + 1],
                     len: 0,
                 },
@@ -200,7 +200,7 @@ impl Searcher {
                         reduction: 0,
                         skip_move: None,
                         move_played: None,
-                        pv: Pv::default(),
+                        pv: PrincipalVariation::default(),
                     };
                     MAX_PLY as usize + 1
                 ],
