@@ -389,7 +389,7 @@ pub fn search<Node: NodeType>(
 
             if Node::PV && score > alpha {
                 ctx.ss[ply as usize].reduction = 0;
-                score = -search::<Node>(
+                score = -search::<PV>(
                     pos,
                     ctx,
                     shared_ctx,
@@ -416,13 +416,13 @@ pub fn search<Node: NodeType>(
         if score > alpha {
             alpha = score;
             best_move = Some(mv);
-        }
 
-        if moves_seen == 1 || score > alpha {
-            let child = &ctx.ss[ply as usize + 1];
-            let (child_pv, len) = (child.pv.moves, child.pv.len);
+            if Node::PV {
+                let child = &ctx.ss[ply as usize + 1];
+                let (child_pv, len) = (child.pv.moves, child.pv.len);
 
-            ctx.ss[ply as usize].pv.update(mv, &child_pv[..len]);
+                ctx.ss[ply as usize].pv.update(mv, &child_pv[..len]);
+            }
         }
 
         if score >= beta {
