@@ -417,7 +417,7 @@ pub fn search<Node: NodeType>(
             alpha = score;
             best_move = Some(mv);
 
-            if Node::PV {
+            if Node::PV && !ctx.abort_now {
                 let child = &ctx.ss[ply as usize + 1];
                 let (child_pv, len) = (child.pv.moves, child.pv.len);
 
