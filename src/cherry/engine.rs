@@ -191,6 +191,7 @@ impl Engine {
                 println!("option name SyzygyPath type string default <empty>");
                 println!("option name SyzygyProbeDepth type spin default 1 min 0 max 128");
                 println!("option name MoveOverhead type spin default 100 min 0 max 5000");
+                println!("option name UseSoftNodes type check default false");
                 println!("option name Ponder type check default false");
                 println!("option name UCI_Chess960 type check default false");
                 list_tunables! {
@@ -299,7 +300,8 @@ impl Engine {
                 }
 
                 match name.as_str() {
-                    "Move Overhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
+                    "MoveOverhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
+                    "UseSoftNodes" => self.time_man.set_soft_nodes(value.parse::<bool>().unwrap()),
                     "UCI_Chess960" => self.chess960 = value.parse::<bool>().unwrap(),
                     _ => { }
                 }

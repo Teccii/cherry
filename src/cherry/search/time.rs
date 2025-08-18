@@ -28,6 +28,7 @@ pub struct TimeManager {
     moves_to_go: AtomicU16,
     use_max_depth: AtomicBool,
     use_max_nodes: AtomicBool,
+    use_soft_nodes: AtomicBool,
     max_depth: AtomicU8,
     max_nodes: AtomicU64,
 
@@ -51,6 +52,7 @@ impl TimeManager {
             moves_to_go: AtomicU16::new(EXPECTED_MOVES),
             use_max_depth: AtomicBool::new(false),
             use_max_nodes: AtomicBool::new(false),
+            use_soft_nodes: AtomicBool::new(false),
             max_depth: AtomicU8::new(MAX_DEPTH),
             max_nodes: AtomicU64::new(u64::MAX),
             no_manage: AtomicBool::new(true),
@@ -119,6 +121,11 @@ impl TimeManager {
             }
         }
 
+        let use_soft_nodes = self.use_soft_nodes();
+        if use_soft_nodes && max_nodes.is_some() {
+            infinite = false;
+        }
+
         if pondering {
             infinite = true;
         }
@@ -138,6 +145,10 @@ impl TimeManager {
             self.base_time.store(time, Ordering::Relaxed);
             self.target_time.store(time, Ordering::Relaxed);
             self.max_time.store(time, Ordering::Relaxed);
+        } else if use_soft_nodes && let Some(nodes) = max_nodes {
+            self.base_time.store(nodes, Ordering::Relaxed);
+            self.target_time.store(nodes, Ordering::Relaxed);
+            self.max_time.store(20 * nodes, Ordering::Relaxed);
         } else {
             let (time, inc) = match stm {
                 Color::White => (w_time, w_inc),
@@ -213,6 +224,11 @@ impl TimeManager {
     pub fn set_overhead(&self, millis: u64) {
         self.move_overhead.store(millis, Ordering::Relaxed);
     }
+
+    #[inline]
+    pub fn set_soft_nodes(&self, value: bool) {
+        self.use_soft_nodes.store(value, Ordering::Relaxed);
+    }
     
     /*----------------------------------------------------------------*/
 
@@ -223,25 +239,37 @@ impl TimeManager {
 
     #[inline]
     pub fn abort_search(&self, nodes: u64) -> bool {
-        self.abort_now() || self.timeout_search()
-            || (self.use_max_nodes.load(Ordering::Relaxed) && self.max_nodes.load(Ordering::Relaxed) <= nodes)
+        self.abort_now() || self.timeout_search(nodes)
+            || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)
     }
 
     #[inline]
     pub fn abort_id(&self, depth: u8, nodes: u64) -> bool {
-        self.abort_now() || self.timeout_id()
-            || (self.use_max_depth.load(Ordering::Relaxed) && self.max_depth.load(Ordering::Relaxed) <= depth)
-            || (self.use_max_nodes.load(Ordering::Relaxed) && self.max_nodes.load(Ordering::Relaxed) <= nodes)
+        self.abort_now() || self.timeout_id(nodes)
+            || (self.use_max_depth() && self.max_depth.load(Ordering::Relaxed) <= depth)
+            || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)
     }
 
     #[inline]
-    pub fn timeout_search(&self) -> bool {
-        !self.is_infinite() && self.max_time.load(Ordering::Relaxed) < self.elapsed()
+    pub fn timeout_search(&self, nodes: u64) -> bool {
+        let elapsed = if self.use_soft_nodes() && self.use_max_nodes() {
+            nodes
+        } else {
+            self.elapsed()
+        };
+
+        !self.is_infinite() && self.max_time.load(Ordering::Relaxed) < elapsed
     }
 
     #[inline]
-    pub fn timeout_id(&self) -> bool {
-        !self.is_infinite() && self.target_time.load(Ordering::Relaxed) < self.elapsed()
+    pub fn timeout_id(&self, nodes: u64) -> bool {
+        let elapsed = if self.use_soft_nodes() && self.use_max_nodes() {
+            nodes
+        } else {
+            self.elapsed()
+        };
+
+        !self.is_infinite() && self.target_time.load(Ordering::Relaxed) < elapsed
     }
 
     #[inline]
@@ -259,6 +287,11 @@ impl TimeManager {
     #[inline]
     pub fn use_max_nodes(&self) -> bool {
         self.use_max_nodes.load(Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn use_soft_nodes(&self) -> bool {
+        self.use_soft_nodes.load(Ordering::Relaxed)
     }
 
     #[inline]

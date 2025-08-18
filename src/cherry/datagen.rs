@@ -134,10 +134,11 @@ fn datagen_worker(
     let mut rng = rand::rng();
     let mut output = fs::File::create(data_dir.join(format!("thread{}.bin", thread))).unwrap();
     let mut writer = BufWriter::new(&mut output);
-    let mut searcher = Searcher::new(
-        Board::default(),
-        Arc::new(TimeManager::new()),
-    );
+
+    let time_man = Arc::new(TimeManager::new());
+    time_man.set_soft_nodes(true);
+
+    let mut searcher = Searcher::new(Board::default(), time_man);
 
     let start = Instant::now();
     let limits = vec![SearchLimit::MaxNodes(5000)];
@@ -160,7 +161,7 @@ fn datagen_worker(
             StdOpeningGenerator::gen_opening(&mut rng)
         }, &searcher.shared_ctx.weights);
 
-        let eval = searcher.search::<NoInfo>(limits.clone()).2;
+        let eval = searcher.search::<NoInfo>(vec![SearchLimit::MaxDepth(10)]).2;
         if eval.abs() > 1000 {
             continue;
         }
