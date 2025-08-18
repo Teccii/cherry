@@ -152,6 +152,11 @@ impl TTable {
         }
     }
 
+    #[inline]
+    pub fn size(&self) -> usize {
+        self.entries.len() * size_of::<TTEntry>() / (1024 * 1024)
+    }
+
     /*----------------------------------------------------------------*/
 
     pub fn prefetch(&self, board: &Board) {
@@ -210,7 +215,7 @@ impl TTable {
         }
     }
 
-    pub fn hash_full(&self) -> u16 {
+    pub fn hash_usage(&self) -> u16 {
         let mut result = 0;
         let age = self.age.load(Ordering::Relaxed);
 

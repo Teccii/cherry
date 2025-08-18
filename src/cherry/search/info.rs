@@ -1,4 +1,3 @@
-use std::fmt::Write;
 use colored::Colorize;
 use crate::*;
 
@@ -49,46 +48,33 @@ impl SearchInfo for PrettyInfo {
             return;
         }
 
-        if depth <= 1 {
-            println!("{}", board.pretty_print(self.chess960));
-            println!("{}", String::from("\nDepth\tTime\t\tNodes\tNPS\t\tScore\tPV").bright_green());
-        }
+        println!("\x1B[0J{}\n", board.pretty_print(self.chess960));
+
+        let hash_size = shared_ctx.t_table.size();
+        let hash_usage = shared_ctx.t_table.hash_usage() as f64 / 1000.0;
+        let used_mb = hash_size as f64 * hash_usage;
+
+        println!(
+            "{}: {:.0}/{}MB ({}%)",
+            "Hash Usage".bright_black(),
+            used_mb,
+            hash_size,
+            format!("{:.1}", hash_usage * 100.0).bright_black()
+        );
 
         let nodes = ctx.nodes.global();
         let time = shared_ctx.time_man.elapsed();
         let nps = nodes / time.max(1) * 1000;
 
-        let mut board = board.clone();
-        let mut pv_text = String::new();
-        let root_pv = &ctx.root_pv;
+        println!("\n{}: {}/{}", "Depth".bright_black(), depth, ctx.sel_depth);
+        println!("{}: {}", "Nodes".bright_black(), fmt_big_num(nodes));
+        println!("{}:   {}nps", "NPS".bright_black(), fmt_big_num(nps));
+        println!("{}:  {}", "Time".bright_black(), fmt_time(time));
 
-        if root_pv.len != 0 {
-            let len = usize::min(root_pv.len, depth as usize);
-
-            for &mv in root_pv.moves[..len].iter() {
-                if let Some(mv) = mv {
-                    if !board.is_legal(mv) {
-                        break;
-                    }
-
-                    write!(pv_text, "{} ", mv.display(&board, self.chess960)).unwrap();
-                    board.make_move(mv);
-                } else {
-                    break;
-                }
-            }
-        }
-
-        println!(
-            "{}/{}\t{}\t{}\t{}\t{:#}\t{}",
-            depth,
-            ctx.sel_depth,
-            fmt_time(time).bright_black(),
-            fmt_big_num(nodes).bright_black(),
-            format!("{}nps", fmt_big_num(nps).to_ascii_lowercase()).bright_black(),
-            score,
-            pv_text.bright_black()
-        );
+        println!("\n{}:     {:#}", "Score".bright_black(), score);
+        println!("{}: {}", "Best Move".bright_black(), ctx.root_pv.moves[0].unwrap().display(board, self.chess960));
+        println!("{}: {}", "Main Line".bright_black(), ctx.root_pv.display(board, depth, self.chess960));
+        println!("\x1B[31F");
     }
 }
 
@@ -111,41 +97,19 @@ impl SearchInfo for UciInfo {
             return;
         }
 
-        let mut board = board.clone();
-        let mut pv_text = String::new();
-        let root_pv = &ctx.root_pv;
-
-        if root_pv.len != 0 {
-            write!(pv_text, "pv ").unwrap();
-            let len = usize::min(root_pv.len, depth as usize);
-
-            for &mv in root_pv.moves[..len].iter() {
-                if let Some(mv) = mv {
-                    if !board.is_legal(mv) {
-                        break;
-                    }
-
-                    write!(pv_text, "{} ", mv.display(&board, self.chess960)).unwrap();
-                    board.make_move(mv);
-                } else {
-                    break;
-                }
-            }
-        }
-
         let nodes = ctx.nodes.global();
         let time = shared_ctx.time_man.elapsed();
 
         println!(
-            "info depth {} seldepth {} score {} hashfull {} time {} nodes {} nps {} {}",
+            "info depth {} seldepth {} score {} hashfull {} time {} nodes {} nps {} pv {}",
             depth,
             ctx.sel_depth,
             score,
-            shared_ctx.t_table.hash_full(),
+            shared_ctx.t_table.hash_usage(),
             time,
             nodes,
             nodes / time.max(1) * 1000,
-            pv_text
+            ctx.root_pv.display(board, depth, self.chess960)
         );
     }
 }

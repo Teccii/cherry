@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Write, sync::Arc};
 use pyrrhic_rs::TableBases;
 use crate::*;
 
@@ -118,8 +118,31 @@ impl PrincipalVariation {
         self.len = child_pv.len() + 1;
         self.moves[1..self.len].copy_from_slice(child_pv);
     }
-}
 
+    pub fn display(&self, board: &Board, depth: u8, chess960: bool) -> String {
+        let mut board = board.clone();
+        let mut output = String::new();
+
+        if self.len != 0 {
+            let len = usize::min(self.len, depth as usize);
+
+            for &mv in self.moves[..len].iter() {
+                if let Some(mv) = mv {
+                    if !board.is_legal(mv) {
+                        break;
+                    }
+
+                    write!(output, "{} ", mv.display(&board, chess960)).unwrap();
+                    board.make_move(mv);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        output
+    }
+}
 impl Default for PrincipalVariation {
     #[inline]
     fn default() -> Self {

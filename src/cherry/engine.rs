@@ -103,7 +103,12 @@ impl Engine {
                             }
                         } else {
                             let (mv, _, _, _, _) = searcher.search::<PrettyInfo>(limits);
-                            write!(output, "\nBest Move: {}", format!("{}", mv.display(&searcher.pos.board(), searcher.chess960)).bright_black()).unwrap();
+                            write!(
+                                output,
+                                "\x1B[31E{}: {}",
+                                "Best Move".bright_black(),
+                                mv.display(&searcher.pos.board(), searcher.chess960)
+                            ).unwrap();
                         }
 
                         println!("{}", output);
