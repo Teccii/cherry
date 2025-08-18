@@ -29,7 +29,6 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - Reductions
   - Fractional Reductions
   - Late Move Reductions
-  - History Reductions
   - Other Reductions
 - Pruning
   - Reverse Futility Pruning

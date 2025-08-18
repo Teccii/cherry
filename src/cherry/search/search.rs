@@ -291,7 +291,7 @@ pub fn search<Node: NodeType>(
                 let r_depth = (depth as i32).saturating_sub(reduction / REDUCTION_SCALE).clamp(1, MAX_DEPTH as i32) as u8;
 
                 /*
-                Continuation Pruning: Skip quiet moves whose continuation history score
+                Continuation History Pruning: Skip quiet moves whose continuation history score
                 is below an LMR depth-dependent margin.
                 */
                 let cont_score = stat_score - ctx.history.get_quiet(pos.board(), mv);
