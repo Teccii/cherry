@@ -185,7 +185,7 @@ pub fn search<Node: NodeType>(
         Reverse Futility Pruning: If the static evaluation of the position is *above*
         beta by a significant margin, we can assume that we can reach at least beta.
         */
-        if depth < RFP_DEPTH && static_eval >= beta + W::rfp_margin() * depth as i16 {
+        if depth < RFP_DEPTH && static_eval >= beta + W::rfp_margin() * depth.saturating_sub(improving as u8) as i16 {
             return (static_eval + beta) / 2
         }
 
