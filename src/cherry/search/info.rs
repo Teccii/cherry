@@ -137,10 +137,11 @@ impl SearchInfo for UciInfo {
         let time = shared_ctx.time_man.elapsed();
 
         println!(
-            "info depth {} seldepth {} score {} time {} nodes {} nps {} {}",
+            "info depth {} seldepth {} score {} hashfull {} time {} nodes {} nps {} {}",
             depth,
             ctx.sel_depth,
             score,
+            shared_ctx.t_table.hash_full(),
             time,
             nodes,
             nodes / time.max(1) * 1000,

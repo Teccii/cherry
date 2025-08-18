@@ -11,6 +11,19 @@ pub enum TTBound {
     Exact
 }
 
+impl TTBound {
+    #[inline]
+    pub const fn index(i: usize) -> TTBound {
+        if i < 4 {
+            return unsafe {
+                ::core::mem::transmute::<u8, TTBound>(i as u8)
+            };
+        }
+
+        panic!("TTBound::index(): Index out of bounds");
+    }
+}
+
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
@@ -19,7 +32,8 @@ pub struct TTData {
     pub score: Score,
     pub eval: Option<Score>,
     pub table_mv: Option<Move>,
-    pub flag: TTBound,
+    pub bound: TTBound,
+    pub age: u8,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -29,7 +43,7 @@ pub struct TTPackedData {
     pub score: Score,
     pub eval: Score,
     pub table_mv: Option<Move>,
-    pub flag: TTBound,
+    pub other: u8,
 }
 
 impl TTData {
@@ -39,14 +53,16 @@ impl TTData {
         score: Score,
         eval: Option<Score>,
         table_mv: Option<Move>,
-        flag: TTBound,
+        bound: TTBound,
+        age: u8,
     ) -> TTData {
         TTData {
             depth,
             score,
             eval,
             table_mv,
-            flag
+            bound,
+            age
         }
     }
     
@@ -61,7 +77,8 @@ impl TTData {
             score: packed.score,
             eval: Some(packed.eval).filter(|s| !s.is_infinite()),
             table_mv: packed.table_mv,
-            flag: packed.flag,
+            bound: TTBound::index(((packed.other >> 6) & 0b11) as usize),
+            age: packed.other & 0b111111,
         }
     }
     
@@ -73,7 +90,7 @@ impl TTData {
                 score: self.score,
                 eval: self.eval.unwrap_or(Score::INFINITE),
                 table_mv: self.table_mv,
-                flag: self.flag
+                other: (self.age & 0b111111) | ((self.bound as u8) << 6)
             })
         }
     }
@@ -88,6 +105,11 @@ pub struct TTEntry {
 }
 
 impl TTEntry {
+    #[inline]
+    pub fn data(&self) -> TTData {
+        TTData::from_bits(self.data.load(Ordering::Relaxed))
+    }
+
     #[inline]
     pub fn set(&self, hash: u64, data: TTData) {
         let data = data.to_bits();
@@ -116,7 +138,7 @@ impl TTEntry {
 #[derive(Debug)]
 pub struct TTable {
     entries: Box<[TTEntry]>,
-    size: u64,
+    age: AtomicU8,
 }
 
 impl TTable {
@@ -126,7 +148,7 @@ impl TTable {
         
         TTable {
             entries: (0..size).map(|_| TTEntry::zero()).collect(),
-            size: size as u64
+            age: AtomicU8::new(0),
         }
     }
 
@@ -174,11 +196,34 @@ impl TTable {
             eval,
             table_mv,
             flag,
+            self.age.load(Ordering::Relaxed)
         );
         
         let hash = board.hash();
         let index = self.index(hash);
-        self.entries[index].set(hash, new_data);
+
+        let old_data = self.entries[index].data();
+        if old_data.bound == TTBound::None || new_data.age != old_data.age {
+            self.entries[index].set(hash, new_data);
+        }
+    }
+
+    pub fn hash_full(&self) -> u16 {
+        let mut result = 0;
+        let age = self.age.load(Ordering::Relaxed);
+
+        for i in 0..1000 {
+            if self.entries[i].key.load(Ordering::Relaxed) != 0 && self.entries[i].data().age == age {
+                result += 1;
+            }
+        }
+        result
+    }
+
+    #[inline]
+    pub fn age(&self) {
+        let new_age = (self.age.load(Ordering::Relaxed) + 1) & 0b111111;
+        self.age.store(new_age, Ordering::Relaxed);
     }
 
     #[inline]
@@ -190,6 +235,6 @@ impl TTable {
 
     #[inline]
     fn index(&self, hash: u64) -> usize {
-        ((u128::from(hash) * u128::from(self.size)) >> 64) as usize
+        ((u128::from(hash) * self.entries.len() as u128) >> 64) as usize
     }
 }

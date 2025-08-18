@@ -272,6 +272,7 @@ impl Searcher {
             panic!("Search failed!");
         }
 
+        self.shared_ctx.t_table.age();
         (best_move.unwrap(), ponder_move.filter(|_| self.ponder), best_score, depth, self.main_ctx.nodes.global())
     }
 

@@ -5,7 +5,7 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 ## Features
 ### Move Generation
 - Fixed shift fancy black magic bitboards
-- PEXT and PDEP are used if BMI2 intrinsics are available
+- PEXT is used if BMI2 intrinsics are available
 
 ### Move Ordering
 - Hash Move
@@ -19,11 +19,9 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - Iterative Deepening
 - Aspiration Windows
 - Transposition Table
-  - Always replace replacement strategy
-  - Lockless
 - Syzygy Endgame Tablebases (via [`pyrrhic-rs`](https://github.com/Algorhythm-sxv/pyrrhic-rs))
 - Principal Variation Search
-- Quiescence Search for Captures, Promotions, and Evasions
+- Quiescence Search for Tactics and Evasions
 - Extensions
   - Check Extensions
 - Reductions
@@ -50,10 +48,6 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - Major Pieces
 
 ### Time Management
-- Optimal and Maximum Time Limits
-  - Aborts after a depth is complete if the optimal time limit is exceeded
-  - Aborts during the search if the maximum time limit is exceeded
-- Dynamically adjusts optimal time depending on
-  - Best Move Stability
-  - Complexity of the Position
-  - Ratio of the Best Move's Subtree to the Full Search Tree
+- Best Move Stability
+- Complexity of the Position
+- Best Move Subtree Ratio
