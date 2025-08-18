@@ -183,9 +183,9 @@ impl History {
         indices: &ContIndices,
     ) -> i32 {
         self.get_quiet(board, mv)
-            + W::cont1_frac() * self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() / 512
-            + W::cont3_frac() * self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default() / 512
-            + W::cont2_frac() * self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default() / 512
+            + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default()
+            + self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default()
+            + self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default()
     }
 
     #[inline]

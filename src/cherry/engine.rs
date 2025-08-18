@@ -197,9 +197,6 @@ impl Engine {
                     PAWN_CORR_FRAC  => W::pawn_corr_frac(),  0, MAX_CORR;
                     MINOR_CORR_FRAC => W::minor_corr_frac(), 0, MAX_CORR;
                     MAJOR_CORR_FRAC => W::major_corr_frac(), 0, MAX_CORR;
-                    CONT1_FRAC     => W::cont1_frac(),     0, 512;
-                    CONT2_FRAC     => W::cont2_frac(),     0, 512;
-                    CONT3_FRAC     => W::cont3_frac(),     0, 512;
                     QUIET_BONUS_BASE => W::quiet_bonus_base(), -256, 256;
                     QUIET_BONUS_MUL  => W::quiet_bonus_mul(),  -256, 256;
                     QUIET_MALUS_BASE => W::quiet_malus_base(), -256, 256;
@@ -311,9 +308,6 @@ impl Engine {
                     "PAWN_CORR_FRAC"  => PAWN_CORR_FRAC,  i32;
                     "MINOR_CORR_FRAC" => MINOR_CORR_FRAC, i32;
                     "MAJOR_CORR_FRAC" => MAJOR_CORR_FRAC, i32;
-                    "CONT1_FRAC"     => CONT1_FRAC,     i32;
-                    "CONT2_FRAC"     => CONT2_FRAC,     i32;
-                    "CONT3_FRAC"     => CONT3_FRAC,     i32;
                     "QUIET_BONUS_BASE" => QUIET_BONUS_BASE, i32;
                     "QUIET_BONUS_MUL"  => QUIET_BONUS_MUL,  i32;
                     "QUIET_MALUS_BASE" => QUIET_MALUS_BASE, i32;
