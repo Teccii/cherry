@@ -73,7 +73,7 @@ pub fn vec_add_sub(
     }
 
     for i in (HL - HL % CHUNK_SIZE)..HL {
-        output[i] += input[i] + weights.ft_weights[add * HL + i]
+        output[i] = input[i] + weights.ft_weights[add * HL + i]
             - weights.ft_weights[sub * HL + i];
     }
 }
@@ -98,7 +98,7 @@ pub fn vec_add_sub2(
     }
 
     for i in (HL - HL % CHUNK_SIZE)..HL {
-        output[i] += input[i] + weights.ft_weights[add * HL + i]
+        output[i] = input[i] + weights.ft_weights[add * HL + i]
             - weights.ft_weights[sub1 * HL + i]
             - weights.ft_weights[sub2 * HL + i];
     }
@@ -126,7 +126,7 @@ pub fn vec_add2_sub2(
     }
 
     for i in (HL - HL % CHUNK_SIZE)..HL {
-        output[i] += input[i] + weights.ft_weights[add1 * HL + i]
+        output[i] = input[i] + weights.ft_weights[add1 * HL + i]
             + weights.ft_weights[add2 * HL + i]
             - weights.ft_weights[sub1 * HL + i]
             - weights.ft_weights[sub2 * HL + i];
