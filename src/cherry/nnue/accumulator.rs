@@ -37,7 +37,7 @@ pub fn vec_add(
     weights: &NetworkWeights,
     adds: &[usize],
 ) {
-    for i in 0..(HL/CHUNK_SIZE) {
+    for i in 0..(HL / CHUNK_SIZE) {
         let offset = i * CHUNK_SIZE;
         let mut value = I16Reg::from_slice(&acc[offset..]);
         
@@ -62,7 +62,7 @@ pub fn vec_add_sub(
     add: usize,
     sub: usize
 ) {
-    for i in 0..(HL/CHUNK_SIZE) {
+    for i in 0..(HL / CHUNK_SIZE) {
         let offset = i * CHUNK_SIZE;
         let add_chunk = I16Reg::from_slice(&weights.ft_weights[(add * HL + offset)..]);
         let sub_chunk = I16Reg::from_slice(&weights.ft_weights[(sub * HL + offset)..]);
@@ -86,7 +86,7 @@ pub fn vec_add_sub2(
     sub1: usize,
     sub2: usize
 ) {
-    for i in 0..(HL/CHUNK_SIZE) {
+    for i in 0..(HL / CHUNK_SIZE) {
         let offset = i * CHUNK_SIZE;
         let add_chunk = I16Reg::from_slice(&weights.ft_weights[(add * HL + offset)..]);
         let sub1_chunk = I16Reg::from_slice(&weights.ft_weights[(sub1 * HL + offset)..]);
@@ -113,7 +113,7 @@ pub fn vec_add2_sub2(
     sub1: usize,
     sub2: usize
 ) {
-    for i in 0..(HL/CHUNK_SIZE) {
+    for i in 0..(HL / CHUNK_SIZE) {
         let offset = i * CHUNK_SIZE;
         let add1_chunk = I16Reg::from_slice(&weights.ft_weights[(add1 * HL + offset)..]);
         let add2_chunk = I16Reg::from_slice(&weights.ft_weights[(add2 * HL + offset)..]);
