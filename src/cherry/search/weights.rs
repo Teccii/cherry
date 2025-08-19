@@ -83,6 +83,7 @@ weights! {
     non_pv_reduction        | NON_PV_REDUCTION:        i32 => 926,
     not_improving_reduction | NOT_IMPROVING_REDUCTION: i32 => 926,
     cut_node_reduction      | CUT_NODE_REDUCTION:      i32 => 1024,
+    check_reduction         | CHECK_REDUCTION:         i32 => 1024,
     high_corr_reduction     | HIGH_CORR_REDUCTION:     i32 => 1024,
     high_corr_threshold     | HIGH_CORR_THRESHOLD:     i32 => 128,
     hist_tactic_reduction   | HIST_TACTIC_REDUCTION:   i32 => 32,

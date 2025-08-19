@@ -330,7 +330,8 @@ pub fn search<Node: NodeType>(
         /*
         Check Extension: Extend the search if we give check.
         */
-        if pos.in_check() {
+        let is_check = pos.in_check();
+        if is_check {
             extension += 1;
         }
 
@@ -355,6 +356,7 @@ pub fn search<Node: NodeType>(
             reduction += W::non_pv_reduction() * !Node::PV as i32;
             reduction += W::not_improving_reduction() * !improving as i32;
             reduction += W::cut_node_reduction() * cut_node as i32;
+            reduction -= W::check_reduction() * is_check as i32;
             reduction -= W::high_corr_reduction() * (corr.abs() > W::high_corr_threshold()) as i32;
             reduction -= if is_tactical {
                 stat_score / W::hist_tactic_reduction()
