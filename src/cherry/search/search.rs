@@ -40,7 +40,7 @@ pub fn search<Node: NodeType>(
     mut beta: Score,
     cut_node: bool,
 ) -> Score {
-    if ply != 0 && (ctx.abort_now || shared_ctx.time_man.abort_search(ctx.nodes.global())) {
+    if ply != 0 && (ctx.abort_now || (ctx.nodes.local() % 1024 == 0 && shared_ctx.time_man.abort_search(ctx.nodes.global()))) {
         ctx.abort_now();
         return Score::INFINITE;
     }
