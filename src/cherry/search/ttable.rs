@@ -240,8 +240,8 @@ impl TTable {
 
     #[inline]
     fn replace(old_data: &TTData, new_data: &TTData) -> bool {
-        if new_data.bound == TTBound::Exact {
-            return old_data.bound != TTBound::Exact;
+        if old_data.bound == TTBound::Exact {
+            return new_data.bound == TTBound::Exact;
         }
 
         true
