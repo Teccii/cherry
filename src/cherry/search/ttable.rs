@@ -209,7 +209,7 @@ impl TTable {
 
         if Self::replace(
             &self.entries[index].data(), &new_data,
-            &self.entries[index].key.load(Ordering::Relaxed), hash
+            self.entries[index].key.load(Ordering::Relaxed), hash
         ) {
             self.entries[index].set(hash, new_data);
         }
