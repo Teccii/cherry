@@ -114,7 +114,7 @@ impl TTEntry {
     pub fn set(&self, hash: u64, data: TTData) {
         let data = data.to_bits();
         
-        self.key.store(hash ^ data, Ordering::Relaxed);
+        self.key.store(hash, Ordering::Relaxed);
         self.data.store(data, Ordering::Relaxed);
     }
     
@@ -179,7 +179,7 @@ impl TTable {
         let entry = &self.entries[index];
         let data = entry.data.load(Ordering::Relaxed);
         
-        if entry.key.load(Ordering::Relaxed) ^ data == hash {
+        if entry.key.load(Ordering::Relaxed) == hash {
             return Some(TTData::from_bits(data));
         }
         
@@ -207,10 +207,8 @@ impl TTable {
         let hash = board.hash();
         let index = self.index(hash);
 
-        let old_data = self.entries[index].data.load(Ordering::Relaxed);
-        let old_hash = self.entries[index].key.load(Ordering::Relaxed) ^ old_data;
-        let old_data = TTData::from_bits(old_data);
-
+        let old_hash = self.entries[index].key.load(Ordering::Relaxed);
+        let old_data = self.entries[index].data();
         if Self::replace(&old_data, &new_data, old_hash, hash) {
             self.entries[index].set(hash, new_data);
         }
