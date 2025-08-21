@@ -120,7 +120,7 @@ pub fn search<Node: NodeType>(
 
     let tt_pv = match skip_move {
         Some(_) => ctx.ss[ply as usize].tt_pv,
-        None => Node::PV || tt_entry.is_some_and(|e| e.bound == TTBound::Exact)
+        None => tt_entry.is_some_and(|e| e.bound == TTBound::Exact)
     };
     ctx.ss[ply as usize].tt_pv = tt_pv;
 
@@ -155,7 +155,6 @@ pub fn search<Node: NodeType>(
                     None,
                     None,
                     tb_bound,
-                    tt_pv,
                 );
 
                 return tb_score;
@@ -504,7 +503,6 @@ pub fn search<Node: NodeType>(
             Some(raw_eval),
             best_move,
             flag,
-            tt_pv
         );
     }
 
@@ -637,7 +635,6 @@ pub fn q_search<Node: NodeType>(
             Some(raw_eval),
             best_move,
             flag,
-            Node::PV || tt_entry.is_some_and(|e| e.bound == TTBound::Exact)
         );
     }
 
