@@ -78,7 +78,7 @@ weights! {
     futile_base       | FUTILE_BASE:       i16 => 106,
     futile_margin     | FUTILE_MARGIN:     i16 => 81,
 
-    tt_pv_reduction         | TT_PV_REDUCTION:         i32 => 926,
+    tt_pv_reduction         | TT_PV_REDUCTION:         i32 => 768,
     tt_tactic_reduction     | TT_TACTIC_REDUCTION:     i32 => 1024,
     high_corr_reduction     | HIGH_CORR_REDUCTION:     i32 => 1024,
     high_corr_threshold     | HIGH_CORR_THRESHOLD:     i32 => 128,
