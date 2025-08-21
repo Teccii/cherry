@@ -207,10 +207,7 @@ impl TTable {
         let hash = board.hash();
         let index = self.index(hash);
 
-        if Self::replace(
-            &self.entries[index].data(), &new_data,
-            self.entries[index].key.load(Ordering::Relaxed), hash
-        ) {
+        if self.entries[index].data().bound != TTBound::Exact {
             self.entries[index].set(hash, new_data);
         }
     }
@@ -240,11 +237,6 @@ impl TTable {
     }
 
     /*----------------------------------------------------------------*/
-
-    #[inline]
-    fn replace(old_data: &TTData, new_data: &TTData, old_hash: u64, new_hash: u64) -> bool {
-        new_data.bound == TTBound::Exact || old_hash != new_hash || new_data.age != old_data.age
-    }
 
     #[inline]
     fn index(&self, hash: u64) -> usize {
