@@ -118,6 +118,12 @@ pub fn search<Node: NodeType>(
         ctx.tt_misses.inc();
     }
 
+    let tt_pv = match skip_move {
+        Some(_) => ctx.ss[ply as usize].tt_pv,
+        None => Node::PV || tt_entry.is_some_and(|e| e.bound == TTBound::Exact)
+    };
+    ctx.ss[ply as usize].tt_pv = tt_pv;
+
     let (mut syzygy_max, mut syzygy_min) = (Score::MAX_MATE, -Score::MAX_MATE);
     if shared_ctx.syzygy.is_some()
         && ply != 0 && skip_move.is_none()
@@ -148,7 +154,8 @@ pub fn search<Node: NodeType>(
                     tb_score,
                     None,
                     None,
-                    tb_bound
+                    tb_bound,
+                    tt_pv,
                 );
 
                 return tb_score;
@@ -174,11 +181,9 @@ pub fn search<Node: NodeType>(
     let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
     let prev_eval = (ply >= 2).then(|| ctx.ss[ply as usize - 2].eval);
     let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
-    let tt_pv = tt_entry.is_some_and(|e| e.bound == TTBound::Exact);
     let tt_tactic = best_move.is_some_and(|mv| pos.board().is_tactical(mv));
 
     ctx.ss[ply as usize].eval = raw_eval;
-    ctx.ss[ply as usize].tt_pv = tt_pv;
 
     if !Node::PV && !in_check && skip_move.is_none() {
         /*
@@ -498,7 +503,8 @@ pub fn search<Node: NodeType>(
             best_score,
             Some(raw_eval),
             best_move,
-            flag
+            flag,
+            tt_pv
         );
     }
 
@@ -630,7 +636,8 @@ pub fn q_search<Node: NodeType>(
             best_score,
             Some(raw_eval),
             best_move,
-            flag
+            flag,
+            Node::PV || tt_entry.is_some_and(|e| e.bound == TTBound::Exact)
         );
     }
 
