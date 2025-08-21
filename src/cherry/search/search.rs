@@ -351,7 +351,7 @@ pub fn search<Node: NodeType>(
                 false,
             );
         } else {
-            reduction += W::tt_pv_reduction() * tt_pv as i32;
+            reduction -= W::tt_pv_reduction() * tt_pv as i32;
             reduction += W::tt_tactic_reduction() * (tt_tactic && !is_tactical) as i32;
             reduction -= W::high_corr_reduction() * (corr.abs() > W::high_corr_threshold()) as i32;
             reduction += W::not_improving_reduction() * !improving as i32;
