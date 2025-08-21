@@ -174,7 +174,7 @@ pub fn search<Node: NodeType>(
     let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
     let prev_eval = (ply >= 2).then(|| ctx.ss[ply as usize - 2].eval);
     let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
-    let tt_pv = tt_entry.is_some_and(|e| e.bound == TTBound::Exact);
+    let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.bound == TTBound::Exact);
     let tt_tactic = best_move.is_some_and(|mv| pos.board().is_tactical(mv));
 
     ctx.ss[ply as usize].eval = raw_eval;
