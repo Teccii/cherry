@@ -98,9 +98,7 @@ pub fn search<Node: NodeType>(
         if entry.table_mv.is_some() && best_move.is_none() {
             //We can't trust this entry if the move is invalid
             tt_entry = None;
-        }
-
-        if !Node::PV && entry.depth >= depth {
+        } else if !Node::PV && entry.depth >= depth {
             let score = entry.score;
 
             match entry.bound {

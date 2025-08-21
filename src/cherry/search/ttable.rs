@@ -98,63 +98,30 @@ impl TTData {
 
 /*----------------------------------------------------------------*/
 
-#[derive(Debug)]
-pub struct TTEntry {
-    key: AtomicU64,
-    data: AtomicU64
-}
-
-impl TTEntry {
-    #[inline]
-    pub fn data(&self) -> TTData {
-        TTData::from_bits(self.data.load(Ordering::Relaxed))
-    }
-
-    #[inline]
-    pub fn set(&self, hash: u64, data: TTData) {
-        let data = data.to_bits();
-        
-        self.key.store(hash, Ordering::Relaxed);
-        self.data.store(data, Ordering::Relaxed);
-    }
-    
-    #[inline]
-    pub fn reset(&self) {
-        self.key.store(0, Ordering::Relaxed);
-        self.data.store(0, Ordering::Relaxed);
-    }
-    
-    #[inline]
-    pub fn zero() -> TTEntry {
-        TTEntry {
-            key: AtomicU64::new(0),
-            data: AtomicU64::new(0)
-        }
-    }
-}
-
-/*----------------------------------------------------------------*/
+pub const TT_ENTRY_SIZE: usize = size_of::<AtomicU16>() + size_of::<AtomicU64>();
 
 #[derive(Debug)]
 pub struct TTable {
-    entries: Box<[TTEntry]>,
+    hash: Box<[AtomicU16]>,
+    data: Box<[AtomicU64]>,
     age: AtomicU8,
 }
 
 impl TTable {
     #[inline]
     pub fn new(mb: usize) -> TTable {
-        let size = mb * 1024 * 1024 / size_of::<TTEntry>();
+        let size = mb * 1024 * 1024 / TT_ENTRY_SIZE;
         
         TTable {
-            entries: (0..size).map(|_| TTEntry::zero()).collect(),
+            hash: (0..size).map(|_| AtomicU16::new(0)).collect(),
+            data: (0..size).map(|_| AtomicU64::new(0)).collect(),
             age: AtomicU8::new(0),
         }
     }
 
     #[inline]
     pub fn size(&self) -> usize {
-        self.entries.len() * size_of::<TTEntry>() / (1024 * 1024)
+        (self.hash.len() * TT_ENTRY_SIZE).div_ceil(1024 * 1024)
     }
 
     /*----------------------------------------------------------------*/
@@ -167,20 +134,19 @@ impl TTable {
             let index = self.index(hash);
 
             unsafe {
-                _mm_prefetch::<_MM_HINT_T0>(self.entries.as_ptr().add(index) as *const i8)
+                _mm_prefetch::<_MM_HINT_T0>(self.hash.as_ptr().add(index) as *const i8);
+                _mm_prefetch::<_MM_HINT_T0>(self.data.as_ptr().add(index) as *const i8);
             }
         }
     }
 
     pub fn probe(&self, board: &Board) -> Option<TTData> {
         let hash = board.hash();
+        let partial = hash as u16;
         let index = self.index(hash);
-        
-        let entry = &self.entries[index];
-        let data = entry.data.load(Ordering::Relaxed);
-        
-        if entry.key.load(Ordering::Relaxed) == hash {
-            return Some(TTData::from_bits(data));
+
+        if self.hash[index].load(Ordering::Relaxed) == partial {
+            return Some(TTData::from_bits(self.data[index].load(Ordering::Relaxed))).filter(|d| d.bound != TTBound::None);
         }
         
         None
@@ -205,8 +171,10 @@ impl TTable {
         );
         
         let hash = board.hash();
+        let partial = Self::partial(hash);
         let index = self.index(hash);
-        self.entries[index].set(hash, new_data);
+        self.hash[index].store(partial, Ordering::Relaxed);
+        self.data[index].store(new_data.to_bits(), Ordering::Relaxed);
     }
 
     pub fn hash_usage(&self) -> u16 {
@@ -214,7 +182,7 @@ impl TTable {
         let age = self.age.load(Ordering::Relaxed);
 
         for i in 0..1000 {
-            if self.entries[i].key.load(Ordering::Relaxed) != 0 && self.entries[i].data().age == age {
+            if self.hash[i].load(Ordering::Relaxed) != 0 && TTData::from_bits(self.data[i].load(Ordering::Relaxed)).age == age {
                 result += 1;
             }
         }
@@ -229,14 +197,20 @@ impl TTable {
 
     #[inline]
     pub fn clean(&self) {
-        self.entries.iter().for_each(|e| e.reset());
+        self.hash.iter().for_each(|e| e.store(0, Ordering::Relaxed));
+        self.data.iter().for_each(|e| e.store(0, Ordering::Relaxed));
         self.age.store(0, Ordering::Relaxed);
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
+    fn partial(hash: u64) -> u16 {
+        hash as u16
+    }
+
+    #[inline]
     fn index(&self, hash: u64) -> usize {
-        ((u128::from(hash) * self.entries.len() as u128) >> 64) as usize
+        ((u128::from(hash) * self.hash.len() as u128) >> 64) as usize
     }
 }
