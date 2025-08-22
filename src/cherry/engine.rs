@@ -240,11 +240,12 @@ impl Engine {
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 65536;
                     MAT_SCALE_DIV    => W::mat_scale_div(),    1, 65536;
-                    RFP_MARGIN    => W::rfp_margin(),   -1024, 1024;
-                    SEE_MARGIN    => W::see_margin(),   -1024, 1024;
-                    CONT_MARGIN   => W::cont_margin(), -16384, 0;
-                    FUTILE_BASE   => W::futile_base(),   -1024, 1024;
-                    FUTILE_MARGIN => W::futile_margin(), -1024, 1024;
+                    RFP_MARGIN        => W::rfp_margin(),         -2048, 2048;
+                    SEE_QUIET_MARGIN  => W::see_quiet_margin(),   -2048, 0;
+                    SEE_TACTIC_MARGIN => W::see_tactic_margin(),  -2048, 0;
+                    CONT_MARGIN       => W::cont_margin(),       -16384, 0;
+                    FUTILE_BASE       => W::futile_base(),        -2048, 2048;
+                    FUTILE_MARGIN     => W::futile_margin(),      -2048, 2048;
                     TT_PV_REDUCTION         => W::tt_pv_reduction(),         -16384, 16384;
                     TT_TACTIC_REDUCTION     => W::tt_tactic_reduction(),     -16384, 16384;
                     HIGH_CORR_REDUCTION     => W::high_corr_reduction(),     -16384, 16384;
@@ -355,8 +356,8 @@ impl Engine {
                     "MAT_SCALE_BASE"   => MAT_SCALE_BASE,   i32;
                     "MAT_SCALE_DIV"    => MAT_SCALE_DIV,    i32;
                     "RFP_MARGIN"        => RFP_MARGIN,        i16;
-                    "SEE_TACTIC_MARGIN" => SEE_TACTIC_MARGIN, i16;
                     "SEE_QUIET_MARGIN"  => SEE_QUIET_MARGIN,  i16;
+                    "SEE_TACTIC_MARGIN" => SEE_TACTIC_MARGIN, i16;
                     "CONT_MARGIN"       => CONT_MARGIN,       i32;
                     "FUTILE_BASE"       => FUTILE_BASE,       i16;
                     "FUTILE_MARGIN"     => FUTILE_MARGIN,     i16;
