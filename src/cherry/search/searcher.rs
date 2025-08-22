@@ -271,7 +271,7 @@ impl Searcher {
                         ctx,
                         shared_ctx,
                         Info::new(chess960),
-                        i + 1,
+                        i,
                     )();
                 });
             }

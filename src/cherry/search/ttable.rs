@@ -180,7 +180,7 @@ impl TTable {
         let data = entry.data.load(Ordering::Relaxed);
         
         if entry.key.load(Ordering::Relaxed) == hash {
-            return Some(TTData::from_bits(data));
+            return Some(TTData::from_bits(data)).filter(|d| d.bound != TTBound::None);
         }
         
         None
