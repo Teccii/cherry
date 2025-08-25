@@ -120,7 +120,7 @@ pub fn search<Node: NodeType>(
 
     let tt_pv = match skip_move {
         Some(_) => ctx.ss[ply as usize].tt_pv,
-        None => tt_entry.is_some_and(|e| e.bound == TTBound::Exact)
+        None => Node::PV || tt_entry.is_some_and(|e| e.tt_pv),
     };
     ctx.ss[ply as usize].tt_pv = tt_pv;
 
@@ -155,6 +155,7 @@ pub fn search<Node: NodeType>(
                     None,
                     None,
                     tb_bound,
+                    tt_pv,
                 );
 
                 return tb_score;
@@ -189,7 +190,8 @@ pub fn search<Node: NodeType>(
         Reverse Futility Pruning: If the static evaluation of the position is *above*
         beta by a significant margin, we can assume that we can reach at least beta.
         */
-        if depth < RFP_DEPTH && static_eval >= beta + W::rfp_margin() * depth.saturating_sub(improving as u8) as i16 {
+        let rfp_margin = W::rfp_margin() * depth.saturating_sub(improving as u8) as i16;
+        if depth < RFP_DEPTH && static_eval >= beta + rfp_margin {
             return (static_eval + beta) / 2
         }
 
@@ -355,7 +357,7 @@ pub fn search<Node: NodeType>(
                 false,
             );
         } else {
-            reduction += W::tt_pv_reduction() * tt_pv as i32;
+            reduction -= W::tt_pv_reduction() * tt_pv as i32;
             reduction += W::tt_tactic_reduction() * (tt_tactic && !is_tactical) as i32;
             reduction -= W::high_corr_reduction() * (corr.abs() > W::high_corr_threshold()) as i32;
             reduction += W::not_improving_reduction() * !improving as i32;
@@ -503,6 +505,7 @@ pub fn search<Node: NodeType>(
             Some(raw_eval),
             best_move,
             flag,
+            tt_pv,
         );
     }
 
@@ -635,6 +638,7 @@ pub fn q_search<Node: NodeType>(
             Some(raw_eval),
             best_move,
             flag,
+            Node::PV || tt_entry.is_some_and(|e| e.tt_pv),
         );
     }
 

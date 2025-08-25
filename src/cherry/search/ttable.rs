@@ -33,6 +33,7 @@ pub struct TTData {
     pub eval: Option<Score>,
     pub table_mv: Option<Move>,
     pub bound: TTBound,
+    pub tt_pv: bool,
     pub age: u8,
 }
 
@@ -54,6 +55,7 @@ impl TTData {
         eval: Option<Score>,
         table_mv: Option<Move>,
         bound: TTBound,
+        tt_pv: bool,
         age: u8,
     ) -> TTData {
         TTData {
@@ -62,6 +64,7 @@ impl TTData {
             eval,
             table_mv,
             bound,
+            tt_pv,
             age
         }
     }
@@ -78,7 +81,8 @@ impl TTData {
             eval: Some(packed.eval).filter(|s| !s.is_infinite()),
             table_mv: packed.table_mv,
             bound: TTBound::index(((packed.other >> 6) & 0b11) as usize),
-            age: packed.other & 0b111111,
+            tt_pv: ((packed.other >> 5) & 1) != 0,
+            age: packed.other & 0b11111,
         }
     }
     
@@ -90,7 +94,7 @@ impl TTData {
                 score: self.score,
                 eval: self.eval.unwrap_or(Score::INFINITE),
                 table_mv: self.table_mv,
-                other: (self.age & 0b111111) | ((self.bound as u8) << 6)
+                other: (self.age & 0b11111) | ((self.tt_pv as u8) << 5) | ((self.bound as u8) << 6)
             })
         }
     }
@@ -194,6 +198,7 @@ impl TTable {
         eval: Option<Score>,
         table_mv: Option<Move>,
         flag: TTBound,
+        tt_pv: bool,
     ) {
         let new_data = TTData::new(
             depth,
@@ -201,6 +206,7 @@ impl TTable {
             eval,
             table_mv,
             flag,
+            tt_pv,
             self.age.load(Ordering::Relaxed)
         );
         
@@ -223,7 +229,7 @@ impl TTable {
 
     #[inline]
     pub fn age(&self) {
-        let new_age = (self.age.load(Ordering::Relaxed) + 1) & 0b111111;
+        let new_age = (self.age.load(Ordering::Relaxed) + 1) & 0b11111;
         self.age.store(new_age, Ordering::Relaxed);
     }
 
