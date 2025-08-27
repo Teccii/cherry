@@ -1,4 +1,3 @@
-use std::simd::{prelude::*, Simd};
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -23,41 +22,28 @@ impl<T> std::ops::DerefMut for Align64<T> {
 
 /*----------------------------------------------------------------*/
 
-#[cfg(target_feature = "avx512f")] pub const CHUNK_SIZE: usize = 64;
-#[cfg(all(
-    target_feature = "avx2",
-    not(target_feature = "avx512f"))
-)] pub const CHUNK_SIZE: usize = 32;
-#[cfg(all(
-    not(target_feature = "avx2"),
-    not(target_feature = "avx512f"))
-)] pub const CHUNK_SIZE: usize = 16;
-pub type I16Reg = Simd<i16, CHUNK_SIZE>;
-pub type I32Reg = Simd<i32, CHUNK_SIZE>;
-
-/*----------------------------------------------------------------*/
-
-pub fn feed_forward<const L: usize>(
-    input: &[i16; L],
-    weights: &[i16; L],
+pub fn feed_forward(
+    stm: &[i16; HL],
+    ntm: &[i16; HL],
+    weights: &NetworkWeights,
     output: &mut i32
 ) {
-    let mut sum = I32Reg::splat(0);
-    let zero = I32Reg::splat(0);
-    let qa = I32Reg::splat(QA);
+    let (zero, qa) = (zero(), splat_i16(QA as i16));
+    let mut sum = zero;
 
-    for i in 0..(L / CHUNK_SIZE) {
-        let offset = i * CHUNK_SIZE;
-        let input: I32Reg = I16Reg::from_slice(&input[offset..]).cast();
-        let weight: I32Reg = I16Reg::from_slice(&weights[offset..]).cast();
-        let input = input.simd_clamp(zero, qa);
+    for i in 0..(HL / I16_CHUNK) {
+        let offset = i * I16_CHUNK;
 
-        sum += input * input * weight;
+        unsafe {
+            let stm = clamp_i16(load_i16(stm.as_ptr().add(offset)), zero, qa);
+            let ntm = clamp_i16(load_i16(ntm.as_ptr().add(offset)), zero, qa);
+            let stm_weight = load_i16(weights.out_weights.as_ptr().add(offset));
+            let ntm_weight = load_i16(weights.out_weights.as_ptr().add(HL + offset));
+
+            sum = add_i32(sum, madd_i16(mullo_i16(stm_weight, stm), stm));
+            sum = add_i32(sum, madd_i16(mullo_i16(ntm_weight, ntm), ntm));
+        }
     }
 
-    *output += sum.reduce_sum();
-    for i in (L - L % CHUNK_SIZE)..L {
-        let input = i32::from(input[i]).clamp(0, QA);
-        *output += input * input * i32::from(weights[i]);
-    }
+    *output = reduce_add_i32(sum);
 }

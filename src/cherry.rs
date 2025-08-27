@@ -11,7 +11,7 @@ mod nnue {
     mod features;
     mod network;
     mod util;
-    
+
     pub use accumulator::*;
     pub use features::*;
     pub use network::*;
@@ -44,6 +44,7 @@ mod search {
 mod engine;
 mod position;
 mod score;
+mod simd;
 mod syzygy;
 mod uci;
 mod util;
@@ -54,6 +55,7 @@ pub use nnue::*;
 pub use position::*;
 pub use score::*;
 pub use search::*;
+pub use simd::*;
 pub use syzygy::*;
 pub use uci::*;
 pub use util::*;

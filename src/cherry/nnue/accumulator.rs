@@ -37,18 +37,21 @@ pub fn vec_add(
     weights: &NetworkWeights,
     adds: &[usize],
 ) {
-    for i in 0..(HL / CHUNK_SIZE) {
-        let offset = i * CHUNK_SIZE;
-        let mut value = I16Reg::from_slice(&acc[offset..]);
-        
-        for &index in adds {
-            value += I16Reg::from_slice(&weights.ft_weights[(index * HL + offset)..]);
-        }
+    for i in 0..(HL / I16_CHUNK) {
+        let offset = i * I16_CHUNK;
 
-        value.copy_to_slice(&mut acc[offset..]);
+        unsafe {
+            let mut value = load_i16(acc.as_ptr().add(offset));
+
+            for &index in adds {
+                value = add_i16(value, load_i16(weights.ft_weights.as_ptr().add(index * HL + offset)));
+            }
+
+            store_i16(acc.as_mut_ptr().add(offset), value);
+        }
     }
 
-    for i in (HL - HL % CHUNK_SIZE)..HL {
+    for i in (HL - HL % I16_CHUNK)..HL {
         for &index in adds {
             acc[i] += weights.ft_weights[index * HL + i];
         }
@@ -62,17 +65,19 @@ pub fn vec_add_sub(
     add: usize,
     sub: usize
 ) {
-    for i in 0..(HL / CHUNK_SIZE) {
-        let offset = i * CHUNK_SIZE;
-        let add_chunk = I16Reg::from_slice(&weights.ft_weights[(add * HL + offset)..]);
-        let sub_chunk = I16Reg::from_slice(&weights.ft_weights[(sub * HL + offset)..]);
-        let value = I16Reg::from_slice(&input[offset..]);
-        let value = value + add_chunk - sub_chunk;
-        
-        value.copy_to_slice(&mut output[offset..]);
+    for i in 0..(HL / I16_CHUNK) {
+        let offset = i * I16_CHUNK;
+
+        unsafe {
+            let mut value = load_i16(input.as_ptr().add(offset));
+            value = add_i16(value, load_i16(weights.ft_weights.as_ptr().add(add * HL + offset)));
+            value = sub_i16(value, load_i16(weights.ft_weights.as_ptr().add(sub * HL + offset)));
+
+            store_i16(output.as_mut_ptr().add(offset), value);
+        }
     }
 
-    for i in (HL - HL % CHUNK_SIZE)..HL {
+    for i in (HL - HL % I16_CHUNK)..HL {
         output[i] = input[i] + weights.ft_weights[add * HL + i]
             - weights.ft_weights[sub * HL + i];
     }
@@ -86,18 +91,20 @@ pub fn vec_add_sub2(
     sub1: usize,
     sub2: usize
 ) {
-    for i in 0..(HL / CHUNK_SIZE) {
-        let offset = i * CHUNK_SIZE;
-        let add_chunk = I16Reg::from_slice(&weights.ft_weights[(add * HL + offset)..]);
-        let sub1_chunk = I16Reg::from_slice(&weights.ft_weights[(sub1 * HL + offset)..]);
-        let sub2_chunk = I16Reg::from_slice(&weights.ft_weights[(sub2 * HL + offset)..]);
-        let value = I16Reg::from_slice(&input[offset..]);
-        let value = value + add_chunk - sub1_chunk - sub2_chunk;
+    for i in 0..(HL / I16_CHUNK) {
+        let offset = i * I16_CHUNK;
 
-        value.copy_to_slice(&mut output[offset..]);
+        unsafe {
+            let mut value = load_i16(input.as_ptr().add(offset));
+            value = add_i16(value, load_i16(weights.ft_weights.as_ptr().add(add * HL + offset)));
+            value = sub_i16(value, load_i16(weights.ft_weights.as_ptr().add(sub1 * HL + offset)));
+            value = sub_i16(value, load_i16(weights.ft_weights.as_ptr().add(sub2 * HL + offset)));
+
+            store_i16(output.as_mut_ptr().add(offset), value);
+        }
     }
 
-    for i in (HL - HL % CHUNK_SIZE)..HL {
+    for i in (HL - HL % I16_CHUNK)..HL {
         output[i] = input[i] + weights.ft_weights[add * HL + i]
             - weights.ft_weights[sub1 * HL + i]
             - weights.ft_weights[sub2 * HL + i];
@@ -113,19 +120,21 @@ pub fn vec_add2_sub2(
     sub1: usize,
     sub2: usize
 ) {
-    for i in 0..(HL / CHUNK_SIZE) {
-        let offset = i * CHUNK_SIZE;
-        let add1_chunk = I16Reg::from_slice(&weights.ft_weights[(add1 * HL + offset)..]);
-        let add2_chunk = I16Reg::from_slice(&weights.ft_weights[(add2 * HL + offset)..]);
-        let sub1_chunk = I16Reg::from_slice(&weights.ft_weights[(sub1 * HL + offset)..]);
-        let sub2_chunk = I16Reg::from_slice(&weights.ft_weights[(sub2 * HL + offset)..]);
-        let value = I16Reg::from_slice(&input[offset..]);
-        let value = value + add1_chunk + add2_chunk - sub1_chunk - sub2_chunk;
+    for i in 0..(HL / I16_CHUNK) {
+        let offset = i * I16_CHUNK;
 
-        value.copy_to_slice(&mut output[offset..]);
+        unsafe {
+            let mut value = load_i16(input.as_ptr().add(offset));
+            value = add_i16(value, load_i16(weights.ft_weights.as_ptr().add(add1 * HL + offset)));
+            value = add_i16(value, load_i16(weights.ft_weights.as_ptr().add(add2 * HL + offset)));
+            value = sub_i16(value, load_i16(weights.ft_weights.as_ptr().add(sub1 * HL + offset)));
+            value = sub_i16(value, load_i16(weights.ft_weights.as_ptr().add(sub2 * HL + offset)));
+
+            store_i16(output.as_mut_ptr().add(offset), value);
+        }
     }
 
-    for i in (HL - HL % CHUNK_SIZE)..HL {
+    for i in (HL - HL % I16_CHUNK)..HL {
         output[i] = input[i] + weights.ft_weights[add1 * HL + i]
             + weights.ft_weights[add2 * HL + i]
             - weights.ft_weights[sub1 * HL + i]

@@ -177,13 +177,12 @@ impl Nnue {
     
     pub fn eval(&self, weights: &NetworkWeights, stm: Color) -> i16 {
         let acc = self.acc();
-        let (us, them) = (acc.select(stm), acc.select(!stm));
+        let (stm, ntm) = (acc.select(stm), acc.select(!stm));
 
         let mut output = 0;
-        feed_forward(us, &weights.out_weights[..HL].try_into().unwrap(), &mut output);
-        feed_forward(them, &weights.out_weights[HL..].try_into().unwrap(), &mut output);
-
-        ((output / QA + weights.out_bias as i32) * EVAL_SCALE / (QA * QB)) as i16
+        feed_forward(stm, ntm, &weights, &mut output);
+        
+        ((output / QA + i32::from(weights.out_bias)) * EVAL_SCALE / (QA * QB)) as i16
     }
 
     /*----------------------------------------------------------------*/
