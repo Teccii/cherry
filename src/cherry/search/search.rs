@@ -222,6 +222,11 @@ pub fn search<Node: NodeType>(
             );
 
             pos.unmake_null_move();
+
+            if ctx.abort_now {
+                return Score::INFINITE;
+            }
+
             if score >= beta {
                 return beta;
             }
@@ -421,16 +426,20 @@ pub fn search<Node: NodeType>(
             ctx.root_nodes[mv.from() as usize][mv.to() as usize] += ctx.nodes.local() - nodes;
         }
 
-        if best_score.is_none() || score > best_score.unwrap() {
-            best_score = Some(score);
-        }
-
         //make sure we have a best move
         if ply == 0 && moves_seen == 1 {
             let child = &ctx.ss[ply as usize + 1];
             let (child_pv, len) = (child.pv.moves, child.pv.len);
 
             ctx.ss[ply as usize].pv.update(mv, &child_pv[..len]);
+        }
+
+        if ctx.abort_now {
+            return best_score.unwrap_or(Score::ZERO);
+        }
+
+        if best_score.is_none() || score > best_score.unwrap() {
+            best_score = Some(score);
         }
 
         if score > alpha {
@@ -583,11 +592,13 @@ pub fn q_search<Node: NodeType>(
 
     let mut best_move = None;
     let mut best_score = None;
-    let mut moves_seen = 0;
+    let mut move_exists = false;
     let mut move_picker = QMovePicker::new();
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
     while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
+        move_exists = true;
+
         if !pos.cmp_see(mv, 0) {
             continue;
         }
@@ -604,7 +615,10 @@ pub fn q_search<Node: NodeType>(
             -alpha
         );
         pos.unmake_move();
-        moves_seen += 1;
+
+        if ctx.abort_now {
+            return best_score.unwrap_or(Score::ZERO);
+        }
 
         if best_score.is_none() || score > best_score.unwrap() {
             best_score = Some(score);
@@ -620,7 +634,7 @@ pub fn q_search<Node: NodeType>(
         }
     }
 
-    if moves_seen == 0 && in_check {
+    if !move_exists && in_check {
         return Score::new_mated(ply);
     }
 

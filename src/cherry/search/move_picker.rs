@@ -4,10 +4,6 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-//pub const MAX_MOVES: usize = 218;
-
-/*----------------------------------------------------------------*/
-
 #[derive(Debug, Copy, Clone)]
 pub struct ScoredMove(pub Move, pub i32);
 

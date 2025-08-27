@@ -418,7 +418,7 @@ fn search_worker<Info: SearchInfo>(
                 depth,
             );
 
-            if shared_ctx.time_man.abort_id(depth, ctx.nodes.global()) {
+            if depth >= MAX_DEPTH || shared_ctx.time_man.abort_id(depth, ctx.nodes.global()) {
                 break 'id;
             }
 
