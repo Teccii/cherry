@@ -428,7 +428,7 @@ fn search_worker<Info: SearchInfo>(
         while depth == MAX_DEPTH
             && shared_ctx.time_man.is_infinite()
             && !(shared_ctx.time_man.use_max_depth() || shared_ctx.time_man.use_max_nodes())
-            && !ctx.abort_now {
+            && !shared_ctx.time_man.abort_now() {
             info.update(
                 thread,
                 pos.board(),
