@@ -174,7 +174,10 @@ fn datagen_worker(
         }.as_str()).unwrap();
 
         let mut game = Game::new(&initial_board);
-        let mut game_len = 0;
+        let mut game_len = match searcher.pos.stm() {
+            Color::White => 8,
+            Color::Black => 9,
+        };
         let result;
 
         'game: loop {
