@@ -134,8 +134,7 @@ impl Engine {
                             } else {
                                 searcher.shared_ctx.weights = NetworkWeights::new(&fs::read(value).unwrap());
                             },
-                            "Hash" => searcher.resize_ttable(value.parse::<usize>().unwrap()),
-                            "SyzygyPath" => searcher.set_syzygy_path(value.as_str()),
+                            "Hash" => searcher.resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
                             "SyzygyProbeDepth" => searcher.shared_ctx.syzygy_depth = value.parse::<u8>().unwrap(),
                             "Ponder" => searcher.ponder = value.parse::<bool>().unwrap(),
                             "UCI_Chess960" => searcher.chess960 = value.parse::<bool>().unwrap(),
@@ -191,7 +190,7 @@ impl Engine {
                 println!("id name Cherry v{}", ENGINE_VERSION);
                 println!("id author Tecci");
                 println!("option name Threads type spin default 1 min 1 max 65535");
-                println!("option name Hash type spin default 16 min 1 max 65535");
+                println!("option name Hash type spin default 16 min 1 max {}", MAX_TT_SIZE);
                 println!("option name EvalFile type string default <default>");
                 println!("option name SyzygyPath type string default <empty>");
                 println!("option name SyzygyProbeDepth type spin default 1 min 0 max 128");
@@ -306,10 +305,11 @@ impl Engine {
                         }
                     }
                 }
-
+                
                 match name.as_str() {
                     "MoveOverhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
                     "UseSoftNodes" => self.time_man.set_soft_nodes(value.parse::<bool>().unwrap()),
+                    "SyzygyPath" => set_syzygy_path(value.as_str()),
                     "UCI_Chess960" => self.chess960 = value.parse::<bool>().unwrap(),
                     _ => { }
                 }
@@ -385,6 +385,7 @@ impl Engine {
                 let mut searcher = self.searcher.lock().unwrap();
                 let searcher = &mut *searcher;
                 let board = searcher.pos.board().clone();
+                let do_search = !limits.is_empty();
 
                 println!("{}", board.pretty_print(self.chess960));
                 println!(
@@ -393,7 +394,11 @@ impl Engine {
                     "0".bright_green()
                 );
 
-                let score = searcher.search::<NoInfo>(limits.clone()).2;
+                let score = if do_search {
+                    searcher.search::<NoInfo>(limits.clone()).2
+                } else {
+                    searcher.pos.eval(&searcher.shared_ctx.weights)
+                };
                 let mut diffs = [0; Square::COUNT];
 
                 let occ = board.occupied();
@@ -431,7 +436,11 @@ impl Engine {
                     let new_board = builder.build().unwrap();
                     searcher.pos.set_board(new_board, &searcher.shared_ctx.weights);
 
-                    diffs[sq as usize] = (score - searcher.search::<NoInfo>(limits.clone()).2).0;
+                    diffs[sq as usize] = if !limits.is_empty() {
+                        (score - searcher.search::<NoInfo>(limits.clone()).2).0
+                    } else {
+                        (score - searcher.pos.eval(&searcher.shared_ctx.weights).0).0
+                    };
 
                     let progress = 50 * i / count;
 
@@ -497,7 +506,7 @@ impl Engine {
                 let mut bench_data = Vec::new();
                 let limits = vec![SearchLimit::MaxDepth(depth)];
 
-                searcher.resize_ttable(hash as usize);
+                searcher.resize_ttable(hash);
                 searcher.threads = threads;
 
                 let start_time = Instant::now();

@@ -1,5 +1,9 @@
+use std::cell::SyncUnsafeCell;
+
 use pyrrhic_rs::{EngineAdapter, TableBases, WdlProbeResult};
 use crate::*;
+
+/*----------------------------------------------------------------*/
 
 #[derive(Clone)]
 pub struct SyzygyAdapter;
@@ -33,7 +37,25 @@ impl EngineAdapter for SyzygyAdapter {
     }
 }
 
-pub fn probe_wdl(tb: &TableBases<SyzygyAdapter>, board: &Board) -> Option<WdlProbeResult> {
+/*----------------------------------------------------------------*/
+
+pub static SYZYGY: SyncUnsafeCell<Option<TableBases<SyzygyAdapter>>> = SyncUnsafeCell::new(None);
+
+pub fn set_syzygy_path(path: &str) {
+    unsafe {
+        let syzygy = &mut *SYZYGY.get();
+
+        if let Some(old) = syzygy.take() {
+            drop(old);
+        }
+        
+        *syzygy = TableBases::<SyzygyAdapter>::new(path).ok();
+    }
+}
+
+pub fn probe_wdl(board: &Board) -> Option<WdlProbeResult> {
+    let tb = unsafe { &*SYZYGY.get() }.as_ref()?;
+
     if board.occupied().popcnt() as u32 > tb.max_pieces() {
         return None;
     }

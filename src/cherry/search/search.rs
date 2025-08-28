@@ -125,12 +125,10 @@ pub fn search<Node: NodeType>(
     ctx.ss[ply as usize].tt_pv = tt_pv;
 
     let (mut syzygy_max, mut syzygy_min) = (Score::MAX_MATE, -Score::MAX_MATE);
-    if shared_ctx.syzygy.is_some()
-        && ply != 0 && skip_move.is_none()
+    if ply != 0 && skip_move.is_none()
         && depth >= shared_ctx.syzygy_depth
-        && !pos.can_castle() {
-        if let Some(wdl) = Option::as_ref(&shared_ctx.syzygy)
-            .and_then(|tb| probe_wdl(tb, pos.board())) {
+        && !pos.can_castle()
+        && let Some(wdl) = probe_wdl(pos.board()) {
             ctx.tb_hits.inc();
 
             let tb_score = match wdl {
@@ -169,7 +167,6 @@ pub fn search<Node: NodeType>(
             if Node::PV && tb_bound == TTBound::UpperBound {
                 syzygy_max = tb_score;
             }
-        }
     }
 
     let in_check = pos.in_check();

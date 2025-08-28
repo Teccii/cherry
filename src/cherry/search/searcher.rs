@@ -1,18 +1,15 @@
 use std::{fmt::Write, sync::Arc};
-use pyrrhic_rs::TableBases;
 use crate::*;
 
 /*----------------------------------------------------------------*/
 
 pub type LmrLookup = LookUp<i32, {MAX_PLY as usize}, {MAX_PLY as usize}>;
-pub type SyzygyTable = Option<TableBases<SyzygyAdapter>>;
 
 #[derive(Clone)]
 pub struct SharedContext {
     pub t_table: Arc<TTable>,
     pub time_man: Arc<TimeManager>,
     pub weights: Arc<NetworkWeights>,
-    pub syzygy: Arc<SyzygyTable>,
     pub syzygy_depth: u8,
     pub root_moves: Vec<Move>,
     pub lmr_quiet: Arc<LmrLookup>,
@@ -189,7 +186,6 @@ impl Searcher {
                 t_table: Arc::new(TTable::new(16)),
                 time_man,
                 weights: nnue_weights,
-                syzygy: Arc::new(None),
                 syzygy_depth: 1,
                 root_moves: Vec::with_capacity(64),
                 lmr_quiet: Arc::new(LookUp::new(|i, j| {
@@ -307,13 +303,8 @@ impl Searcher {
     }
 
     #[inline]
-    pub fn resize_ttable(&mut self, mb: usize) {
+    pub fn resize_ttable(&mut self, mb: u64) {
         self.shared_ctx.t_table = Arc::new(TTable::new(mb));
-    }
-
-    #[inline]
-    pub fn set_syzygy_path(&mut self, path: &str) {
-        self.shared_ctx.syzygy = Arc::new(Some(TableBases::<SyzygyAdapter>::new(path).unwrap()));
     }
 
     /*----------------------------------------------------------------*/

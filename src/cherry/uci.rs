@@ -23,7 +23,7 @@ pub enum UciCommand {
     Bench {
         depth: u8,
         threads: u16,
-        hash: u16,
+        hash: u64,
     },
     #[cfg(feature = "datagen")] DataGen {
         count: usize,
@@ -74,7 +74,7 @@ impl UciCommand {
             "bench" => Ok(UciCommand::Bench {
                 depth: reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(12),
                 threads: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1),
-                hash: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(16)
+                hash: reader.next().and_then(|s| s.parse::<u64>().ok()).unwrap_or(16)
             }),
             #[cfg(feature = "datagen")] "datagen" => Ok(UciCommand::DataGen {
                 count: reader.next().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100_000),
@@ -155,24 +155,24 @@ impl UciCommand {
                             SearchLimit::SearchMoves(moves)
                         }
                         "wtime" => {
-                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::WhiteTime(Duration::from_millis(millis))
+                            let millis = tokens.next().and_then(|s| s.parse::<i64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            SearchLimit::WhiteTime(Duration::from_millis(millis.max(0) as u64))
                         },
                         "btime" => {
-                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::BlackTime(Duration::from_millis(millis))
+                            let millis = tokens.next().and_then(|s| s.parse::<i64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            SearchLimit::BlackTime(Duration::from_millis(millis.max(0) as u64))
                         },
                         "winc" => {
-                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::WhiteInc(Duration::from_millis(millis))
+                            let millis = tokens.next().and_then(|s| s.parse::<i64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            SearchLimit::WhiteInc(Duration::from_millis(millis.max(0) as u64))
                         },
                         "binc" => {
-                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::BlackInc(Duration::from_millis(millis))
+                            let millis = tokens.next().and_then(|s| s.parse::<i64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            SearchLimit::BlackInc(Duration::from_millis(millis.max(0) as u64))
                         },
                         "movetime" => {
-                            let millis = tokens.next().and_then(|s| s.parse::<u64>().ok()).ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::MoveTime(Duration::from_millis(millis))
+                            let millis = tokens.next().and_then(|s| s.parse::<i64>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            SearchLimit::MoveTime(Duration::from_millis(millis.max(0) as u64))
                         }
                         "movestogo" => {
                             let moves_to_go = tokens.next().and_then(|s| s.parse::<u16>().ok()).ok_or(UciParseError::InvalidArguments)?;

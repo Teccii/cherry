@@ -139,6 +139,8 @@ impl TTEntry {
 
 /*----------------------------------------------------------------*/
 
+pub const MAX_TT_SIZE: u64 = 64 * 1024 * 1024; //64 TiB
+
 #[derive(Debug)]
 pub struct TTable {
     entries: Box<[TTEntry]>,
@@ -147,8 +149,8 @@ pub struct TTable {
 
 impl TTable {
     #[inline]
-    pub fn new(mb: usize) -> TTable {
-        let size = mb * 1024 * 1024 / size_of::<TTEntry>();
+    pub fn new(mb: u64) -> TTable {
+        let size = (mb * 1024 * 1024 / size_of::<TTEntry>() as u64) as usize;
         
         TTable {
             entries: (0..size).map(|_| TTEntry::zero()).collect(),

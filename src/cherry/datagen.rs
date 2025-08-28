@@ -122,6 +122,7 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
     println!("{}", "===============================".bright_green());
 }
 
+//TODO: TB adjudication
 fn datagen_worker(
     thread: usize,
     options: DataGenOptions,
