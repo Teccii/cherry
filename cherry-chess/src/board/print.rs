@@ -40,7 +40,6 @@ impl Board {
             features.push(format!("{}: {}", String::from("Castle Rights").bright_green(), rights));
         }
 
-        features.push(format!("{}: {}", String::from("Full Move Count").bright_green(), self.fullmove_count));
         features.push(format!("{}: {}", String::from("Halfmove Clock").bright_green(), self.halfmove_clock));
         features.push(format!("{}: {:?}", String::from("Side To Move").bright_green(), self.stm));
 

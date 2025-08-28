@@ -16,7 +16,6 @@ impl Board {
         soft_assert!(self.castle_rights_is_sane());
         soft_assert!(self.en_passant_is_sane());
         soft_assert!(self.halfmove_clock_is_sane());
-        soft_assert!(self.fullmove_count_is_sane());
 
         true
     }
@@ -109,11 +108,6 @@ impl Board {
     #[inline]
     pub(crate) fn halfmove_clock_is_sane(&self) -> bool {
         self.halfmove_clock <= 100
-    }
-
-    #[inline]
-    pub(crate) fn fullmove_count_is_sane(&self) -> bool {
-        self.fullmove_count > 0
     }
 
     pub fn checks_and_pins(&self, color: Color) -> (Bitboard, Bitboard) {

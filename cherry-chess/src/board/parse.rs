@@ -23,7 +23,6 @@ impl Board {
             pinned: Bitboard::EMPTY,
             checkers: Bitboard::EMPTY,
             en_passant: None,
-            fullmove_count: 0,
             halfmove_clock: 0,
             minor_hash: 0,
             major_hash: 0,
@@ -64,11 +63,7 @@ impl Board {
             return Err(FenParseError::InvalidHalfMoveClock);
         }
 
-        board.parse_fullmove_count(next()?)?;
-        if !board.fullmove_count_is_sane() {
-            return Err(FenParseError::InvalidFullMoveCount);
-        }
-
+        next()?;
         if reader.next().is_some() {
             return Err(FenParseError::TooManyFields);
         }
@@ -178,15 +173,6 @@ impl Board {
 
         if self.halfmove_clock > 100 {
             return Err(FenParseError::InvalidHalfMoveClock);
-        }
-
-        Ok(())
-    }
-
-    fn parse_fullmove_count(&mut self, s: &str) -> Result<(), FenParseError> {
-        self.fullmove_count = s.parse::<u16>().map_err(|_| FenParseError::InvalidFullMoveCount)?;
-        if self.fullmove_count == 0 {
-            return Err(FenParseError::InvalidFullMoveCount);
         }
 
         Ok(())

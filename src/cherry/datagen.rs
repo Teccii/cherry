@@ -207,7 +207,7 @@ fn datagen_worker(
             searcher.make_move(mv);
             searcher.reset_nnue();
 
-            if searcher.pos.is_draw() || searcher.pos.board().fullmove_count() >= 300 {
+            if searcher.pos.is_draw() || game_len >= 300 {
                 result = if searcher.pos.insufficient_material() {
                     GameOutcome::Draw(DrawType::InsufficientMaterial)
                 } else if searcher.pos.repetition() {
@@ -354,7 +354,6 @@ impl OpeningGenerator for DfrcOpeningGenerator {
             });
 
             board.make_move(legals[rng.random_range(0..legals.len())]);
-
             if board.status() != BoardStatus::Ongoing {
                 return Self::gen_opening(rng);
             }

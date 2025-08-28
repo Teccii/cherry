@@ -14,7 +14,6 @@ pub struct BoardBuilder {
     pieces: [Option<ColorPiece>; Square::COUNT],
     castle_rights: [CastleRights; Color::COUNT],
     en_passant: Option<Square>,
-    fullmove_count: u16,
     halfmove_clock: u8,
     stm: Color
 }
@@ -26,7 +25,6 @@ impl BoardBuilder {
             pieces: [None; Square::COUNT],
             castle_rights: [CastleRights::EMPTY; Color::COUNT],
             en_passant: None,
-            fullmove_count: 1,
             halfmove_clock: 0,
             stm: Color::White
         }
@@ -55,7 +53,6 @@ impl BoardBuilder {
             .map(|f| Square::new(f, Rank::Sixth.relative_to(board.stm())))
         );
 
-        builder.set_fullmove_count(board.fullmove_count());
         builder.set_halfmove_clock(board.halfmove_clock());
         builder.set_stm(board.stm());
 
@@ -92,7 +89,6 @@ impl BoardBuilder {
             pinned: Bitboard::EMPTY,
             checkers: Bitboard::EMPTY,
             en_passant: None,
-            fullmove_count: 0,
             halfmove_clock: 0,
             minor_hash: 0,
             major_hash: 0,
@@ -104,7 +100,6 @@ impl BoardBuilder {
         self.add_board(&mut board)?;
         self.add_castle_rights(&mut board)?;
         self.add_en_passant(&mut board)?;
-        self.add_fullmove_count(&mut board)?;
         self.add_halfmove_clock(&mut board)?;
 
         Ok(board)
@@ -161,16 +156,6 @@ impl BoardBuilder {
 
         if !board.en_passant_is_sane() {
             return Err(BoardBuilderError::InvalidEnPassant);
-        }
-
-        Ok(())
-    }
-
-    fn add_fullmove_count(&self, board: &mut Board) -> Result<(), BoardBuilderError> {
-        board.fullmove_count = self.fullmove_count;
-
-        if !board.fullmove_count_is_sane() {
-            return Err(BoardBuilderError::InvalidFullMoveCount);
         }
 
         Ok(())
@@ -301,11 +286,6 @@ impl BoardBuilder {
     #[inline]
     pub fn set_halfmove_clock(&mut self, value: u8) {
         self.halfmove_clock = value.min(100);
-    }
-
-    #[inline]
-    pub fn set_fullmove_count(&mut self, value: u16) {
-        self.fullmove_count = value.max(1);
     }
 
     #[inline]

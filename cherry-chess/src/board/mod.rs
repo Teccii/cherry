@@ -41,7 +41,6 @@ pub struct Board {
     pinned: Bitboard,
     checkers: Bitboard,
     en_passant: Option<File>,
-    fullmove_count: u16,
     halfmove_clock: u8,
     minor_hash: u64,
     major_hash: u64,
@@ -158,9 +157,6 @@ impl Board {
     pub const fn halfmove_clock(&self) -> u8 { self.halfmove_clock }
 
     #[inline]
-    pub const fn fullmove_count(&self) -> u16 { self.fullmove_count }
-
-    #[inline]
     pub const fn minor_hash(&self) -> u64 { self.minor_hash }
 
     #[inline]
@@ -236,9 +232,6 @@ impl Board {
             self.halfmove_clock = 0;
         } else {
             self.halfmove_clock = (self.halfmove_clock + 1).min(100);
-        }
-        if self.stm == Color::Black {
-            self.fullmove_count = self.fullmove_count.saturating_add(1);
         }
 
         let mut new_en_passant = None;
@@ -360,10 +353,6 @@ impl Board {
 
         let mut board = self.clone();
         board.halfmove_clock = (board.halfmove_clock + 1).min(100);
-
-        if board.stm == Color::Black {
-            board.fullmove_count = board.fullmove_count.saturating_add(1);
-        }
 
         board.set_en_passant(None);
         board.toggle_stm();
@@ -554,7 +543,7 @@ impl fmt::Display for Board {
             write!(f, " -")?;
         }
 
-        write!(f, " {} {}", self.halfmove_clock, self.fullmove_count)
+        write!(f, " {} 1", self.halfmove_clock)
     }
 }
 
