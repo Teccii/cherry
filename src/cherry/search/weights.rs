@@ -87,6 +87,7 @@ weights! {
     not_improving_reduction | NOT_IMPROVING_REDUCTION: i32 => 926,
     cut_node_reduction      | CUT_NODE_REDUCTION:      i32 => 1024,
     non_pv_reduction        | NON_PV_REDUCTION:        i32 => 926,
+    early_ply_reduction     | EARLY_PLY_REDUCTION:     i32 => 1024,
     check_reduction         | CHECK_REDUCTION:         i32 => 1024,
 }
 
