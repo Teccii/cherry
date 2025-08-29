@@ -108,7 +108,9 @@ impl Position {
     pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
         self.nnue.apply_updates(&self.board, weights);
 
-        let mut eval = self.nnue.eval(weights, self.stm());
+        let bucket = OUTPUT_BUCKETS[self.board.occupied().popcnt()];
+        let mut eval = self.nnue.eval(weights, bucket, self.stm());
+        
         let material = W::pawn_mat_scale() * self.board.pieces(Piece::Pawn).popcnt() as i32
             + W::knight_mat_scale() * self.board.pieces(Piece::Knight).popcnt() as i32
             + W::bishop_mat_scale() * self.board.pieces(Piece::Bishop).popcnt() as i32

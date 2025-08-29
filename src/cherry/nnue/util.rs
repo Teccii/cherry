@@ -25,9 +25,11 @@ impl<T> std::ops::DerefMut for Align64<T> {
 pub fn feed_forward(
     stm: &[i16; HL],
     ntm: &[i16; HL],
+    bucket: usize,
     weights: &NetworkWeights,
     output: &mut i32
 ) {
+    let bucket_offset = bucket * L1;
     let (zero, qa) = (zero(), splat_i16(QA as i16));
     let mut sum = zero;
 
@@ -37,8 +39,8 @@ pub fn feed_forward(
         unsafe {
             let stm = clamp_i16(load_i16(stm.as_ptr().add(offset)), zero, qa);
             let ntm = clamp_i16(load_i16(ntm.as_ptr().add(offset)), zero, qa);
-            let stm_weight = load_i16(weights.out_weights.as_ptr().add(offset));
-            let ntm_weight = load_i16(weights.out_weights.as_ptr().add(HL + offset));
+            let stm_weight = load_i16(weights.out_weights.as_ptr().add(bucket_offset + offset));
+            let ntm_weight = load_i16(weights.out_weights.as_ptr().add(bucket_offset + HL + offset));
 
             sum = add_i32(sum, madd_i16(mullo_i16(stm_weight, stm), stm));
             sum = add_i32(sum, madd_i16(mullo_i16(ntm_weight, ntm), ntm));

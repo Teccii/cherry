@@ -1,5 +1,5 @@
 # Cherry
-Cherry is a WIP UCI compliant chess engine written in Rust.
+Cherry is a UCI chess engine written in Rust.
 Its internals are a modified version of the [`cozy-chess`](https://github.com/analog-hors/cozy-chess) library written by analog-hors.
 
 ## Features
@@ -12,8 +12,8 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
 - Phased Move Generation
 - Static Exchange Evaluation (SEE)
 - History Heuristic
-- Capture History Heuristic
-- Continuation History Heuristic
+  - Capture History
+  - Continuation History
 
 ### Search
 - Iterative Deepening
@@ -37,11 +37,12 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - SEE Pruning
 
 ### Evaluation
-- NNUE `(736->512)x2->1`
+- NNUE `(768->768)x2->8`
   - Dual Perspective
   - Horizontally mirrored piece-square inputs
-  - Self-generated training data (8 random moves, 5000 nodes per move)
-  - Trained with [`bullet`](https://github.com/jw1912/bullet) on 414 million positions
+  - Eight output buckets
+  - Self-generated training data (8 random moves, 5000 soft nodes per move)
+  - Trained with [`bullet`](https://github.com/jw1912/bullet) on 930 million positions
 - Static Evaluation Correction History
   - Pawn Structure
   - Minor Pieces
