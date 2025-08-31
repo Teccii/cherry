@@ -356,7 +356,7 @@ pub fn search<Node: NodeType>(
                 ply + 1,
                 -beta,
                 -alpha,
-                false,
+                !Node::PV && !cut_node,
             );
         } else {
             reduction -= W::tt_pv_reduction() * tt_pv as i32;
