@@ -64,8 +64,7 @@ impl NetworkWeights {
             bytes = &bytes[(HL * I16_SIZE)..];
             ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_weights).cast(), L1 * NUM_OUTPUT_BUCKETS * I16_SIZE);
             bytes = &bytes[(L1 * NUM_OUTPUT_BUCKETS * I16_SIZE)..];
-            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_weights).cast(), NUM_OUTPUT_BUCKETS);
-
+            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_bias).cast(), NUM_OUTPUT_BUCKETS * I16_CHUNK);
         };
 
         unsafe { weights.assume_init() }
