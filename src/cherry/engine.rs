@@ -245,10 +245,10 @@ impl Engine {
                     CONT_MARGIN       => W::cont_margin(),      -16384, 0;
                     FUTILE_BASE       => W::futile_base(),           0, 2048;
                     FUTILE_MARGIN     => W::futile_margin(),         0, 2048;
-                    LMR_QUIET_BASE    => W::lmr_quiet_base(),    -1.0, 1.0;
-                    LMR_QUIET_DIV     => W::lmr_quiet_div(),      0.1, 10.0;
-                    LMR_TACTICAL_BASE => W::lmr_tactical_base(), -1.0, 1.0;
-                    LMR_TACTICAL_DIV  => W::lmr_tactical_div(),   0.1, 10.0;
+                    LMR_QUIET_BASE    => W::lmr_quiet_base(),    -1024, 1024;
+                    LMR_QUIET_DIV     => W::lmr_quiet_div(),        32, 16384;
+                    LMR_TACTICAL_BASE => W::lmr_tactical_base(), -1024, 1024;
+                    LMR_TACTICAL_DIV  => W::lmr_tactical_div(),     32, 16384;
                     TT_PV_REDUCTION         => W::tt_pv_reduction(),         0, 4096;
                     TT_TACTIC_REDUCTION     => W::tt_tactic_reduction(),     0, 4096;
                     HIGH_CORR_REDUCTION     => W::high_corr_reduction(),     0, 4096;
@@ -278,15 +278,10 @@ impl Engine {
             },
             #[cfg(feature = "tune")] UciCommand::PrintSpsa => {
                 macro_rules! print_spsa {
-                    ($($name:ident: $ty:ty => $default:expr, $min:expr, $max:expr;)*) => {$(
+                    ($($name:ident => $default:expr, $min:expr, $max:expr;)*) => {$(
                         println!(
-                            "{}, {}, {:.1}, {:.1}, {:.1}, {:.2}, 0.002",
+                            "{}, int, {:.1}, {:.1}, {:.1}, {:.2}, 0.002",
                             stringify!($name),
-                            match stringify!($ty) {
-                                "i16" | "i32" => "int",
-                                "f32" | "f64" => "float",
-                                _ => "buh?",
-                            },
                             $default as f32,
                             $min as f32,
                             $max as f32,
@@ -296,66 +291,66 @@ impl Engine {
                 }
 
                 print_spsa! {
-                    PAWN_CORR_FRAC:  i16 => W::pawn_corr_frac(),  0, MAX_CORR;
-                    MINOR_CORR_FRAC: i16 => W::minor_corr_frac(), 0, MAX_CORR;
-                    MAJOR_CORR_FRAC: i16 => W::major_corr_frac(), 0, MAX_CORR;
-                    QUIET_BONUS_BASE: i16 => W::quiet_bonus_base(), -512, 512;
-                    QUIET_BONUS_MUL:  i16 => W::quiet_bonus_mul(),  -512, 512;
-                    QUIET_MALUS_BASE: i16 => W::quiet_malus_base(), -512, 512;
-                    QUIET_MALUS_MUL:  i16 => W::quiet_malus_mul(),  -512, 512;
-                    QUIET_HIST_MAX:   i16 => W::quiet_hist_max(),      1, 32768;
-                    TACTIC_BONUS_BASE: i16 => W::tactic_bonus_base(), -512, 512;
-                    TACTIC_BONUS_MUL:  i16 => W::tactic_bonus_mul(),  -512, 512;
-                    TACTIC_MALUS_BASE: i16 => W::tactic_malus_base(), -512, 512;
-                    TACTIC_MALUS_MUL:  i16 => W::tactic_malus_mul(),  -512, 512;
-                    TACTIC_HIST_MAX:   i16 => W::tactic_hist_max(),      1, 32768;
-                    CONT1_BONUS_BASE: i16 => W::cont1_bonus_base(), -512, 512;
-                    CONT1_BONUS_MUL:  i16 => W::cont1_bonus_mul(),  -512, 512;
-                    CONT1_MALUS_BASE: i16 => W::cont1_malus_base(), -512, 512;
-                    CONT1_MALUS_MUL:  i16 => W::cont1_malus_mul(),  -512, 512;
-                    CONT1_HIST_MAX:   i16 => W::cont1_hist_max(),      1, 32768;
-                    CONT2_BONUS_BASE: i16 => W::cont2_bonus_base(), -512, 512;
-                    CONT2_BONUS_MUL:  i16 => W::cont2_bonus_mul(),  -512, 512;
-                    CONT2_MALUS_BASE: i16 => W::cont2_malus_base(), -512, 512;
-                    CONT2_MALUS_MUL:  i16 => W::cont2_malus_mul(),  -512, 512;
-                    CONT2_HIST_MAX:   i16 => W::cont2_hist_max(),      1, 32768;
-                    CONT3_BONUS_BASE: i16 => W::cont3_bonus_base(), -512, 512;
-                    CONT3_BONUS_MUL:  i16 => W::cont3_bonus_mul(),  -512, 512;
-                    CONT3_MALUS_BASE: i16 => W::cont3_malus_base(), -512, 512;
-                    CONT3_MALUS_MUL:  i16 => W::cont3_malus_mul(),  -512, 512;
-                    CONT3_HIST_MAX:   i16 => W::cont3_hist_max(),      1, 32768;
-                    PAWN_SEE_VALUE:   i16 => W::pawn_see_value(),   1, 4096;
-                    KNIGHT_SEE_VALUE: i16 => W::knight_see_value(), 1, 4096;
-                    BISHOP_SEE_VALUE: i16 => W::bishop_see_value(), 1, 4096;
-                    ROOK_SEE_VALUE:   i16 => W::rook_see_value(),   1, 4096;
-                    QUEEN_SEE_VALUE:  i16 => W::queen_see_value(),  1, 4096;
-                    PAWN_MAT_SCALE:   i16 => W::pawn_mat_scale(),   1, 4096;
-                    KNIGHT_MAT_SCALE: i16 => W::knight_mat_scale(), 1, 4096;
-                    BISHOP_MAT_SCALE: i16 => W::bishop_mat_scale(), 1, 4096;
-                    ROOK_MAT_SCALE:   i16 => W::rook_mat_scale(),   1, 4096;
-                    QUEEN_MAT_SCALE:  i16 => W::queen_mat_scale(),  1, 4096;
-                    MAT_SCALE_BASE:   i16 => W::mat_scale_base(),   1, 65536;
-                    MAT_SCALE_DIV:    i16 => W::mat_scale_div(),    1, 65536;
-                    RFP_MARGIN:        i16 => W::rfp_margin(),             0, 2048;
-                    SEE_QUIET_MARGIN:  i16 => W::see_quiet_margin(),   -2048, 0;
-                    SEE_TACTIC_MARGIN: i16 => W::see_tactic_margin(),  -2048, 0;
-                    CONT_MARGIN:       i16 => W::cont_margin(),       -16384, 0;
-                    FUTILE_BASE:       i16 => W::futile_base(),            0, 2048;
-                    FUTILE_MARGIN:     i16 => W::futile_margin(),          0, 2048;
-                    LMR_QUIET_BASE:    f32 => W::lmr_quiet_base(),    -1.0, 1.0;
-                    LMR_QUIET_DIV:     f32 => W::lmr_quiet_div(),      0.1, 10.0;
-                    LMR_TACTICAL_BASE: f32 => W::lmr_tactical_base(), -1.0, 1.0;
-                    LMR_TACTICAL_DIV:  f32 => W::lmr_tactical_div(),   0.1, 10.0;
-                    TT_PV_REDUCTION:         i16 => W::tt_pv_reduction(),         0, 4096;
-                    TT_TACTIC_REDUCTION:     i16 => W::tt_tactic_reduction(),     0, 4096;
-                    HIGH_CORR_REDUCTION:     i16 => W::high_corr_reduction(),     0, 4096;
-                    HIGH_CORR_THRESHOLD:     i16 => W::high_corr_threshold(),     1, MAX_CORR;
-                    HIST_TACTIC_REDUCTION:   i16 => W::hist_tactic_reduction(),   1, 512;
-                    HIST_QUIET_REDUCTION:    i16 => W::hist_quiet_reduction(),    1, 512;
-                    NOT_IMPROVING_REDUCTION: i16 => W::not_improving_reduction(), 0, 4096;
-                    CUT_NODE_REDUCTION:      i16 => W::cut_node_reduction(),      0, 4096;
-                    NON_PV_REDUCTION:        i16 => W::non_pv_reduction(),        0, 4096;
-                    CHECK_REDUCTION:         i16 => W::check_reduction(),         0, 4096;
+                    PAWN_CORR_FRAC => W::pawn_corr_frac(),  0, MAX_CORR;
+                    MINOR_CORR_FRAC => W::minor_corr_frac(), 0, MAX_CORR;
+                    MAJOR_CORR_FRAC => W::major_corr_frac(), 0, MAX_CORR;
+                    QUIET_BONUS_BASE => W::quiet_bonus_base(), -512, 512;
+                    QUIET_BONUS_MUL  => W::quiet_bonus_mul(),  -512, 512;
+                    QUIET_MALUS_BASE => W::quiet_malus_base(), -512, 512;
+                    QUIET_MALUS_MUL  => W::quiet_malus_mul(),  -512, 512;
+                    QUIET_HIST_MAX   => W::quiet_hist_max(),      1, 32768;
+                    TACTIC_BONUS_BASE => W::tactic_bonus_base(), -512, 512;
+                    TACTIC_BONUS_MUL  => W::tactic_bonus_mul(),  -512, 512;
+                    TACTIC_MALUS_BASE => W::tactic_malus_base(), -512, 512;
+                    TACTIC_MALUS_MUL  => W::tactic_malus_mul(),  -512, 512;
+                    TACTIC_HIST_MAX   => W::tactic_hist_max(),      1, 32768;
+                    CONT1_BONUS_BASE => W::cont1_bonus_base(), -512, 512;
+                    CONT1_BONUS_MUL  => W::cont1_bonus_mul(),  -512, 512;
+                    CONT1_MALUS_BASE => W::cont1_malus_base(), -512, 512;
+                    CONT1_MALUS_MUL  => W::cont1_malus_mul(),  -512, 512;
+                    CONT1_HIST_MAX   => W::cont1_hist_max(),      1, 32768;
+                    CONT2_BONUS_BASE => W::cont2_bonus_base(), -512, 512;
+                    CONT2_BONUS_MUL  => W::cont2_bonus_mul(),  -512, 512;
+                    CONT2_MALUS_BASE => W::cont2_malus_base(), -512, 512;
+                    CONT2_MALUS_MUL  => W::cont2_malus_mul(),  -512, 512;
+                    CONT2_HIST_MAX   => W::cont2_hist_max(),      1, 32768;
+                    CONT3_BONUS_BASE => W::cont3_bonus_base(), -512, 512;
+                    CONT3_BONUS_MUL  => W::cont3_bonus_mul(),  -512, 512;
+                    CONT3_MALUS_BASE => W::cont3_malus_base(), -512, 512;
+                    CONT3_MALUS_MUL  => W::cont3_malus_mul(),  -512, 512;
+                    CONT3_HIST_MAX   => W::cont3_hist_max(),      1, 32768;
+                    PAWN_SEE_VALUE   => W::pawn_see_value(),   1, 4096;
+                    KNIGHT_SEE_VALUE => W::knight_see_value(), 1, 4096;
+                    BISHOP_SEE_VALUE => W::bishop_see_value(), 1, 4096;
+                    ROOK_SEE_VALUE   => W::rook_see_value(),   1, 4096;
+                    QUEEN_SEE_VALUE  => W::queen_see_value(),  1, 4096;
+                    PAWN_MAT_SCALE   => W::pawn_mat_scale(),   1, 4096;
+                    KNIGHT_MAT_SCALE => W::knight_mat_scale(), 1, 4096;
+                    BISHOP_MAT_SCALE => W::bishop_mat_scale(), 1, 4096;
+                    ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
+                    QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
+                    MAT_SCALE_BASE   => W::mat_scale_base(),   1, 65536;
+                    MAT_SCALE_DIV    => W::mat_scale_div(),    1, 65536;
+                    RFP_MARGIN        => W::rfp_margin(),             0, 2048;
+                    SEE_QUIET_MARGIN  => W::see_quiet_margin(),   -2048, 0;
+                    SEE_TACTIC_MARGIN => W::see_tactic_margin(),  -2048, 0;
+                    CONT_MARGIN       => W::cont_margin(),       -16384, 0;
+                    FUTILE_BASE       => W::futile_base(),            0, 2048;
+                    FUTILE_MARGIN     => W::futile_margin(),          0, 2048;
+                    LMR_QUIET_BASE    => W::lmr_quiet_base(),    -1024, 1024;
+                    LMR_QUIET_DIV     => W::lmr_quiet_div(),        32, 16384;
+                    LMR_TACTICAL_BASE => W::lmr_tactical_base(), -1024, 1024;
+                    LMR_TACTICAL_DIV  => W::lmr_tactical_div(),     32, 16384;
+                    TT_PV_REDUCTION         => W::tt_pv_reduction(),         0, 4096;
+                    TT_TACTIC_REDUCTION     => W::tt_tactic_reduction(),     0, 4096;
+                    HIGH_CORR_REDUCTION     => W::high_corr_reduction(),     0, 4096;
+                    HIGH_CORR_THRESHOLD     => W::high_corr_threshold(),     1, MAX_CORR;
+                    HIST_TACTIC_REDUCTION   => W::hist_tactic_reduction(),   1, 512;
+                    HIST_QUIET_REDUCTION    => W::hist_quiet_reduction(),    1, 512;
+                    NOT_IMPROVING_REDUCTION => W::not_improving_reduction(), 0, 4096;
+                    CUT_NODE_REDUCTION      => W::cut_node_reduction(),      0, 4096;
+                    NON_PV_REDUCTION        => W::non_pv_reduction(),        0, 4096;
+                    CHECK_REDUCTION         => W::check_reduction(),         0, 4096;
                 }
             },
             #[cfg(feature = "datagen")] UciCommand::DataGen {
@@ -447,10 +442,10 @@ impl Engine {
                     "CONT_MARGIN"       => CONT_MARGIN,       i32;
                     "FUTILE_BASE"       => FUTILE_BASE,       i16;
                     "FUTILE_MARGIN"     => FUTILE_MARGIN,     i16;
-                    "LMR_QUIET_BASE"    => LMR_QUIET_BASE,    f32;
-                    "LMR_QUIET_DIV"     => LMR_QUIET_DIV,     f32;
-                    "LMR_TACTICAL_BASE" => LMR_TACTICAL_BASE, f32;
-                    "LMR_TACTICAL_DIV"  => LMR_TACTICAL_DIV,  f32;
+                    "LMR_QUIET_BASE"    => LMR_QUIET_BASE,    i32;
+                    "LMR_QUIET_DIV"     => LMR_QUIET_DIV,     i32;
+                    "LMR_TACTICAL_BASE" => LMR_TACTICAL_BASE, i32;
+                    "LMR_TACTICAL_DIV"  => LMR_TACTICAL_DIV,  i32;
                     "TT_PV_REDUCTION"         => TT_PV_REDUCTION,         i32;
                     "TT_TACTIC_REDUCTION"     => TT_TACTIC_REDUCTION,     i32;
                     "HIGH_CORR_REDUCTION"     => HIGH_CORR_REDUCTION,     i32;

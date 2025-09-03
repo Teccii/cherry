@@ -21,8 +21,8 @@ pub fn init_lmr() {
     let mut quiet_table = [[0; MAX_PLY as usize]; MAX_PLY as usize];
     let mut tactical_table = [[0; MAX_PLY as usize]; MAX_PLY as usize];
 
-    let (quiet_base, quiet_div) = (W::lmr_quiet_base(), W::lmr_quiet_div());
-    let (tactical_base, tactical_div) = (W::lmr_tactical_base(), W::lmr_tactical_div());
+    let (quiet_base, quiet_div) = (W::lmr_quiet_base() as f32 / 1024.0, W::lmr_quiet_div() as f32 / 1024.0);
+    let (tactical_base, tactical_div) = (W::lmr_tactical_base() as f32 / 1024.0, W::lmr_tactical_div() as f32 / 1024.0);
 
     for i in 0..MAX_PLY as usize {
         for j in 0..MAX_PLY as usize {
@@ -124,10 +124,10 @@ weights! {
     futile_base       | FUTILE_BASE:       i16 => 106,
     futile_margin     | FUTILE_MARGIN:     i16 => 81,
 
-    lmr_quiet_base | LMR_QUIET_BASE: f32 => 0.5,
-    lmr_quiet_div  | LMR_QUIET_DIV: f32 => 2.5,
-    lmr_tactical_base | LMR_TACTICAL_BASE: f32 => 0.4,
-    lmr_tactical_div  | LMR_TACTICAL_DIV: f32 => 3.5,
+    lmr_quiet_base    | LMR_QUIET_BASE:    i32 => 512,
+    lmr_quiet_div     | LMR_QUIET_DIV:     i32 => 2560,
+    lmr_tactical_base | LMR_TACTICAL_BASE: i32 => 409,
+    lmr_tactical_div  | LMR_TACTICAL_DIV:  i32 => 3584,
 
     tt_pv_reduction         | TT_PV_REDUCTION:         i32 => 1024,
     tt_tactic_reduction     | TT_TACTIC_REDUCTION:     i32 => 1024,
