@@ -3,17 +3,13 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-pub type LmrLookup = LookUp<i32, {MAX_PLY as usize}, {MAX_PLY as usize}>;
-
 #[derive(Clone)]
 pub struct SharedContext {
     pub t_table: Arc<TTable>,
     pub time_man: Arc<TimeManager>,
     pub weights: Arc<NetworkWeights>,
-    pub syzygy_depth: u8,
     pub root_moves: Vec<Move>,
-    pub lmr_quiet: Arc<LmrLookup>,
-    pub lmr_tactical: Arc<LmrLookup>,
+    pub syzygy_depth: u8,
 }
 
 /*----------------------------------------------------------------*/
@@ -185,18 +181,8 @@ impl Searcher {
                 t_table: Arc::new(TTable::new(16)),
                 time_man,
                 weights: nnue_weights,
-                syzygy_depth: 1,
                 root_moves: Vec::with_capacity(64),
-                lmr_quiet: Arc::new(LookUp::new(|i, j| {
-                    let i = if i != 0 { (i as f32).ln() } else { 0.0 };
-                    let j = if j != 0 { (j as f32).ln() } else { 0.0 };
-                    1024 * (0.5 + i * j / 2.5) as i32
-                })),
-                lmr_tactical: Arc::new(LookUp::new(|i, j| {
-                    let i = if i != 0 { (i as f32).ln() } else { 0.0 };
-                    let j = if j != 0 { (j as f32).ln() } else { 0.0 };
-                    1024 * (0.4 + i * j / 3.5) as i32
-                })),
+                syzygy_depth: 1,
             },
             main_ctx: ThreadContext {
                 qnodes: BatchedAtomicCounter::new(),

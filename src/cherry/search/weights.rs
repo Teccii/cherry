@@ -1,4 +1,47 @@
-#[cfg(feature = "tune")] use std::cell::SyncUnsafeCell;
+use std::cell::SyncUnsafeCell;
+use crate::MAX_PLY;
+
+
+/*----------------------------------------------------------------*/
+
+type LmrLookup = [[i32; MAX_PLY as usize]; MAX_PLY as usize];
+
+pub static LMR_QUIET: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
+pub static LMR_TACTICAL: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
+
+pub fn get_lmr(is_tactical: bool, depth: u8, moves_seen: u16) -> i32 {
+    if is_tactical {
+        unsafe { (*LMR_TACTICAL.get())[depth as usize][moves_seen as usize] }
+    } else {
+        unsafe { (*LMR_QUIET.get())[depth as usize][moves_seen as usize] }
+    }
+}
+
+pub fn init_lmr() {
+    let mut quiet_table = [[0; MAX_PLY as usize]; MAX_PLY as usize];
+    let mut tactical_table = [[0; MAX_PLY as usize]; MAX_PLY as usize];
+
+    let (quiet_base, quiet_div) = (W::lmr_quiet_base(), W::lmr_quiet_div());
+    let (tactical_base, tactical_div) = (W::lmr_tactical_base(), W::lmr_tactical_div());
+
+    for i in 0..MAX_PLY as usize {
+        for j in 0..MAX_PLY as usize {
+            let x = if i != 0 { (i as f32).ln() } else { 0.0 };
+            let y = if j != 0 { (j as f32).ln() } else { 0.0 };
+
+            quiet_table[i][j] = 1024 * (quiet_base + x * y / quiet_div) as i32;
+            tactical_table[i][j] = 1024 * (tactical_base + x * y / tactical_div) as i32;
+        }
+    }
+
+    unsafe {
+        let lmr_quiet: &mut LmrLookup = &mut *LMR_QUIET.get();
+        let lmr_tactical: &mut LmrLookup = &mut *LMR_TACTICAL.get();
+
+        *lmr_quiet = quiet_table;
+        *lmr_tactical = tactical_table;
+    }
+}
 
 /*----------------------------------------------------------------*/
 
@@ -22,6 +65,8 @@ macro_rules! weights {
         }
     }
 }
+
+/*----------------------------------------------------------------*/
 
 weights! {
     pawn_corr_frac  | PAWN_CORR_FRAC:  i32 => 64,
@@ -78,6 +123,11 @@ weights! {
     cont_margin       | CONT_MARGIN:       i32 => -3600,
     futile_base       | FUTILE_BASE:       i16 => 106,
     futile_margin     | FUTILE_MARGIN:     i16 => 81,
+
+    lmr_quiet_base | LMR_QUIET_BASE: f32 => 0.5,
+    lmr_quiet_div  | LMR_QUIET_DIV: f32 => 2.5,
+    lmr_tactical_base | LMR_TACTICAL_BASE: f32 => 0.4,
+    lmr_tactical_div  | LMR_TACTICAL_DIV: f32 => 3.5,
 
     tt_pv_reduction         | TT_PV_REDUCTION:         i32 => 1024,
     tt_tactic_reduction     | TT_TACTIC_REDUCTION:     i32 => 1024,

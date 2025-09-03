@@ -264,11 +264,7 @@ pub fn search<Node: NodeType>(
         the worst moves will be ordered near the end, and we don't want to waste too much
         time on them.
         */
-        let mut reduction = if is_tactical {
-            shared_ctx.lmr_tactical.get(depth as usize, moves_seen as usize)
-        } else {
-            shared_ctx.lmr_quiet.get(depth as usize, moves_seen as usize)
-        };
+        let mut reduction = get_lmr(is_tactical, depth, moves_seen);
         let mut extension: i16 = 0;
         let mut score;
 

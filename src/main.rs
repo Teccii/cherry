@@ -13,6 +13,8 @@ use cherry::*;
 /*----------------------------------------------------------------*/
 
 fn main() {
+    init_lmr();
+
     let mut buffer = String::new();
     let mut engine = Engine::new();
     let args = env::args()

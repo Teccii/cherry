@@ -245,6 +245,10 @@ impl Engine {
                     CONT_MARGIN       => W::cont_margin(),      -16384, 0;
                     FUTILE_BASE       => W::futile_base(),           0, 2048;
                     FUTILE_MARGIN     => W::futile_margin(),         0, 2048;
+                    LMR_QUIET_BASE    => W::lmr_quiet_base(),    -1.0, 1.0;
+                    LMR_QUIET_DIV     => W::lmr_quiet_div(),      0.1, 10.0;
+                    LMR_TACTICAL_BASE => W::lmr_tactical_base(), -1.0, 1.0;
+                    LMR_TACTICAL_DIV  => W::lmr_tactical_div(),   0.1, 10.0;
                     TT_PV_REDUCTION         => W::tt_pv_reduction(),         0, 4096;
                     TT_TACTIC_REDUCTION     => W::tt_tactic_reduction(),     0, 4096;
                     HIGH_CORR_REDUCTION     => W::high_corr_reduction(),     0, 4096;
@@ -338,6 +342,10 @@ impl Engine {
                     CONT_MARGIN:       i16 => W::cont_margin(),       -16384, 0;
                     FUTILE_BASE:       i16 => W::futile_base(),            0, 2048;
                     FUTILE_MARGIN:     i16 => W::futile_margin(),          0, 2048;
+                    LMR_QUIET_BASE:    f32 => W::lmr_quiet_base(),    -1.0, 1.0;
+                    LMR_QUIET_DIV:     f32 => W::lmr_quiet_div(),      0.1, 10.0;
+                    LMR_TACTICAL_BASE: f32 => W::lmr_tactical_base(), -1.0, 1.0;
+                    LMR_TACTICAL_DIV:  f32 => W::lmr_tactical_div(),   0.1, 10.0;
                     TT_PV_REDUCTION:         i16 => W::tt_pv_reduction(),         0, 4096;
                     TT_TACTIC_REDUCTION:     i16 => W::tt_tactic_reduction(),     0, 4096;
                     HIGH_CORR_REDUCTION:     i16 => W::high_corr_reduction(),     0, 4096;
@@ -439,6 +447,10 @@ impl Engine {
                     "CONT_MARGIN"       => CONT_MARGIN,       i32;
                     "FUTILE_BASE"       => FUTILE_BASE,       i16;
                     "FUTILE_MARGIN"     => FUTILE_MARGIN,     i16;
+                    "LMR_QUIET_BASE"    => LMR_QUIET_BASE,    f32;
+                    "LMR_QUIET_DIV"     => LMR_QUIET_DIV,     f32;
+                    "LMR_TACTICAL_BASE" => LMR_TACTICAL_BASE, f32;
+                    "LMR_TACTICAL_DIV"  => LMR_TACTICAL_DIV,  f32;
                     "TT_PV_REDUCTION"         => TT_PV_REDUCTION,         i32;
                     "TT_TACTIC_REDUCTION"     => TT_TACTIC_REDUCTION,     i32;
                     "HIGH_CORR_REDUCTION"     => HIGH_CORR_REDUCTION,     i32;
@@ -449,6 +461,12 @@ impl Engine {
                     "CUT_NODE_REDUCTION"      => CUT_NODE_REDUCTION,      i32;
                     "NON_PV_REDUCTION"        => NON_PV_REDUCTION,        i32;
                     "CHECK_REDUCTION"         => CHECK_REDUCTION,         i32;
+                }
+
+                #[cfg(feature = "tune")]
+                match name.as_str() {
+                    "LMR_QUIET_BASE" | "LMR_QUIET_DIV" | "LMR_TACTICAL_BASE" | "LMR_TACTICAL_DIV" => init_lmr(),
+                    _ => { }
                 }
 
                 self.sender.send(ThreadCommand::SetOption(
