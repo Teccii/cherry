@@ -30,6 +30,7 @@ pub enum UciCommand {
         threads: usize,
         dfrc: bool,
     },
+    #[cfg(feature = "tune")] PrintSpsa,
     Stop,
     Quit
 }
@@ -71,6 +72,7 @@ impl UciCommand {
             "quit" | "q" => Ok(UciCommand::Quit),
             "display" | "d" => Ok(UciCommand::Display),
             "ponderhit" => Ok(UciCommand::PonderHit),
+            #[cfg(feature = "tune")] "spsa" => Ok(UciCommand::PrintSpsa),
             "bench" => Ok(UciCommand::Bench {
                 depth: reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(12),
                 threads: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1),

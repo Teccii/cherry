@@ -1,5 +1,6 @@
-#[cfg(feature = "tune")]
-use std::cell::SyncUnsafeCell;
+#[cfg(feature = "tune")] use std::cell::SyncUnsafeCell;
+
+/*----------------------------------------------------------------*/
 
 macro_rules! weights {
     ($($name:ident | $tunable:ident : $ty:ty => $default:expr,)*) => {
@@ -78,15 +79,15 @@ weights! {
     futile_base       | FUTILE_BASE:       i16 => 106,
     futile_margin     | FUTILE_MARGIN:     i16 => 81,
 
-    tt_pv_reduction         | TT_PV_REDUCTION:         i32 => 926,
+    tt_pv_reduction         | TT_PV_REDUCTION:         i32 => 1024,
     tt_tactic_reduction     | TT_TACTIC_REDUCTION:     i32 => 1024,
     high_corr_reduction     | HIGH_CORR_REDUCTION:     i32 => 1024,
     high_corr_threshold     | HIGH_CORR_THRESHOLD:     i32 => 128,
     hist_tactic_reduction   | HIST_TACTIC_REDUCTION:   i32 => 32,
     hist_quiet_reduction    | HIST_QUIET_REDUCTION:    i32 => 32,
-    not_improving_reduction | NOT_IMPROVING_REDUCTION: i32 => 926,
+    not_improving_reduction | NOT_IMPROVING_REDUCTION: i32 => 1024,
     cut_node_reduction      | CUT_NODE_REDUCTION:      i32 => 1024,
-    non_pv_reduction        | NON_PV_REDUCTION:        i32 => 926,
+    non_pv_reduction        | NON_PV_REDUCTION:        i32 => 1024,
     check_reduction         | CHECK_REDUCTION:         i32 => 1024,
 }
 

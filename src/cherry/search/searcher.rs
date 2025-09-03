@@ -83,7 +83,6 @@ pub struct MoveData {
     pub promotion: Option<Piece>,
     pub from: Square,
     pub to: Square,
-
 }
 
 impl MoveData {
