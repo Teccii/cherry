@@ -242,8 +242,7 @@ impl Engine {
                     BISHOP_MAT_SCALE => W::bishop_mat_scale(), 1, 4096;
                     ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
-                    MAT_SCALE_BASE   => W::mat_scale_base(),   1, 65536;
-                    MAT_SCALE_DIV    => W::mat_scale_div(),    1, 65536;
+                    MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
                     RFP_MARGIN        => W::rfp_margin(),            0, 2048;
                     SEE_QUIET_MARGIN  => W::see_quiet_margin(),  -2048, 0;
                     SEE_TACTIC_MARGIN => W::see_tactic_margin(), -2048, 0;
@@ -304,7 +303,7 @@ impl Engine {
                     QUIET_BONUS_MAX  => W::quiet_bonus_max(),     1, 8192;
                     QUIET_MALUS_BASE => W::quiet_malus_base(), -512, 512;
                     QUIET_MALUS_MUL  => W::quiet_malus_mul(),  -512, 512;
-                    QUIET_MALUS_MAX   => W::quiet_malus_max(),    1, 8192;
+                    QUIET_MALUS_MAX  => W::quiet_malus_max(),     1, 8192;
                     TACTIC_BONUS_BASE => W::tactic_bonus_base(), -512, 512;
                     TACTIC_BONUS_MUL  => W::tactic_bonus_mul(),  -512, 512;
                     TACTIC_BONUS_MAX  => W::tactic_bonus_max(),     1, 8192;
@@ -339,8 +338,7 @@ impl Engine {
                     BISHOP_MAT_SCALE => W::bishop_mat_scale(), 1, 4096;
                     ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
-                    MAT_SCALE_BASE   => W::mat_scale_base(),   1, 65536;
-                    MAT_SCALE_DIV    => W::mat_scale_div(),    1, 65536;
+                    MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
                     RFP_MARGIN        => W::rfp_margin(),             0, 2048;
                     SEE_QUIET_MARGIN  => W::see_quiet_margin(),   -2048, 0;
                     SEE_TACTIC_MARGIN => W::see_tactic_margin(),  -2048, 0;
@@ -450,7 +448,6 @@ impl Engine {
                     "ROOK_MAT_SCALE"   => ROOK_MAT_SCALE,   i32;
                     "QUEEN_MAT_SCALE"  => QUEEN_MAT_SCALE,  i32;
                     "MAT_SCALE_BASE"   => MAT_SCALE_BASE,   i32;
-                    "MAT_SCALE_DIV"    => MAT_SCALE_DIV,    i32;
                     "RFP_MARGIN"        => RFP_MARGIN,        i16;
                     "SEE_QUIET_MARGIN"  => SEE_QUIET_MARGIN,  i16;
                     "SEE_TACTIC_MARGIN" => SEE_TACTIC_MARGIN, i16;
@@ -542,7 +539,7 @@ impl Engine {
                     let new_board = builder.build().unwrap();
                     searcher.pos.set_board(new_board, &searcher.shared_ctx.weights);
 
-                    diffs[sq as usize] = if !limits.is_empty() {
+                    diffs[sq as usize] = if do_search {
                         (score - searcher.search::<NoInfo>(limits.clone()).2).0
                     } else {
                         (score - searcher.pos.eval(&searcher.shared_ctx.weights).0).0

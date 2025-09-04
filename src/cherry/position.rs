@@ -78,7 +78,6 @@ impl Position {
         self.nnue.make_move(self.board_history.last().unwrap(), &self.board, weights, mv);
     }
 
-
     #[inline]
     pub fn null_move(&mut self) -> bool {
         if let Some(new_board) = self.board.null_move() {
@@ -116,7 +115,7 @@ impl Position {
             + W::bishop_mat_scale() * self.board.pieces(Piece::Bishop).popcnt() as i32
             + W::rook_mat_scale() * self.board.pieces(Piece::Rook).popcnt() as i32
             + W::queen_mat_scale() * self.board.pieces(Piece::Queen).popcnt() as i32;
-        eval = (i32::from(eval) * (W::mat_scale_base() + material) / W::mat_scale_div()) as i16;
+        eval = (i32::from(eval) * (W::mat_scale_base() + material) / 32768) as i16;
 
         Score::new(eval.clamp(-Score::MIN_TB_WIN.0 + 1, Score::MIN_TB_WIN.0 - 1))
     }
