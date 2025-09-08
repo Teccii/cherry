@@ -1,1 +1,1 @@
-fastchess -engine cmd=cherry-dev name=CherryDev -engine cmd=cherry-main name=CherryMain -each tc=40+0.4 option.Hash=64 -sprt elo0=0.0 elo1=5.0 alpha=0.05 beta=0.05 -rounds 5000 -repeat -concurrency 16 -openings order=random format=epd file=data/epds/UHO_Lichess.epd -recover
+fastchess -engine cmd=cherry-dev name=CherryDev -engine cmd=cherry-main name=CherryMain -each tc=40+0.4 option.Hash=64 -sprt elo0=0.0 elo1=5.0 alpha=0.05 beta=0.05 -rounds 500000 -repeat -concurrency 16 -openings order=random format=epd file=data/epds/UHO_Lichess.epd -recover

@@ -58,13 +58,16 @@ impl NetworkWeights {
         unsafe {
             let ptr = Arc::get_mut(&mut weights).unwrap().as_mut_ptr();
 
-            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).ft_weights).cast(), INPUT * HL * I16_SIZE);
-            bytes = &bytes[(INPUT * HL * I16_SIZE)..];
-            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).ft_bias).cast(), HL * I16_SIZE);
-            bytes = &bytes[(HL * I16_SIZE)..];
-            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_weights).cast(), L1 * NUM_OUTPUT_BUCKETS * I16_SIZE);
-            bytes = &bytes[(L1 * NUM_OUTPUT_BUCKETS * I16_SIZE)..];
-            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_bias).cast(), NUM_OUTPUT_BUCKETS * I16_CHUNK);
+            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).ft_weights).cast(), I16_SIZE * INPUT * HL);
+            bytes = &bytes[(I16_SIZE * INPUT * HL)..];
+
+            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).ft_bias).cast(), I16_SIZE * HL);
+            bytes = &bytes[(I16_SIZE * HL)..];
+
+            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_weights).cast(), I16_SIZE * L1 * NUM_OUTPUT_BUCKETS);
+            bytes = &bytes[(I16_SIZE * L1 * NUM_OUTPUT_BUCKETS)..];
+
+            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_bias).cast(), I16_SIZE * NUM_OUTPUT_BUCKETS);
         };
 
         unsafe { weights.assume_init() }
