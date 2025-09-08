@@ -101,13 +101,6 @@ weights! {
     cont2_malus_mul  | CONT2_MALUS_MUL:  i32 => 134,
     cont2_malus_max  | CONT2_MALUS_MAX:  i32 => 2166,
 
-    cont3_bonus_base | CONT3_BONUS_BASE: i32 => 120,
-    cont3_bonus_mul  | CONT3_BONUS_MUL:  i32 => 137,
-    cont3_bonus_max  | CONT3_BONUS_MAX:  i32 => 2222,
-    cont3_malus_base | CONT3_MALUS_BASE: i32 => 133,
-    cont3_malus_mul  | CONT3_MALUS_MUL:  i32 => 148,
-    cont3_malus_max  | CONT3_MALUS_MAX:  i32 => 2112,
-
     pawn_see_value   | PAWN_SEE_VALUE:   i16 => 101,
     knight_see_value | KNIGHT_SEE_VALUE: i16 => 324,
     bishop_see_value | BISHOP_SEE_VALUE: i16 => 332,

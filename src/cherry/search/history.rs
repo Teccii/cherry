@@ -40,7 +40,6 @@ fn delta(depth: u8, base: i32, mul: i32, max: i32) -> i32 {
 #[derive(Debug, Clone)]
 pub struct ContIndices {
     pub counter_move: Option<MoveData>,
-    pub counter_move2: Option<MoveData>,
     pub follow_up: Option<MoveData>,
 }
 
@@ -49,7 +48,6 @@ impl ContIndices {
     pub fn new(ss: &[SearchStack], ply: u16) -> ContIndices {
         ContIndices {
             counter_move: (ply >= 1).then(|| ss[ply as usize - 1].move_played).flatten(),
-            counter_move2: (ply >= 3).then(|| ss[ply as usize - 3].move_played).flatten(),
             follow_up: (ply >= 2).then(|| ss[ply as usize - 2].move_played).flatten(),
         }
     }
@@ -190,7 +188,6 @@ impl History {
     ) -> i32 {
         self.get_quiet(board, mv)
             + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default()
-            + self.get_counter_move(board, mv, indices.counter_move2).unwrap_or_default()
             + self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default()
     }
 
@@ -258,20 +255,6 @@ impl History {
                     History::update_value(
                         self.get_follow_up_mut(board, mv, indices.follow_up).unwrap(),
                         -delta(depth, W::cont2_malus_base(), W::cont2_malus_mul(), W::cont2_malus_max()),
-                    );
-                }
-            }
-
-            if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move2) {
-                History::update_value(
-                    value,
-                    delta(depth, W::cont3_bonus_base(), W::cont3_bonus_mul(), W::cont3_bonus_max()),
-                );
-
-                for &mv in quiets {
-                    History::update_value(
-                        self.get_counter_move_mut(board, mv, indices.counter_move2).unwrap(),
-                        -delta(depth, W::cont3_malus_base(), W::cont3_malus_mul(), W::cont3_malus_max()),
                     );
                 }
             }
