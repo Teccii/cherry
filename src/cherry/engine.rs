@@ -274,6 +274,12 @@ impl Engine {
 
                 println!("{}", board.pretty_print(self.chess960));
             },
+            UciCommand::Eval => {
+                let mut searcher = self.searcher.lock().unwrap();
+                let searcher = &mut *searcher;
+
+                println!("Eval: {:#}", searcher.pos.eval(&searcher.shared_ctx.weights));
+            }
             #[cfg(feature = "tune")] UciCommand::PrintSpsa => {
                 macro_rules! print_spsa {
                     ($($name:ident => $default:expr, $min:expr, $max:expr;)*) => {$(

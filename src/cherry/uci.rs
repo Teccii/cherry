@@ -19,6 +19,7 @@ pub enum UciCommand {
         name: String,
         value: String,
     },
+    Eval,
     Display,
     Bench {
         depth: u8,
@@ -70,6 +71,7 @@ impl UciCommand {
             "isready" => Ok(UciCommand::IsReady),
             "stop" => Ok(UciCommand::Stop),
             "quit" | "q" => Ok(UciCommand::Quit),
+            "eval" => Ok(UciCommand::Eval),
             "display" | "d" => Ok(UciCommand::Display),
             "ponderhit" => Ok(UciCommand::PonderHit),
             #[cfg(feature = "tune")] "spsa" => Ok(UciCommand::PrintSpsa),
