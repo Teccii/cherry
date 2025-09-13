@@ -19,11 +19,14 @@ fn main() {
     let mut engine = Engine::new();
     let args = env::args()
         .skip(1)
-        .collect::<Vec<String>>()
-        .join(" ");
+        .collect::<Vec<String>>();
 
     if !args.is_empty() {
-        engine.input(args.trim(), args.len());
+        for cmd in args {
+            let cmd = cmd.trim();
+            engine.input(cmd, cmd.len());
+        }
+
         return;
     }
 

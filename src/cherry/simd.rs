@@ -6,7 +6,12 @@ mod simd {
     pub const I32_CHUNK: usize = size_of::<__m512i>() / size_of::<i32>();
 
     #[inline]
-    pub fn zero() -> __m512i {
+    pub fn zero_i16() -> __m512i {
+        unsafe { _mm512_setzero_si512() }
+    }
+
+    #[inline]
+    pub fn zero_i32() -> __m512i {
         unsafe { _mm512_setzero_si512() }
     }
 
@@ -152,8 +157,8 @@ mod simd {
 
 #[cfg(all(
     not(target_feature = "avx2"),
-    not(target_feature = "avx512f"))
-)]
+    not(target_feature = "avx512f")
+))]
 mod simd {
     use ::core::arch::x86_64::*;
 

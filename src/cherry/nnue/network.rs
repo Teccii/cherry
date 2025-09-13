@@ -44,10 +44,8 @@ pub struct NetworkWeights {
 }
 
 impl NetworkWeights {
-    pub fn new(mut bytes: &[u8]) -> Arc<NetworkWeights> {
-        const I16_SIZE: usize = size_of::<i16>();
-
-        assert_eq!(bytes.len(), (I16_SIZE * (INPUT * HL + HL + L1 * NUM_OUTPUT_BUCKETS + NUM_OUTPUT_BUCKETS)).next_multiple_of(64));
+    pub fn new(bytes: &[u8]) -> Arc<NetworkWeights> {
+        assert_eq!(bytes.len(), size_of::<NetworkWeights>());
         
         /*
         Required for larger networks, otherwise we would overflow the stack
@@ -57,17 +55,7 @@ impl NetworkWeights {
         let mut weights: Arc<MaybeUninit<NetworkWeights>> = Arc::new_uninit();
         unsafe {
             let ptr = Arc::get_mut(&mut weights).unwrap().as_mut_ptr();
-
-            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).ft_weights).cast(), I16_SIZE * INPUT * HL);
-            bytes = &bytes[(I16_SIZE * INPUT * HL)..];
-
-            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).ft_bias).cast(), I16_SIZE * HL);
-            bytes = &bytes[(I16_SIZE * HL)..];
-
-            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_weights).cast(), I16_SIZE * L1 * NUM_OUTPUT_BUCKETS);
-            bytes = &bytes[(I16_SIZE * L1 * NUM_OUTPUT_BUCKETS)..];
-
-            ptr::copy(bytes.as_ptr(), ptr::addr_of_mut!((*ptr).out_bias).cast(), I16_SIZE * NUM_OUTPUT_BUCKETS);
+            ptr::copy(bytes.as_ptr(), ptr.cast(), size_of::<NetworkWeights>());
         };
 
         unsafe { weights.assume_init() }
