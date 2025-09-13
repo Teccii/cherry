@@ -34,7 +34,7 @@ pub fn search<Node: NodeType>(
     pos: &mut Position,
     ctx: &mut ThreadContext,
     shared_ctx: &SharedContext,
-    depth: u8,
+    mut depth: u8,
     ply: u16,
     mut alpha: Score,
     mut beta: Score,
@@ -181,6 +181,14 @@ pub fn search<Node: NodeType>(
     let tt_tactic = best_move.is_some_and(|mv| pos.board().is_tactical(mv));
 
     ctx.ss[ply as usize].eval = raw_eval;
+
+    /*
+    Corrplexity Extension: Extend the search if
+    the static evaluation correction is very high.
+    */
+    if corr.abs() > W::high_corr_threshold() && tt_entry.and_then(|e| e.table_mv).is_some() {
+        depth += 1;
+    }
 
     if !Node::PV && !in_check && skip_move.is_none() {
         /*
