@@ -147,12 +147,7 @@ impl MovePicker {
                         continue;
                     }
 
-                    let score = history.get_tactical(board, mv);
-                    if pos.cmp_see(mv, 0)  {
-                        self.good_tactics.push(ScoredMove(mv, score));
-                    } else {
-                        self.bad_tactics.push(ScoredMove(mv, score));
-                    }
+                    self.good_tactics.push(ScoredMove(mv, history.get_tactical(board, mv)));
                 }
             }
         }
@@ -160,8 +155,15 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.phase == Phase::YieldGoodTactics {
-            if let Some(index) = select_next_32(&self.good_tactics) {
-                return swap_pop(&mut self.good_tactics, index).map(|mv| mv.0);
+            while let Some(index) = select_next_32(&self.good_tactics) {
+                let mv = swap_pop(&mut self.good_tactics, index).unwrap();
+
+                if pos.cmp_see(mv.0, 0) {
+                    return Some(mv.0);
+                } else {
+                    self.bad_tactics.push(mv);
+                    continue;
+                }
             }
             
             self.phase = Phase::GenQuiets;
