@@ -110,12 +110,19 @@ impl MovePicker {
 
     /*----------------------------------------------------------------*/
     
-    pub fn next(&mut self, pos: &mut Position, history: &History, indices: &ContIndices) -> Option<Move> {
+    pub fn next(&mut self, pos: &mut Position, history: &History, indices: &ContIndices) -> Option<ScoredMove> {
         if self.phase == Phase::HashMove {
             self.phase = Phase::GenPieceMoves;
             
-            if self.hash_move.is_some() {
-                return self.hash_move;
+            if let Some(mv) = self.hash_move {
+                let board = pos.board();
+                let score = if board.is_tactic(mv) {
+                    history.get_tactic(board, mv, pos.cmp_see(mv, 0))
+                } else {
+                    history.get_quiet_total(board, mv, indices)
+                };
+
+                return Some(ScoredMove(mv, score));
             }
         }
 
@@ -147,7 +154,7 @@ impl MovePicker {
                         continue;
                     }
 
-                    self.good_tactics.push(ScoredMove(mv, history.get_tactic(board, mv)));
+                    self.good_tactics.push(ScoredMove(mv, history.get_tactic(board, mv, true)));
                 }
             }
         }
@@ -159,9 +166,9 @@ impl MovePicker {
                 let mv = swap_pop(&mut self.good_tactics, index).unwrap();
 
                 if pos.cmp_see(mv.0, 0) {
-                    return Some(mv.0);
+                    return Some(mv);
                 } else {
-                    self.bad_tactics.push(mv);
+                    self.bad_tactics.push(ScoredMove(mv.0, history.get_tactic(pos.board(), mv.0, false)));
                     continue;
                 }
             }
@@ -195,7 +202,7 @@ impl MovePicker {
 
         if self.phase == Phase::YieldQuiets {
             if let Some(index) = select_next_64(&self.quiets) {
-                return swap_pop(&mut self.quiets, index).map(|mv| mv.0);
+                return swap_pop(&mut self.quiets, index);
             }
             
             self.phase = Phase::YieldBadTactics;
@@ -205,7 +212,7 @@ impl MovePicker {
 
         if self.phase == Phase::YieldBadTactics {
             if let Some(index) = select_next_32(&self.bad_tactics) {
-                return swap_pop(&mut self.bad_tactics, index).map(|mv| mv.0);
+                return swap_pop(&mut self.bad_tactics, index);
             }
             
             self.phase = Phase::Finished;
@@ -267,7 +274,7 @@ impl QMovePicker {
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
                     let score = if board.is_tactic(mv) {
-                        history.get_tactic(board, mv)
+                        history.get_tactic(board, mv, true)
                     } else {
                         history.get_quiet_total(board, mv, indices)
                     };
@@ -296,7 +303,7 @@ impl QMovePicker {
                 mask_tactics(&mut moves, their_pieces, ep_square);
 
                 for mv in moves {
-                    self.tactics.push(ScoredMove(mv, history.get_tactic(board, mv)));
+                    self.tactics.push(ScoredMove(mv, history.get_tactic(board, mv, true)));
                 }
             }
 

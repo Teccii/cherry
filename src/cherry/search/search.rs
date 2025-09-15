@@ -234,11 +234,12 @@ pub fn search<Node: NodeType>(
     let mut moves_seen = 0;
     let mut move_exists = false;
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
-    let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
+    let mut good_tactics: SmallVec<[Move; 32]> = SmallVec::new();
+    let mut bad_tactics: SmallVec<[Move; 32]> = SmallVec::new();
     let mut move_picker = MovePicker::new(best_move);
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
-    while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
+    while let Some(ScoredMove(mv, stat_score)) = move_picker.next(pos, &ctx.history, &cont_indices) {
         if skip_move == Some(mv) {
             continue;
         }
@@ -249,12 +250,7 @@ pub fn search<Node: NodeType>(
         }
 
         let nodes = ctx.nodes.local();
-        let is_tactical = pos.board().is_tactic(mv);
-        let stat_score = if is_tactical {
-            ctx.history.get_tactic(pos.board(), mv)
-        } else {
-            ctx.history.get_quiet_total(pos.board(), mv, &cont_indices)
-        };
+        let is_tactical = move_picker.phase() != Phase::YieldQuiets;
         
         ctx.ss[ply as usize].stat_score = stat_score;
 
@@ -449,7 +445,16 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             if !ctx.abort_now {
-                ctx.history.update(pos.board(), &cont_indices, mv, &quiets, &tactics, depth);
+                ctx.history.update(
+                    pos.board(),
+                    &cont_indices,
+                    mv,
+                    move_picker.phase() == Phase::YieldGoodTactics,
+                    &quiets,
+                    &good_tactics,
+                    &bad_tactics,
+                    depth
+                );
             }
             
             break;
@@ -457,7 +462,11 @@ pub fn search<Node: NodeType>(
         
         if Some(mv) != best_move {
             if is_tactical {
-                tactics.push(mv);
+                if move_picker.phase() == Phase::YieldGoodTactics {
+                    good_tactics.push(mv);
+                } else {
+                    bad_tactics.push(mv);
+                }
             } else {
                 quiets.push(mv);
             }
