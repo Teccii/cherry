@@ -13,10 +13,6 @@ const PAWN_CORR_SIZE: usize = 1024;
 
 pub type MoveTo<T> = [[T; Square::COUNT]; Square::COUNT];
 pub type PieceTo<T> = [[T; Square::COUNT]; Piece::COUNT];
-pub type ButterflyTable = [MoveTo<i32>; Color::COUNT];
-pub type PieceToTable = [PieceTo<i32>; Color::COUNT];
-pub type ContinuationTable = [PieceTo<PieceTo<i32>>; Color::COUNT];
-pub type CorrectionTable<const SIZE: usize> = [[i32; SIZE]; Color::COUNT];
 
 /*----------------------------------------------------------------*/
 
@@ -55,33 +51,33 @@ impl ContIndices {
 
 #[derive(Debug, Clone)]
 pub struct History {
-    quiets: Box<ButterflyTable>,
-    tactical: Box<PieceToTable>,
-    counter_move: Box<ContinuationTable>, //use for 1-ply, 3-ply, 5-ply, etc.
-    follow_up: Box<ContinuationTable>, //use for 2-ply, 4-ply, 6-ply, etc.
-    minor_corr: Box<CorrectionTable<MINOR_CORR_SIZE>>,
-    major_corr: Box<CorrectionTable<MAJOR_CORR_SIZE>>,
-    pawn_corr: Box<CorrectionTable<PAWN_CORR_SIZE>>,
+    quiets:  Box<[MoveTo<i32>; Color::COUNT]>,  //Indexing: [stm][from][to]
+    tactics: Box<[PieceTo<i32>; Color::COUNT]>, //Indexing: [stm][piece][to]
+    counter_move: Box<[PieceTo<PieceTo<i32>>; Color::COUNT]>, //use for 1-ply, 3-ply, 5-ply, etc. Indexing: [stm][prev piece][prev to][piece][to]
+    follow_up:    Box<[PieceTo<PieceTo<i32>>; Color::COUNT]>, //use for 2-ply, 4-ply, 6-ply, etc. Indexing: [stm][prev piece][prev to][piece][to]
+    minor_corr: Box<[[i32; MINOR_CORR_SIZE]; Color::COUNT]>, //Indexing: [stm][minor hash % size]
+    major_corr: Box<[[i32; MAJOR_CORR_SIZE]; Color::COUNT]>, //Indexing: [stm][major hash % size]
+    pawn_corr:  Box<[[i32; PAWN_CORR_SIZE]; Color::COUNT]>,  //Indexing: [stm][pawn hash % size]
 }
 
 impl History {
     #[inline]
     pub fn new() -> History {
         History {
-            quiets: Box::new([move_to(0); Color::COUNT]),
-            tactical: Box::new([piece_to(0); Color::COUNT]),
+            quiets:  Box::new([move_to(0); Color::COUNT]),
+            tactics: Box::new([piece_to(0); Color::COUNT]),
             counter_move: Box::new([piece_to(piece_to(0)); Color::COUNT]),
-            follow_up: Box::new([piece_to(piece_to(0)); Color::COUNT]),
+            follow_up:    Box::new([piece_to(piece_to(0)); Color::COUNT]),
             minor_corr: Box::new([[0; MINOR_CORR_SIZE]; Color::COUNT]),
             major_corr: Box::new([[0; MAJOR_CORR_SIZE]; Color::COUNT]),
-            pawn_corr: Box::new([[0; PAWN_CORR_SIZE]; Color::COUNT]),
+            pawn_corr:  Box::new([[0; PAWN_CORR_SIZE]; Color::COUNT]),
         }
     }
 
     #[inline]
     pub fn reset(&mut self) {
         self.quiets.fill(move_to(0));
-        self.tactical.fill(piece_to(0));
+        self.tactics.fill(piece_to(0));
         self.counter_move.fill(piece_to(piece_to(0)));
         self.follow_up.fill(piece_to(piece_to(0)));
         self.minor_corr.fill([0; MINOR_CORR_SIZE]);
@@ -108,15 +104,15 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_tactical(&self, board: &Board, mv: Move) -> i32 {
-        self.tactical[board.stm() as usize]
+    pub fn get_tactic(&self, board: &Board, mv: Move) -> i32 {
+        self.tactics[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
             [mv.to() as usize]
     }
 
     #[inline]
-    fn get_tactical_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
-        &mut self.tactical[board.stm() as usize]
+    fn get_tactic_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
+        &mut self.tactics[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
             [mv.to() as usize]
     }
@@ -180,7 +176,7 @@ impl History {
     /*----------------------------------------------------------------*/
     
     #[inline]
-    pub fn get_non_tactical(
+    pub fn get_quiet_total(
         &self,
         board: &Board,
         mv: Move,
@@ -213,9 +209,9 @@ impl History {
         tactics: &[Move],
         depth: u8
     ) {
-        if board.is_tactical(best_move) {
+        if board.is_tactic(best_move) {
             History::update_value(
-                self.get_tactical_mut(board, best_move),
+                self.get_tactic_mut(board, best_move),
                 delta(depth, W::tactic_bonus_base(), W::tactic_bonus_mul(), W::tactic_bonus_max())
             );
         } else {
@@ -262,7 +258,7 @@ impl History {
 
         for &mv in tactics {
             History::update_value(
-                self.get_tactical_mut(board, mv),
+                self.get_tactic_mut(board, mv),
                 -delta(depth, W::tactic_malus_base(), W::tactic_malus_mul(), W::tactic_malus_max())
             );
         }

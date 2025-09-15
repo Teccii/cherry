@@ -178,7 +178,7 @@ pub fn search<Node: NodeType>(
     let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
     let prev_eval = (ply >= 2).then(|| ctx.ss[ply as usize - 2].eval);
     let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
-    let tt_tactic = best_move.is_some_and(|mv| pos.board().is_tactical(mv));
+    let tt_tactic = best_move.is_some_and(|mv| pos.board().is_tactic(mv));
 
     ctx.ss[ply as usize].eval = raw_eval;
 
@@ -249,11 +249,11 @@ pub fn search<Node: NodeType>(
         }
 
         let nodes = ctx.nodes.local();
-        let is_tactical = pos.board().is_tactical(mv);
+        let is_tactical = pos.board().is_tactic(mv);
         let stat_score = if is_tactical {
-            ctx.history.get_tactical(pos.board(), mv)
+            ctx.history.get_tactic(pos.board(), mv)
         } else {
-            ctx.history.get_non_tactical(pos.board(), mv, &cont_indices)
+            ctx.history.get_quiet_total(pos.board(), mv, &cont_indices)
         };
         
         ctx.ss[ply as usize].stat_score = stat_score;
@@ -490,7 +490,7 @@ pub fn search<Node: NodeType>(
             _ => TTBound::Exact,
         };
 
-        let is_tactic = best_move.is_some_and(|mv| pos.board().is_tactical(mv));
+        let is_tactic = best_move.is_some_and(|mv| pos.board().is_tactic(mv));
         if !in_check && !is_tactic && match flag {
             TTBound::Exact => true,
             TTBound::UpperBound => best_score < static_eval,

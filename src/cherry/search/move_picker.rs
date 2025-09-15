@@ -147,7 +147,7 @@ impl MovePicker {
                         continue;
                     }
 
-                    self.good_tactics.push(ScoredMove(mv, history.get_tactical(board, mv)));
+                    self.good_tactics.push(ScoredMove(mv, history.get_tactic(board, mv)));
                 }
             }
         }
@@ -184,7 +184,7 @@ impl MovePicker {
                         continue;
                     }
 
-                    self.quiets.push(ScoredMove(mv, history.get_non_tactical(board, mv, indices)));
+                    self.quiets.push(ScoredMove(mv, history.get_quiet_total(board, mv, indices)));
                 }
             }
 
@@ -266,10 +266,10 @@ impl QMovePicker {
             let board = pos.board();
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
-                    let score = if board.is_tactical(mv) {
-                        history.get_tactical(board, mv)
+                    let score = if board.is_tactic(mv) {
+                        history.get_tactic(board, mv)
                     } else {
-                        history.get_non_tactical(board, mv, indices)
+                        history.get_quiet_total(board, mv, indices)
                     };
                     
                     self.evasions.push(ScoredMove(mv, score));
@@ -296,7 +296,7 @@ impl QMovePicker {
                 mask_tactics(&mut moves, their_pieces, ep_square);
 
                 for mv in moves {
-                    self.tactics.push(ScoredMove(mv, history.get_tactical(board, mv)));
+                    self.tactics.push(ScoredMove(mv, history.get_tactic(board, mv)));
                 }
             }
 

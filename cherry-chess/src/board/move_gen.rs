@@ -328,13 +328,13 @@ impl Board {
     }
 
     #[inline]
-    pub fn is_tactical(&self, mv: Move) -> bool {
+    pub fn is_tactic(&self, mv: Move) -> bool {
         self.is_capture(mv) || mv.is_promotion()
     }
 
     #[inline]
     pub fn is_quiet(&self, mv: Move) -> bool {
-        !self.is_tactical(mv)
+        !self.is_tactic(mv)
     }
 
     #[inline]
