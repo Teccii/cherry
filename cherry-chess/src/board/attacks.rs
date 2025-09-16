@@ -22,6 +22,35 @@ impl Board {
         }
     }
 
+    #[inline]
+    pub fn any_attacks(&self, sq: Square, color: Color) -> bool {
+        if !pawn_attacks(sq, !color).is_disjoint(self.color_pieces(Piece::Pawn, color)) {
+            return true;
+        }
+
+        if !knight_moves(sq).is_disjoint(self.color_pieces(Piece::Knight, color)) {
+            return true;
+        }
+
+        if !king_moves(sq).is_disjoint(self.color_pieces(Piece::King, color)) {
+            return true;
+        }
+
+        let occ = self.occupied();
+        let our_diag = self.color_diag_sliders(color);
+        if !bishop_rays(sq).is_disjoint(our_diag) && !bishop_moves(sq, occ).is_disjoint(our_diag) {
+            return true;
+        }
+
+        let our_orth = self.color_orth_sliders(color);
+        if !rook_rays(sq).is_disjoint(our_orth) && !rook_moves(sq, occ).is_disjoint(our_orth) {
+            return true;
+        }
+
+        false
+    }
+
+
     /*----------------------------------------------------------------*/
 
     //It's a surprise tool that will help us later

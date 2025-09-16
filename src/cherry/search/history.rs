@@ -31,6 +31,13 @@ fn delta(depth: u8, base: i32, mul: i32, max: i32) -> i32 {
     i32::min(base + mul * depth as i32, max)
 }
 
+#[inline]
+fn threat_index(board: &Board, mv: Move) -> usize {
+    let ntm = !board.stm();
+
+    board.any_attacks(mv.from(), ntm) as usize | ((board.any_attacks(mv.to(), ntm) as usize) << 1)
+}
+
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone)]
@@ -51,7 +58,7 @@ impl ContIndices {
 
 #[derive(Debug, Clone)]
 pub struct History {
-    quiets:  Box<[MoveTo<i32>; Color::COUNT]>,  //Indexing: [stm][from][to]
+    quiets:  Box<[[MoveTo<i32>; 4]; Color::COUNT]>,  //Indexing: [stm][threat index][from][to]
     tactics: Box<[[PieceTo<i32>; 2]; Color::COUNT]>, //Indexing: [stm][see index][piece][to]
     counter_move: Box<[PieceTo<PieceTo<i32>>; Color::COUNT]>, //use for 1-ply, 3-ply, 5-ply, etc. Indexing: [stm][prev piece][prev to][piece][to]
     follow_up:    Box<[PieceTo<PieceTo<i32>>; Color::COUNT]>, //use for 2-ply, 4-ply, 6-ply, etc. Indexing: [stm][prev piece][prev to][piece][to]
@@ -64,7 +71,7 @@ impl History {
     #[inline]
     pub fn new() -> History {
         History {
-            quiets:  Box::new([move_to(0); Color::COUNT]),
+            quiets:  Box::new([[move_to(0); 4]; Color::COUNT]),
             tactics: Box::new([[piece_to(0); 2]; Color::COUNT]),
             counter_move: Box::new([piece_to(piece_to(0)); Color::COUNT]),
             follow_up:    Box::new([piece_to(piece_to(0)); Color::COUNT]),
@@ -76,7 +83,7 @@ impl History {
 
     #[inline]
     pub fn reset(&mut self) {
-        self.quiets.fill(move_to(0));
+        self.quiets.fill([move_to(0); 4]);
         self.tactics.fill([piece_to(0); 2]);
         self.counter_move.fill(piece_to(piece_to(0)));
         self.follow_up.fill(piece_to(piece_to(0)));
@@ -90,6 +97,7 @@ impl History {
     #[inline]
     pub fn get_quiet(&self, board: &Board, mv: Move) -> i32 {
         self.quiets[board.stm() as usize]
+            [threat_index(board, mv)]
             [mv.from() as usize]
             [mv.to() as usize]
     }
@@ -97,6 +105,7 @@ impl History {
     #[inline]
     fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
         &mut self.quiets[board.stm() as usize]
+            [threat_index(board, mv)]
             [mv.from() as usize]
             [mv.to() as usize]
     }
