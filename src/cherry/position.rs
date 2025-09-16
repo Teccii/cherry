@@ -133,9 +133,9 @@ impl Position {
 
         let mut next_victim = promotion.unwrap_or_else(|| board.piece_on(from).unwrap());
         let mut balance = -threshold + match flag {
-            MoveFlag::None => board.piece_on(to).map_or(0, |p| see_value(p)),
-            MoveFlag::EnPassant => see_value(Piece::Pawn),
-            MoveFlag::Promotion => see_value(promotion.unwrap()),
+            MoveFlag::None => board.piece_on(to).map_or(0, W::see_value),
+            MoveFlag::EnPassant => W::see_value(Piece::Pawn),
+            MoveFlag::Promotion => W::see_value(promotion.unwrap()),
             MoveFlag::Castling => 0,
         };
 
@@ -144,7 +144,7 @@ impl Position {
             return false;
         }
 
-        balance -= see_value(next_victim);
+        balance -= W::see_value(next_victim);
         //worst case pass
         if balance >= 0 {
             return true;
@@ -199,7 +199,7 @@ impl Position {
             attackers &= occupied;
             color = !color;
 
-            balance = -balance - 1 - see_value(next_victim);
+            balance = -balance - 1 - W::see_value(next_victim);
             if balance >= 0 {
                 if next_victim == Piece::King && !(attackers & board.colors(color)).is_empty() {
                     color = !color;
@@ -275,11 +275,11 @@ mod tests {
             "8/1pp2k2/3p4/8/8/3Q1K2/8/8 w - - 0 1",
         ];
         let expected = &[
-            see_value(Piece::Knight),
-            see_value(Piece::Knight) - see_value(Piece::Rook),
+            W::see_value(Piece::Knight),
+            W::see_value(Piece::Knight) - W::see_value(Piece::Rook),
             0,
             0,
-            see_value(Piece::Pawn) - see_value(Piece::Queen),
+            W::see_value(Piece::Pawn) - W::see_value(Piece::Queen),
         ];
 
         let moves = &[

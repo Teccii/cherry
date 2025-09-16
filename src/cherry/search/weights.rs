@@ -1,4 +1,5 @@
 use std::cell::SyncUnsafeCell;
+use cherry_chess::Piece;
 use crate::MAX_PLY;
 
 
@@ -136,6 +137,20 @@ weights! {
     cut_node_reduction      | CUT_NODE_REDUCTION:      i32 => 1112,
     non_pv_reduction        | NON_PV_REDUCTION:        i32 => 965,
     check_reduction         | CHECK_REDUCTION:         i32 => 1034,
+}
+
+impl W {
+    #[inline]
+    pub const fn see_value(piece: Piece) -> i16 {
+        match piece {
+            Piece::Pawn =>   W::pawn_see_value(),
+            Piece::Knight => W::knight_see_value(),
+            Piece::Bishop => W::bishop_see_value(),
+            Piece::Rook =>   W::rook_see_value(),
+            Piece::Queen =>  W::queen_see_value(),
+            Piece::King =>   20000,
+        }
+    }
 }
 
 pub const RFP_DEPTH: u8 = 12;
