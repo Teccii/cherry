@@ -117,7 +117,10 @@ impl MovePicker {
             if let Some(mv) = self.hash_move {
                 let board = pos.board();
                 let score = if board.is_tactic(mv) {
-                    history.get_tactic(board, mv, pos.cmp_see(mv, 0))
+                    let mvv = board.victim(mv).map(W::mvv_value).unwrap_or_default();
+                    let hist = history.get_tactic(board, mv, pos.cmp_see(mv, 0));
+
+                    mvv + hist
                 } else {
                     history.get_quiet_total(board, mv, indices)
                 };
@@ -154,7 +157,10 @@ impl MovePicker {
                         continue;
                     }
 
-                    self.good_tactics.push(ScoredMove(mv, history.get_tactic(board, mv, true)));
+                    let mvv = board.victim(mv).map(W::mvv_value).unwrap_or_default();
+                    let hist = history.get_tactic(board, mv, true);
+
+                    self.good_tactics.push(ScoredMove(mv, mvv + hist));
                 }
             }
         }
@@ -168,7 +174,11 @@ impl MovePicker {
                 if pos.cmp_see(mv.0, 0) {
                     return Some(mv);
                 } else {
-                    self.bad_tactics.push(ScoredMove(mv.0, history.get_tactic(pos.board(), mv.0, false)));
+                    let board = pos.board();
+                    let mvv = board.victim(mv.0).map(W::mvv_value).unwrap_or_default();
+                    let hist = history.get_tactic(board, mv.0, false);
+
+                    self.bad_tactics.push(ScoredMove(mv.0, mvv + hist));
                     continue;
                 }
             }
@@ -274,7 +284,10 @@ impl QMovePicker {
             for moves in self.piece_moves.iter().copied() {
                 for mv in moves {
                     let score = if board.is_tactic(mv) {
-                        history.get_tactic(board, mv, true)
+                        let mvv = board.victim(mv).map(W::mvv_value).unwrap_or_default();
+                        let hist = history.get_tactic(board, mv, true);
+
+                        mvv + hist
                     } else {
                         history.get_quiet_total(board, mv, indices)
                     };
@@ -303,7 +316,10 @@ impl QMovePicker {
                 mask_tactics(&mut moves, their_pieces, ep_square);
 
                 for mv in moves {
-                    self.tactics.push(ScoredMove(mv, history.get_tactic(board, mv, true)));
+                    let mvv = board.victim(mv).map(W::mvv_value).unwrap_or_default();
+                    let hist = history.get_tactic(board, mv, true);
+
+                    self.tactics.push(ScoredMove(mv, mvv + hist));
                 }
             }
 

@@ -1,4 +1,5 @@
 use std::cell::SyncUnsafeCell;
+use cherry_chess::Piece;
 use crate::MAX_PLY;
 
 
@@ -107,6 +108,12 @@ weights! {
     rook_see_value   | ROOK_SEE_VALUE:   i16 => 578,
     queen_see_value  | QUEEN_SEE_VALUE:  i16 => 981,
 
+    pawn_mvv_value   | PAWN_MVV_VALUE:   i32 => 101,
+    knight_mvv_value | KNIGHT_MVV_VALUE: i32 => 324,
+    bishop_mvv_value | BISHOP_MVV_VALUE: i32 => 332,
+    rook_mvv_value   | ROOK_MVV_VALUE:   i32 => 578,
+    queen_mvv_value  | QUEEN_MVV_VALUE:  i32 => 981,
+
     pawn_mat_scale   | PAWN_MAT_SCALE:   i32 => 111,
     knight_mat_scale | KNIGHT_MAT_SCALE: i32 => 349,
     bishop_mat_scale | BISHOP_MAT_SCALE: i32 => 338,
@@ -136,6 +143,32 @@ weights! {
     cut_node_reduction      | CUT_NODE_REDUCTION:      i32 => 1112,
     non_pv_reduction        | NON_PV_REDUCTION:        i32 => 965,
     check_reduction         | CHECK_REDUCTION:         i32 => 1034,
+}
+
+impl W {
+    #[inline]
+    pub const fn see_value(piece: Piece) -> i16 {
+        match piece {
+            Piece::Pawn =>   W::pawn_see_value(),
+            Piece::Knight => W::knight_see_value(),
+            Piece::Bishop => W::bishop_see_value(),
+            Piece::Rook =>   W::rook_see_value(),
+            Piece::Queen =>  W::queen_see_value(),
+            Piece::King =>   20000,
+        }
+    }
+
+    #[inline]
+    pub const fn mvv_value(piece: Piece) -> i32 {
+        match piece {
+            Piece::Pawn =>   W::pawn_mvv_value(),
+            Piece::Knight => W::knight_mvv_value(),
+            Piece::Bishop => W::bishop_mvv_value(),
+            Piece::Rook =>   W::rook_mvv_value(),
+            Piece::Queen =>  W::queen_mvv_value(),
+            Piece::King =>   20000,
+        }
+    }
 }
 
 pub const RFP_DEPTH: u8 = 12;

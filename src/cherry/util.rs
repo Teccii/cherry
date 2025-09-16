@@ -1,8 +1,7 @@
 use std::sync::{Arc, atomic::*};
 use smallvec::{Array, SmallVec};
 use colored::Colorize;
-use cherry_chess::Piece;
-use crate::cherry::W;
+
 /*----------------------------------------------------------------*/
 
 pub const MAX_DEPTH: u8 = 128;
@@ -93,18 +92,6 @@ pub fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item
 
     vec.swap(index, len - 1);
     vec.pop()
-}
-
-#[inline]
-pub const fn see_value(piece: Piece) -> i16 {
-    match piece {
-        Piece::Pawn =>   W::pawn_see_value(),
-        Piece::Knight => W::knight_see_value(),
-        Piece::Bishop => W::bishop_see_value(),
-        Piece::Rook =>   W::rook_see_value(),
-        Piece::Queen =>  W::queen_see_value(),
-        Piece::King =>   20000,
-    }
 }
 
 /*----------------------------------------------------------------*/
