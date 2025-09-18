@@ -11,10 +11,16 @@ const PAWN_CORR_SIZE: usize = 1024;
 
 /*----------------------------------------------------------------*/
 
+pub type ColorTo<T> = [T; Color::COUNT];
 pub type MoveTo<T> = [[T; Square::COUNT]; Square::COUNT];
 pub type PieceTo<T> = [[T; Square::COUNT]; Piece::COUNT];
 
 /*----------------------------------------------------------------*/
+
+#[inline]
+pub const fn color_to<T: Copy>(default: T) -> ColorTo<T> {
+    [default; Color::COUNT]
+}
 
 #[inline]
 pub const fn move_to<T: Copy>(default: T) -> MoveTo<T> {
@@ -51,33 +57,33 @@ impl ContIndices {
 
 #[derive(Debug, Clone)]
 pub struct History {
-    quiets:  Box<[MoveTo<i32>; Color::COUNT]>,  //Indexing: [stm][from][to]
-    tactics: Box<[[PieceTo<i32>; 2]; Color::COUNT]>, //Indexing: [stm][see index][piece][to]
-    counter_move: Box<[PieceTo<PieceTo<i32>>; Color::COUNT]>, //use for 1-ply, 3-ply, 5-ply, etc. Indexing: [stm][prev piece][prev to][piece][to]
-    follow_up:    Box<[PieceTo<PieceTo<i32>>; Color::COUNT]>, //use for 2-ply, 4-ply, 6-ply, etc. Indexing: [stm][prev piece][prev to][piece][to]
-    minor_corr: Box<[[i32; MINOR_CORR_SIZE]; Color::COUNT]>, //Indexing: [stm][minor hash % size]
-    major_corr: Box<[[i32; MAJOR_CORR_SIZE]; Color::COUNT]>, //Indexing: [stm][major hash % size]
-    pawn_corr:  Box<[[i32; PAWN_CORR_SIZE]; Color::COUNT]>,  //Indexing: [stm][pawn hash % size]
+    quiets:  Box<ColorTo<MoveTo<i32>>>,  //Indexing: [stm][from][to]
+    tactics: Box<ColorTo<PieceTo<[i32; 2]>>>, //Indexing: [stm][piece][to][see index]
+    counter_move: Box<ColorTo<PieceTo<PieceTo<i32>>>>, //use for 1-ply, 3-ply, 5-ply, etc. Indexing: [stm][prev piece][prev to][piece][to]
+    follow_up:    Box<ColorTo<PieceTo<PieceTo<i32>>>>, //use for 2-ply, 4-ply, 6-ply, etc. Indexing: [stm][prev piece][prev to][piece][to]
+    minor_corr: Box<ColorTo<[i32; MINOR_CORR_SIZE]>>, //Indexing: [stm][minor hash % size]
+    major_corr: Box<ColorTo<[i32; MAJOR_CORR_SIZE]>>, //Indexing: [stm][major hash % size]
+    pawn_corr:  Box<ColorTo<[i32; PAWN_CORR_SIZE]>> //Indexing: [stm][pawn hash % size]
 }
 
 impl History {
     #[inline]
     pub fn new() -> History {
         History {
-            quiets:  Box::new([move_to(0); Color::COUNT]),
-            tactics: Box::new([[piece_to(0); 2]; Color::COUNT]),
-            counter_move: Box::new([piece_to(piece_to(0)); Color::COUNT]),
-            follow_up:    Box::new([piece_to(piece_to(0)); Color::COUNT]),
-            minor_corr: Box::new([[0; MINOR_CORR_SIZE]; Color::COUNT]),
-            major_corr: Box::new([[0; MAJOR_CORR_SIZE]; Color::COUNT]),
-            pawn_corr:  Box::new([[0; PAWN_CORR_SIZE]; Color::COUNT]),
+            quiets:  Box::new(color_to(move_to(0))),
+            tactics: Box::new(color_to(piece_to([0; 2]))),
+            counter_move: Box::new(color_to(piece_to(piece_to(0)))),
+            follow_up:    Box::new(color_to(piece_to(piece_to(0)))),
+            minor_corr: Box::new(color_to([0; MINOR_CORR_SIZE])),
+            major_corr: Box::new(color_to([0; MAJOR_CORR_SIZE])),
+            pawn_corr:  Box::new(color_to([0; PAWN_CORR_SIZE])),
         }
     }
 
     #[inline]
     pub fn reset(&mut self) {
         self.quiets.fill(move_to(0));
-        self.tactics.fill([piece_to(0); 2]);
+        self.tactics.fill(piece_to([0; 2]));
         self.counter_move.fill(piece_to(piece_to(0)));
         self.follow_up.fill(piece_to(piece_to(0)));
         self.minor_corr.fill([0; MINOR_CORR_SIZE]);
@@ -105,16 +111,18 @@ impl History {
 
     #[inline]
     pub fn get_tactic(&self, board: &Board, mv: Move, see: bool) -> i32 {
-        self.tactics[board.stm() as usize][see as usize]
+        self.tactics[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
             [mv.to() as usize]
+            [see as usize]
     }
 
     #[inline]
     fn get_tactic_mut(&mut self, board: &Board, mv: Move, see: bool) -> &mut i32 {
-        &mut self.tactics[board.stm() as usize][see as usize]
+        &mut self.tactics[board.stm() as usize]
             [board.piece_on(mv.from()).unwrap() as usize]
             [mv.to() as usize]
+            [see as usize]
     }
 
     /*----------------------------------------------------------------*/
