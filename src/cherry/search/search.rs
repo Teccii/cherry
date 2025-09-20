@@ -189,7 +189,9 @@ pub fn search<Node: NodeType>(
         */
         let rfp_margin = W::rfp_margin() * depth.saturating_sub(improving as u8) as i16;
         if depth < RFP_DEPTH && static_eval >= beta + rfp_margin {
-            return (static_eval + beta) / 2
+            let (eval, beta) = (i32::from(static_eval.0), i32::from(beta.0));
+
+            return Score::new((beta + W::rfp_cutoff_lerp() * (eval - beta) / 1024) as i16);
         }
 
         /*

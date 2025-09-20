@@ -238,6 +238,7 @@ impl Engine {
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
                     RFP_MARGIN        => W::rfp_margin(),            0, 2048;
+                    RFP_CUTOFF_LERP   => W::rfp_cutoff_lerp(),       0, 1024;
                     SEE_QUIET_MARGIN  => W::see_quiet_margin(),  -2048, 0;
                     SEE_TACTIC_MARGIN => W::see_tactic_margin(), -2048, 0;
                     CONT_MARGIN       => W::cont_margin(),      -16384, 0;
@@ -334,6 +335,7 @@ impl Engine {
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
                     RFP_MARGIN        => W::rfp_margin(),             0, 2048;
+                    RFP_CUTOFF_LERP   => W::rfp_cutoff_lerp(),        0, 1024;
                     SEE_QUIET_MARGIN  => W::see_quiet_margin(),   -2048, 0;
                     SEE_TACTIC_MARGIN => W::see_tactic_margin(),  -2048, 0;
                     CONT_MARGIN       => W::cont_margin(),       -16384, 0;
@@ -437,6 +439,7 @@ impl Engine {
                     "QUEEN_MAT_SCALE"  => QUEEN_MAT_SCALE,  i32;
                     "MAT_SCALE_BASE"   => MAT_SCALE_BASE,   i32;
                     "RFP_MARGIN"        => RFP_MARGIN,        i16;
+                    "RFP_CUTOFF_LERP"   => RFP_CUTOFF_LERP,   i32;
                     "SEE_QUIET_MARGIN"  => SEE_QUIET_MARGIN,  i16;
                     "SEE_TACTIC_MARGIN" => SEE_TACTIC_MARGIN, i16;
                     "CONT_MARGIN"       => CONT_MARGIN,       i32;

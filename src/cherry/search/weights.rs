@@ -116,6 +116,7 @@ weights! {
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 25100,
 
     rfp_margin        | RFP_MARGIN:        i16 => 80,
+    rfp_cutoff_lerp   | RFP_CUTOFF_LERP:   i32 => 512,
     see_quiet_margin  | SEE_QUIET_MARGIN:  i16 => -89,
     see_tactic_margin | SEE_TACTIC_MARGIN: i16 => -62,
     cont_margin       | CONT_MARGIN:       i32 => -3268,
