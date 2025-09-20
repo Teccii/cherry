@@ -77,12 +77,12 @@ pub struct Nnue {
 impl Nnue {
     pub fn new(board: &Board, weights: &NetworkWeights) -> Nnue {
         let mut nnue = Nnue {
-            acc_stack: Box::new(std::array::from_fn(|_| Accumulator {
+            acc_stack: vec![Accumulator {
                 white: Align64([0; HL]),
                 black: Align64([0; HL]),
                 update_buffer: UpdateBuffer::default(),
                 dirty: [false; Color::COUNT],
-            })),
+            }; MAX_PLY as usize + 1].into_boxed_slice().try_into().unwrap(),
             acc_index: 0,
         };
 

@@ -190,10 +190,7 @@ impl Searcher {
                 tt_hits: BatchedAtomicCounter::new(),
                 tt_misses: BatchedAtomicCounter::new(),
                 tb_hits: BatchedAtomicCounter::new(),
-                root_pv: PrincipalVariation {
-                    moves: [None; MAX_PLY as usize + 1],
-                    len: 0,
-                },
+                root_pv: PrincipalVariation::default(),
                 root_nodes: move_to(0),
                 ss: vec![
                     SearchStack {

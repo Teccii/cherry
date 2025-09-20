@@ -3,6 +3,7 @@
 #![feature(generic_const_exprs)]
 #![feature(sync_unsafe_cell)]
 #![feature(portable_simd)]
+#![feature(new_zeroed_alloc)]
 
 mod cherry;
 

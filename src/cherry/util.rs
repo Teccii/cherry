@@ -94,6 +94,10 @@ pub fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item
     vec.pop()
 }
 
+pub fn new_zeroed<T>() -> Box<T> {
+    unsafe { Box::new_zeroed().assume_init() }
+}
+
 /*----------------------------------------------------------------*/
 
 pub fn progress_bar(progress: usize, max: usize) -> String {

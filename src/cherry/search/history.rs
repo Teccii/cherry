@@ -18,11 +18,6 @@ pub type PieceTo<T> = [[T; Square::COUNT]; Piece::COUNT];
 /*----------------------------------------------------------------*/
 
 #[inline]
-pub const fn color_to<T: Copy>(default: T) -> ColorTo<T> {
-    [default; Color::COUNT]
-}
-
-#[inline]
 pub const fn move_to<T: Copy>(default: T) -> MoveTo<T> {
     [[default; Square::COUNT]; Square::COUNT]
 }
@@ -70,13 +65,13 @@ impl History {
     #[inline]
     pub fn new() -> History {
         History {
-            quiets:  Box::new(color_to(move_to(0))),
-            tactics: Box::new(color_to(piece_to([0; 2]))),
-            counter_move: Box::new(color_to(piece_to(piece_to(0)))),
-            follow_up:    Box::new(color_to(piece_to(piece_to(0)))),
-            minor_corr: Box::new(color_to([0; MINOR_CORR_SIZE])),
-            major_corr: Box::new(color_to([0; MAJOR_CORR_SIZE])),
-            pawn_corr:  Box::new(color_to([0; PAWN_CORR_SIZE])),
+            quiets: new_zeroed(),
+            tactics: new_zeroed(),
+            counter_move: new_zeroed(),
+            follow_up: new_zeroed(),
+            minor_corr: new_zeroed(),
+            major_corr: new_zeroed(),
+            pawn_corr: new_zeroed(),
         }
     }
 

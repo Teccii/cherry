@@ -3,15 +3,9 @@ mod simd {
     use ::core::arch::x86_64::*;
 
     pub const I16_CHUNK: usize = size_of::<__m512i>() / size_of::<i16>();
-    pub const I32_CHUNK: usize = size_of::<__m512i>() / size_of::<i32>();
 
     #[inline]
-    pub fn zero_i16() -> __m512i {
-        unsafe { _mm512_setzero_si512() }
-    }
-
-    #[inline]
-    pub fn zero_i32() -> __m512i {
+    pub fn zero() -> __m512i {
         unsafe { _mm512_setzero_si512() }
     }
 
