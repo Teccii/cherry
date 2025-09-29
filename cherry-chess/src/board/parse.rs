@@ -1,219 +1,206 @@
-use std::str::FromStr;
+use std::fmt::Write;
 use crate::*;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum FenParseError {
-    InvalidBoard,
-    InvalidCastleRights,
-    InvalidEnPassant,
-    InvalidHalfMoveClock,
-    InvalidFullMoveCount,
-    InvalidSideToMove,
-    MissingField,
-    TooManyFields,
-}
-
 impl Board {
-    pub fn from_fen(fen: &str, shredder: bool) -> Result<Board, FenParseError> {
-        let mut reader = fen.split(' ');
+    #[inline]
+    pub fn from_fen(fen: &str) -> Option<Board> {
+        let mut parts = fen.trim().split_ascii_whitespace();
+        let pieces = parts.next()?;
+        let stm = parts.next()?;
+        let castle_rights = parts.next()?;
+        let en_passant = parts.next()?;
+        let halfmove_clock = parts.next()?;
+        let fullmove_count = parts.next()?;
+
+        if parts.next().is_some() {
+            return None;
+        }
+
         let mut board = Board {
-            colors: [Bitboard::EMPTY; Color::COUNT],
-            pieces: [Bitboard::EMPTY; Piece::COUNT],
-            castle_rights: [CastleRights { short: None, long: None }; Color::COUNT],
-            pinned: Bitboard::EMPTY,
-            checkers: Bitboard::EMPTY,
+            board: Byteboard::default(),
+            attack_tables: [Wordboard::default(); Color::COUNT],
+            index_to_square: [IndexToSquare::default(); Color::COUNT],
+            index_to_piece: [IndexToPiece::default(); Color::COUNT],
+            castle_rights: [CastleRights::EMPTY; Color::COUNT],
             en_passant: None,
+            fullmove_count: 1,
             halfmove_clock: 0,
-            minor_hash: 0,
-            major_hash: 0,
-            pawn_hash: 0,
-            hash: 0,
             stm: Color::White,
         };
 
-        let mut next = || reader.next().map(str::trim).ok_or(FenParseError::MissingField);
+        let mut white_index = 0;
+        let mut black_index = 0;
 
-        board.parse_board(next()?)?;
-        board.parse_stm(next()?)?;
-
-        if !board.board_is_sane() {
-            return Err(FenParseError::InvalidBoard);
-        }
-
-        let (checkers, pinned) = board.checks_and_pins(board.stm);
-        board.checkers = checkers;
-        board.pinned = pinned;
-
-        if !board.checkers_is_sane() {
-            return Err(FenParseError::InvalidBoard);
-        }
-
-        board.parse_castle_rights(next()?, shredder)?;
-        if !board.castle_rights_is_sane() {
-            return Err(FenParseError::InvalidCastleRights);
-        }
-
-        board.parse_ep(next()?)?;
-        if !board.en_passant_is_sane() {
-            return Err(FenParseError::InvalidEnPassant);
-        }
-
-        board.parse_halfmove_clock(next()?)?;
-        if !board.halfmove_clock_is_sane() {
-            return Err(FenParseError::InvalidHalfMoveClock);
-        }
-
-        next()?;
-        if reader.next().is_some() {
-            return Err(FenParseError::TooManyFields);
-        }
-
-        Ok(board)
-    }
-
-    fn parse_board(&mut self, s: &str) -> Result<(), FenParseError> {
-        for (rank, row) in s.rsplit('/').enumerate() {
-            let rank = Rank::try_index(rank).ok_or(FenParseError::InvalidBoard)?;
+        for (rank, row) in pieces.rsplit('/').enumerate() {
+            let rank = Rank::try_index(rank)?;
             let mut file = 0;
 
             for p in row.chars() {
                 if let Some(empty) = p.to_digit(10) {
                     file += empty as usize;
                 } else {
-                    let piece = p.try_into().map_err(|_| FenParseError::InvalidBoard)?;
+                    let piece = p.try_into().ok()?;
                     let color = Color::index(p.is_ascii_lowercase() as usize);
+                    let sq = Square::new(File::try_index(file)?, rank);
+                    let index = if piece == Piece::King {
+                        PieceIndex::new(0)
+                    } else {
+                        let index = match color {
+                            Color::White => &mut white_index,
+                            Color::Black => &mut black_index,
+                        };
 
-                    let sq = Square::new(File::try_index(file).ok_or(FenParseError::InvalidBoard)?, rank);
-                    self.xor_square(piece, color, sq);
+                        *index += 1;
+                        if *index >= PieceIndex::COUNT {
+                            return None;
+                        }
+
+                        PieceIndex::new(*index as u8)
+                    };
+
+                    board.board.set(sq, Place::from_piece(piece, color, index));
+                    board.index_to_square[color][index] = Some(sq);
+                    board.index_to_piece[color][index] = Some(piece);
 
                     file += 1;
                 }
             }
 
             if file != File::COUNT {
-                return Err(FenParseError::InvalidBoard);
+                return None;
             }
         }
 
-        Ok(())
-    }
-
-    fn parse_stm(&mut self, s: &str) -> Result<(), FenParseError> {
-        if s.len() != 1 {
-            return Err(FenParseError::InvalidSideToMove);
+        if board.index_to_piece[Color::White][PieceIndex::new(0)].is_none()
+            || board.index_to_piece[Color::Black][PieceIndex::new(0)].is_none() {
+            return None;
         }
 
-        if Color::try_from(s.chars().next().unwrap())
-            .map_err(|_| FenParseError::InvalidSideToMove)? != self.stm {
-            self.toggle_stm();
+        if stm.len() != 1 {
+            return None;
         }
 
-        Ok(())
-    }
+        board.stm = stm.chars().next().unwrap().try_into().ok()?;
 
-    fn parse_castle_rights(&mut self, s: &str, shredder: bool) -> Result<(), FenParseError> {
-        if s.len() < 1 || s.len() > 4 {
-            return Err(FenParseError::InvalidCastleRights);
+        if castle_rights.len() < 1 || castle_rights.len() > 4 {
+            return None;
         }
 
-        if s != "-" {
-            for c in s.chars() {
+        if castle_rights != "-" {
+            for c in castle_rights.chars() {
                 let color = Color::index(c.is_ascii_lowercase() as usize);
-                let king = self.king(color).file();
+                let our_backrank = Rank::First.relative_to(color);
+                let our_king = board.king(color);
 
-                let (short, file) = if shredder {
-                    let file = c.try_into().map_err(|_| FenParseError::InvalidCastleRights)?;
-
-                    (king < file, file)
-                } else {
-                    match c.to_ascii_lowercase() {
-                        'k' => (true, File::H),
-                        'q' => (false, File::A),
-                        _ => return Err(FenParseError::InvalidCastleRights),
-                    }
-                };
-
-                let rights = self.castle_rights(color);
-                let old = if short {
-                    rights.short
-                } else {
-                    rights.long
-                };
-
-                if old.is_some() {
-                    return Err(FenParseError::InvalidCastleRights);
+                if our_king.rank() != our_backrank {
+                    return None;
                 }
 
-                self.set_castle_rights(color, Some(file), short);
+                let rook_file = match c.to_ascii_lowercase() {
+                    'a'..='h' => c.try_into().ok()?,
+                    'k' => {
+                        let corner_rook = Square::new(File::H, our_backrank);
+                        let rook_mask = between(our_king, corner_rook) | corner_rook;
+                        let valid_rooks = board.color_pieces(Piece::Rook, color) & rook_mask;
+
+                        valid_rooks.try_next_square().map(Square::file)?
+                    },
+                    'q' => {
+                        let corner_rook = Square::new(File::A, our_backrank);
+                        let rook_mask = between(our_king, corner_rook) | corner_rook;
+                        let valid_rooks = board.color_pieces(Piece::Rook, color) & rook_mask;
+
+                        valid_rooks.try_next_square_back().map(Square::file)?
+                    },
+                    _ => return None,
+                };
+
+                board.set_castle_rights(color, rook_file > our_king.file(), Some(rook_file));
             }
         }
 
-        Ok(())
-    }
-
-    fn parse_ep(&mut self, s: &str) -> Result<(), FenParseError> {
-        if s.len() < 1 || s.len() > 2 {
-            return Err(FenParseError::InvalidEnPassant);
-        }
-
-        if s != "-" {
-            let sq = s.parse::<Square>().map_err(|_| FenParseError::InvalidEnPassant)?;
-            if sq.rank() != Rank::Sixth.relative_to(self.stm) {
-                return Err(FenParseError::InvalidEnPassant);
+        if en_passant != "-" {
+            let sq = en_passant.parse::<Square>().ok()?;
+            if sq.rank() != Rank::Sixth.relative_to(board.stm) {
+                return None;
             }
 
-            self.set_en_passant(Some(sq.file()))
+            board.set_en_passant(Some(sq.file()));
         }
 
-        Ok(())
+        board.halfmove_clock = halfmove_clock.parse::<u8>().ok()?.min(100);
+        board.fullmove_count = fullmove_count.parse::<u16>().ok()?.max(1);
+        board.attack_tables = board.calc_attacks();
+
+        Some(board)
     }
 
-    fn parse_halfmove_clock(&mut self, s: &str) -> Result<(), FenParseError> {
-        self.halfmove_clock = s.parse::<u8>().map_err(|_| FenParseError::InvalidHalfMoveClock)?;
+    #[inline]
+    pub fn to_fen(&self, chess960: bool) -> String {
+        let mut fen = String::new();
 
-        if self.halfmove_clock > 100 {
-            return Err(FenParseError::InvalidHalfMoveClock);
+        for &rank in Rank::ALL.iter().rev() {
+            let mut empty = 0;
+
+            for &file in File::ALL.iter() {
+                let sq = Square::new(file, rank);
+
+                 if let Some(piece) = self.piece_on(sq) {
+                     if empty > 0 {
+                         write!(fen, "{}", empty).unwrap();
+                         empty = 0;
+                     }
+
+                     let mut piece: char = piece.into();
+                     if self.color_on(sq).unwrap() == Color::White {
+                         piece = piece.to_ascii_uppercase();
+                     }
+
+                     write!(fen, "{}", piece).unwrap();
+                 } else {
+                     empty += 1;
+                 }
+            }
+
+            if empty > 0 {
+                write!(fen, "{}", empty).unwrap();
+            }
+
+            if rank > Rank::First {
+                write!(fen, "/").unwrap();
+            }
         }
 
-        Ok(())
-    }
-}
+        write!(fen, " {}", char::from(self.stm)).unwrap();
 
-impl FromStr for Board {
-    type Err = FenParseError;
-
-    fn from_str(s: &str) -> Result<Board, FenParseError> {
-        match Board::from_fen(s, false) {
-            Ok(board) => Ok(board),
-            Err(FenParseError::InvalidCastleRights) => Board::from_fen(s, true),
-            err => err,
+        let mut castle_rights = String::new();
+        if let Some(file) = self.castle_rights[Color::White].short {
+            castle_rights.push(if chess960 { file.into() } else { 'K' });
         }
-    }
-}
-
-/*----------------------------------------------------------------*/
-
-#[cfg(test)]
-mod tests {
-    use crate::*;
-
-    #[test]
-    fn valid_fens() {
-        let positions = include_str!("../../perft/valid.sfens");
-
-        for fen in positions.lines() {
-            let board = Board::from_fen(fen, true).unwrap();
-
-            assert!(board.is_sane(), "FEN \"{}\" is valid but insane", fen);
+        if let Some(file) = self.castle_rights[Color::White].long {
+            castle_rights.push(if chess960 { file.into() } else { 'Q' });
         }
-    }
-
-    #[test]
-    fn invalid_fens() {
-        let positions = include_str!("../../perft/invalid.sfens");
-
-        for fen in positions.lines() {
-            assert!(fen.parse::<Board>().is_err(), "FEN \"{}\" is invalid but did not fail to parse", fen);
+        if let Some(file) = self.castle_rights[Color::Black].short {
+            castle_rights.push(if chess960 { char::from(file).to_ascii_lowercase() } else { 'k' });
         }
+        if let Some(file) = self.castle_rights[Color::Black].long {
+            castle_rights.push(if chess960 { char::from(file).to_ascii_lowercase() } else { 'q' });
+        }
+
+        if castle_rights.is_empty() {
+            castle_rights.push('-');
+        }
+
+        write!(fen, " {}", castle_rights).unwrap();
+
+        if let Some(sq) = self.ep_square() {
+            write!(fen, " {}", sq).unwrap();
+        } else {
+            write!(fen, " -").unwrap();
+        }
+
+        write!(fen, " {} {}", self.halfmove_clock, self.fullmove_count).unwrap();
+
+        fen
     }
 }

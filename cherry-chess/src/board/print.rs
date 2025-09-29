@@ -7,8 +7,8 @@ impl Board {
         let mut result = String::new();
         let mut features = Vec::new();
 
-        features.push(format!("{}: {}", String::from("FEN").bright_green(), self));
-        features.push(format!("{}: {:#016X}", String::from("Zobrist Key").bright_green(), self.hash));
+        features.push(format!("{}: {}", String::from("FEN").bright_green(), self.to_fen(chess960)));
+        features.push(format!("{}: {:#016X}", String::from("Zobrist Key").bright_green(), 0));
 
         if let Some(sq) = self.ep_square() {
             features.push(format!("{}: {}", String::from("En Passant").bright_green(), sq));
@@ -41,6 +41,7 @@ impl Board {
         }
 
         features.push(format!("{}: {}", String::from("Halfmove Clock").bright_green(), self.halfmove_clock));
+        features.push(format!("{}: {}", String::from("Fullmove Count").bright_green(), self.fullmove_count));
         features.push(format!("{}: {:?}", String::from("Side To Move").bright_green(), self.stm));
 
         writeln!(&mut result, "╔═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╗").unwrap();
@@ -51,16 +52,15 @@ impl Board {
             for &file in File::ALL.iter() {
                 let sq = Square::new(file, rank);
 
-                if !self.occupied().has(sq) {
-                    write!(&mut result, " .").unwrap();
-                } else {
-                    let piece: char = self.piece_on(sq).unwrap().into();
-
-                    if self.colors(Color::White).has(sq) {
+                if let Some(piece) = self.piece_on(sq) {
+                    let piece: char = piece.into();
+                    if self.color_on(sq).unwrap() == Color::White {
                         write!(&mut result, " {}", String::from(piece.to_ascii_uppercase()).bright_green()).unwrap();
                     } else {
                         write!(&mut result, " {}" , String::from(piece).bright_blue()).unwrap();
                     }
+                } else {
+                    write!(&mut result, " .").unwrap();
                 }
 
                 write!(&mut result, " {}", if file == File::H { '║' } else { '│' }).unwrap();

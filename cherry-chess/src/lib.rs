@@ -10,12 +10,20 @@ The original source code can be found at https://github.com/analog-hors/cozy-che
 
 pub use cherry_types::*;
 
-mod board;
-mod chess_move;
 mod attacks;
+mod board;
+mod byteboard;
+mod chess_move;
+mod geometry;
+mod piece;
+mod simd;
 mod zobrist;
 
-pub use board::*;
-pub use chess_move::*;
 pub use attacks::*;
+pub use board::*;
+pub use byteboard::*;
+pub use chess_move::*;
+pub use geometry::*;
+pub use piece::*;
+pub use simd::*;
 pub use zobrist::*;

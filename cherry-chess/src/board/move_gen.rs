@@ -1,575 +1,510 @@
+use std::io::Write;
+use std::ops::{Deref, DerefMut};
+use std::ptr;
+use arrayvec::ArrayVec;
 use crate::*;
 
-macro_rules! abort_if {
-    ($($expr:expr),*) => {
-        $(if $expr {
-            return true;
-        })*
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Clone)]
+pub struct MoveList {
+    inner: ArrayVec<Move, 256>
+}
+
+impl MoveList {
+    #[inline]
+    pub fn empty() -> MoveList {
+        MoveList { inner: ArrayVec::new() }
+    }
+
+    #[inline]
+    pub(crate) fn write128_16(&mut self, mask: Vec128Mask16, vec: Vec128) {
+        let len = self.inner.len();
+        unsafe {
+            let ptr = self.inner.as_mut_ptr().add(len);
+
+            Vec128::compress_store16(ptr, mask, vec);
+            self.inner.set_len(len + mask.count_ones() as usize);
+        }
+    }
+
+    #[inline]
+    pub(crate) fn write256_16(&mut self, mask: Vec256Mask16, vec: Vec256) {
+        let len = self.inner.len();
+        unsafe {
+            let ptr = self.inner.as_mut_ptr().add(len);
+
+            Vec256::compress_store16(ptr, mask, vec);
+            self.inner.set_len(len + mask.count_ones() as usize);
+        }
+    }
+
+    #[inline]
+    pub(crate) fn write512_16(&mut self, mask: Vec512Mask16, vec: Vec512) {
+        let len = self.inner.len();
+        unsafe {
+            let ptr = self.inner.as_mut_ptr().add(len);
+
+            Vec512::compress_store16(ptr, mask, vec);
+            self.inner.set_len(len + mask.count_ones() as usize);
+        }
+    }
+
+    #[inline]
+    pub(crate) fn write512_64(&mut self, mask: Vec512Mask64, vec: Vec512) {
+        let len = self.inner.len();
+        unsafe {
+            let ptr = self.inner.as_mut_ptr().add(len);
+
+            Vec512::compress_store64(ptr, mask, vec);
+            self.inner.set_len(len + 4 * mask.count_ones() as usize);
+        }
+    }
+
+    #[inline]
+    pub(crate) fn write_promotions(&mut self, moves: u64) {
+        let len = self.inner.len();
+
+        unsafe {
+            let ptr = self.inner.as_mut_ptr().add(len);
+
+            ptr::copy_nonoverlapping((&moves as *const u64).cast(), ptr, size_of::<u64>());
+            self.inner.set_len(len + 4);
+        }
     }
 }
 
-impl Board {
-    // Squares we can land on. When we're in check, we have to block
-    // or capture the checker. In any case, we can't land on our own
-    // pieces. Assumed to only be called if there is only one checker.
-    fn target_squares<const IN_CHECK: bool>(&self) -> Bitboard {
-        let targets = if IN_CHECK {
-            let checker = self.checkers().next_square();
-            let our_king = self.king(self.stm);
-
-            between(checker, our_king) | checker
-        } else {
-            Bitboard::FULL
-        };
-        targets & !self.colors(self.stm)
-    }
-
-    /*----------------------------------------------------------------*/
-
-    fn add_slider_legals<
-        const DIAG: bool, F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool
-    >(&self, mask: Bitboard, listener: &mut F) -> bool {
-        let pieces = if DIAG {
-            self.color_diag_sliders(self.stm) & mask
-        } else {
-            self.color_orth_sliders(self.stm) & mask
-        };
-        let target_squares = self.target_squares::<IN_CHECK>();
-        let blockers = self.occupied();
-        let pinned = self.pinned();
-
-        for piece in pieces & !pinned {
-            let moves = if DIAG {
-                bishop_moves(piece, blockers) & target_squares
-            } else {
-                rook_moves(piece, blockers) & target_squares
-            };
-            if !moves.is_empty() {
-                abort_if!(listener(PieceMoves {
-                    piece: self.piece_on(piece).unwrap(),
-                    from: piece,
-                    to: moves,
-                    flag: MoveFlag::None
-                }));
-            }
-        }
-
-        if !IN_CHECK {
-            let our_king = self.king(self.stm);
-
-            for piece in pieces & pinned {
-                //If we're not in check, we can still slide along the pinned ray.
-                let target_squares = target_squares & line(our_king, piece);
-                let moves = if DIAG {
-                    bishop_moves(piece, blockers) & target_squares
-                } else {
-                    rook_moves(piece, blockers) & target_squares
-                };
-
-                if !moves.is_empty() {
-                    abort_if!(listener(PieceMoves {
-                        piece: self.piece_on(piece).unwrap(),
-                        from: piece,
-                        to: moves,
-                        flag: MoveFlag::None
-                    }));
-                }
-            }
-        }
-
-        false
-    }
-
-    /*----------------------------------------------------------------*/
-
-    fn add_knight_legals<
-        F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool
-    >(&self, mask: Bitboard, listener: &mut F) -> bool {
-        const PIECE: Piece = Piece::Knight;
-
-        let pieces = self.color_pieces(PIECE, self.stm) & mask;
-        let target_squares = self.target_squares::<IN_CHECK>();
-
-        for piece in pieces & !self.pinned {
-            let moves = knight_moves(piece) & target_squares;
-            if !moves.is_empty() {
-                abort_if!(listener(PieceMoves {
-                    piece: PIECE,
-                    from: piece,
-                    to: moves,
-                    flag: MoveFlag::None
-                }));
-            }
-        }
-
-        false
-    }
-
-    /*----------------------------------------------------------------*/
-
-    fn add_pawn_legals<
-        F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool
-    >(&self, mask: Bitboard, listener: &mut F) -> bool {
-        const PIECE: Piece = Piece::Pawn;
-
-        let our_king = self.king(self.stm);
-        let target_squares = self.target_squares::<IN_CHECK>();
-        let pieces = self.color_pieces(PIECE, self.stm) & mask;
-        let their_pieces = self.colors(!self.stm);
-        let blockers = self.occupied();
-
-        for piece in pieces & !self.pinned {
-            let moves = (
-                pawn_quiets(piece, self.stm, blockers) | (pawn_attacks(piece, self.stm) & their_pieces)
-            ) & target_squares;
-
-            if !moves.is_empty() {
-                abort_if!(listener(PieceMoves {
-                    piece: PIECE,
-                    from: piece,
-                    to: moves,
-                    flag: MoveFlag::None
-                }));
-            }
-        }
-
-        if !IN_CHECK {
-            for piece in pieces & self.pinned {
-                //If we're not in check, we can still slide along the pinned ray.
-                let target_squares = target_squares & line(our_king, piece);
-                let moves = (
-                    pawn_quiets(piece, self.stm, blockers) | (pawn_attacks(piece, self.stm) & their_pieces)
-                ) & target_squares;
-
-                if !moves.is_empty() {
-                    abort_if!(listener(PieceMoves {
-                        piece: PIECE,
-                        from: piece,
-                        to: moves,
-                        flag: MoveFlag::None
-                    }));
-                }
-            }
-        }
-
-        if let Some(en_passant) = self.en_passant() {
-            let diag = their_pieces & self.diag_sliders();
-            let orth = their_pieces & self.orth_sliders();
-
-            let dest = Square::new(en_passant, Rank::Third.relative_to(!self.stm));
-            let victim = Square::new(en_passant, Rank::Fourth.relative_to(!self.stm));
-
-            for piece in pawn_attacks(dest, !self.stm) & pieces {
-                //Simulate the capture and update the pieces accordingly.
-                let blockers = blockers ^ victim ^ piece | dest;
-                //First test a basic ray to prevent an expensive magic lookup
-                let on_ray = !(bishop_rays(our_king) & diag).is_empty();
-                if on_ray && !(bishop_moves(our_king, blockers) & diag).is_empty() {
-                    continue;
-                }
-                let on_ray = !(rook_rays(our_king) & orth).is_empty();
-                if on_ray && !(rook_moves(our_king, blockers) & orth).is_empty() {
-                    continue;
-                }
-                abort_if!(listener(PieceMoves {
-                    piece: PIECE,
-                    from: piece,
-                    to: dest.bitboard(),
-                    flag: MoveFlag::EnPassant
-                }));
-            }
-        }
-        false
-    }
-
-    /*----------------------------------------------------------------*/
+impl Deref for MoveList {
+    type Target = ArrayVec<Move, 256>;
 
     #[inline]
-    fn king_safe_on(&self, sq: Square) -> bool {
-        if !(pawn_attacks(sq, self.stm) & self.color_pieces(Piece::Pawn, !self.stm)).is_empty() {
-            return false;
-        }
-
-        if !(knight_moves(sq) & self.color_pieces(Piece::Knight, !self.stm)).is_empty() {
-            return false;
-        }
-
-        let blockers = self.occupied() ^ self.king(self.stm);
-        let diag = self.color_diag_sliders(!self.stm);
-        let orth = self.color_orth_sliders(!self.stm);
-
-        let on_ray = !(bishop_rays(sq) & diag).is_empty();
-        if on_ray && !(bishop_moves(sq, blockers) & diag).is_empty() {
-            return false;
-        }
-        let on_ray = !(rook_rays(sq) & orth).is_empty();
-        if on_ray && !(rook_moves(sq, blockers) & orth).is_empty() {
-            return false;
-        }
-
-        !king_moves(sq).has(self.king(!self.stm))
+    fn deref(&self) -> &ArrayVec<Move, 256> {
+        &self.inner
     }
+}
 
-    fn can_castle(&self, rook: File, king_dest: File, rook_dest: File) -> bool {
-        let our_king = self.king(self.stm);
-        let back_rank = Rank::First.relative_to(self.stm);
-        let rook = Square::new(rook, back_rank);
-        let blockers = self.occupied() ^ our_king ^ rook;
-        let king_dest = Square::new(king_dest, back_rank);
-        let rook_dest = Square::new(rook_dest, back_rank);
-        let king_to_rook = between(our_king, rook);
-        let king_to_dest = between(our_king, king_dest);
-        let must_be_safe = king_to_dest | king_dest;
-        let must_be_empty = must_be_safe | king_to_rook | rook_dest;
-
-        !self.pinned.has(rook)
-            && (blockers & must_be_empty).is_empty()
-            && must_be_safe.iter().all(|square| self.king_safe_on(square))
-    }
-
-    fn add_king_legals<
-        F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool
-    >(&self, mask: Bitboard, listener: &mut F) -> bool {
-        const PIECE: Piece = Piece::King;
-
-        let our_pieces = self.colors(self.stm);
-        let our_king = self.king(self.stm);
-        if !mask.has(our_king) {
-            return false;
-        }
-        let mut moves = Bitboard::EMPTY;
-        for to in king_moves(our_king) & !our_pieces {
-            if self.king_safe_on(to) {
-                moves |= to;
-            }
-        }
-
-        if !moves.is_empty() {
-            abort_if!(listener(PieceMoves {
-                piece: PIECE,
-                from: our_king,
-                to: moves,
-                flag: MoveFlag::None
-            }));
-        }
-
-        if !IN_CHECK {
-            let rights = self.castle_rights(self.stm);
-            let back_rank = Rank::First.relative_to(self.stm);
-            moves = Bitboard::EMPTY;
-
-            if let Some(rook) = rights.short {
-                if self.can_castle(rook, File::G, File::F) {
-                    moves |= Square::new(rook, back_rank);
-                }
-            }
-            if let Some(rook) = rights.long {
-                if self.can_castle(rook, File::C, File::D) {
-                    moves |= Square::new(rook, back_rank);
-                }
-            }
-
-            if !moves.is_empty() {
-                abort_if!(listener(PieceMoves {
-                    piece: PIECE,
-                    from: our_king,
-                    to: moves,
-                    flag: MoveFlag::Castling
-                }));
-            }
-        }
-
-        false
-    }
-
-    /*----------------------------------------------------------------*/
-
-    fn add_all_legals<
-        F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool
-    >(&self, mask: Bitboard, listener: &mut F) -> bool {
-        abort_if! {
-            self.add_pawn_legals::<_, IN_CHECK>(mask, listener),
-            self.add_knight_legals::<_, IN_CHECK>(mask, listener),
-            self.add_slider_legals::<false, _, IN_CHECK>(mask, listener),
-            self.add_slider_legals::<true, _, IN_CHECK>(mask, listener),
-            self.add_king_legals::<_, IN_CHECK>(mask, listener)
-        }
-        false
-    }
-
-    /*----------------------------------------------------------------*/
-
-    pub fn gen_moves(&self, listener: impl FnMut(PieceMoves) -> bool) -> bool {
-        self.gen_moves_for(Bitboard::FULL, listener)
-    }
-
-    pub fn gen_moves_for(
-        &self, mask: Bitboard, mut listener: impl FnMut(PieceMoves) -> bool
-    ) -> bool {
-        match self.checkers().popcnt() {
-            0 => self.add_all_legals::<_, false>(mask, &mut listener),
-            1 => self.add_all_legals::<_, true>(mask, &mut listener),
-            _ => self.add_king_legals::<_, true>(mask, &mut listener)
-        }
-    }
-
-    /*----------------------------------------------------------------*/
-
+impl DerefMut for MoveList {
     #[inline]
-    pub fn is_en_passant(&self, mv: Move) -> bool {
-        mv.is_en_passant() || (
-            Some(mv.to()) == self.ep_square() && self.piece_on(mv.from()).unwrap() == Piece::Pawn
-        )
-    }
-
-    #[inline]
-    pub fn is_capture(&self, mv: Move) -> bool {
-        self.colors(!self.stm).has(mv.to()) || self.is_en_passant(mv)
-    }
-
-    #[inline]
-    pub fn is_tactic(&self, mv: Move) -> bool {
-        self.is_capture(mv) || mv.is_promotion()
-    }
-
-    #[inline]
-    pub fn is_quiet(&self, mv: Move) -> bool {
-        !self.is_tactic(mv)
-    }
-
-    #[inline]
-    pub fn is_castling(&self, mv: Move) -> bool {
-        mv.is_castling() || (self.king(self.stm) == mv.from() && self.colors(self.stm).has(mv.to()))
-    }
-    
-    pub fn is_check(&self, mv: Move) -> bool {
-        let mut board = self.clone();
-        board.make_move(mv);
-
-        board.in_check()
-    }
-
-    #[inline]
-    pub fn victim(&self, mv: Move) -> Option<Piece> {
-        if self.is_en_passant(mv) {
-            Some(Piece::Pawn)
-        } else if self.is_capture(mv) {
-            Some(self.piece_on(mv.to()).unwrap())
-        } else {
-            None
-        }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    fn king_is_legal(&self, mv: Move) -> bool {
-        let (from, to) = (mv.from(), mv.to());
-
-        if self.checkers.is_empty() {
-            let castles = self.castle_rights(self.stm);
-            let back_rank = Rank::First.relative_to(self.stm);
-
-            if let Some(rook) = castles.short {
-                let rook_square = Square::new(rook, back_rank);
-                if rook_square == to && self.can_castle(rook, File::G, File::F) {
-                    return true;
-                }
-            }
-            if let Some(rook) = castles.long {
-                let rook_square = Square::new(rook, back_rank);
-                if rook_square == to && self.can_castle(rook, File::C, File::D) {
-                    return true;
-                }
-            }
-        }
-        if !(king_moves(from) & !self.colors(self.stm)).has(to) {
-            return false;
-        }
-
-        if mv.is_promotion() {
-            return false;
-        }
-
-        self.king_safe_on(to)
-    }
-
-    pub fn is_legal(&self, mv: Move) -> bool {
-        let (from, to) = (mv.from(), mv.to());
-
-        if !self.colors(self.stm).has(from) {
-            return false;
-        }
-
-        let king_sq = self.king(self.stm);
-        if from == king_sq {
-            if mv.is_promotion() {
-                return false;
-            }
-
-            return self.king_is_legal(mv);
-        }
-
-        if self.pinned().has(from) && !line(king_sq, from).has(to) {
-            return false;
-        }
-
-        let target_squares = match self.checkers().popcnt() {
-            0 => self.target_squares::<false>(),
-            1 => self.target_squares::<true>(),
-            _ => return false,
-        };
-
-        let piece = self.piece_on(from);
-        if piece != Some(Piece::Pawn) && mv.is_promotion() {
-            return false;
-        }
-
-        match piece {
-            None | Some(Piece::King) => false, // impossible
-            Some(Piece::Pawn) => {
-                let promo_rank = Rank::Eighth.relative_to(self.stm);
-                match (to.rank() == promo_rank, mv.promotion()) {
-                    (true, Some(Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen)) => {}
-                    (false, None) => {}
-                    _ => return false,
-                }
-                let mut c = |moves: PieceMoves| moves.to.has(to);
-
-                if self.checkers().is_empty() {
-                    self.add_pawn_legals::<_, false>(from.bitboard(), &mut c)
-                } else {
-                    self.add_pawn_legals::<_, true>(from.bitboard(), &mut c)
-                }
-            }
-            Some(Piece::Rook) => {
-                (target_squares & rook_rays(from)).has(to) && (between(from, to) & self.occupied()).is_empty()
-            }
-            Some(Piece::Bishop) => {
-                (target_squares & bishop_rays(from)).has(to) && (between(from, to) & self.occupied()).is_empty()
-            }
-            Some(Piece::Knight) => (target_squares & knight_moves(from)).has(to),
-            Some(Piece::Queen) => {
-                (target_squares & queen_rays(from)).has(to) && (between(from, to) & self.occupied()).is_empty()
-            }
-        }
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
 
 /*----------------------------------------------------------------*/
 
-#[cfg(test)]
-mod tests {
-    use std::collections::HashSet;
-    use crate::*;
+impl Board {
+    #[inline]
+    pub fn gen_moves(&self) -> MoveList {
+        let stm = self.stm;
+        let our_king = self.king(stm);
+
+        let checkers = self.attack_table(!stm).get(our_king);
+        let mut moves = MoveList::empty();
+
+        match checkers.popcnt() {
+            0 => self.gen_moves_to::<true>(&mut moves, our_king, Bitboard::FULL, None),
+            1 => {
+                let checker_index = checkers.lsb();
+                let checker_piece = self.index_to_piece[!stm][checker_index].unwrap();
+                let checker_sq = self.index_to_square[!stm][checker_index].unwrap();
+
+                self.gen_moves_to::<false>(
+                    &mut moves,
+                    our_king,
+                    if checker_piece == Piece::Knight {
+                        checker_sq.bitboard()
+                    } else {
+                        between(our_king, checker_sq) | checker_sq
+                    },
+                    Some(checker_piece)
+                );
+                self.gen_king_moves_in_check::<1>(&mut moves, our_king, checkers);
+            },
+            2 => self.gen_king_moves_in_check::<2>(&mut moves, our_king, checkers),
+            _ => unreachable!(),
+        }
+
+        moves
+    }
 
     /*----------------------------------------------------------------*/
 
-    fn test_legality(board: Board) {
-        let mut legals = HashSet::new();
-        board.gen_moves(|moves| {
-            legals.extend(moves);
-            false
-        });
+    #[inline]
+    fn gen_moves_to<const KING_MOVES: bool>(&self, moves: &mut MoveList, our_king: Square, valid_dest: Bitboard, checker: Option<Piece>) {
+        let stm = self.stm;
+        let our_attack_table = self.attack_table(stm);
 
-        const PROMOTIONS: [Piece; 4] = [
-            Piece::Knight,
-            Piece::Bishop,
-            Piece::Rook,
-            Piece::Queen
-        ];
+        let (pin_mask, pinned_bb) = self.calc_pins(our_king);
+        let masked_attack_table = (*our_attack_table & pin_mask).into_mailbox();
 
-        for &from in &Square::ALL {
-            for &to in &Square::ALL {
-                if from == to {
-                    continue;
+        let valid_pieces = self.index_to_piece[stm].valid();
+        let pawn_mask = self.index_to_piece[stm].mask_eq(Piece::Pawn);
+        let non_pawn_mask = valid_pieces & !pawn_mask & !PieceMask::KING;
+
+        let empty = self.empty();
+        let their_pieces = self.colors(!stm);
+        let their_attacks = self.attack_table(!stm).all();
+        let pawn_dest = our_attack_table.for_mask(pawn_mask) & valid_dest;
+        let non_pawn_dest = our_attack_table.for_mask(non_pawn_mask) & valid_dest;
+        let king_dest = our_attack_table.for_mask(PieceMask::KING) & valid_dest;
+
+        let src = Vec128::load(self.index_to_square[stm].into_inner().as_ptr()).zext8to16();
+        let pawn_info = pawns::pawn_info(stm);
+
+        self.gen_capture_promotions_for(moves, &masked_attack_table, pawn_mask, pawn_dest & their_pieces & pawn_info.promo_dest);
+        if let Some(sq) = self.ep_square() && (KING_MOVES || checker == Some(Piece::Pawn)) {
+            let mask = masked_attack_table[sq] & pawn_mask;
+
+            if !mask.is_empty() {
+                let victim = sq.offset(0, -stm.sign() as i8);
+                let pinned = {
+                    let our_piece = self.index_to_square[stm][mask.lsb()].unwrap();
+
+                    let dir = match victim.file() < our_king.file() {
+                        true => -1,
+                        false => 1,
+                    };
+
+                    let mut test_sq = our_king;
+                    let mut result = true;
+
+                    while let Some(sq) = test_sq.try_offset(dir, 0) {
+                        let place = self.board.get(sq);
+
+                        if !(place.is_empty() || sq == victim || sq == our_piece) {
+                            let (color, piece) = (place.color().unwrap(), place.piece().unwrap());
+
+                            result = color == stm || (piece != Piece::Rook && piece != Piece::Queen);
+                            break;
+                        }
+
+                        test_sq = sq;
+                    }
+
+                    result
+                };
+
+                if mask.popcnt() > 1 || victim.rank() != our_king.rank() || pinned {
+                    let dest = Vec256::splat16(((sq as u16) << 6) | MoveFlag::EnPassant as u16);
+                    moves.write256_16(mask.into_inner(), src | dest);
                 }
+            }
+        }
 
-                for &promotion in &PROMOTIONS {
-                    let mv = Move::new_promotion(from, to, promotion);
+        self.gen_captures_for(moves, &masked_attack_table, pawn_mask, src, pawn_dest & their_pieces & pawn_info.non_promo_dest);
+        self.gen_captures_for(moves, &masked_attack_table, non_pawn_mask, src, non_pawn_dest & their_pieces);
 
-                    assert_eq!(legals.contains(&mv),board.is_legal(mv));
+        if KING_MOVES {
+            self.gen_captures_for(moves, &masked_attack_table, PieceMask::KING, src,king_dest & their_pieces & !their_attacks);
+
+            let blockers = self.occupied();
+            let our_backrank = Rank::First.relative_to(stm);
+            let rights = self.castle_rights(stm);
+
+            macro_rules! write_castling {
+                ($king_src:ident, $rook_src:expr, $flag:expr, $king_dest:expr, $rook_dest:expr) => {
+                    if let Some(rook_src) = $rook_src.map(|f| Square::new(f, our_backrank)) {
+                        let king_dest = Square::new($king_dest, our_backrank);
+                        let rook_dest = Square::new($rook_dest, our_backrank);
+                        let king_to_rook = between($king_src, rook_src);
+                        let king_to_dest = between($king_src, king_dest);
+                        let must_be_safe = king_to_dest | king_dest;
+                        let must_be_empty = must_be_safe | king_to_rook | rook_dest;
+                        let blockers = blockers ^ $king_src ^ rook_src;
+
+                        if !pinned_bb.has(rook_src)
+                            && blockers.is_disjoint(must_be_empty)
+                            && their_attacks.is_disjoint(must_be_safe) {
+                            moves.push(Move::new($king_src, rook_src, $flag));
+                        }
+                    }
                 }
+            }
 
-                let mv = Move::new(from, to, MoveFlag::None);
-                assert_eq!(legals.contains(&mv), board.is_legal(mv));
+            write_castling!(our_king, rights.short, MoveFlag::ShortCastling, File::G, File::F);
+            write_castling!(our_king, rights.long, MoveFlag::LongCastling, File::C, File::D);
+        }
+
+        self.gen_quiets_for(moves, &masked_attack_table, non_pawn_mask, src, non_pawn_dest & empty);
+
+        if KING_MOVES {
+            self.gen_quiets_for(moves, &masked_attack_table, PieceMask::KING, src, king_dest & empty & !their_attacks);
+        }
+
+        let pinned_pawns = pinned_bb & !our_king.file().bitboard();
+        let bb = self.color_pieces(Piece::Pawn, stm) & !pinned_pawns;
+        let (normal_empty, double_empty) = pawns::pawn_empty(stm, empty, valid_dest);
+        let pawn_moves = pawns::pawn_moves(stm);
+
+        let pawn_normal = bb & normal_empty;
+        let pawn_double = bb & double_empty;
+
+        let mask = (pawn_normal >> pawn_info.promo_shift).0 as u8;
+        moves.write512_64(mask, pawn_moves.promotions);
+
+        let mask = (pawn_normal >> pawn_info.normal_shift).0 as u32;
+        moves.write512_16(mask, pawn_moves.normal_moves);
+
+        let normal_mask = (pawn_normal >> pawn_info.double_shift).0 as u8;
+        let double_mask = (pawn_double >> pawn_info.double_shift).0 as u8;
+        let mask = ((double_mask as u16) << 8) | normal_mask as u16;
+        moves.write256_16(mask, pawn_moves.double_moves);
+    }
+
+    #[inline]
+    fn gen_king_moves_in_check<const CHECKERS: usize>(&self, moves: &mut MoveList, our_king: Square, mut checkers: PieceMask) {
+        let stm = self.stm;
+        let attack_table = self.attack_table(!stm);
+
+        let (king_rays, rays_valid) = superpiece_rays(our_king);
+        let (king_leaps, leaps_valid) = adjacents(our_king);
+        let king_leaps16 = king_leaps.zext8to16lo();
+
+        let places = Vec512::permute8(Vec512::from(king_leaps), self.board.inner).into_vec128();
+        let blockers = places.nonzero8();
+        let color = places.msb8();
+        let our_pieces = (color ^ match stm {
+            Color::White => u16::MAX,
+            Color::Black => 0,
+        }) & blockers;
+
+        let [half0, half1] = attack_table.inner.map(|v| v.zero16() as u64);
+        let at_empty = Vec512::interleave64(half0, half1);
+        let no_attackers = Vec128::mask_bitshuffle(leaps_valid, Vec128::from(at_empty), king_leaps);
+
+        let mut dest = (leaps_valid & !our_pieces & no_attackers) as u8;
+        let mut additional_checks = 0;
+
+        for _ in 0..CHECKERS {
+            let checker_index = checkers.lsb();
+            let checker_piece = self.index_to_piece[!stm][checker_index].unwrap();
+            let checker_sq = self.index_to_square[!stm][checker_index].unwrap();
+
+            if checker_piece.is_slider() {
+                const VALID_MASK: [u8; 3] = [0b10101010, 0b01010101, 0b11111111];
+
+                let dir = (rays_valid & Vec512::eq8(king_rays, Vec512::splat8(checker_sq as u8))).rotate_left(32).trailing_zeros() / 8;
+                additional_checks |= (1u8 << dir) & VALID_MASK[checker_piece.bits() as usize - Piece::Bishop.bits() as usize];
+            }
+
+            checkers &= PieceMask::new(checkers.into_inner() - 1);
+        }
+
+        dest &= !additional_checks;
+
+        let write_vec = Vec128::shl16::<6>(king_leaps16)
+            | Vec128::splat16(our_king as u16)
+            | Vec128::mask16(blockers as u8, Vec128::splat16(MoveFlag::Capture as u16));
+        moves.write128_16(dest, write_vec);
+    }
+
+    #[inline]
+    fn gen_quiets_for(
+        &self,
+        moves: &mut MoveList,
+        attack_table: &[PieceMask; Square::COUNT],
+        mask: PieceMask,
+        src: Vec256,
+        dest: Bitboard,
+    ) {
+        for sq in dest {
+            let mask = mask & attack_table[sq];
+
+            if !mask.is_empty() {
+                let dest = Vec256::splat16((sq as u16) << 6);
+
+                moves.write256_16(mask.into_inner(), src | dest);
+            }
+        }
+    }
+
+    #[inline]
+    fn gen_captures_for(
+        &self,
+        moves: &mut MoveList,
+        attack_table: &[PieceMask; Square::COUNT],
+        mask: PieceMask,
+        src: Vec256,
+        dest: Bitboard,
+    ) {
+        for sq in dest {
+            let mask = mask & attack_table[sq];
+
+            if !mask.is_empty() {
+                let dest = Vec256::splat16(((sq as u16) << 6) | MoveFlag::Capture as u16);
+
+                moves.write256_16(mask.into_inner(), src | dest);
+            }
+        }
+    }
+
+    #[inline]
+    fn gen_capture_promotions_for(
+        &self,
+        moves: &mut MoveList,
+        attack_table: &[PieceMask; Square::COUNT],
+        mask: PieceMask,
+        dest: Bitboard,
+    ) {
+        let stm = self.stm;
+
+        for sq in dest {
+            let mask = mask & attack_table[sq];
+
+            for index in mask {
+                let src = self.index_to_square[stm][index].expect(&format!("{} | {} | {:?}", self.to_fen(true), index.into_inner(), self));
+                let base_move = ((sq as u16) << 6) | src as u16;
+                let promos = MoveFlag::CapturePromotionQueen as u64
+                    | ((MoveFlag::CapturePromotionRook as u64) << 16)
+                    | ((MoveFlag::CapturePromotionBishop as u64) << 32)
+                    | ((MoveFlag::CapturePromotionKnight as u64) << 48);
+
+                moves.write_promotions(promos + 0x0001000100010001 * (base_move as u64));
             }
         }
     }
 
     /*----------------------------------------------------------------*/
 
-    #[test]
-    fn simple_legals() {
-        test_legality(Board::default());
-        test_legality(
-            "rk2r3/pn1p1p1p/1p4NB/2pP1K2/4p2N/1P3BP1/P1P3PP/1R3q2 w - - 2 32"
-                .parse()
-                .unwrap()
-        );
+    #[inline]
+    fn calc_pins(&self, our_king: Square) -> (Wordboard, Bitboard) {
+        let stm = self.stm;
+
+        let (ray_coords, ray_valid) = superpiece_rays(our_king);
+        let ray_places = Vec512::permute8(ray_coords, self.board.inner);
+        let perm = superpiece_inv_rays(our_king);
+
+        let blockers = ray_places.nonzero8() & NON_HORSE_ATTACK_MASK;
+        let color = ray_places.msb8();
+        let their_pieces = (color ^ match stm {
+            Color::White => Bitboard::EMPTY,
+            Color::Black => Bitboard::FULL,
+        }) & blockers;
+
+        let potentially_pinned = blockers & superpiece_attacks(blockers, ray_valid);
+        let maybe_attacking = their_pieces & sliders_from_rays(ray_places);
+        let not_closest = blockers & !potentially_pinned;
+        let pin_raymasks = superpiece_attacks(not_closest, ray_valid) & NON_HORSE_ATTACK_MASK;
+        let potential_attackers = not_closest & pin_raymasks;
+        let attackers = maybe_attacking & potential_attackers;
+
+        let attacked_mask = Vec128::from(attackers.0).nonzero8();
+        let pinned = Vec128::mask8(attacked_mask, Vec128::from(potentially_pinned)).into_u64() & !their_pieces;
+
+        let pinned_ids = Vec512::mask8(pin_raymasks, Vec512::lane_splat8to64(Vec512::mask8(pinned.0, ray_places)));
+        let board_layout = Vec512::permute8_mz(!perm.msb8(), perm, pinned_ids);
+
+        let pinned_count = pinned.popcnt();
+        let pinned_coord = Vec512::compress8(pinned.0, ray_coords).into_vec128();
+        let piece_mask = Vec128::findset8(pinned_coord, pinned_count as i32, Vec128::load(self.index_to_square[stm].into_inner().as_ptr()));
+
+        let ones = Vec512::splat16(1);
+        let valid_ids = board_layout.nonzero8();
+        let masked_ids = board_layout & Vec512::splat8(0xF);
+        let bits0 = Vec512::shl16_mz(valid_ids as Vec512Mask16, ones, masked_ids.into_vec256().zext8to16());
+        let bits1 = Vec512::shl16_mz((valid_ids >> 32) as Vec512Mask16, ones, masked_ids.extract_vec256::<1>().zext8to16());
+        let at_mask0 = Vec512::splat16(!piece_mask) | bits0;
+        let at_mask1 = Vec512::splat16(!piece_mask) | bits1;
+        let pinned_bb = Bitboard(board_layout.nonzero8());
+
+        (Wordboard::new(at_mask0, at_mask1), pinned_bb)
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+mod pawns {
+    use cherry_types::*;
+    use crate::{Move, MoveFlag, Vec256, Vec512};
+
+    #[inline]
+    pub fn pawn_empty(stm: Color, empty: Bitboard, valid_dest: Bitboard) -> (Bitboard, Bitboard) {
+        let valid_empty = empty & valid_dest;
+
+        match stm {
+            Color::White => (valid_empty.shift::<Down>(1), empty.shift::<Down>(1) & valid_empty.shift::<Down>(2)),
+            Color::Black => (valid_empty.shift::<Up>(1), empty.shift::<Up>(1) & valid_empty.shift::<Up>(2)),
+        }
     }
 
-    #[test]
-    fn castle_legals() {
-        test_legality(
-            "rnbqk2r/ppppbp1p/5np1/4p3/4P3/3P1N2/PPP1BPPP/RNBQK2R w KQkq - 0 5"
-                .parse()
-                .unwrap(),
-        );
-        test_legality(
-            "rnbqk2r/ppppbp1p/5npB/4p3/4P3/3P1N2/PPP1BPPP/RN1QK2R b KQkq - 1 5"
-                .parse()
-                .unwrap(),
-        );
-        test_legality(
-            "r1bqk2r/ppppbp1p/2n2npB/4p3/4P3/2NP1N2/PPPQBPPP/R3K2R w KQq - 6 8"
-                .parse()
-                .unwrap(),
-        );
-        test_legality(
-            "r1bqk2r/ppppbp1p/2n2npB/4p3/4P3/2NP1N2/PPPQBPPP/R2K3R b q - 7 8"
-                .parse()
-                .unwrap(),
-        );
-        test_legality(
-            "rnbqkbn1/pppprppp/8/8/8/8/PPPP1PPP/RNBQK2R w KQq - 0 1"
-                .parse()
-                .unwrap(),
-        );
+    /*----------------------------------------------------------------*/
+
+    pub struct PawnInfo {
+        pub promo_dest: Bitboard,
+        pub non_promo_dest: Bitboard,
+        pub promo_shift: u8,
+        pub double_shift: u8,
+        pub normal_shift: u8,
     }
 
-    #[test]
-    fn castle_960_legals() {
-        test_legality(
-            Board::from_fen(
-                "rq1kr3/p1ppbp1p/bpn3pB/3Np3/3P4/1P1Q1Nn1/P1P1BPPP/R2KR3 w AEae - 3 15",
-                true,
-            ).unwrap(),
-        );
-        test_legality(
-            Board::from_fen(
-                "rq1kr3/p1ppbp1p/bpn3pB/3Np3/3P4/1P1Q1Nn1/P1P1BPPP/R2KR3 b AEae - 3 15",
-                true,
-            ).unwrap(),
-        );
-        test_legality(
-            Board::from_fen(
-                "rk2r3/pqppbp1p/bpn3pB/3Npn2/3P4/1P1Q1N2/P1P2PPP/RKRB4 w ACa - 3 15",
-                true,
-            ).unwrap(),
-        );
+    #[inline]
+    pub fn pawn_info(stm: Color) -> PawnInfo {
+        match stm {
+            Color::White => PawnInfo {
+                promo_dest: Bitboard(0xFF00000000000000),
+                non_promo_dest: Bitboard(0x00FFFFFFFFFF0000),
+                promo_shift: 48,
+                double_shift: 8,
+                normal_shift: 16,
+            },
+            Color::Black => PawnInfo {
+                promo_dest: Bitboard(0x00000000000000FF),
+                non_promo_dest: Bitboard(0x0000FFFFFFFFFF00),
+                promo_shift: 8,
+                double_shift: 48,
+                normal_shift: 16,
+            }
+        }
     }
 
-    #[test]
-    fn en_passant_legals() {
-        test_legality(
-            "rk2r3/pn1p1p1p/1p4NB/q1pP1K2/4p2b/1P3NP1/P1P3PP/R1RB4 w - - 0 29"
-                .parse()
-                .unwrap(),
-        );
-        test_legality(
-            "rk2r3/pn1p1p1p/1p4NB/2pP1K2/4p2N/qP4P1/P1P3PP/R1RB4 w - c6 0 30"
-                .parse()
-                .unwrap(),
-        );
+    /*----------------------------------------------------------------*/
+
+    pub struct PawnMoves {
+        pub normal_moves: Vec512,
+        pub double_moves: Vec256,
+        pub promotions: Vec512,
+    }
+
+    #[inline]
+    pub fn pawn_moves(stm: Color) -> PawnMoves {
+        let mut normal_moves = [0u16; 32];
+        let normal_shift = stm.sign() * 8;
+
+        for i in 16..48 {
+            normal_moves[i - 16] = Move::new(Square::index(i), Square::index((i as i16 + normal_shift) as usize), MoveFlag::Normal).bits();
+        }
+
+        let mut double_moves = [0u16; 16];
+        let double_offset = match stm {
+            Color::White => 8,
+            Color::Black => 48,
+        };
+        let double_shift = stm.sign() * 16;
+
+        for i in 0..8 {
+            let src = i + double_offset;
+            double_moves[i] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::Normal).bits();
+            double_moves[i + 8] = Move::new(Square::index(src), Square::index((src as i16 + double_shift) as usize), MoveFlag::DoublePush).bits();
+        }
+
+        let mut promotions = [0u16; 32];
+        let promotion_offset = match stm {
+            Color::White => 48,
+            Color::Black => 8,
+        };
+
+        for i in 0..8 {
+            let src = i + promotion_offset;
+            promotions[i * 4] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::PromotionQueen).bits();
+            promotions[i * 4 + 1] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::PromotionRook).bits();
+            promotions[i * 4 + 2] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::PromotionBishop).bits();
+            promotions[i * 4 + 3] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::PromotionKnight).bits();
+        }
+
+        PawnMoves {
+            normal_moves: normal_moves.into(),
+            double_moves: double_moves.into(),
+            promotions: promotions.into(),
+        }
     }
 }

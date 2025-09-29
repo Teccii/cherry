@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::*, str::FromStr};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Color {
@@ -33,13 +33,21 @@ impl Color {
         }
     }
 
+    #[inline]
+    pub const fn msb(self) -> u8 {
+        match self {
+            Color::White => 0,
+            Color::Black => 0x80,
+        }
+    }
+
     /*----------------------------------------------------------------*/
 
     pub const COUNT: usize = 2;
     pub const ALL: [Color; Self::COUNT] = [Color::White, Color::Black];
 }
 
-impl std::ops::Not for Color {
+impl Not for Color {
     type Output = Color;
 
     #[inline]
@@ -48,6 +56,22 @@ impl std::ops::Not for Color {
             Color::White => Color::Black,
             Color::Black => Color::White,
         }
+    }
+}
+
+impl<T> Index<Color> for [T; Color::COUNT] {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, color: Color) -> &Self::Output {
+        unsafe { self.get_unchecked(color as usize) }
+    }
+}
+
+impl<T> IndexMut<Color> for [T; Color::COUNT] {
+    #[inline]
+    fn index_mut(&mut self, color: Color) -> &mut Self::Output {
+        unsafe { self.get_unchecked_mut(color as usize) }
     }
 }
 

@@ -1,4 +1,5 @@
 use std::{fmt, str::FromStr};
+use std::ops::{Index, IndexMut};
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -108,6 +109,23 @@ impl Rank {
         Rank::Eighth
     ];
 }
+
+impl<T> Index<Rank> for [T; Rank::COUNT] {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, rank: Rank) -> &Self::Output {
+        unsafe { self.get_unchecked(rank as usize) }
+    }
+}
+
+impl<T> IndexMut<Rank> for [T; Rank::COUNT] {
+    #[inline]
+    fn index_mut(&mut self, rank: Rank) -> &mut Self::Output {
+        unsafe { self.get_unchecked_mut(rank as usize) }
+    }
+}
+
 
 impl fmt::Display for Rank {
     #[inline]

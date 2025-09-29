@@ -1,24 +1,13 @@
-mod builder;
 mod move_gen;
 mod parse;
+mod perft;
 mod print;
-mod sanity;
-mod attacks;
+mod startpos;
 
-pub use builder::*;
-pub use parse::*;
+use std::ops::Deref;
+use crate::*;
 
 /*----------------------------------------------------------------*/
-
-use crate::*;
-use std::fmt;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum BoardStatus {
-    Draw,
-    Checkmate,
-    Ongoing
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CastleRights {
@@ -27,678 +16,622 @@ pub struct CastleRights {
 }
 
 impl CastleRights {
+    #[inline]
+    pub fn get_squares(&self, color: Color) -> (Option<Square>, Option<Square>) {
+        let our_backrank = Rank::First.relative_to(color);
+        let short = self.short.map(|f| Square::new(f, our_backrank));
+        let long = self.long.map(|f| Square::new(f, our_backrank));
+
+        (short, long)
+    }
+    
     pub const EMPTY: CastleRights = CastleRights {
         short: None,
         long: None
     };
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Clone)]
 pub struct Board {
-    colors: [Bitboard; Color::COUNT],
-    pieces: [Bitboard; Piece::COUNT],
+    board: Byteboard,
+    attack_tables: [Wordboard; Color::COUNT],
+    index_to_square: [IndexToSquare; Color::COUNT],
+    index_to_piece: [IndexToPiece; Color::COUNT],
     castle_rights: [CastleRights; Color::COUNT],
-    pinned: Bitboard,
-    checkers: Bitboard,
     en_passant: Option<File>,
+    fullmove_count: u16,
     halfmove_clock: u8,
-    minor_hash: u64,
-    major_hash: u64,
-    pawn_hash: u64,
-    hash: u64,
     stm: Color,
 }
 
 impl Board {
     #[inline]
-    pub const fn occupied(&self) -> Bitboard {
-        self.colors[0].union(self.colors[1])
+    pub fn castle_rights(&self, color: Color) -> CastleRights {
+        self.castle_rights[color]
     }
 
     #[inline]
-    pub const fn colors(&self, color: Color) -> Bitboard {
-        self.colors[color as usize]
-    }
-
-    #[inline]
-    pub const fn pieces(&self, piece: Piece) -> Bitboard {
-        self.pieces[piece as usize]
-    }
-
-    #[inline]
-    pub const fn color_pieces(&self, piece: Piece, color: Color) -> Bitboard {
-        self.colors(color).intersection(self.pieces(piece))
+    pub fn attack_table(&self, color: Color) -> &Wordboard {
+        &self.attack_tables[color]
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub const fn minors(&self) -> Bitboard {
-        self.pieces(Piece::Knight).union(self.pieces(Piece::Bishop))
+    pub const fn en_passant(&self) -> Option<File> {
+        self.en_passant
     }
-
-    #[inline]
-    pub const fn color_minors(&self, color: Color) -> Bitboard {
-        self.colors(color).intersection(self.minors())
-    }
-
-    #[inline]
-    pub const fn majors(&self) -> Bitboard {
-        self.pieces(Piece::Rook).union(self.pieces(Piece::Queen))
-    }
-
-    #[inline]
-    pub const fn color_majors(&self, color: Color) -> Bitboard {
-        self.colors(color).intersection(self.majors())
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub const fn diag_sliders(&self) -> Bitboard {
-        self.pieces(Piece::Bishop).union(self.pieces(Piece::Queen))
-    }
-
-    #[inline]
-    pub const fn color_diag_sliders(&self, color: Color) -> Bitboard {
-        self.colors(color).intersection(self.diag_sliders())
-    }
-
-    #[inline]
-    pub const fn orth_sliders(&self) -> Bitboard {
-        self.pieces(Piece::Rook).union(self.pieces(Piece::Queen))
-    }
-
-    #[inline]
-    pub const fn color_orth_sliders(&self, color: Color) -> Bitboard {
-        self.colors(color).intersection(self.orth_sliders())
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub const fn castle_rights(&self, color: Color) -> CastleRights {
-        self.castle_rights[color as usize]
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn king(&self, color: Color) -> Square {
-        self.color_pieces(Piece::King, color).next_square()
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub const fn pinned(&self) -> Bitboard { self.pinned }
-
-    #[inline]
-    pub const fn checkers(&self) -> Bitboard { self.checkers }
-
-    #[inline]
-    pub const fn en_passant(&self) -> Option<File> { self.en_passant }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub const fn in_check(&self) -> bool { !self.checkers.is_empty() }
 
     #[inline]
     pub fn ep_square(&self) -> Option<Square> {
-        self.en_passant.map(|f|
-            Square::new(f, Rank::Sixth.relative_to(self.stm))
-        )
+        self.en_passant.map(|f| Square::new(f, Rank::Sixth.relative_to(self.stm)))
     }
 
-    /*----------------------------------------------------------------*/
-    
     #[inline]
-    pub const fn halfmove_clock(&self) -> u8 { self.halfmove_clock }
+    pub const fn fullmove_count(&self) -> u16 {
+        self.fullmove_count
+    }
 
     #[inline]
-    pub const fn minor_hash(&self) -> u64 { self.minor_hash }
+    pub const fn halfmove_clock(&self) -> u8 {
+        self.halfmove_clock
+    }
 
     #[inline]
-    pub const fn major_hash(&self) -> u64 { self.major_hash }
-
-    #[inline]
-    pub const fn pawn_hash(&self) -> u64 { self.pawn_hash }
-
-    #[inline]
-    pub const fn hash(&self) -> u64 { self.hash }
-
-    #[inline]
-    pub const fn stm(&self) -> Color { self.stm }
+    pub const fn stm(&self) -> Color {
+        self.stm
+    }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn piece_on(&self, sq: Square) -> Option<Piece> {
-        let bb = sq.bitboard();
-
-        if self.occupied().is_disjoint(bb) {
-            return None;
-        }
-
-        if bb.is_subset(self.pieces(Piece::Pawn)) {
-            Some(Piece::Pawn)
-        } else if bb.is_subset(self.pieces(Piece::Knight)) {
-            Some(Piece::Knight)
-        } else if bb.is_subset(self.pieces(Piece::Bishop)) {
-            Some(Piece::Bishop)
-        } else if bb.is_subset(self.pieces(Piece::Rook)) {
-            Some(Piece::Rook)
-        } else if bb.is_subset(self.pieces(Piece::Queen)) {
-            Some(Piece::Queen)
-        } else {
-            Some(Piece::King)
-        }
+        self.board.get(sq).piece()
     }
 
     #[inline]
     pub fn color_on(&self, sq: Square) -> Option<Color> {
-        let bb = sq.bitboard();
+        self.board.get(sq).color()
+    }
 
-        if self.occupied().is_disjoint(bb) {
-            return None;
-        }
-
-        if bb.is_subset(self.colors(Color::White)) {
-            Some(Color::White)
-        } else {
-            Some(Color::Black)
-        }
+    #[inline]
+    pub fn king(&self, color: Color) -> Square {
+        self.index_to_square[color][PieceIndex::new(0)].unwrap()
     }
 
     /*----------------------------------------------------------------*/
 
+    #[inline]
     pub fn make_move(&mut self, mv: Move) {
-        self.checkers = Bitboard::EMPTY;
-        self.pinned = Bitboard::EMPTY;
+        let (src, dest) = (mv.from(), mv.to());
+        let (src_place, dest_place) = (self.board.get(src), self.board.get(dest));
+        let (src_id, dest_id) = (src_place.index().unwrap(), dest_place.index());
+        let src_piece = src_place.piece().unwrap();
+        let mut new_ep = None;
 
-        let (from, to, promotion) = (mv.from(), mv.to(), mv.promotion());
-        let moved = self.piece_on(from).unwrap();
-        let victim = self.piece_on(to);
-        let our_king = self.king(self.stm);
-        let their_king = self.king(!self.stm);
-        let backrank = Rank::First.relative_to(self.stm);
-        let their_backrank = Rank::Eighth.relative_to(self.stm);
+        #[inline]
+        fn castling(
+            board: &mut Board,
+            src: Square,
+            dest: Square,
+            src_id: PieceIndex,
+            dest_id: Option<PieceIndex>,
+            king_dest: File,
+            rook_dest: File,
+        ) {
+            let stm = board.stm;
+            let our_backrank = Rank::First.relative_to(stm);
+            let king_dest = Square::new(king_dest, our_backrank);
+            let rook_dest = Square::new(rook_dest, our_backrank);
+            let king_src = src;
+            let rook_src = dest;
+            let king_id = src_id;
+            let rook_id = dest_id.unwrap();
 
-        // Castling encoded as king captures rook
-        let is_castle = self.colors(self.stm).has(to);
+            board.update_slider(king_src);
+            board.board.set(king_src, Place::EMPTY);
+            board.remove_attacks(stm, king_id);
 
-        if moved == Piece::Pawn || (victim.is_some() && !is_castle) {
-            self.halfmove_clock = 0;
-        } else {
-            self.halfmove_clock = (self.halfmove_clock + 1).min(100);
+            board.update_slider(rook_src);
+            board.board.set(rook_src, Place::EMPTY);
+            board.remove_attacks(stm, rook_id);
+
+            board.board.set(king_dest, Place::from_piece(Piece::King, stm, king_id));
+            board.update_slider(king_dest);
+            board.add_attacks(king_dest, Piece::King, stm, king_id);
+
+            board.board.set(rook_dest, Place::from_piece(Piece::Rook, stm, rook_id));
+            board.update_slider(rook_dest);
+            board.add_attacks(rook_dest, Piece::Rook, stm, rook_id);
+
+            board.index_to_square[stm][king_id] = Some(king_dest);
+            board.index_to_square[stm][rook_id] = Some(rook_dest);
+
+            board.halfmove_clock = (board.halfmove_clock + 1).min(100);
+            board.set_castle_rights(stm, true, None);
+            board.set_castle_rights(stm, false, None);
         }
 
-        let mut new_en_passant = None;
-        if is_castle {
-            let (king, rook) = if from.file() < to.file() {
-                (File::G, File::F)
-            } else {
-                (File::C, File::D)
-            };
+        #[inline]
+        fn capture_promotion(
+            board: &mut Board,
+            src: Square,
+            dest: Square,
+            src_id: PieceIndex,
+            dest_id: Option<PieceIndex>,
+            src_piece: Piece,
+            promotion: Piece,
+        ) {
+            let dest_id = dest_id.unwrap();
+            let stm = board.stm;
 
-            self.xor_square(Piece::King, self.stm, from);
-            self.xor_square(Piece::Rook, self.stm, to);
+            board.index_to_piece[stm][src_id] = Some(promotion);
+            board.index_to_square[!stm][dest_id] = None;
+            board.index_to_piece[!stm][dest_id] = None;
 
-            self.xor_square(Piece::King, self.stm, Square::new(king, backrank));
-            self.xor_square(Piece::Rook, self.stm, Square::new(rook, backrank));
+            board.remove_attacks(!stm, dest_id);
+            board.move_piece::<false>(stm, src, dest, promotion, src_id);
+            board.halfmove_clock = 0;
 
-            self.set_castle_rights(self.stm, None, true);
-            self.set_castle_rights(self.stm, None, false);
-        } else {
-            self.xor_square(moved, self.stm, from);
-            self.xor_square(moved, self.stm, to);
+            check_castle_rights(board, !stm, dest);
+        }
 
-            if let Some(victim) = victim {
-                self.xor_square(victim, !self.stm, to);
+        #[inline]
+        fn promotion(
+            board: &mut Board,
+            src: Square,
+            dest: Square,
+            src_id: PieceIndex,
+            promotion: Piece,
+        ) {
+            let stm = board.stm;
 
-                if to.rank() == their_backrank {
-                    let rights = self.castle_rights(!self.stm);
-                    let file = to.file();
+            board.index_to_piece[stm][src_id] = Some(promotion);
+            board.move_piece::<true>(stm, src, dest, promotion, src_id);
+            board.halfmove_clock = 0;
+        }
 
-                    if Some(file) == rights.short {
-                        self.set_castle_rights(!self.stm, None, true);
-                    } else if Some(file) == rights.long {
-                        self.set_castle_rights(!self.stm, None, false);
-                    }
+        #[inline]
+        fn check_castle_rights(board: &mut Board, color: Color, sq: Square) {
+            if sq.rank() == Rank::First.relative_to(color) {
+                let rights = board.castle_rights(color);
+                let file = sq.file();
+
+                if rights.short == Some(file) {
+                    board.set_castle_rights(color, true, None);
+                }
+
+                if rights.long == Some(file) {
+                    board.set_castle_rights(color, false, None);
                 }
             }
+        }
 
-            match moved {
-                Piece::Knight => self.checkers |= knight_moves(their_king) & to,
-                Piece::Pawn => {
-                    if let Some(promotion) = promotion {
-                        self.xor_square(Piece::Pawn, self.stm, to);
-                        self.xor_square(promotion, self.stm, to);
+        match mv.flag() {
+            MoveFlag::Normal => {
+                let stm = self.stm;
 
-                        if promotion == Piece::Knight {
-                            self.checkers |= knight_moves(their_king) & to;
-                        }
-                    } else {
-                        let double_push_from = Rank::Second.relative_to(self.stm).bitboard();
-                        let double_push_to = Rank::Fourth.relative_to(self.stm).bitboard();
+                self.move_piece::<true>(stm, src, dest, src_piece, src_id);
 
-                        let their_pawns = double_push_to & self.color_pieces(Piece::Pawn, !self.stm) & to.file().adjacent();
-                        if double_push_from.has(from) && double_push_to.has(to) && !their_pawns.is_empty() {
-                            new_en_passant = Some(to.file());
-                        } else if Some(to) == self.ep_square() {
-                            let victim_square = Square::new(
-                                to.file(),
-                                Rank::Fifth.relative_to(self.stm)
-                            );
-                            self.xor_square(Piece::Pawn, !self.stm, victim_square);
-                        }
-
-                        self.checkers |= pawn_attacks(their_king, !self.stm) & to;
-                    }
+                if src_piece != Piece::Pawn {
+                    self.halfmove_clock = (self.halfmove_clock + 1).min(100);
+                } else {
+                    self.halfmove_clock = 0;
                 }
-                Piece::King => {
-                    self.set_castle_rights(self.stm, None, true);
-                    self.set_castle_rights(self.stm, None, false);
+
+                match src_piece {
+                    Piece::Rook => check_castle_rights(self, stm, src),
+                    Piece::King => {
+                        self.set_castle_rights(stm, true, None);
+                        self.set_castle_rights(stm, false, None);
+                    },
+                    _ => { }
                 }
-                Piece::Rook => if from.rank() == backrank {
-                    let rights = self.castle_rights(self.stm);
-                    let file = from.file();
+            },
+            MoveFlag::DoublePush => {
+                let stm = self.stm;
 
-                    if Some(file) == rights.short {
-                        self.set_castle_rights(self.stm, None, true);
-                    } else if Some(file) == rights.long {
-                        self.set_castle_rights(self.stm, None, false);
-                    }
+                self.move_piece::<true>(self.stm, src, dest, src_piece, src_id);
+                self.halfmove_clock = 0;
+
+                let their_pawns = self.index_to_piece[!stm].mask_eq(Piece::Pawn);
+                let their_attacks = self.attack_table(!stm).get(dest.offset(0, -stm.sign() as i8));
+
+                if !(their_attacks & their_pawns).is_empty() {
+                    new_ep = Some(src.file());
                 }
-                _ => {}
-            }
+            },
+            MoveFlag::Capture => {
+                let stm = self.stm;
+                let dest_id = dest_id.unwrap();
+
+                self.index_to_square[!stm][dest_id] = None;
+                self.index_to_piece[!stm][dest_id] = None;
+
+                self.remove_attacks(!stm, dest_id);
+                self.move_piece::<false>(stm, src, dest, src_piece, src_id);
+                self.halfmove_clock = 0;
+
+                check_castle_rights(self, stm, src);
+                check_castle_rights(self, !stm, dest);
+            },
+            MoveFlag::EnPassant => {
+                let stm = self.stm;
+                let victim_sq = Square::new(dest.file(), src.rank());
+                let victim_id = self.board.get(victim_sq).index().unwrap();
+
+                self.move_piece::<true>(stm, src, dest, src_piece, src_id);
+                self.update_slider(victim_sq);
+                self.halfmove_clock = 0;
+
+                self.index_to_piece[!stm][victim_id] = None;
+                self.index_to_square[!stm][victim_id] = None;
+                self.board.set(victim_sq, Place::EMPTY);
+                self.remove_attacks(!stm, victim_id);
+            },
+            MoveFlag::ShortCastling => castling(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                File::G,
+                File::F
+            ),
+            MoveFlag::LongCastling => castling(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                File::C,
+                File::D
+            ),
+            MoveFlag::PromotionQueen => promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                Piece::Queen
+            ),
+            MoveFlag::PromotionRook => promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                Piece::Rook
+            ),
+            MoveFlag::PromotionBishop => promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                Piece::Bishop
+            ),
+            MoveFlag::PromotionKnight => promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                Piece::Knight
+            ),
+            MoveFlag::CapturePromotionQueen => capture_promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                src_piece,
+                Piece::Queen
+            ),
+            MoveFlag::CapturePromotionRook => capture_promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                src_piece,
+                Piece::Rook
+            ),
+            MoveFlag::CapturePromotionBishop => capture_promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                src_piece,
+                Piece::Bishop
+            ),
+            MoveFlag::CapturePromotionKnight => capture_promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                src_piece,
+                Piece::Knight
+            ),
         }
-        self.set_en_passant(new_en_passant);
 
-        let (diag, orth) = (self.diag_sliders(), self.orth_sliders());
-        let our_attackers = self.colors(self.stm) & (
-            (bishop_rays(their_king) & diag) | (rook_rays(their_king) & orth)
-        );
+        let [white_attacks_slow, black_attacks_slow] = self.calc_attacks();
+        let [white_attacks, black_attacks] = self.attack_tables;
 
-        let occ = self.occupied();
-        for sq in our_attackers {
-            let between = between(sq, their_king) & occ;
-            match between.popcnt() {
-                0 => self.checkers |= sq,
-                1 => self.pinned |= between,
-                _ => {}
-            }
+        assert_eq!(Vec512::eq16(white_attacks.inner[0], white_attacks_slow.inner[0]), u32::MAX, "White Half 0 Board: {} Move: {}{}", self.to_fen(true), src, dest);
+        assert_eq!(Vec512::eq16(white_attacks.inner[1], white_attacks_slow.inner[1]), u32::MAX, "White Half 1 Board: {} Move: {}{}", self.to_fen(true), src, dest);
+        assert_eq!(Vec512::eq16(black_attacks.inner[0], black_attacks_slow.inner[0]), u32::MAX, "Black Half 0 Board: {} Move: {}{}", self.to_fen(true), src, dest);
+        assert_eq!(Vec512::eq16(black_attacks.inner[1], black_attacks_slow.inner[1]), u32::MAX, "Black Half 1 Board: {} Move: {}{}", self.to_fen(true), src, dest);
+
+        self.set_en_passant(new_ep);
+
+        if self.stm == Color::Black {
+            self.fullmove_count += 1;
         }
 
-        let their_attackers = self.colors(!self.stm) & (
-            (bishop_rays(our_king) & diag) | (rook_rays(our_king) & orth)
-        );
-
-        for sq in their_attackers {
-            let between = between(sq, our_king) & occ;
-
-            if between.popcnt() == 1 {
-                self.pinned |= between & self.colors(self.stm);
-            }
-        }
-
-        self.toggle_stm();
-    }
-
-    pub fn null_move(&self) -> Option<Board> {
-        if self.in_check() {
-            return None;
-        }
-
-        let mut board = self.clone();
-        board.halfmove_clock = (board.halfmove_clock + 1).min(100);
-
-        board.set_en_passant(None);
-        board.toggle_stm();
-
-        board.pinned = Bitboard::EMPTY;
-        let our_king = board.king(board.stm);
-        let (diag, orth) = (self.diag_sliders(), self.orth_sliders());
-        let their_attackers = board.colors(!board.stm) & (
-            (bishop_rays(our_king) & diag) | (rook_rays(our_king) & orth)
-        );
-
-        let occ = board.occupied();
-        for sq in their_attackers {
-            let between = between(sq, our_king) & occ;
-
-            if between.popcnt() == 1 {
-                board.pinned |= between;
-            }
-        }
-
-        let their_king = board.king(!board.stm);
-        let our_attackers = board.colors(board.stm) & (
-            (bishop_rays(their_king) & diag) | (rook_rays(their_king) & orth)
-        );
-
-        for sq in our_attackers {
-            let between = between(sq, their_king) & occ;
-
-            if between.popcnt() == 1 {
-                board.pinned |= between;
-            }
-        }
-
-        Some(board)
-    }
-
-    pub fn status(&self) -> BoardStatus {
-        if self.gen_moves(|_| true) {
-            if self.halfmove_clock < 100 {
-                BoardStatus::Ongoing
-            } else {
-                BoardStatus::Draw
-            }
-        } else if self.in_check() {
-            BoardStatus::Checkmate
-        } else {
-            BoardStatus::Draw
-        }
+        self.stm = !self.stm;
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn xor_square(&mut self, piece: Piece, color: Color, sq: Square) {
-        let bb = sq.bitboard();
-        self.colors[color as usize] ^= bb;
-        self.pieces[piece as usize] ^= bb;
+    pub fn calc_hash(&self) -> u64 {
+        let mut hash = 0;
+        let mailbox = self.into_mailbox();
 
-        let zobrist = ZOBRIST.piece(sq, piece, color);
-        self.hash ^= zobrist;
+        for &sq in &Square::ALL {
+            let place = mailbox[sq];
 
-        match piece {
-            Piece::Pawn => self.pawn_hash ^= zobrist,
-            Piece::Knight | Piece::Bishop => self.minor_hash ^= zobrist,
-            Piece::Rook | Piece::Queen => self.major_hash ^= zobrist,
-            Piece::King => {
-                self.minor_hash ^= zobrist;
-                self.major_hash ^= zobrist;
+            if !place.is_empty() {
+                hash ^= ZOBRIST.piece(sq, place.piece().unwrap(), place.color().unwrap());
             }
         }
+
+        if let Some(file) = self.en_passant {
+            hash ^= ZOBRIST.en_passant(file);
+        }
+
+        for &color in &Color::ALL {
+            let rights = self.castle_rights(color);
+
+            if let Some(file) = rights.short {
+                hash ^= ZOBRIST.castle_rights(file, color);
+            }
+
+            if let Some(file) = rights.long {
+                hash ^= ZOBRIST.castle_rights(file, color);
+            }
+        }
+
+        hash
     }
 
     #[inline]
-    fn set_castle_rights(&mut self, color: Color, file: Option<File>, short: bool) {
+    pub fn calc_attacks(&self) -> [Wordboard; Color::COUNT] {
+        let mut result = [[PieceMask::EMPTY; Square::COUNT]; Color::COUNT];
+
+        for &sq in &Square::ALL {
+            let [white, black] = self.calc_attacks_to(sq);
+            result[Color::White][sq] = white;
+            result[Color::Black][sq] = black;
+        }
+
+        unsafe { core::mem::transmute(result) }
+    }
+
+    #[inline]
+    pub fn calc_attacks_to(&self, sq: Square) -> [PieceMask; Color::COUNT] {
+        let (ray_coords, ray_valid) = superpiece_rays(sq);
+        let ray_places = Vec512::permute8(ray_coords, self.board.inner);
+
+        let blockers = ray_places.nonzero8();
+        let color = ray_places.msb8();
+        let visible = superpiece_attacks(blockers, ray_valid) & blockers;
+
+        let attackers = attackers_from_rays(ray_places);
+        let white_attackers = !color & visible & attackers;
+        let black_attackers = color & visible & attackers;
+
+        let white_count = white_attackers.count_ones() as i32;
+        let black_count = black_attackers.count_ones() as i32;
+        let white_coords = Vec512::compress8(white_attackers, ray_coords).into_vec128();
+        let black_coords = Vec512::compress8(black_attackers, ray_coords).into_vec128();
+        let white_mask = Vec128::findset8(white_coords, white_count, Vec128::load(self.index_to_square[Color::White].into_inner().as_ptr()));
+        let black_mask = Vec128::findset8(black_coords, black_count, Vec128::load(self.index_to_square[Color::Black].into_inner().as_ptr()));
+
+        [PieceMask::new(white_mask), PieceMask::new(black_mask)]
+    }
+
+    #[inline]
+    pub fn calc_attacks_to_by(&self, sq: Square, color: Color) -> PieceMask {
+        let (ray_coords, ray_valid) = superpiece_rays(sq);
+        let ray_places = Vec512::permute8(ray_coords, self.board.inner);
+
+        let blockers = ray_places.nonzero8();
+        let our_color = match color {
+            Color::White => !ray_places.msb8(),
+            Color::Black => ray_places.msb8()
+        };
+        let visible = superpiece_attacks(blockers, ray_valid) & blockers;
+
+        let attackers = attackers_from_rays(ray_places);
+        let color_attackers = our_color & visible & attackers;
+        let color_count = color_attackers.count_ones() as i32;
+        let color_coords = Vec512::compress8(color_attackers, ray_coords).into_vec128();
+        let color_mask = Vec128::findset8(color_coords, color_count, Vec128::load(self.index_to_square[color].into_inner().as_ptr()));
+
+        PieceMask::new(color_mask)
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    fn move_piece<const UPDATE_DEST_SLIDERS: bool>(&mut self, color: Color, src: Square, dest: Square, piece: Piece, index: PieceIndex) {
+        self.index_to_square[color][index] = Some(dest);
+
+        let (src_ray_coords, src_ray_valid) = superpiece_rays(src);
+        let (dest_ray_coords, dest_ray_valid) = superpiece_rays(dest);
+        let new_place = Vec512::splat8(Place::from_piece(piece, color, index).into_inner());
+
+        let mut new_board = self.board.inner;
+        let src_ray_places = Vec512::permute8(src_ray_coords, new_board);
+        new_board = Vec512::mask8(!src.bitboard().0, new_board);
+        let dest_ray_places = Vec512::permute8(dest_ray_coords, new_board);
+        new_board = Vec512::blend8(dest.bitboard().0, new_board, new_place);
+        self.board.inner = new_board;
+
+        let src_swapped_perm = superpiece_inv_rays_swapped(src);
+        let dest_swapped_perm = superpiece_inv_rays_swapped(dest);
+
+        let src_blockers = src_ray_places.nonzero8();
+        let dest_blockers = dest_ray_places.nonzero8();
+        let src_sliders = sliders_from_rays(src_ray_places);
+        let dest_sliders = sliders_from_rays(dest_ray_places);
+        let src_raymask = superpiece_attacks(src_blockers, src_ray_valid);
+        let dest_raymask = superpiece_attacks(dest_blockers, dest_ray_valid);
+
+        let src_visible = src_sliders & src_raymask;
+        let dest_visible = dest_sliders & dest_raymask;
+        let src_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(src_visible, Vec512::permute8(src_ray_coords, new_board)));
+        let dest_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(dest_visible, dest_ray_places));
+        let src_updates = Vec512::mask8((src_raymask & NON_HORSE_ATTACK_MASK).rotate_left(32), src_visible_ids);
+        let dest_updates = Vec512::mask8((dest_raymask & NON_HORSE_ATTACK_MASK).rotate_left(32), dest_visible_ids);
+
+        let src_updates = Vec512::permute8_mz(!src_swapped_perm.msb8(), src_swapped_perm, src_updates);
+        let dest_updates = Vec512::permute8_mz(!dest_swapped_perm.msb8(), dest_swapped_perm, dest_updates);
+        let src_valid_updates = src_updates.nonzero8();
+        let dest_valid_updates = dest_updates.nonzero8();
+        let src_color = src_updates.msb8();
+        let dest_color = dest_updates.msb8();
+
+        let update_mask = Vec512::splat8(0xF);
+        let src_masked_updates = src_updates & update_mask;
+        let dest_masked_updates = dest_updates & update_mask;
+
+        let ones = Vec512::splat16(1);
+        let src_bits0 = Vec512::shl16_mz(src_valid_updates as Vec512Mask16, ones, src_masked_updates.into_vec256().zext8to16());
+        let src_bits1 = Vec512::shl16_mz((src_valid_updates >> 32) as Vec512Mask16, ones, src_masked_updates.extract_vec256::<1>().zext8to16());
+        let dest_bits0 = Vec512::shl16_mz(dest_valid_updates as Vec512Mask16, ones, dest_masked_updates.into_vec256().zext8to16());
+        let dest_bits1 = Vec512::shl16_mz((dest_valid_updates >> 32) as Vec512Mask16, ones, dest_masked_updates.extract_vec256::<1>().zext8to16());
+
+        let piece_mask = Vec512::splat16(index.into_mask().into_inner());
+        let not_piece_mask = Vec512::splat16(!index.into_mask().into_inner());
+        let attacker_mask = dest_raymask & attack_mask(piece, color);
+        let add_mask = Vec512::mask_bitshuffle(!dest_swapped_perm.msb8(), Vec512::splat64(attacker_mask.rotate_left(32)), dest_swapped_perm);
+
+        let mut update00 = Vec512::mask16(!src_color as Vec512Mask16, src_bits0);
+        let mut update01 = Vec512::mask16(!(src_color >> 32) as Vec512Mask16, src_bits1);
+        let mut update10 = Vec512::mask16(src_color as Vec512Mask16, src_bits0);
+        let mut update11 = Vec512::mask16((src_color >> 32) as Vec512Mask16, src_bits1);
+
+        if UPDATE_DEST_SLIDERS {
+            update00 ^= Vec512::mask16(!dest_color as Vec512Mask16, dest_bits0);
+            update01 ^= Vec512::mask16(!(dest_color >> 32) as Vec512Mask16, dest_bits1);
+            update10 ^= Vec512::mask16(dest_color as Vec512Mask16, dest_bits0);
+            update11 ^= Vec512::mask16((dest_color >> 32) as Vec512Mask16, dest_bits1);
+        }
+
+        self.attack_tables[0].inner[0] ^= update00;
+        self.attack_tables[0].inner[1] ^= update01;
+        self.attack_tables[1].inner[0] ^= update10;
+        self.attack_tables[1].inner[1] ^= update11;
+
+        self.attack_tables[color].inner[0] &= not_piece_mask;
+        self.attack_tables[color].inner[1] &= not_piece_mask;
+        self.attack_tables[color].inner[0] |= Vec512::mask16(add_mask as Vec512Mask16, piece_mask);
+        self.attack_tables[color].inner[1] |= Vec512::mask16((add_mask >> 32) as Vec512Mask16, piece_mask);
+    }
+
+    #[inline]
+    fn update_slider(&mut self, sq: Square) {
+        let (ray_coords, ray_valid) = superpiece_rays(sq);
+        let ray_places = Vec512::permute8(ray_coords, self.board.inner);
+        let swapped_perm = superpiece_inv_rays_swapped(sq);
+
+        let blockers = ray_places.nonzero8();
+        let sliders = sliders_from_rays(ray_places);
+        let raymask = superpiece_attacks(blockers, ray_valid) & NON_HORSE_ATTACK_MASK;
+
+        let visible = raymask & sliders;
+        let visible_ids = Vec512::lane_splat8to64(Vec512::mask8(visible, ray_places));
+
+        let updates = Vec512::mask8(raymask.rotate_left(32), visible_ids);
+        let updates = Vec512::permute8_mz(!swapped_perm.msb8(), swapped_perm, updates);
+        let masked_updates = updates & Vec512::splat8(0xF);
+        let valid_updates = updates.nonzero8();
+        let color = updates.msb8();
+
+        let ones = Vec512::splat16(1);
+        let bits0 = Vec512::shl16_mz(valid_updates as Vec512Mask16, ones, masked_updates.into_vec256().zext8to16());
+        let bits1 = Vec512::shl16_mz((valid_updates >> 32) as Vec512Mask16, ones, masked_updates.extract_vec256::<1>().zext8to16());
+
+        self.attack_tables[0].inner[0] ^= Vec512::mask16(!color as Vec512Mask16, bits0);
+        self.attack_tables[0].inner[1] ^= Vec512::mask16(!(color >> 32) as Vec512Mask16, bits1);
+        self.attack_tables[1].inner[0] ^= Vec512::mask16(color as Vec512Mask16, bits0);
+        self.attack_tables[1].inner[1] ^= Vec512::mask16((color >> 32) as Vec512Mask16, bits1);
+    }
+
+    #[inline]
+    fn add_attacks(&mut self, sq: Square, piece: Piece, color: Color, index: PieceIndex) {
+        let piece_mask = Vec512::splat16(index.into_mask().into_inner());
+        let (ray_coords, ray_valid) = superpiece_rays(sq);
+        let ray_places = Vec512::permute8(ray_coords, self.board.inner);
+        let perm = superpiece_inv_rays(sq);
+
+        let blockers = ray_places.nonzero8();
+        let raymask = superpiece_attacks(blockers, ray_valid);
+
+        let attacker_mask = raymask & attack_mask(piece, color);
+        let add_mask = Vec512::mask_bitshuffle(!perm.msb8(), Vec512::splat64(attacker_mask), perm);
+
+        self.attack_tables[color].inner[0] |= Vec512::mask16(add_mask as Vec512Mask16, piece_mask);
+        self.attack_tables[color].inner[1] |= Vec512::mask16((add_mask >> 32) as Vec512Mask16, piece_mask);
+    }
+
+    #[inline]
+    fn remove_attacks(&mut self, color: Color, index: PieceIndex) {
+        let piece_mask = Vec512::splat16(!index.into_mask().into_inner());
+        self.attack_tables[color].inner[0] &= piece_mask;
+        self.attack_tables[color].inner[1] &= piece_mask;
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    fn set_castle_rights(&mut self, color: Color, short: bool, file: Option<File>) {
         let rights = if short {
-            &mut self.castle_rights[color as usize].short
+            &mut self.castle_rights[color].short
         } else {
-            &mut self.castle_rights[color as usize].long
+            &mut self.castle_rights[color].long
         };
 
-        if let Some(prev) = ::core::mem::replace(rights, file) {
-            self.hash ^= ZOBRIST.castle_rights(prev, color);
+        if let Some(_prev) = core::mem::replace(rights, file) {
+            //self.hash ^= ZOBRIST.castle_rights(prev, color);
         }
 
-        if let Some(file) = file {
+        /*if let Some(file) = file {
             self.hash ^= ZOBRIST.castle_rights(file, color);
-        }
+        }*/
     }
 
     #[inline]
     fn set_en_passant(&mut self, file: Option<File>) {
-        if let Some(prev) = ::core::mem::replace(&mut self.en_passant, file) {
-            self.hash ^= ZOBRIST.en_passant(prev);
+        if let Some(_prev) = core::mem::replace(&mut self.en_passant, file) {
+            //self.hash ^= ZOBRIST.en_passant(prev);
         }
 
-        if let Some(file) = file {
+        /*if let Some(file) = file {
             self.hash ^= ZOBRIST.en_passant(file);
-        }
+        }*/
     }
+}
+
+
+impl Deref for Board {
+    type Target = Byteboard;
 
     #[inline]
-    fn toggle_stm(&mut self) {
-        self.stm = !self.stm;
-        self.hash ^= ZOBRIST.stm;
+    fn deref(&self) -> &Self::Target {
+        &self.board
     }
-}
-
-impl Default for Board {
-    #[inline]
-    fn default() -> Self {
-        BoardBuilder::startpos().build().unwrap()
-    }
-}
-
-impl fmt::Display for Board {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let shredder = f.alternate();
-
-        for &rank in Rank::ALL.iter().rev() {
-            let mut empty = 0;
-
-            for &file in &File::ALL {
-                let sq = Square::new(file, rank);
-
-                if let Some(piece) = self.piece_on(sq) {
-                    if empty > 0 {
-                        write!(f, "{}", empty)?;
-                        empty = 0;
-                    }
-
-                    let mut piece: char = piece.into();
-                    if self.color_on(sq).unwrap() == Color::White {
-                        piece = piece.to_ascii_uppercase();
-                    }
-
-                    write!(f, "{}", piece)?;
-                } else {
-                    empty += 1;
-                }
-            }
-
-            if empty > 0 {
-                write!(f, "{}", empty)?;
-            }
-
-            if rank > Rank::First {
-                write!(f, "/")?;
-            }
-        }
-
-        let stm: char = self.stm.into();
-        write!(f, " {} ", stm)?;
-
-        let mut wrote_castle_rights = false;
-        for &color in &Color::ALL {
-            let rights = self.castle_rights(color);
-            let mut write_rights = |file: Option<File>, right_char: char| {
-                if let Some(file) = file {
-                    let mut right = if shredder {
-                        file.into()
-                    } else {
-                        right_char
-                    };
-
-                    if color == Color::White {
-                        right = right.to_ascii_uppercase();
-                    }
-
-                    wrote_castle_rights = true;
-                    write!(f, "{}", right)?;
-                }
-
-                Ok(())
-            };
-
-            write_rights(rights.short, 'k')?;
-            write_rights(rights.long, 'q')?;
-        }
-
-        if !wrote_castle_rights {
-            write!(f, "-")?;
-        }
-
-        if let Some(file) = self.en_passant {
-            let rank = Rank::Sixth.relative_to(self.stm);
-            write!(f, " {}", Square::new(file, rank))?;
-        } else {
-            write!(f, " -")?;
-        }
-
-        write!(f, " {} 1", self.halfmove_clock)
-    }
-}
-
-/*----------------------------------------------------------------*/
-
-#[cfg(test)]
-mod tests {
-    use crate::Board;
-
-    fn perft(board: &Board, depth: u8) -> u64 {
-        let mut nodes = 0;
-
-        if depth == 0 {
-            return 1;
-        }
-
-        if depth == 1 {
-            board.gen_moves(|moves| {
-                nodes += moves.len() as u64;
-                false
-            });
-        } else {
-            board.gen_moves(|moves| {
-                for mv in moves {
-                    let mut board = board.clone();
-                    board.make_move(mv);
-
-                    nodes += perft(&board, depth - 1);
-                }
-
-                false
-            });
-        }
-
-        nodes
-    }
-
-    macro_rules! perft_test {
-        ($name:ident: $board:expr; $($nodes:expr),*) => {
-            #[test]
-            fn $name() {
-                const NODES: &'static [u64] = &[$($nodes),*];
-
-                let board = $board.parse::<Board>().unwrap();
-                for (depth, &nodes) in NODES.iter().enumerate() {
-                    assert_eq!(perft(&board, depth as u8), nodes);
-                }
-            }
-        }
-    }
-
-    perft_test!(
-        perft_startpos: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        1,
-        20,
-        400,
-        8902,
-        197281,
-        4865609,
-        119060324
-    );
-
-    perft_test!(
-        perft_kiwipete:  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
-        1,
-        48,
-        2039,
-        97862,
-        4085603,
-        193690690
-    );
-
-    perft_test!(
-        perft_pos3: "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
-        1,
-        14,
-        191,
-        2812,
-        43238,
-        674624,
-        11030083,
-        178633661
-    );
-
-    perft_test!(
-        perft_pos4: "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
-        1,
-        6,
-        264,
-        9467,
-        422333,
-        15833292
-    );
-
-    perft_test!(
-        perft_pos5: "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
-        1,
-        44,
-        1486,
-        62379,
-        2103487,
-        89941194
-    );
-
-    perft_test!(
-        perft_pos6: "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
-        1,
-        46,
-        2079,
-        89890,
-        3894594,
-        164075551
-    );
-
-    perft_test!(
-        perft960_position333: "1rqbkrbn/1ppppp1p/1n6/p1N3p1/8/2P4P/PP1PPPP1/1RQBKRBN w FBfb - 0 9";
-        1,
-        29,
-        502,
-        14569,
-        287739,
-        8652810,
-        191762235
-    );
-
-    perft_test!(
-        perft960_position404: "rbbqn1kr/pp2p1pp/6n1/2pp1p2/2P4P/P7/BP1PPPP1/R1BQNNKR w HAha - 0 9";
-        1,
-        27,
-        916,
-        25798,
-        890435,
-        26302461,
-        924181432
-    );
-
-    perft_test!(
-        perft960_position789: "rqbbknr1/1ppp2pp/p5n1/4pp2/P7/1PP5/1Q1PPPPP/R1BBKNRN w GAga - 0 9";
-        1,
-        24,
-        600,
-        15347,
-        408207,
-        11029596,
-        308553169
-    );
-
-    perft_test!(
-        perft960_position726: "rkb2bnr/pp2pppp/2p1n3/3p4/q2P4/5NP1/PPP1PP1P/RKBNQBR1 w Aha - 0 9";
-        1,
-        29,
-        861,
-        24504,
-        763454,
-        22763215,
-        731511256
-    );
 }

@@ -1,10 +1,6 @@
-use std::{
-    fmt,
-    num::NonZeroU8,
-    str::FromStr
-};
-use crate::Color;
-
+use std::{fmt, str::FromStr};
+use std::ops::{Index, IndexMut};
+use crate::{File, Square};
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -42,6 +38,25 @@ impl Piece {
 
     /*----------------------------------------------------------------*/
 
+    #[inline]
+    pub const fn bits(self) -> u8 {
+        match self {
+            Piece::Pawn => 0b010,
+            Piece::Knight => 0b011,
+            Piece::Bishop => 0b101,
+            Piece::Rook => 0b110,
+            Piece::Queen => 0b111,
+            Piece::King => 0b001,
+        }
+    }
+
+    #[inline]
+    pub const fn is_slider(self) -> bool {
+        (self.bits() & 0b100) != 0
+    }
+
+    /*----------------------------------------------------------------*/
+
     pub const COUNT: usize = 6;
     pub const ALL: [Piece; Self::COUNT] = [
         Piece::Pawn,
@@ -51,6 +66,22 @@ impl Piece {
         Piece::Queen,
         Piece::King,
     ];
+}
+
+impl<T> Index<Piece> for [T; Piece::COUNT] {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, piece: Piece) -> &Self::Output {
+        unsafe { self.get_unchecked(piece as usize) }
+    }
+}
+
+impl<T> IndexMut<Piece> for [T; Piece::COUNT] {
+    #[inline]
+    fn index_mut(&mut self, piece: Piece) -> &mut Self::Output {
+        unsafe { self.get_unchecked_mut(piece as usize) }
+    }
 }
 
 /*----------------------------------------------------------------*/
@@ -108,40 +139,5 @@ impl FromStr for Piece {
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", char::from(*self))
-    }
-}
-
-/*----------------------------------------------------------------*/
-
-/*
-Bit Layout:
-1-3: Piece (Pawn = 0, Knight = 1, King = 5)
-4: Color (White = 0, Black = 1)
-*/
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ColorPiece {
-    bits: NonZeroU8
-}
-
-impl ColorPiece {
-    #[inline]
-    pub const fn new(piece: Piece, color: Color) -> ColorPiece {
-        let mut bits = 0b10000;
-        bits |= piece as u8;
-        bits |= (color as u8) << 3;
-        
-        ColorPiece { bits: NonZeroU8::new(bits).unwrap() }
-    }
-
-    /*----------------------------------------------------------------*/
-    
-    #[inline]
-    pub const fn piece(self) -> Piece {
-        Piece::index((self.bits.get() & 0b111) as usize)
-    }
-    
-    #[inline]
-    pub const fn color(self) -> Color {
-        Color::index(((self.bits.get() >> 3) & 0b1) as usize)
     }
 }

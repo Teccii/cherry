@@ -1,5 +1,6 @@
 use std::{fmt, str::FromStr};
-use crate::Bitboard;
+use std::ops::{Index, IndexMut};
+use crate::{Bitboard, Color, Piece};
 
 /*----------------------------------------------------------------*/
 
@@ -115,6 +116,24 @@ impl File {
         File::H
     ];
 }
+
+impl<T> Index<File> for [T; File::COUNT] {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, file: File) -> &Self::Output {
+        unsafe { self.get_unchecked(file as usize) }
+    }
+}
+
+impl<T> IndexMut<File> for [T; File::COUNT] {
+    #[inline]
+    fn index_mut(&mut self, file: File) -> &mut Self::Output {
+        unsafe { self.get_unchecked_mut(file as usize) }
+    }
+}
+
+/*----------------------------------------------------------------*/
 
 impl fmt::Display for File {
     #[inline]

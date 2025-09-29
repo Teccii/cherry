@@ -84,6 +84,10 @@ impl Bitboard {
 
     #[inline]
     pub const fn try_next_square_back(self) -> Option<Square> {
+        if self.is_empty() {
+            return None;
+        }
+
         Square::try_index(63 - self.0.leading_zeros() as usize)
     }
     
@@ -110,7 +114,7 @@ impl Bitboard {
     }
 
     #[inline]
-    pub const fn intersection(self, rhs: Bitboard) -> Bitboard {
+    pub const fn intersect(self, rhs: Bitboard) -> Bitboard {
         Bitboard(self.0 & rhs.0)
     }
 
