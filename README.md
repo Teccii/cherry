@@ -1,6 +1,6 @@
 # Cherry
 Cherry is a UCI chess engine written in Rust.
-Its internals are a modified version of the [`cozy-chess`](https://github.com/analog-hors/cozy-chess) library written by analog-hors.
+Its internals, such as board representation and move generation are heavily based on [`Rose`](https://github.com/87flowers/Rose/) by 87flowers.
 
 ## Features
 ### Move Generation
