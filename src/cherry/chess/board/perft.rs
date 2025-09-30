@@ -25,22 +25,6 @@ mod tests {
         nodes
     }
 
-    /*#[test]
-    fn test() {
-        let mut board = Board::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap();
-        board.make_move(Move::new(Square::A5, Square::A4, MoveFlag::Normal));
-        board.make_move(Move::new(Square::C7, Square::C5, MoveFlag::DoublePush));
-
-        let moves = board.gen_moves();
-        for &mv in moves.iter() {
-            let mut board = board.clone();
-            board.make_move(mv);
-
-            println!("{}{}: {}", mv.from(), mv.to(), perft(&board, 0));
-        }
-    }*/
-
-
     macro_rules! perft_test {
         ($name:ident: $board:expr; $($nodes:expr),*) => {
             #[test]

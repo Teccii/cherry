@@ -25,6 +25,10 @@ impl Board {
             en_passant: None,
             fullmove_count: 1,
             halfmove_clock: 0,
+            pawn_hash: 0,
+            minor_hash: 0,
+            major_hash: 0,
+            hash: 0,
             stm: Color::White,
         };
 
@@ -131,6 +135,7 @@ impl Board {
         board.halfmove_clock = halfmove_clock.parse::<u8>().ok()?.min(100);
         board.fullmove_count = fullmove_count.parse::<u16>().ok()?.max(1);
         board.attack_tables = board.calc_attacks();
+        (board.hash, board.pawn_hash, board.minor_hash, board.major_hash) = board.calc_hashes();
 
         Some(board)
     }

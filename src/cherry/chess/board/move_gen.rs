@@ -1,6 +1,4 @@
-use std::io::Write;
-use std::ops::{Deref, DerefMut};
-use std::ptr;
+use std::{ops::*, ptr};
 use arrayvec::ArrayVec;
 use crate::*;
 
@@ -196,21 +194,22 @@ impl Board {
 
         if KING_MOVES {
             self.gen_captures_for(moves, &masked_attack_table, PieceMask::KING, src,king_dest & their_pieces & !their_attacks);
+            self.gen_quiets_for(moves, &masked_attack_table, PieceMask::KING, src, king_dest & empty & !their_attacks);
 
             let blockers = self.occupied();
             let our_backrank = Rank::First.relative_to(stm);
             let rights = self.castle_rights(stm);
 
             macro_rules! write_castling {
-                ($king_src:ident, $rook_src:expr, $flag:expr, $king_dest:expr, $rook_dest:expr) => {
-                    if let Some(rook_src) = $rook_src.map(|f| Square::new(f, our_backrank)) {
-                        let king_dest = Square::new($king_dest, our_backrank);
-                        let rook_dest = Square::new($rook_dest, our_backrank);
+                ($blockers:ident, $our_backrank:ident, $king_src:ident, $rook_src:expr, $flag:expr, $king_dest:expr, $rook_dest:expr) => {
+                    if let Some(rook_src) = $rook_src.map(|f| Square::new(f, $our_backrank)) {
+                        let king_dest = Square::new($king_dest, $our_backrank);
+                        let rook_dest = Square::new($rook_dest, $our_backrank);
                         let king_to_rook = between($king_src, rook_src);
                         let king_to_dest = between($king_src, king_dest);
                         let must_be_safe = king_to_dest | king_dest;
                         let must_be_empty = must_be_safe | king_to_rook | rook_dest;
-                        let blockers = blockers ^ $king_src ^ rook_src;
+                        let blockers = $blockers ^ $king_src ^ rook_src;
 
                         if !pinned_bb.has(rook_src)
                             && blockers.is_disjoint(must_be_empty)
@@ -221,15 +220,11 @@ impl Board {
                 }
             }
 
-            write_castling!(our_king, rights.short, MoveFlag::ShortCastling, File::G, File::F);
-            write_castling!(our_king, rights.long, MoveFlag::LongCastling, File::C, File::D);
+            write_castling!(blockers, our_backrank, our_king, rights.short, MoveFlag::ShortCastling, File::G, File::F);
+            write_castling!(blockers, our_backrank, our_king, rights.long, MoveFlag::LongCastling, File::C, File::D);
         }
 
         self.gen_quiets_for(moves, &masked_attack_table, non_pawn_mask, src, non_pawn_dest & empty);
-
-        if KING_MOVES {
-            self.gen_quiets_for(moves, &masked_attack_table, PieceMask::KING, src, king_dest & empty & !their_attacks);
-        }
 
         let pinned_pawns = pinned_bb & !our_king.file().bitboard();
         let bb = self.color_pieces(Piece::Pawn, stm) & !pinned_pawns;
@@ -367,7 +362,7 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn calc_pins(&self, our_king: Square) -> (Wordboard, Bitboard) {
+    pub(super) fn calc_pins(&self, our_king: Square) -> (Wordboard, Bitboard) {
         let stm = self.stm;
 
         let (ray_coords, ray_valid) = superpiece_rays(our_king);

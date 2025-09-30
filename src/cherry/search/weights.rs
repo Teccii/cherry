@@ -1,6 +1,5 @@
 use std::cell::SyncUnsafeCell;
-use cherry_chess::Piece;
-use crate::MAX_PLY;
+use crate::*;
 
 
 /*----------------------------------------------------------------*/

@@ -2,10 +2,22 @@ mod move_gen;
 mod parse;
 mod perft;
 mod print;
+mod see;
 mod startpos;
+
+pub use move_gen::*;
 
 use std::ops::Deref;
 use crate::*;
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoardStatus {
+    Ongoing,
+    Draw,
+    Checkmate,
+}
 
 /*----------------------------------------------------------------*/
 
@@ -43,6 +55,10 @@ pub struct Board {
     en_passant: Option<File>,
     fullmove_count: u16,
     halfmove_clock: u8,
+    pawn_hash: u64,
+    minor_hash: u64,
+    major_hash: u64,
+    hash: u64,
     stm: Color,
 }
 
@@ -80,6 +96,26 @@ impl Board {
     }
 
     #[inline]
+    pub const fn pawn_hash(&self) -> u64 {
+        self.pawn_hash
+    }
+
+    #[inline]
+    pub const fn minor_hash(&self) -> u64 {
+        self.minor_hash
+    }
+
+    #[inline]
+    pub const fn major_hash(&self) -> u64 {
+        self.major_hash
+    }
+
+    #[inline]
+    pub const fn hash(&self) -> u64 {
+        self.hash
+    }
+
+    #[inline]
     pub const fn stm(&self) -> Color {
         self.stm
     }
@@ -101,14 +137,55 @@ impl Board {
         self.index_to_square[color][PieceIndex::new(0)].unwrap()
     }
 
+    #[inline]
+    pub fn pinned(&self, color: Color) -> Bitboard {
+        self.calc_pins(self.king(color)).1
+    }
+
+    #[inline]
+    pub fn checkers(&self) -> Bitboard {
+        let stm = self.stm;
+        let checker_mask = self.attack_table(!stm).get(self.king(stm));
+        let mut checkers = Bitboard::EMPTY;
+
+        for index in checker_mask {
+            checkers |= self.index_to_square[!stm][index].unwrap();
+        }
+
+        checkers
+    }
+
+    #[inline]
+    pub fn in_check(&self) -> bool {
+        let stm = self.stm;
+
+        !self.attack_table(!stm).get(self.king(stm)).is_empty()
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub fn status(&self) -> BoardStatus {
+        if !self.gen_moves().is_empty() {
+            if self.halfmove_clock < 100 {
+                BoardStatus::Ongoing
+            } else {
+                BoardStatus::Draw
+            }
+        } else if self.in_check() {
+            BoardStatus::Checkmate
+        } else {
+            BoardStatus::Draw
+        }
+    }
+
+    /*----------------------------------------------------------------*/
+
     pub fn make_move(&mut self, mv: Move) {
         let (src, dest) = (mv.from(), mv.to());
         let (src_place, dest_place) = (self.board.get(src), self.board.get(dest));
         let (src_id, dest_id) = (src_place.index().unwrap(), dest_place.index());
-        let src_piece = src_place.piece().unwrap();
+        let (src_piece, dest_piece) = (src_place.piece().unwrap(), dest_place.piece());
         let mut new_ep = None;
 
         #[inline]
@@ -148,6 +225,10 @@ impl Board {
 
             board.index_to_square[stm][king_id] = Some(king_dest);
             board.index_to_square[stm][rook_id] = Some(rook_dest);
+            board.xor_piece(king_src, Piece::King, stm);
+            board.xor_piece(king_dest, Piece::King, stm);
+            board.xor_piece(rook_src, Piece::Rook, stm);
+            board.xor_piece(rook_dest, Piece::Rook, stm);
 
             board.halfmove_clock = (board.halfmove_clock + 1).min(100);
             board.set_castle_rights(stm, true, None);
@@ -162,6 +243,7 @@ impl Board {
             src_id: PieceIndex,
             dest_id: Option<PieceIndex>,
             src_piece: Piece,
+            dest_piece: Option<Piece>,
             promotion: Piece,
         ) {
             let dest_id = dest_id.unwrap();
@@ -175,6 +257,10 @@ impl Board {
             board.move_piece::<false>(stm, src, dest, promotion, src_id);
             board.halfmove_clock = 0;
 
+            board.xor_piece(src, src_piece, stm);
+            board.xor_piece(dest, promotion, stm);
+            board.xor_piece(dest, dest_piece.unwrap(), !stm);
+
             check_castle_rights(board, !stm, dest);
         }
 
@@ -184,6 +270,7 @@ impl Board {
             src: Square,
             dest: Square,
             src_id: PieceIndex,
+            src_piece: Piece,
             promotion: Piece,
         ) {
             let stm = board.stm;
@@ -191,6 +278,9 @@ impl Board {
             board.index_to_piece[stm][src_id] = Some(promotion);
             board.move_piece::<true>(stm, src, dest, promotion, src_id);
             board.halfmove_clock = 0;
+
+            board.xor_piece(src, src_piece, stm);
+            board.xor_piece(dest, promotion, stm);
         }
 
         #[inline]
@@ -229,12 +319,18 @@ impl Board {
                     },
                     _ => { }
                 }
+
+                self.xor_piece(src, src_piece, stm);
+                self.xor_piece(dest, src_piece, stm);
             },
             MoveFlag::DoublePush => {
                 let stm = self.stm;
 
                 self.move_piece::<true>(self.stm, src, dest, src_piece, src_id);
                 self.halfmove_clock = 0;
+
+                self.xor_piece(src, src_piece, stm);
+                self.xor_piece(dest, src_piece, stm);
 
                 let their_pawns = self.index_to_piece[!stm].mask_eq(Piece::Pawn);
                 let their_attacks = self.attack_table(!stm).get(dest.offset(0, -stm.sign() as i8));
@@ -254,7 +350,19 @@ impl Board {
                 self.move_piece::<false>(stm, src, dest, src_piece, src_id);
                 self.halfmove_clock = 0;
 
-                check_castle_rights(self, stm, src);
+                self.xor_piece(src, src_piece, stm);
+                self.xor_piece(dest, src_piece, stm);
+                self.xor_piece(dest, dest_piece.unwrap(), !stm);
+                
+                match src_piece {
+                    Piece::Rook => check_castle_rights(self, stm, src),
+                    Piece::King => {
+                        self.set_castle_rights(stm, true, None);
+                        self.set_castle_rights(stm, false, None);
+                    },
+                    _ => { }
+                }
+
                 check_castle_rights(self, !stm, dest);
             },
             MoveFlag::EnPassant => {
@@ -265,6 +373,10 @@ impl Board {
                 self.move_piece::<true>(stm, src, dest, src_piece, src_id);
                 self.update_slider(victim_sq);
                 self.halfmove_clock = 0;
+
+                self.xor_piece(src, src_piece, stm);
+                self.xor_piece(dest, src_piece, stm);
+                self.xor_piece(victim_sq, src_piece, stm);
 
                 self.index_to_piece[!stm][victim_id] = None;
                 self.index_to_square[!stm][victim_id] = None;
@@ -294,6 +406,7 @@ impl Board {
                 src,
                 dest,
                 src_id,
+                src_piece,
                 Piece::Queen
             ),
             MoveFlag::PromotionRook => promotion(
@@ -301,6 +414,7 @@ impl Board {
                 src,
                 dest,
                 src_id,
+                src_piece,
                 Piece::Rook
             ),
             MoveFlag::PromotionBishop => promotion(
@@ -308,6 +422,7 @@ impl Board {
                 src,
                 dest,
                 src_id,
+                src_piece,
                 Piece::Bishop
             ),
             MoveFlag::PromotionKnight => promotion(
@@ -315,6 +430,7 @@ impl Board {
                 src,
                 dest,
                 src_id,
+                src_piece,
                 Piece::Knight
             ),
             MoveFlag::CapturePromotionQueen => capture_promotion(
@@ -324,6 +440,7 @@ impl Board {
                 src_id,
                 dest_id,
                 src_piece,
+                dest_piece,
                 Piece::Queen
             ),
             MoveFlag::CapturePromotionRook => capture_promotion(
@@ -333,6 +450,7 @@ impl Board {
                 src_id,
                 dest_id,
                 src_piece,
+                dest_piece,
                 Piece::Rook
             ),
             MoveFlag::CapturePromotionBishop => capture_promotion(
@@ -342,6 +460,7 @@ impl Board {
                 src_id,
                 dest_id,
                 src_piece,
+                dest_piece,
                 Piece::Bishop
             ),
             MoveFlag::CapturePromotionKnight => capture_promotion(
@@ -351,39 +470,103 @@ impl Board {
                 src_id,
                 dest_id,
                 src_piece,
+                dest_piece,
                 Piece::Knight
             ),
         }
 
-        let [white_attacks_slow, black_attacks_slow] = self.calc_attacks();
-        let [white_attacks, black_attacks] = self.attack_tables;
-
-        assert_eq!(Vec512::eq16(white_attacks.inner[0], white_attacks_slow.inner[0]), u32::MAX, "White Half 0 Board: {} Move: {}{}", self.to_fen(true), src, dest);
-        assert_eq!(Vec512::eq16(white_attacks.inner[1], white_attacks_slow.inner[1]), u32::MAX, "White Half 1 Board: {} Move: {}{}", self.to_fen(true), src, dest);
-        assert_eq!(Vec512::eq16(black_attacks.inner[0], black_attacks_slow.inner[0]), u32::MAX, "Black Half 0 Board: {} Move: {}{}", self.to_fen(true), src, dest);
-        assert_eq!(Vec512::eq16(black_attacks.inner[1], black_attacks_slow.inner[1]), u32::MAX, "Black Half 1 Board: {} Move: {}{}", self.to_fen(true), src, dest);
-
         self.set_en_passant(new_ep);
-
         if self.stm == Color::Black {
             self.fullmove_count += 1;
         }
 
-        self.stm = !self.stm;
+        self.toggle_stm();
+    }
+
+    pub fn null_move(&mut self) -> bool {
+        if self.in_check() {
+            return false;
+        }
+
+        self.halfmove_clock = (self.halfmove_clock + 1).min(100);
+        if self.stm == Color::Black {
+            self.fullmove_count += 1;
+        }
+
+        self.set_en_passant(None);
+        self.toggle_stm();
+
+        true
+    }
+
+    pub fn is_pseudolegal(&self, mv: Move) -> bool {
+        let (src, dest, flag) = (mv.from(), mv.to(), mv.flag());
+        let (src_place, dest_place) = (self.board.get(src), self.board.get(dest));
+        let (src_piece, src_index) = if !src_place.is_empty() {
+            (src_place.piece().unwrap(), src_place.index().unwrap())
+        } else {
+            return false;
+        };
+        let stm = self.stm;
+
+        match mv.flag() {
+            MoveFlag::Normal => dest_place.is_empty() && if src_piece == Piece::Pawn {
+                dest.offset(0, -stm.sign() as i8) == src
+            } else {
+                self.attack_table(stm).get(dest).has(src_index)
+            },
+            MoveFlag::Capture => !dest_place.is_empty() && dest_place.color().unwrap() != stm && self.attack_table(stm).get(dest).has(src_index),
+            MoveFlag::EnPassant => src_piece == Piece::Pawn && self.ep_square().is_some_and(|ep| dest == ep) && self.attack_table(stm).get(dest).has(src_index),
+            MoveFlag::DoublePush => src_piece == Piece::Pawn && src.rank() == Rank::Second.relative_to(stm) && dest.rank() == Rank::Fourth.relative_to(stm),
+            _ if mv.is_castling() => src_piece == Piece::King && {
+                let our_backrank = Rank::First.relative_to(stm);
+                let castle_rights = if flag == MoveFlag::ShortCastling {
+                    self.castle_rights(stm).short
+                } else {
+                    self.castle_rights(stm).long
+                };
+
+                src.rank() == our_backrank && Some(dest) == castle_rights.map(|f| Square::new(f, our_backrank))
+            },
+            _ if mv.is_promotion() => src_piece == Piece::Pawn && {
+                let is_capture = mv.is_capture();
+
+                src.rank() == Rank::Seventh.relative_to(stm)
+                    && dest.rank() == Rank::Eighth.relative_to(stm)
+                    && is_capture == !dest_place.is_empty()
+                    && is_capture == self.attack_table(stm).get(dest).has(src_index)
+            },
+            _ => false
+        }
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn calc_hash(&self) -> u64 {
+    pub fn calc_hashes(&self) -> (u64, u64, u64, u64) {
         let mut hash = 0;
-        let mailbox = self.into_mailbox();
+        let mut pawn_hash = 0;
+        let mut minor_hash = 0;
+        let mut major_hash = 0;
 
+        let mailbox = self.into_mailbox();
         for &sq in &Square::ALL {
             let place = mailbox[sq];
 
             if !place.is_empty() {
-                hash ^= ZOBRIST.piece(sq, place.piece().unwrap(), place.color().unwrap());
+                let (piece, color) = (place.piece().unwrap(), place.color().unwrap());
+                let value = ZOBRIST.piece(sq, piece, color);
+
+                hash ^= value;
+                match piece {
+                    Piece::Pawn => pawn_hash ^= value,
+                    Piece::Knight | Piece::Bishop => minor_hash ^= value,
+                    Piece::Rook | Piece::Queen => major_hash ^= value,
+                    Piece::King => {
+                        minor_hash ^= value;
+                        major_hash ^= value;
+                    }
+                }
             }
         }
 
@@ -403,7 +586,11 @@ impl Board {
             }
         }
 
-        hash
+        if self.stm == Color::Black {
+            hash ^= ZOBRIST.stm;
+        }
+
+        (hash, pawn_hash, minor_hash, major_hash)
     }
 
     #[inline]
@@ -598,6 +785,22 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    fn xor_piece(&mut self, sq: Square, piece: Piece, color: Color) {
+        let value = ZOBRIST.piece(sq, piece, color);
+
+        self.hash ^= value;
+        match piece {
+            Piece::Pawn => self.pawn_hash ^= value,
+            Piece::Knight | Piece::Bishop => self.minor_hash ^= value,
+            Piece::Rook | Piece::Queen => self.major_hash ^= value,
+            Piece::King => {
+                self.minor_hash ^= value;
+                self.major_hash ^= value;
+            }
+        }
+    }
+
+    #[inline]
     fn set_castle_rights(&mut self, color: Color, short: bool, file: Option<File>) {
         let rights = if short {
             &mut self.castle_rights[color].short
@@ -605,24 +808,30 @@ impl Board {
             &mut self.castle_rights[color].long
         };
 
-        if let Some(_prev) = core::mem::replace(rights, file) {
-            //self.hash ^= ZOBRIST.castle_rights(prev, color);
+        if let Some(prev) = core::mem::replace(rights, file) {
+            self.hash ^= ZOBRIST.castle_rights(prev, color);
         }
 
-        /*if let Some(file) = file {
+        if let Some(file) = file {
             self.hash ^= ZOBRIST.castle_rights(file, color);
-        }*/
+        }
     }
 
     #[inline]
     fn set_en_passant(&mut self, file: Option<File>) {
-        if let Some(_prev) = core::mem::replace(&mut self.en_passant, file) {
-            //self.hash ^= ZOBRIST.en_passant(prev);
+        if let Some(prev) = core::mem::replace(&mut self.en_passant, file) {
+            self.hash ^= ZOBRIST.en_passant(prev);
         }
 
-        /*if let Some(file) = file {
+        if let Some(file) = file {
             self.hash ^= ZOBRIST.en_passant(file);
-        }*/
+        }
+    }
+
+    #[inline]
+    fn toggle_stm(&mut self) {
+        self.stm = !self.stm;
+        self.hash ^= ZOBRIST.stm;
     }
 }
 

@@ -87,7 +87,13 @@ impl MoveData {
 
         MoveData {
             piece: board.piece_on(from).unwrap(),
-            victim: board.victim(mv),
+            victim: if mv.is_en_passant() {
+                Some(Piece::Pawn)
+            } else if mv.is_castling() {
+                None
+            } else {
+                board.piece_on(to)
+            },
             promotion,
             from,
             to,
@@ -120,10 +126,6 @@ impl PrincipalVariation {
 
             for &mv in self.moves[..len].iter() {
                 if let Some(mv) = mv {
-                    if !board.is_legal(mv) {
-                        break;
-                    }
-
                     write!(output, "{} ", mv.display(&board, chess960)).unwrap();
                     board.make_move(mv);
                 } else {

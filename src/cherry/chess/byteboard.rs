@@ -91,7 +91,7 @@ impl Byteboard {
 
     #[inline]
     pub fn into_mailbox(self) -> [Place; Square::COUNT] {
-        unsafe { std::mem::transmute::<Vec512, [Place; Square::COUNT]>(self.inner) }
+        unsafe { core::mem::transmute::<Vec512, [Place; Square::COUNT]>(self.inner) }
     }
 
     /*----------------------------------------------------------------*/

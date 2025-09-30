@@ -93,7 +93,7 @@ pub fn search<Node: NodeType>(
 
     if let Some(entry) = tt_entry {
         ctx.tt_hits.inc();
-        best_move = entry.table_mv.filter(|&mv| pos.board().is_legal(mv));
+        best_move = entry.table_mv.filter(|&mv| pos.board().is_pseudolegal(mv));
 
         if entry.table_mv.is_some() && best_move.is_none() {
             //We can't trust this entry if the move is invalid
@@ -169,7 +169,7 @@ pub fn search<Node: NodeType>(
             }
     }
 
-    let in_check = pos.in_check();
+    let in_check = pos.board().in_check();
     let corr = ctx.history.get_corr(pos.board());
     let raw_eval = match skip_move {
         Some(_) => ctx.ss[ply as usize].eval,
@@ -178,7 +178,7 @@ pub fn search<Node: NodeType>(
     let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
     let prev_eval = (ply >= 2).then(|| ctx.ss[ply as usize - 2].eval);
     let improving = prev_eval.is_some_and(|e| !in_check && raw_eval > e);
-    let tt_tactic = best_move.is_some_and(|mv| pos.board().is_tactic(mv));
+    let tt_tactic = best_move.is_some_and(|mv| mv.is_tactic());
 
     ctx.ss[ply as usize].eval = raw_eval;
 
@@ -231,14 +231,14 @@ pub fn search<Node: NodeType>(
             }
         }
     }
-    
+
     let mut best_score = None;
     let mut moves_seen = 0;
     let mut move_exists = false;
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
     let mut good_tactics: SmallVec<[Move; 32]> = SmallVec::new();
     let mut bad_tactics: SmallVec<[Move; 32]> = SmallVec::new();
-    let mut move_picker = MovePicker::new(best_move);
+    let mut move_picker = MovePicker::new(pos.board().gen_moves(), best_move);
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
     while let Some(ScoredMove(mv, stat_score)) = move_picker.next(pos, &ctx.history, &cont_indices) {
@@ -277,7 +277,7 @@ pub fn search<Node: NodeType>(
                 let see_margin = W::see_tactic_margin() * depth as i16 * depth as i16;
                 if depth < SEE_DEPTH
                     && move_picker.phase() == Phase::YieldBadTactics
-                    && !pos.cmp_see(mv, see_margin) {
+                    && !pos.board().cmp_see(mv, see_margin) {
                     continue;
                 }
             } else {
@@ -319,7 +319,7 @@ pub fn search<Node: NodeType>(
                 moving it to an attacked square.
                 */
                 let see_margin = W::see_quiet_margin() * r_depth as i16;
-                if r_depth < SEE_DEPTH && !pos.cmp_see(mv, see_margin) {
+                if r_depth < SEE_DEPTH && !pos.board().cmp_see(mv, see_margin) {
                     continue;
                 }
             }
@@ -332,7 +332,7 @@ pub fn search<Node: NodeType>(
         /*
         Check Extension: Extend the search if we give check.
         */
-        let is_check = pos.in_check();
+        let is_check = pos.board().in_check();
         if is_check {
             extension += 1;
         }
@@ -478,7 +478,7 @@ pub fn search<Node: NodeType>(
     if !move_exists {
         return if skip_move.is_some() {
             alpha
-        } else if pos.in_check() {
+        } else if pos.board().in_check() {
             Score::new_mated(ply)
         } else {
             Score::ZERO
@@ -501,7 +501,7 @@ pub fn search<Node: NodeType>(
             _ => TTBound::Exact,
         };
 
-        let is_tactic = best_move.is_some_and(|mv| pos.board().is_tactic(mv));
+        let is_tactic = best_move.is_some_and(|mv| mv.is_tactic());
         if !in_check && !is_tactic && match flag {
             TTBound::Exact => true,
             TTBound::UpperBound => best_score < static_eval,
@@ -580,7 +580,7 @@ pub fn q_search<Node: NodeType>(
         ctx.tt_misses.inc();
     }
 
-    let in_check = pos.in_check();
+    let in_check = pos.board().in_check();
     let raw_eval = tt_entry.and_then(|e| e.eval).unwrap_or_else(|| pos.eval(&shared_ctx.weights));
     let static_eval = raw_eval + ctx.history.get_corr(pos.board()) as i16;
 
@@ -597,13 +597,13 @@ pub fn q_search<Node: NodeType>(
     let mut best_move = None;
     let mut best_score = None;
     let mut move_exists = false;
-    let mut move_picker = QMovePicker::new();
+    let mut move_picker = QMovePicker::new(pos.board().gen_moves());
     let cont_indices = ContIndices::new(&ctx.ss, ply);
 
     while let Some(mv) = move_picker.next(pos, &ctx.history, &cont_indices) {
         move_exists = true;
 
-        if !pos.cmp_see(mv, 0) {
+        if !pos.board().cmp_see(mv, 0) {
             continue;
         }
 

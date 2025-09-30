@@ -163,7 +163,7 @@ impl Iterator for PieceMaskIter {
             return None;
         }
         
-        let index = self.0.msb();
+        let index = self.0.lsb();
         self.0 &= PieceMask::new(self.0.into_inner().wrapping_sub(1));
         
         Some(index)

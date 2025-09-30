@@ -17,6 +17,8 @@ pub type Vec512Mask16 = __mmask32;
 pub type Vec512Mask32 = __mmask16;
 pub type Vec512Mask64 = __mmask8;
 
+pub type NativeVec = Vec512;
+
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
@@ -28,6 +30,11 @@ impl Vec128 {
     #[inline]
     pub fn load<T>(src: *const T) -> Vec128 {
         unsafe { _mm_loadu_si128(src.cast()).into() }
+    }
+
+    #[inline]
+    pub fn store<T>(dst: *mut T, src: Vec128) {
+        unsafe { _mm_storeu_si128(dst.cast(), src.raw); }
     }
 
     /*----------------------------------------------------------------*/
@@ -93,6 +100,11 @@ impl Vec128 {
         unsafe { _mm_add_epi16(a.raw, b.raw).into() }
     }
 
+    #[inline]
+    pub fn add32(a: Vec128, b: Vec128) -> Vec128 {
+        unsafe { _mm_add_epi32(a.raw, b.raw).into() }
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -103,6 +115,47 @@ impl Vec128 {
     #[inline]
     pub fn sub16(a: Vec128, b: Vec128) -> Vec128 {
         unsafe { _mm_sub_epi16(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn sub32(a: Vec128, b: Vec128) -> Vec128 {
+        unsafe { _mm_sub_epi32(a.raw, b.raw).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn min8(a: Vec128, b: Vec128) -> Vec128 {
+        unsafe { _mm_min_epi8(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn min16(a: Vec128, b: Vec128) -> Vec128 {
+        unsafe { _mm_min_epi16(a.raw, b.raw).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn max8(a: Vec128, b: Vec128) -> Vec128 {
+        unsafe { _mm_max_epi8(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn max16(a: Vec128, b: Vec128) -> Vec128 {
+        unsafe { _mm_max_epi16(a.raw, b.raw).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn clamp8(value: Vec128, min: Vec128, max: Vec128) -> Vec128 {
+        Vec128::max8(Vec128::min8(value, max), min)
+    }
+
+    #[inline]
+    pub fn clamp16(value: Vec128, min: Vec128, max: Vec128) -> Vec128 {
+        Vec128::max16(Vec128::min16(value, max), min)
     }
 
     /*----------------------------------------------------------------*/
@@ -294,6 +347,14 @@ impl Vec128 {
     pub fn zext8to16(self) -> Vec256 {
         unsafe { _mm256_cvtepu8_epi16(self.raw).into() }
     }
+
+    /*----------------------------------------------------------------*/
+
+    pub const SIZE: usize = size_of::<Vec128>();
+    pub const CHUNKS_8: usize = Self::SIZE / size_of::<u8>();
+    pub const CHUNKS_16: usize = Self::SIZE / size_of::<u16>();
+    pub const CHUNKS_32: usize = Self::SIZE / size_of::<u32>();
+    pub const CHUNKS_64: usize = Self::SIZE / size_of::<u64>();
 }
 
 impl From<u32> for Vec128 {
@@ -395,6 +456,11 @@ impl Vec256 {
     pub fn load<T>(src: *const T) -> Vec256 {
         unsafe { _mm256_loadu_si256(src.cast()).into() }
     }
+
+    #[inline]
+    pub fn store<T>(dst: *mut T, src: Vec256) {
+        unsafe { _mm256_storeu_si256(dst.cast(), src.raw); }
+    }
     
     /*----------------------------------------------------------------*/
 
@@ -454,6 +520,11 @@ impl Vec256 {
         unsafe { _mm256_add_epi16(a.raw, b.raw).into() }
     }
 
+    #[inline]
+    pub fn add32(a: Vec256, b: Vec256) -> Vec256 {
+        unsafe { _mm256_add_epi32(a.raw, b.raw).into() }
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -464,6 +535,47 @@ impl Vec256 {
     #[inline]
     pub fn sub16(a: Vec256, b: Vec256) -> Vec256 {
         unsafe { _mm256_sub_epi16(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn sub32(a: Vec256, b: Vec256) -> Vec256 {
+        unsafe { _mm256_sub_epi32(a.raw, b.raw).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn min8(a: Vec256, b: Vec256) -> Vec256 {
+        unsafe { _mm256_min_epi8(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn min16(a: Vec256, b: Vec256) -> Vec256 {
+        unsafe { _mm256_min_epi16(a.raw, b.raw).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn max8(a: Vec256, b: Vec256) -> Vec256 {
+        unsafe { _mm256_max_epi8(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn max16(a: Vec256, b: Vec256) -> Vec256 {
+        unsafe { _mm256_max_epi16(a.raw, b.raw).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn clamp8(value: Vec256, min: Vec256, max: Vec256) -> Vec256 {
+        Vec256::max8(Vec256::min8(value, max), min)
+    }
+
+    #[inline]
+    pub fn clamp16(value: Vec256, min: Vec256, max: Vec256) -> Vec256 {
+        Vec256::max16(Vec256::min16(value, max), min)
     }
 
     /*----------------------------------------------------------------*/
@@ -643,6 +755,14 @@ impl Vec256 {
     pub fn zext8to16(self) -> Vec512 {
         unsafe { _mm512_cvtepu8_epi16(self.raw).into() }
     }
+
+    /*----------------------------------------------------------------*/
+
+    pub const SIZE: usize = size_of::<Vec256>();
+    pub const CHUNKS_8: usize = Self::SIZE / size_of::<u8>();
+    pub const CHUNKS_16: usize = Self::SIZE / size_of::<u16>();
+    pub const CHUNKS_32: usize = Self::SIZE / size_of::<u32>();
+    pub const CHUNKS_64: usize = Self::SIZE / size_of::<u64>();
 }
 
 impl From<Vec128> for Vec256 {
@@ -736,6 +856,11 @@ impl Vec512 {
     #[inline]
     pub fn load<T>(src: *const T) -> Vec512 {
         unsafe { _mm512_loadu_si512(src.cast()).into() }
+    }
+
+    #[inline]
+    pub fn store<T>(dst: *mut T, src: Vec512) {
+        unsafe { _mm512_storeu_si512(dst.cast(), src.raw); }
     }
 
     /*----------------------------------------------------------------*/
@@ -833,6 +958,11 @@ impl Vec512 {
         unsafe { _mm512_add_epi16(a.raw, b.raw).into() }
     }
 
+    #[inline]
+    pub fn add32(a: Vec512, b: Vec512) -> Vec512 {
+        unsafe { _mm512_add_epi32(a.raw, b.raw).into() }
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -843,6 +973,64 @@ impl Vec512 {
     #[inline]
     pub fn sub16(a: Vec512, b: Vec512) -> Vec512 {
         unsafe { _mm512_sub_epi16(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn sub32(a: Vec512, b: Vec512) -> Vec512 {
+        unsafe { _mm512_sub_epi32(a.raw, b.raw).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn madd16(a: Vec512, b: Vec512) -> Vec512 {
+        unsafe { _mm512_madd_epi16(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn mullo16(a: Vec512, b: Vec512) -> Vec512 {
+        unsafe { _mm512_mullo_epi16(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn reduce_add32(self) -> i32 {
+        unsafe { _mm512_reduce_add_epi32(self.raw) }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn min8(a: Vec512, b: Vec512) -> Vec512 {
+        unsafe { _mm512_min_epi8(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn min16(a: Vec512, b: Vec512) -> Vec512 {
+        unsafe { _mm512_min_epi16(a.raw, b.raw).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn max8(a: Vec512, b: Vec512) -> Vec512 {
+        unsafe { _mm512_max_epi8(a.raw, b.raw).into() }
+    }
+
+    #[inline]
+    pub fn max16(a: Vec512, b: Vec512) -> Vec512 {
+        unsafe { _mm512_max_epi16(a.raw, b.raw).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn clamp8(value: Vec512, min: Vec512, max: Vec512) -> Vec512 {
+        Vec512::max8(Vec512::min8(value, max), min)
+    }
+
+    #[inline]
+    pub fn clamp16(value: Vec512, min: Vec512, max: Vec512) -> Vec512 {
+        Vec512::max16(Vec512::min16(value, max), min)
     }
 
     /*----------------------------------------------------------------*/
@@ -1042,6 +1230,16 @@ impl Vec512 {
         unsafe { _mm512_cmpneq_epu16_mask(self.raw, Vec512::zero().raw) }
     }
 
+    #[inline]
+    pub fn nonzero32(self) -> Vec512Mask32 {
+        unsafe { _mm512_cmpneq_epu32_mask(self.raw, Vec512::zero().raw) }
+    }
+
+    #[inline]
+    pub fn nonzero64(self) -> Vec512Mask64 {
+        unsafe { _mm512_cmpneq_epu64_mask(self.raw, Vec512::zero().raw) }
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -1125,6 +1323,14 @@ impl Vec512 {
     pub fn testn16(a: Vec512, b: Vec512) -> Vec512Mask16 {
         unsafe { _mm512_testn_epi16_mask(a.raw, b.raw) }
     }
+
+    /*----------------------------------------------------------------*/
+
+    pub const SIZE: usize = size_of::<Vec512>();
+    pub const CHUNKS_8: usize = Self::SIZE / size_of::<u8>();
+    pub const CHUNKS_16: usize = Self::SIZE / size_of::<u16>();
+    pub const CHUNKS_32: usize = Self::SIZE / size_of::<u32>();
+    pub const CHUNKS_64: usize = Self::SIZE / size_of::<u64>();
 }
 
 impl From<Vec128> for Vec512 {

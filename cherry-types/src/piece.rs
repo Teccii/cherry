@@ -39,6 +39,19 @@ impl Piece {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub const fn from_bits(bits: u8) -> Option<Piece> {
+        match bits {
+            0b010 => Some(Piece::Pawn),
+            0b011 => Some(Piece::Knight),
+            0b101 => Some(Piece::Bishop),
+            0b110 => Some(Piece::Rook),
+            0b111 => Some(Piece::Queen),
+            0b001 => Some(Piece::King),
+            _ => None,
+        }
+    }
+
+    #[inline]
     pub const fn bits(self) -> u8 {
         match self {
             Piece::Pawn => 0b010,
