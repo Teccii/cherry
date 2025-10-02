@@ -8,7 +8,7 @@ impl Board {
         let mut features = Vec::new();
 
         features.push(format!("{}: {}", String::from("FEN").bright_green(), self.to_fen(chess960)));
-        features.push(format!("{}: {:#016X}", String::from("Zobrist Key").bright_green(), 0));
+        features.push(format!("{}: {:#016X}", String::from("Zobrist Key").bright_green(), self.hash));
 
         if let Some(sq) = self.ep_square() {
             features.push(format!("{}: {}", String::from("En Passant").bright_green(), sq));

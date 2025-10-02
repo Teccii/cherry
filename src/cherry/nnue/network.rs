@@ -61,6 +61,7 @@ impl NetworkWeights {
         unsafe { weights.assume_init() }
     }
 
+    #[inline]
     pub fn default() -> Arc<NetworkWeights> {
         Self::new(NETWORK_BYTES)
     }
