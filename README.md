@@ -37,7 +37,7 @@ Its internals, such as board representation and move generation are heavily base
   - SEE Pruning
 
 ### Evaluation
-- NNUE `(768->768)x2->8`
+- NNUE `(768->1024)x2->8`
   - Dual Perspective
   - Horizontally mirrored piece-square inputs
   - Eight output buckets

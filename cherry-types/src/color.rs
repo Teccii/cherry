@@ -1,4 +1,4 @@
-use std::{ops::*, str::FromStr};
+use core::{ops::*, str::FromStr};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Color {

@@ -1,3 +1,4 @@
+use std::arch::x86_64::_mm256_slli_epi64;
 use crate::*;
 
 impl Board {
@@ -50,8 +51,32 @@ impl Board {
 
         let bit_pieces = Vec512::permute8_128(
             Vec512::mask8(attackers, Vec512::shr16::<4>(ray_places) & Vec512::splat8(0x0F)),
-            Vec128::from([0x00, 0x80, 0x01, 0x02, 0x00, 0x8, 0x10, 0x20, 0x00, 0x80, 0x01, 0x02, 0x00, 0x08, 0x10, 0x20])
+            Vec128::from([
+                0x00, 0x80, 0x01, 0x02, 0x00, 0x8, 0x10, 0x20,
+                0x00, 0x80, 0x01, 0x02, 0x00, 0x08, 0x10, 0x20
+            ])
         );
+
+        #[cfg(target_feature = "avx512f")]
+        let bit_pieces = Vec512::gf2p8matmul8(
+            Vec512::gf2p8matmul8(Vec512::splat64(0x8040201008040201), bit_pieces),
+            Vec512::splat64(0x8040201008040201)
+        );
+
+        #[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
+        let bit_pieces = {
+            let temp = (bit_pieces ^ Vec512::shr64::<7>(bit_pieces)) & Vec512::splat64(0x00AA00AA00AA00AA);
+            let vec = bit_pieces ^ temp ^ Vec512::shl64::<7>(temp);
+
+            let temp = (vec ^ Vec512::shr64::<14>(vec)) & Vec512::splat64(0x0000CCCC0000CCCC);
+            let vec = vec ^ temp ^ Vec512::shl64::<14>(temp);
+
+            let temp = (vec ^ Vec512::shr64::<28>(vec)) & Vec512::splat64(0x00000000F0F0F0F0);
+            let vec = vec ^ temp ^ Vec512::shl64::<28>(temp);
+
+            vec
+        };
+
         let piece_rays_vec = Vec512::permute8(
             Vec512::from([
                 0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38,
@@ -63,10 +88,7 @@ impl Board {
                 0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E, 0x36, 0x3E,
                 0x07, 0x0F, 0x17, 0x1F, 0x27, 0x2F, 0x37, 0x3F,
             ]),
-            Vec512::gf2p8matmul8(
-                Vec512::gf2p8matmul8(Vec512::splat64(0x8040201008040201), bit_pieces),
-                Vec512::splat64(0x8040201008040201)
-            )
+            bit_pieces
         );
         let piece_rays = unsafe { core::mem::transmute::<Vec512, [u64; 8]>(piece_rays_vec) };
 

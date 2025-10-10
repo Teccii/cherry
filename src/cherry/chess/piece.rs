@@ -1,4 +1,4 @@
-use std::ops::*;
+use core::ops::*;
 use crate::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -197,12 +197,18 @@ impl IndexToSquare {
 
     #[inline]
     pub fn valid(&self) -> PieceMask {
-        PieceMask::new(Vec128::neq8(Vec128::load(self.inner.as_ptr()), Vec128::splat8(Self::INVALID_SQUARE)))
+        PieceMask::new(Vec128::neq8(
+            unsafe { Vec128::load(self.inner.as_ptr()) },
+            Vec128::splat8(Self::INVALID_SQUARE)
+        ))
     }
 
     #[inline]
     pub fn mask_eq(&self, sq: Square) -> PieceMask {
-        PieceMask::new(Vec128::eq8(Vec128::load(self.inner.as_ptr()), Vec128::splat8(sq as u8)))
+        PieceMask::new(Vec128::eq8(
+            unsafe { Vec128::load(self.inner.as_ptr()) },
+            Vec128::splat8(sq as u8)
+        ))
     }
 
     const INVALID_SQUARE: u8 = unsafe { ::core::mem::transmute::<Option<Square>, u8>(None) };
@@ -247,12 +253,18 @@ impl IndexToPiece {
 
     #[inline]
     pub fn valid(&self) -> PieceMask {
-        PieceMask::new(Vec128::neq8(Vec128::load(self.inner.as_ptr()), Vec128::splat8(Self::INVALID_PIECE)))
+        PieceMask::new(Vec128::neq8(
+            unsafe { Vec128::load(self.inner.as_ptr()) },
+            Vec128::splat8(Self::INVALID_PIECE))
+        )
     }
 
     #[inline]
     pub fn mask_eq(&self, piece: Piece) -> PieceMask {
-        PieceMask::new(Vec128::eq8(Vec128::load(self.inner.as_ptr()), Vec128::splat8(piece as u8)))
+        PieceMask::new(Vec128::eq8(
+            unsafe { Vec128::load(self.inner.as_ptr()) },
+            Vec128::splat8(piece as u8))
+        )
     }
 
     const INVALID_PIECE: u8 = unsafe { ::core::mem::transmute::<Option<Piece>, u8>(None) };

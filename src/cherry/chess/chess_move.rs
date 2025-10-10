@@ -1,4 +1,4 @@
-use std::{fmt, num::NonZeroU16};
+use core::{fmt, num::NonZeroU16};
 use crate::*;
 
 /*----------------------------------------------------------------*/

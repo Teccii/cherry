@@ -1,5 +1,5 @@
-use std::{fmt, str::FromStr};
-use std::ops::{Index, IndexMut};
+use core::{fmt, str::FromStr};
+use core::ops::{Index, IndexMut};
 use crate::*;
 
 /*----------------------------------------------------------------*/

@@ -1,8 +1,4 @@
-use std::{
-    sync::atomic::*,
-    sync::Mutex,
-    time::*
-};
+use std::{sync::{Mutex, atomic::*}, time::*};
 use atomic_time::AtomicInstant;
 use crate::*;
 

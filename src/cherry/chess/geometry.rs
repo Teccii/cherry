@@ -8,6 +8,25 @@ const fn expand_sq(sq: Square) -> u8 {
 }
 
 #[inline]
+#[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
+fn compress_coords_128(coords: Vec128) -> (Vec128, Vec128Mask8) {
+    let valid = Vec128::testn8(coords, Vec128::splat8(0x88));
+    let compressed = Vec128::sub8(coords, Vec128::shr16::<1>(coords & Vec128::splat8(0b0111_000)));
+
+    (compressed, valid)
+}
+
+#[inline]
+#[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
+fn compress_coords_512(coords: Vec512) -> (Vec512, Vec512Mask8) {
+    let valid = Vec512::testn8(coords, Vec512::splat8(0x88));
+    let compressed = Vec512::sub8(coords, Vec512::shr16::<1>(coords & Vec512::splat8(0b0111_000)));
+
+    (compressed, valid)
+}
+
+#[inline]
+#[cfg(target_feature = "avx512f")]
 fn compress_coords_128(coords: Vec128) -> (Vec128, Vec128Mask8) {
     let valid = Vec128::testn8(coords, Vec128::splat8(0x88));
     let compressed = Vec128::gf2p8matmul8(coords, Vec128::splat64(0x0102041020400000));
@@ -16,18 +35,10 @@ fn compress_coords_128(coords: Vec128) -> (Vec128, Vec128Mask8) {
 }
 
 #[inline]
+#[cfg(target_feature = "avx512f")]
 fn compress_coords_512(coords: Vec512) -> (Vec512, Vec512Mask8) {
     let valid = Vec512::testn8(coords, Vec512::splat8(0x88));
     let compressed = Vec512::gf2p8matmul8(coords, Vec512::splat64(0x0102041020400000));
-
-    (compressed, valid)
-}
-
-
-#[inline]
-fn compress_coords_wide_128(coords: Vec128) -> (Vec128, Vec128Mask16) {
-    let valid = Vec128::testn16(coords, Vec128::splat16(0xFF88));
-    let compressed = Vec128::gf2p8matmul8(coords, Vec128::splat64(0x0102041020400000));
 
     (compressed, valid)
 }
@@ -61,11 +72,6 @@ pub(crate) fn superpiece_attacks(occ: u64, ray_valid: u64) -> u64 {
 
 /*----------------------------------------------------------------*/
 
-pub(crate) const ADJACENT_VERTICAL_MASK: u16 = 0b00010001;
-pub(crate) const ADJACENT_HORIZONTAL_MASK: u16 = 0b01000100;
-pub(crate) const ADJACENT_DIAGONAL_MASK: u16 = 0b00100010;
-pub(crate) const ADJACENT_ANTIDIAGONAL_MASK: u16 = 0b10001000;
-
 #[inline]
 pub(crate) fn adjacents(sq: Square) -> (Vec128, Vec128Mask8) {
     let offsets = Vec128::from([
@@ -75,14 +81,6 @@ pub(crate) fn adjacents(sq: Square) -> (Vec128, Vec128Mask8) {
     let uncompressed = Vec128::add8(Vec128::splat8(expand_sq(sq)), offsets);
 
     compress_coords_128(uncompressed)
-}
-
-#[inline]
-pub(crate) fn adjacents_wide(sq: Square) -> (Vec128, Vec128Mask16) {
-    let offsets = Vec128::from([0x10, 0x11, 0x01, 0xF1, 0xF0, 0xEF, 0xFF, 0x0F]);
-    let uncompressed = Vec128::add16(Vec128::splat16(expand_sq(sq) as u16), offsets);
-
-    compress_coords_wide_128(uncompressed)
 }
 
 /*----------------------------------------------------------------*/
@@ -178,17 +176,6 @@ const ATTACK_MASK_TABLE: [u64; 16] = {
 #[inline]
 pub(crate) const fn attack_mask(piece: Piece, color: Color) -> u64 {
     ATTACK_MASK_TABLE[((color as usize) << 3) | piece.bits() as usize]
-}
-
-#[test]
-fn test() {
-    for &color in &Color::ALL{
-        for &piece in &Piece::ALL {
-            let bb = Bitboard(attack_mask(piece, color));
-
-            println!("{:?} {:?}: {:?}", color, piece, bb);
-        }
-    }
 }
 
 /*----------------------------------------------------------------*/

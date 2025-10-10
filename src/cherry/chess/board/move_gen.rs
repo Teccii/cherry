@@ -1,4 +1,4 @@
-use std::{ops::*, ptr};
+use core::{ops::*, ptr};
 use arrayvec::ArrayVec;
 use crate::*;
 
@@ -133,7 +133,7 @@ impl Board {
         let our_attack_table = self.attack_table(stm);
 
         let (pin_mask, pinned_bb) = self.calc_pins(our_king);
-        let masked_attack_table = (*our_attack_table & pin_mask).into_mailbox();
+        let masked_attack_table = *(*our_attack_table & pin_mask).as_mailbox();
 
         let valid_pieces = self.index_to_piece[stm].valid();
         let pawn_mask = self.index_to_piece[stm].mask_eq(Piece::Pawn);
@@ -146,7 +146,7 @@ impl Board {
         let non_pawn_dest = our_attack_table.for_mask(non_pawn_mask) & valid_dest;
         let king_dest = our_attack_table.for_mask(PieceMask::KING) & valid_dest;
 
-        let src = Vec128::load(self.index_to_square[stm].into_inner().as_ptr()).zext8to16();
+        let src = unsafe { Vec128::load(self.index_to_square[stm].into_inner().as_ptr()) }.zext8to16();
         let pawn_info = pawns::pawn_info(stm);
 
         self.gen_capture_promotions_for(moves, &masked_attack_table, pawn_mask, pawn_dest & their_pieces & pawn_info.promo_dest);
@@ -263,8 +263,8 @@ impl Board {
             Color::Black => 0,
         }) & blockers;
 
-        let [half0, half1] = attack_table.inner.map(|v| v.zero16() as u64);
-        let at_empty = Vec512::interleave64(half0, half1);
+        let [half0, half1] = attack_table.inner.map(|v| v.zero16() as u32);
+        let at_empty = interleave64(half0, half1);
         let no_attackers = Vec128::mask_bitshuffle(leaps_valid, Vec128::from(at_empty), king_leaps);
 
         let mut dest = (leaps_valid & !our_pieces & no_attackers) as u8;
@@ -391,13 +391,13 @@ impl Board {
 
         let pinned_count = pinned.popcnt();
         let pinned_coord = Vec512::compress8(pinned.0, ray_coords).into_vec128();
-        let piece_mask = Vec128::findset8(pinned_coord, pinned_count as i32, Vec128::load(self.index_to_square[stm].into_inner().as_ptr()));
+        let piece_mask = Vec128::findset8(pinned_coord, pinned_count as i32, unsafe { Vec128::load(self.index_to_square[stm].into_inner().as_ptr()) });
 
         let ones = Vec512::splat16(1);
         let valid_ids = board_layout.nonzero8();
         let masked_ids = board_layout & Vec512::splat8(0xF);
-        let bits0 = Vec512::shl16_mz(valid_ids as Vec512Mask16, ones, masked_ids.into_vec256().zext8to16());
-        let bits1 = Vec512::shl16_mz((valid_ids >> 32) as Vec512Mask16, ones, masked_ids.extract_vec256::<1>().zext8to16());
+        let bits0 = Vec512::shlv16_mz(valid_ids as Vec512Mask16, ones, masked_ids.into_vec256().zext8to16());
+        let bits1 = Vec512::shlv16_mz((valid_ids >> 32) as Vec512Mask16, ones, masked_ids.extract_vec256::<1>().zext8to16());
         let at_mask0 = Vec512::splat16(!piece_mask) | bits0;
         let at_mask1 = Vec512::splat16(!piece_mask) | bits1;
         let pinned_bb = Bitboard(board_layout.nonzero8());

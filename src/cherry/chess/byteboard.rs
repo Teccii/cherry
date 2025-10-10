@@ -1,4 +1,4 @@
-use std::ops::BitAnd;
+use core::ops::BitAnd;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -79,6 +79,7 @@ impl Place {
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
+#[repr(transparent)]
 pub struct Byteboard {
     pub(crate) inner: Vec512,
 }
@@ -140,8 +141,7 @@ impl Byteboard {
 
     #[inline]
     pub fn color_pieces(&self, piece: Piece, color: Color) -> Bitboard {
-        Bitboard(Vec512::mask_eq8(
-            self.colors(color).0,
+        Bitboard(self.colors(color).0 & Vec512::eq8(
             self.inner & Vec512::splat8(0b1110000),
             Vec512::splat8(piece.bits() << 4)
         ))
@@ -206,6 +206,7 @@ impl Default for Byteboard {
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
+#[repr(transparent)]
 pub struct Wordboard {
     pub(crate) inner: [Vec512; 2],
 }
@@ -218,14 +219,19 @@ impl Wordboard {
 
     #[inline]
     pub fn into_mailbox(self) -> [PieceMask; Square::COUNT] {
-        unsafe { ::core::mem::transmute::<[Vec512; 2], [PieceMask; Square::COUNT]>(self.inner) }
+        unsafe { core::mem::transmute::<Wordboard, [PieceMask; Square::COUNT]>(self) }
     }
-
+    
+    #[inline]
+    pub fn as_mailbox(&self) -> &[PieceMask; Square::COUNT] {
+        unsafe { &*self.inner.as_ptr().cast::<[PieceMask; Square::COUNT]>() }
+    }
+    
     #[inline]
     pub fn all(&self) -> Bitboard {
-        Bitboard(Vec512::interleave64(
-            self.inner[0].nonzero16() as u64,
-            self.inner[1].nonzero16() as u64
+        Bitboard(interleave64(
+            self.inner[0].nonzero16() as u32,
+            self.inner[1].nonzero16() as u32
         ))
     }
 
@@ -233,22 +239,16 @@ impl Wordboard {
     pub fn for_mask(&self, mask: PieceMask) -> Bitboard {
         let mask = Vec512::splat16(mask.into_inner());
 
-        Bitboard(Vec512::interleave64(
-            Vec512::test16(self.inner[0], mask) as u64,
-            Vec512::test16(self.inner[1], mask) as u64
+        Bitboard(interleave64(
+            Vec512::test16(self.inner[0], mask) as u32,
+            Vec512::test16(self.inner[1], mask) as u32
         ))
     }
 
     #[inline]
     pub fn get(&self, sq: Square) -> PieceMask {
         let index = sq as u16;
-        let (vec, index) = if index < 32 {
-            (self.inner[0], index)
-        } else {
-            (self.inner[1], index - 32)
-        };
-
-        PieceMask::new(Vec512::permute16(Vec512::splat16(index), vec).into_u32() as u16)
+        self.as_mailbox()[index as usize]
     }
 }
 

@@ -7,7 +7,7 @@ mod startpos;
 
 pub use move_gen::*;
 
-use std::ops::Deref;
+use core::ops::Deref;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -623,8 +623,8 @@ impl Board {
         let black_count = black_attackers.count_ones() as i32;
         let white_coords = Vec512::compress8(white_attackers, ray_coords).into_vec128();
         let black_coords = Vec512::compress8(black_attackers, ray_coords).into_vec128();
-        let white_mask = Vec128::findset8(white_coords, white_count, Vec128::load(self.index_to_square[Color::White].into_inner().as_ptr()));
-        let black_mask = Vec128::findset8(black_coords, black_count, Vec128::load(self.index_to_square[Color::Black].into_inner().as_ptr()));
+        let white_mask = Vec128::findset8(white_coords, white_count, unsafe { Vec128::load(self.index_to_square[Color::White].into_inner().as_ptr()) });
+        let black_mask = Vec128::findset8(black_coords, black_count, unsafe { Vec128::load(self.index_to_square[Color::Black].into_inner().as_ptr()) });
 
         [PieceMask::new(white_mask), PieceMask::new(black_mask)]
     }
@@ -645,7 +645,7 @@ impl Board {
         let color_attackers = our_color & visible & attackers;
         let color_count = color_attackers.count_ones() as i32;
         let color_coords = Vec512::compress8(color_attackers, ray_coords).into_vec128();
-        let color_mask = Vec128::findset8(color_coords, color_count, Vec128::load(self.index_to_square[color].into_inner().as_ptr()));
+        let color_mask = Vec128::findset8(color_coords, color_count, unsafe { Vec128::load(self.index_to_square[color].into_inner().as_ptr()) });
 
         PieceMask::new(color_mask)
     }
@@ -696,10 +696,10 @@ impl Board {
         let dest_masked_updates = dest_updates & update_mask;
 
         let ones = Vec512::splat16(1);
-        let src_bits0 = Vec512::shl16_mz(src_valid_updates as Vec512Mask16, ones, src_masked_updates.into_vec256().zext8to16());
-        let src_bits1 = Vec512::shl16_mz((src_valid_updates >> 32) as Vec512Mask16, ones, src_masked_updates.extract_vec256::<1>().zext8to16());
-        let dest_bits0 = Vec512::shl16_mz(dest_valid_updates as Vec512Mask16, ones, dest_masked_updates.into_vec256().zext8to16());
-        let dest_bits1 = Vec512::shl16_mz((dest_valid_updates >> 32) as Vec512Mask16, ones, dest_masked_updates.extract_vec256::<1>().zext8to16());
+        let src_bits0 = Vec512::shlv16_mz(src_valid_updates as Vec512Mask16, ones, src_masked_updates.into_vec256().zext8to16());
+        let src_bits1 = Vec512::shlv16_mz((src_valid_updates >> 32) as Vec512Mask16, ones, src_masked_updates.extract_vec256::<1>().zext8to16());
+        let dest_bits0 = Vec512::shlv16_mz(dest_valid_updates as Vec512Mask16, ones, dest_masked_updates.into_vec256().zext8to16());
+        let dest_bits1 = Vec512::shlv16_mz((dest_valid_updates >> 32) as Vec512Mask16, ones, dest_masked_updates.extract_vec256::<1>().zext8to16());
 
         let piece_mask = Vec512::splat16(index.into_mask().into_inner());
         let not_piece_mask = Vec512::splat16(!index.into_mask().into_inner());
@@ -749,8 +749,8 @@ impl Board {
         let color = updates.msb8();
 
         let ones = Vec512::splat16(1);
-        let bits0 = Vec512::shl16_mz(valid_updates as Vec512Mask16, ones, masked_updates.into_vec256().zext8to16());
-        let bits1 = Vec512::shl16_mz((valid_updates >> 32) as Vec512Mask16, ones, masked_updates.extract_vec256::<1>().zext8to16());
+        let bits0 = Vec512::shlv16_mz(valid_updates as Vec512Mask16, ones, masked_updates.into_vec256().zext8to16());
+        let bits1 = Vec512::shlv16_mz((valid_updates >> 32) as Vec512Mask16, ones, masked_updates.extract_vec256::<1>().zext8to16());
 
         self.attack_tables[0].inner[0] ^= Vec512::mask16(!color as Vec512Mask16, bits0);
         self.attack_tables[0].inner[1] ^= Vec512::mask16(!(color >> 32) as Vec512Mask16, bits1);

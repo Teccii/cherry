@@ -1,8 +1,4 @@
-use std::{
-    mem::MaybeUninit,
-    sync::Arc,
-    ptr
-};
+use std::{mem::MaybeUninit, sync::Arc, ptr};
 use arrayvec::ArrayVec;
 use crate::*;
 

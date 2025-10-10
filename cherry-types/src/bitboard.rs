@@ -1,4 +1,4 @@
-use std::{fmt, ops::*};
+use core::{fmt, ops::*};
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -207,7 +207,7 @@ impl IntoIterator for Bitboard {
 
 impl fmt::Debug for Bitboard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Bitboard({:#016X})", self.0)
+        write!(f, "Bitboard({:#018X})", self.0)
     }
 }
 

@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, fmt, ops::*};
+use core::{cmp::Ordering, fmt, ops::*};
 use crate::MAX_PLY;
 
 /*----------------------------------------------------------------*/
