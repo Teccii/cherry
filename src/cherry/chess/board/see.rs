@@ -57,13 +57,13 @@ impl Board {
             ])
         );
 
-        #[cfg(target_feature = "avx512f")]
+        /*#[cfg(target_feature = "avx512f")]
         let bit_pieces = Vec512::gf2p8matmul8(
             Vec512::gf2p8matmul8(Vec512::splat64(0x8040201008040201), bit_pieces),
             Vec512::splat64(0x8040201008040201)
-        );
+        );*/
 
-        #[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
+        //#[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
         let bit_pieces = {
             let temp = (bit_pieces ^ Vec512::shr64::<7>(bit_pieces)) & Vec512::splat64(0x00AA00AA00AA00AA);
             let vec = bit_pieces ^ temp ^ Vec512::shl64::<7>(temp);

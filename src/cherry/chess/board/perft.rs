@@ -25,6 +25,18 @@ mod tests {
         nodes
     }
 
+    #[test]
+    fn test() {
+        let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+        println!("{}", board.pretty_print(false));
+
+        /*let moves = board.gen_moves();
+
+        for &mv in moves.iter() {
+            println!("{}: 1", mv);
+        }*/
+    }
+
     macro_rules! perft_test {
         ($name:ident: $board:expr; $($nodes:expr),*) => {
             #[test]

@@ -6,17 +6,17 @@ use super::common::*;
 
 #[inline]
 pub fn interleave16(a: u8, b: u8) -> u16 {
-    ((a as u16) << 8) | b as u16
+    ((b as u16) << 8) | a as u16
 }
 
 #[inline]
 pub fn interleave32(a: u16, b: u16) -> u32 {
-    ((a as u32) << 16) | b as u32
+    ((b as u32) << 16) | a as u32
 }
 
 #[inline]
 pub fn interleave64(a: u32, b: u32) -> u64 {
-    ((a as u64) << 32) | b as u64
+    ((b as u64) << 32) | a as u64
 }
 
 /*----------------------------------------------------------------*/

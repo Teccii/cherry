@@ -28,15 +28,6 @@ pub struct CastleRights {
 }
 
 impl CastleRights {
-    #[inline]
-    pub fn get_squares(&self, color: Color) -> (Option<Square>, Option<Square>) {
-        let our_backrank = Rank::First.relative_to(color);
-        let short = self.short.map(|f| Square::new(f, our_backrank));
-        let long = self.long.map(|f| Square::new(f, our_backrank));
-
-        (short, long)
-    }
-    
     pub const EMPTY: CastleRights = CastleRights {
         short: None,
         long: None
