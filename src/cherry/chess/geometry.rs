@@ -8,24 +8,23 @@ const fn expand_sq(sq: Square) -> u8 {
 }
 
 #[inline]
-//#[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
+#[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
 fn compress_coords_128(coords: Vec128) -> (Vec128, Vec128Mask8) {
     let valid = Vec128::testn8(coords, Vec128::splat8(0x88));
-    let compressed = Vec128::sub8(coords, Vec128::shr16::<1>(coords & Vec128::splat8(0b0111_000)));
+    let compressed = (coords & Vec128::splat8(0x07)) | (Vec128::shr16::<1>(coords) & Vec128::splat8(0x38));
 
     (compressed, valid)
 }
 
 #[inline]
-//#[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
+#[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
 fn compress_coords_512(coords: Vec512) -> (Vec512, Vec512Mask8) {
     let valid = Vec512::testn8(coords, Vec512::splat8(0x88));
-    let compressed = Vec512::sub8(coords, Vec512::shr16::<1>(coords & Vec512::splat8(0b0111_000)));
+    let compressed = (coords & Vec512::splat8(0x07)) | (Vec512::shr16::<1>(coords) & Vec512::splat8(0x38));
 
     (compressed, valid)
 }
 
-/*
 #[inline]
 #[cfg(target_feature = "avx512f")]
 fn compress_coords_128(coords: Vec128) -> (Vec128, Vec128Mask8) {
@@ -43,12 +42,11 @@ fn compress_coords_512(coords: Vec512) -> (Vec512, Vec512Mask8) {
 
     (compressed, valid)
 }
-*/
 
 /*----------------------------------------------------------------*/
 
 #[inline]
-pub(crate) fn superpiece_rays(sq: Square) -> (Vec512, Vec512Mask8) {
+pub fn superpiece_rays(sq: Square) -> (Vec512, Vec512Mask8) {
     let offsets = Vec512::from([
         0x1F, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, // N
         0x21, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, // NE
@@ -65,7 +63,7 @@ pub(crate) fn superpiece_rays(sq: Square) -> (Vec512, Vec512Mask8) {
 }
 
 #[inline]
-pub(crate) fn superpiece_attacks(occ: u64, ray_valid: u64) -> u64 {
+pub fn superpiece_attacks(occ: u64, ray_valid: u64) -> u64 {
     let o = occ | 0x8181818181818181;
     let x = o ^ o.wrapping_sub(0x0303030303030303);
 
@@ -75,7 +73,7 @@ pub(crate) fn superpiece_attacks(occ: u64, ray_valid: u64) -> u64 {
 /*----------------------------------------------------------------*/
 
 #[inline]
-pub(crate) fn adjacents(sq: Square) -> (Vec128, Vec128Mask8) {
+pub fn adjacents(sq: Square) -> (Vec128, Vec128Mask8) {
     let offsets = Vec128::from([
         0x10, 0x11, 0x01, 0xF1, 0xF0, 0xEF, 0xFF, 0x0F,
         0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88
@@ -87,7 +85,7 @@ pub(crate) fn adjacents(sq: Square) -> (Vec128, Vec128Mask8) {
 
 /*----------------------------------------------------------------*/
 
-pub(crate) const NON_HORSE_ATTACK_MASK: u64 = 0xFEFEFEFEFEFEFEFE;
+pub const NON_HORSE_ATTACK_MASK: u64 = 0xFEFEFEFEFEFEFEFE;
 
 #[inline]
 fn slider_mask() -> Vec512 {
@@ -107,7 +105,7 @@ fn slider_mask() -> Vec512 {
 }
 
 #[inline]
-pub(crate) fn sliders_from_rays(rays: Vec512) -> u64 {
+pub fn sliders_from_rays(rays: Vec512) -> u64 {
     (rays & Vec512::splat8(0b100 << 4)).nonzero8() & (rays & slider_mask()).nonzero8()
 }
 
@@ -176,14 +174,14 @@ const ATTACK_MASK_TABLE: [u64; 16] = {
 };
 
 #[inline]
-pub(crate) const fn attack_mask(piece: Piece, color: Color) -> u64 {
+pub const fn attack_mask(piece: Piece, color: Color) -> u64 {
     ATTACK_MASK_TABLE[((color as usize) << 3) | piece.bits() as usize]
 }
 
 /*----------------------------------------------------------------*/
 
 #[inline]
-pub(crate) fn attackers_from_rays(rays: Vec512) -> u64 {
+pub fn attackers_from_rays(rays: Vec512) -> u64 {
     const KING: u8 = 1 << 0;
     const WHITE_PAWN: u8 = 1 << 1;
     const BLACK_PAWN: u8 = 1 << 2;
@@ -292,11 +290,11 @@ const SUPERPIECE_INV_RAYS_SWAPPED: [[u8; 64]; Square::COUNT] = {
 };
 
 #[inline]
-pub(crate) fn superpiece_inv_rays(sq: Square) -> Vec512 {
+pub fn superpiece_inv_rays(sq: Square) -> Vec512 {
     Vec512::from(SUPERPIECE_INV_RAYS[sq])
 }
 
 #[inline]
-pub(crate) fn superpiece_inv_rays_swapped(sq: Square) -> Vec512 {
+pub fn superpiece_inv_rays_swapped(sq: Square) -> Vec512 {
     Vec512::from(SUPERPIECE_INV_RAYS_SWAPPED[sq])
 }

@@ -1,6 +1,5 @@
-use core::{fmt, str::FromStr};
-use core::ops::{Index, IndexMut};
-use crate::{File, Square};
+use core::{fmt, str::FromStr, ops::*};
+
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

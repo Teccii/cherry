@@ -1,4 +1,5 @@
 use core::ops::BitAnd;
+use std::ptr;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -91,15 +92,15 @@ impl Byteboard {
     }
 
     #[inline]
-    pub fn into_mailbox(self) -> [Place; Square::COUNT] {
-        unsafe { core::mem::transmute::<Vec512, [Place; Square::COUNT]>(self.inner) }
+    pub fn as_mailbox(&self) -> &[Place; Square::COUNT] {
+        unsafe { &*ptr::from_ref(&self.inner).cast() }
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub(crate) fn get(&self, sq: Square) -> Place {
-        Place::new(Vec512::permute8(Vec512::splat8(sq as u8), self.inner).into_u32() as u8)
+        self.as_mailbox()[sq]
     }
 
     #[inline]
@@ -218,11 +219,6 @@ impl Wordboard {
     }
 
     #[inline]
-    pub fn into_mailbox(self) -> [PieceMask; Square::COUNT] {
-        unsafe { core::mem::transmute::<Wordboard, [PieceMask; Square::COUNT]>(self) }
-    }
-    
-    #[inline]
     pub fn as_mailbox(&self) -> &[PieceMask; Square::COUNT] {
         unsafe { &*self.inner.as_ptr().cast::<[PieceMask; Square::COUNT]>() }
     }
@@ -247,8 +243,7 @@ impl Wordboard {
 
     #[inline]
     pub fn get(&self, sq: Square) -> PieceMask {
-        let index = sq as u16;
-        self.as_mailbox()[index as usize]
+        self.as_mailbox()[sq]
     }
 }
 

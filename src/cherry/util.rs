@@ -100,6 +100,7 @@ pub fn new_zeroed<T>() -> Box<T> {
 
 /*----------------------------------------------------------------*/
 
+#[allow(dead_code)]
 pub fn progress_bar(progress: usize, max: usize) -> String {
     format!("[{}{}]", "#".repeat(progress).bright_green(), ".".repeat(max - progress))
 }

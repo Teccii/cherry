@@ -1,6 +1,6 @@
 use core::{fmt, str::FromStr};
 use core::ops::{Index, IndexMut};
-use crate::{Bitboard, Color, Piece};
+use crate::Bitboard;
 
 /*----------------------------------------------------------------*/
 

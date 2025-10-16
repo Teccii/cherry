@@ -1,4 +1,4 @@
-use core::{str::FromStr, time::Duration};
+use core::time::Duration;
 use crate::*;
 
 /*----------------------------------------------------------------*/

@@ -15,7 +15,7 @@ mod chess {
     mod board;
     mod byteboard;
     mod chess_move;
-    mod geometry;
+    pub mod geometry;
     mod piece;
     mod zobrist;
 
@@ -23,7 +23,6 @@ mod chess {
     pub use board::*;
     pub use byteboard::*;
     pub use chess_move::*;
-    pub use geometry::*;
     pub use piece::*;
     pub use zobrist::*;
 }

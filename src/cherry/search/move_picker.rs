@@ -1,4 +1,3 @@
-use arrayvec::ArrayVec;
 use smallvec::SmallVec;
 use crate::*;
 
@@ -225,8 +224,6 @@ impl QMovePicker {
         
         if self.phase == QPhase::GenTactics {
             let board = pos.board();
-            let their_pieces = board.colors(!board.stm());
-            let ep_square = board.ep_square();
 
             for &mv in self.moves.iter() {
                 if mv.is_tactic() {

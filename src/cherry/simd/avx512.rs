@@ -4,16 +4,6 @@ use super::common::*;
 /*----------------------------------------------------------------*/
 
 #[inline]
-pub fn interleave16(a: u8, b: u8) -> u16 {
-    unsafe { _mm512_kunpackb(b as u16, a as u16) }
-}
-
-#[inline]
-pub fn interleave32(a: u16, b: u16) -> u32 {
-    unsafe { _mm512_kunpackw(b as u32, a as u32) }
-}
-
-#[inline]
 pub fn interleave64(a: u32, b: u32) -> u64 {
     unsafe { _mm512_kunpackd(b as u64, a as u64) }
 }
@@ -38,65 +28,11 @@ impl Vec128 {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn shlv16_mz(mask: Vec128Mask16, a: Vec128, b: Vec128) -> Vec128 {
-        unsafe { _mm_maskz_sllv_epi16(mask, a.raw, b.raw).into() }
-    }
-
-    #[inline]
-    pub fn shrv16_mz(mask: Vec128Mask16, a: Vec128, b: Vec128) -> Vec128 {
-        unsafe { _mm_maskz_srlv_epi16(mask, a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn compress8(mask: Vec128Mask8, vec: Vec128) -> Vec128 {
-        unsafe { _mm_maskz_compress_epi8(mask, vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn compress16(mask: Vec128Mask16, vec: Vec128) -> Vec128 {
-        unsafe { _mm_maskz_compress_epi16(mask, vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn compress32(mask: Vec128Mask32, vec: Vec128) -> Vec128 {
-        unsafe { _mm_maskz_compress_epi32(mask, vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn compress64(mask: Vec128Mask64, vec: Vec128) -> Vec128 {
-        unsafe { _mm_maskz_compress_epi64(mask, vec.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn compress_store8<T>(dest: *mut T, mask: Vec128Mask8, vec: Vec128) {
-        unsafe { _mm_mask_compressstoreu_epi8(dest.cast(), mask, vec.raw) }
-    }
-
-    #[inline]
     pub fn compress_store16<T>(dest: *mut T, mask: Vec128Mask16, vec: Vec128) {
         unsafe { _mm_mask_compressstoreu_epi16(dest.cast(), mask, vec.raw) }
     }
 
-    #[inline]
-    pub fn compress_store32<T>(dest: *mut T, mask: Vec128Mask32, vec: Vec128) {
-        unsafe { _mm_mask_compressstoreu_epi32(dest.cast(), mask, vec.raw) }
-    }
-
-    #[inline]
-    pub fn compress_store64<T>(dest: *mut T, mask: Vec128Mask64, vec: Vec128) {
-        unsafe { _mm_mask_compressstoreu_epi64(dest.cast(), mask, vec.raw) }
-    }
-
     /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn bitshuffle(a: Vec128, b: Vec128) -> Vec128Mask8 {
-        unsafe { _mm_bitshuffle_epi64_mask(a.raw, b.raw).into() }
-    }
 
     #[inline]
     pub fn mask_bitshuffle(mask: Vec128Mask8, a: Vec128, b: Vec128) -> Vec128Mask8 {
@@ -113,16 +49,9 @@ impl Vec128 {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn zero8(self) -> Vec128Mask8 {
-        unsafe { _mm_cmpeq_epu8_mask(self.raw, Vec128::zero().raw) }
+    pub fn msb8(self) -> Vec128Mask8 {
+        unsafe { _mm_movepi8_mask(self.raw) }
     }
-
-    #[inline]
-    pub fn zero16(self) -> Vec128Mask16 {
-        unsafe { _mm_cmpeq_epu16_mask(self.raw, Vec128::zero().raw) }
-    }
-
-    /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn nonzero8(self) -> Vec128Mask8 {
@@ -130,35 +59,9 @@ impl Vec128 {
     }
 
     #[inline]
-    pub fn nonzero16(self) -> Vec128Mask16 {
-        unsafe { _mm_cmpneq_epu16_mask(self.raw, Vec128::zero().raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn msb8(self) -> Vec128Mask8 {
-        unsafe { _mm_movepi8_mask(self.raw) }
-    }
-
-    #[inline]
-    pub fn msb16(self) -> Vec128Mask16 {
-        unsafe { _mm_movepi16_mask(self.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
     pub fn eq8(a: Vec128, b: Vec128) -> Vec128Mask8 {
         unsafe { _mm_cmpeq_epu8_mask(a.raw, b.raw).into() }
     }
-
-    #[inline]
-    pub fn eq16(a: Vec128, b: Vec128) -> Vec128Mask16 {
-        unsafe { _mm_cmpeq_epu16_mask(a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn neq8(a: Vec128, b: Vec128) -> Vec128Mask8 {
@@ -166,32 +69,8 @@ impl Vec128 {
     }
 
     #[inline]
-    pub fn neq16(a: Vec128, b: Vec128) -> Vec128Mask16 {
-        unsafe { _mm_cmpneq_epu16_mask(a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn test8(a: Vec128, b: Vec128) -> Vec128Mask8 {
-        unsafe { _mm_test_epi8_mask(a.raw, b.raw) }
-    }
-
-    #[inline]
-    pub fn test16(a: Vec128, b: Vec128) -> Vec128Mask16 {
-        unsafe { _mm_test_epi16_mask(a.raw, b.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
     pub fn testn8(a: Vec128, b: Vec128) -> Vec128Mask8 {
         unsafe { _mm_testn_epi8_mask(a.raw, b.raw) }
-    }
-
-    #[inline]
-    pub fn testn16(a: Vec128, b: Vec128) -> Vec128Mask16 {
-        unsafe { _mm_testn_epi16_mask(a.raw, b.raw) }
     }
 }
 
@@ -199,172 +78,15 @@ impl Vec128 {
 
 impl Vec256 {
     #[inline]
-    pub fn mask8(mask: Vec256Mask8, vec: Vec256) -> Vec256 {
-        unsafe { _mm256_maskz_mov_epi8(mask, vec.raw).into() }
-    }
-
-    #[inline]
     pub fn mask16(mask: Vec256Mask16, vec: Vec256) -> Vec256 {
         unsafe { _mm256_maskz_mov_epi16(mask, vec.raw).into() }
     }
 
     /*----------------------------------------------------------------*/
-    
-    #[inline]
-    pub fn shl16_mz(mask: Vec256Mask16, a: Vec256, b: Vec256) -> Vec256 {
-        unsafe { _mm256_maskz_sllv_epi16(mask, a.raw, b.raw).into() }
-    }
-
-    #[inline]
-    pub fn shr16_mz(mask: Vec256Mask16, a: Vec256, b: Vec256) -> Vec256 {
-        unsafe { _mm256_maskz_srlv_epi16(mask, a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn compress8(mask: Vec256Mask8, vec: Vec256) -> Vec256 {
-        unsafe { _mm256_maskz_compress_epi8(mask, vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn compress16(mask: Vec256Mask16, vec: Vec256) -> Vec256 {
-        unsafe { _mm256_maskz_compress_epi16(mask, vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn compress32(mask: Vec256Mask32, vec: Vec256) -> Vec256 {
-        unsafe { _mm256_maskz_compress_epi32(mask, vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn compress64(mask: Vec256Mask64, vec: Vec256) -> Vec256 {
-        unsafe { _mm256_maskz_compress_epi64(mask, vec.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn compress_store8<T>(dest: *mut T, mask: Vec256Mask8, vec: Vec256) {
-        unsafe { _mm256_mask_compressstoreu_epi8(dest.cast(), mask, vec.raw) }
-    }
 
     #[inline]
     pub fn compress_store16<T>(dest: *mut T, mask: Vec256Mask16, vec: Vec256) {
         unsafe { _mm256_mask_compressstoreu_epi16(dest.cast(), mask, vec.raw) }
-    }
-
-    #[inline]
-    pub fn compress_store32<T>(dest: *mut T, mask: Vec256Mask32, vec: Vec256) {
-        unsafe { _mm256_mask_compressstoreu_epi32(dest.cast(), mask, vec.raw) }
-    }
-
-    #[inline]
-    pub fn compress_store64<T>(dest: *mut T, mask: Vec256Mask64, vec: Vec256) {
-        unsafe { _mm256_mask_compressstoreu_epi64(dest.cast(), mask, vec.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn bitshuffle(a: Vec256, b: Vec256) -> Vec256Mask8 {
-        unsafe { _mm256_bitshuffle_epi64_mask(a.raw, b.raw).into() }
-    }
-
-    #[inline]
-    pub fn mask_bitshuffle(mask: Vec256Mask8, a: Vec256, b: Vec256) -> Vec256Mask8 {
-        unsafe { _mm256_mask_bitshuffle_epi64_mask(mask, a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn gf2p8matmul8(a: Vec256, b: Vec256) -> Vec256 {
-        unsafe { _mm256_gf2p8affine_epi64_epi8::<0>(a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn zero8(self) -> Vec256Mask8 {
-        Vec256::eq8(self, Vec256::zero())
-    }
-
-    #[inline]
-    pub fn zero16(self) -> Vec256Mask16 {
-        Vec256::eq16(self, Vec256::zero())
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn nonzero8(self) -> Vec256Mask8 {
-        Vec256::neq8(self, Vec256::zero())
-    }
-
-    #[inline]
-    pub fn nonzero16(self) -> Vec256Mask16 {
-        Vec256::neq16(self, Vec256::zero())
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn msb8(self) -> Vec256Mask8 {
-        unsafe { _mm256_movepi8_mask(self.raw) }
-    }
-
-    #[inline]
-    pub fn msb16(self) -> Vec256Mask16 {
-        unsafe { _mm256_movepi16_mask(self.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn eq8(a: Vec256, b: Vec256) -> Vec256Mask8 {
-        unsafe { _mm256_cmpeq_epu8_mask(a.raw, b.raw).into() }
-    }
-
-    #[inline]
-    pub fn eq16(a: Vec256, b: Vec256) -> Vec256Mask16 {
-        unsafe { _mm256_cmpeq_epu16_mask(a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn neq8(a: Vec256, b: Vec256) -> Vec256Mask8 {
-        unsafe { _mm256_cmpneq_epu8_mask(a.raw, b.raw).into() }
-    }
-
-    #[inline]
-    pub fn neq16(a: Vec256, b: Vec256) -> Vec256Mask16 {
-        unsafe { _mm256_cmpneq_epu16_mask(a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn test8(a: Vec256, b: Vec256) -> Vec256Mask8 {
-        unsafe { _mm256_test_epi8_mask(a.raw, b.raw) }
-    }
-
-    #[inline]
-    pub fn test16(a: Vec256, b: Vec256) -> Vec256Mask16 {
-        unsafe { _mm256_test_epi16_mask(a.raw, b.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn testn8(a: Vec256, b: Vec256) -> Vec256Mask8 {
-        unsafe { _mm256_testn_epi8_mask(a.raw, b.raw) }
-    }
-
-    #[inline]
-    pub fn testn16(a: Vec256, b: Vec256) -> Vec256Mask16 {
-        unsafe { _mm256_testn_epi16_mask(a.raw, b.raw) }
     }
 
     /*----------------------------------------------------------------*/
@@ -394,11 +116,6 @@ impl Vec512 {
     }
 
     /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn into_u32(self) -> u32 {
-        unsafe { _mm512_cvtsi512_si32(self.raw) as u32 }
-    }
 
     #[inline]
     pub fn into_vec128(self) -> Vec128 {
@@ -433,11 +150,6 @@ impl Vec512 {
     }
 
     #[inline]
-    pub fn splat32(value: u32) -> Vec512 {
-        unsafe { _mm512_set1_epi32(value as i32).into() }
-    }
-
-    #[inline]
     pub fn splat64(value: u64) -> Vec512 {
         unsafe { _mm512_set1_epi64(value as i64).into() }
     }
@@ -447,21 +159,6 @@ impl Vec512 {
     #[inline]
     pub fn mask_splat8(vec: Vec512, mask: Vec512Mask8, value: u8) -> Vec512 {
         unsafe { _mm512_mask_set1_epi8(vec.raw, mask, value as i8).into() }
-    }
-
-    #[inline]
-    pub fn mask_splat16(vec: Vec512, mask: Vec512Mask16, value: u16) -> Vec512 {
-        unsafe { _mm512_mask_set1_epi16(vec.raw, mask, value as i16).into() }
-    }
-
-    #[inline]
-    pub fn mask_splat32(vec: Vec512, mask: Vec512Mask32, value: u32) -> Vec512 {
-        unsafe { _mm512_mask_set1_epi32(vec.raw, mask, value as i32).into() }
-    }
-
-    #[inline]
-    pub fn mask_splat64(vec: Vec512, mask: Vec512Mask64, value: u64) -> Vec512 {
-        unsafe { _mm512_mask_set1_epi64(vec.raw, mask, value as i64).into() }
     }
 
     /*----------------------------------------------------------------*/
@@ -484,11 +181,6 @@ impl Vec512 {
     }
 
     #[inline]
-    pub fn add16(a: Vec512, b: Vec512) -> Vec512 {
-        unsafe { _mm512_add_epi16(a.raw, b.raw).into() }
-    }
-
-    #[inline]
     pub fn add32(a: Vec512, b: Vec512) -> Vec512 {
         unsafe { _mm512_add_epi32(a.raw, b.raw).into() }
     }
@@ -496,21 +188,14 @@ impl Vec512 {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn sub8(a: Vec512, b: Vec512) -> Vec512 {
-        unsafe { _mm512_sub_epi8(a.raw, b.raw).into() }
+    pub fn add16(a: Vec512, b: Vec512) -> Vec512 {
+        unsafe { _mm512_add_epi16(a.raw, b.raw).into() }
     }
 
     #[inline]
     pub fn sub16(a: Vec512, b: Vec512) -> Vec512 {
         unsafe { _mm512_sub_epi16(a.raw, b.raw).into() }
     }
-
-    #[inline]
-    pub fn sub32(a: Vec512, b: Vec512) -> Vec512 {
-        unsafe { _mm512_sub_epi32(a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn min16(a: Vec512, b: Vec512) -> Vec512 {
@@ -545,25 +230,13 @@ impl Vec512 {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn shl16<const SHIFT: u32>(vec: Vec512) -> Vec512 {
-        unsafe { _mm512_slli_epi16::<SHIFT>(vec.raw).into() }
-    }
-
-    #[inline]
     pub fn shr16<const SHIFT: u32>(vec: Vec512) -> Vec512 {
         unsafe { _mm512_srli_epi16::<SHIFT>(vec.raw).into() }
     }
 
-    /*----------------------------------------------------------------*/
-
     #[inline]
     pub fn shlv16_mz(mask: Vec512Mask16, a: Vec512, b: Vec512) -> Vec512 {
         unsafe { _mm512_maskz_sllv_epi16(mask, a.raw, b.raw).into() }
-    }
-
-    #[inline]
-    pub fn shrv16_mz(mask: Vec512Mask16, a: Vec512, b: Vec512) -> Vec512 {
-        unsafe { _mm512_maskz_srlv_epi16(mask, a.raw, b.raw).into() }
     }
 
     /*----------------------------------------------------------------*/
@@ -572,37 +245,10 @@ impl Vec512 {
     pub fn compress8(mask: Vec512Mask8, vec: Vec512) -> Vec512 {
         unsafe { _mm512_maskz_compress_epi8(mask, vec.raw).into() }
     }
-
-    #[inline]
-    pub fn compress16(mask: Vec512Mask16, vec: Vec512) -> Vec512 {
-        unsafe { _mm512_maskz_compress_epi16(mask, vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn compress32(mask: Vec512Mask32, vec: Vec512) -> Vec512 {
-        unsafe { _mm512_maskz_compress_epi32(mask, vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn compress64(mask: Vec512Mask64, vec: Vec512) -> Vec512 {
-        unsafe { _mm512_maskz_compress_epi64(mask, vec.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn compress_store8<T>(dest: *mut T, mask: Vec512Mask8, vec: Vec512) {
-        unsafe { _mm512_mask_compressstoreu_epi8(dest.cast(), mask, vec.raw) }
-    }
-
+    
     #[inline]
     pub fn compress_store16<T>(dest: *mut T, mask: Vec512Mask16, vec: Vec512) {
         unsafe { _mm512_mask_compressstoreu_epi16(dest.cast(), mask, vec.raw) }
-    }
-
-    #[inline]
-    pub fn compress_store32<T>(dest: *mut T, mask: Vec512Mask32, vec: Vec512) {
-        unsafe { _mm512_mask_compressstoreu_epi32(dest.cast(), mask, vec.raw) }
     }
 
     #[inline]
@@ -617,19 +263,10 @@ impl Vec512 {
         unsafe { _mm512_mask_blend_epi8(mask, a.raw, b.raw).into() }
     }
 
-    /*----------------------------------------------------------------*/
-
     #[inline]
     pub fn permute8(index: Vec512, vec: Vec512) -> Vec512 {
         unsafe { _mm512_permutexvar_epi8(index.raw, vec.raw).into() }
     }
-
-    #[inline]
-    pub fn permute16(index: Vec512, vec: Vec512) -> Vec512 {
-        unsafe { _mm512_permutexvar_epi16(index.raw, vec.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn permute8_mz(mask: Vec512Mask8, index: Vec512, vec: Vec512) -> Vec512 {
@@ -637,46 +274,8 @@ impl Vec512 {
     }
 
     #[inline]
-    pub fn permute16_mz(mask: Vec512Mask16, index: Vec512, vec: Vec512) -> Vec512 {
-        unsafe { _mm512_maskz_permutexvar_epi16(mask, index.raw, vec.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn permute2var8(index: Vec512, a: Vec512, b: Vec512) -> Vec512 {
-        unsafe { _mm512_permutex2var_epi8(index.raw, a.raw, b.raw).into() }
-    }
-
-    #[inline]
-    pub fn permute2var16(index: Vec512, a: Vec512, b: Vec512) -> Vec512 {
-        unsafe { _mm512_permutex2var_epi16(index.raw, a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn permute2var8_mz(mask: Vec512Mask8, index: Vec512, a: Vec512, b: Vec512) -> Vec512 {
-        unsafe { _mm512_maskz_permutex2var_epi8(mask, index.raw, a.raw, b.raw).into() }
-    }
-
-    #[inline]
-    pub fn permute2var16_mz(mask: Vec512Mask16, index: Vec512, a: Vec512, b: Vec512) -> Vec512 {
-        unsafe { _mm512_maskz_permutex2var_epi16(mask, index.raw, a.raw, b.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
     pub fn permute8_128(index: Vec512, vec: Vec128) -> Vec512 {
         unsafe { _mm512_shuffle_epi8(_mm512_broadcast_i32x4(vec.raw), index.raw).into() }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn bitshuffle(a: Vec512, b: Vec512) -> Vec512Mask8 {
-        unsafe { _mm512_bitshuffle_epi64_mask(a.raw, b.raw).into() }
     }
 
     #[inline]
@@ -710,8 +309,6 @@ impl Vec512 {
         unsafe { _mm512_cmpeq_epu16_mask(self.raw, Vec512::zero().raw) }
     }
 
-    /*----------------------------------------------------------------*/
-
     #[inline]
     pub fn nonzero8(self) -> Vec512Mask8 {
         unsafe { _mm512_cmpneq_epu8_mask(self.raw, Vec512::zero().raw) }
@@ -720,11 +317,6 @@ impl Vec512 {
     #[inline]
     pub fn nonzero16(self) -> Vec512Mask16 {
         unsafe { _mm512_cmpneq_epu16_mask(self.raw, Vec512::zero().raw) }
-    }
-
-    #[inline]
-    pub fn nonzero32(self) -> Vec512Mask32 {
-        unsafe { _mm512_cmpneq_epu32_mask(self.raw, Vec512::zero().raw) }
     }
 
     #[inline]
@@ -747,51 +339,8 @@ impl Vec512 {
     }
 
     #[inline]
-    pub fn eq16(a: Vec512, b: Vec512) -> Vec512Mask16 {
-        unsafe { _mm512_cmpeq_epu16_mask(a.raw, b.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn mask_eq8(mask: Vec512Mask8, a: Vec512, b: Vec512) -> Vec512Mask8 {
-        unsafe { _mm512_mask_cmpeq_epu8_mask(mask, a.raw, b.raw) }
-    }
-
-    #[inline]
-    pub fn mask_eq16(mask: Vec512Mask16, a: Vec512, b: Vec512) -> Vec512Mask16 {
-        unsafe { _mm512_mask_cmpeq_epu16_mask(mask, a.raw, b.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn neq8(a: Vec512, b: Vec512) -> Vec512Mask8 {
-        unsafe { _mm512_cmpneq_epu8_mask(a.raw, b.raw) }
-    }
-
-    #[inline]
-    pub fn neq16(a: Vec512, b: Vec512) -> Vec512Mask16 {
-        unsafe { _mm512_cmpneq_epu16_mask(a.raw, b.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn mask_neq8(mask: Vec512Mask8, a: Vec512, b: Vec512) -> Vec512Mask8 {
-        unsafe { _mm512_mask_cmpneq_epu8_mask(mask, a.raw, b.raw) }
-    }
-
-    #[inline]
-    pub fn mask_neq16(mask: Vec512Mask16, a: Vec512, b: Vec512) -> Vec512Mask16 {
-        unsafe { _mm512_mask_cmpneq_epu16_mask(mask, a.raw, b.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn test8(a: Vec512, b: Vec512) -> Vec512Mask8 {
-        unsafe { _mm512_test_epi8_mask(a.raw, b.raw) }
+    pub fn testn8(a: Vec512, b: Vec512) -> Vec512Mask8 {
+        unsafe { _mm512_testn_epi8_mask(a.raw, b.raw) }
     }
 
     #[inline]
@@ -801,23 +350,11 @@ impl Vec512 {
 
     /*----------------------------------------------------------------*/
 
-    #[inline]
-    pub fn testn8(a: Vec512, b: Vec512) -> Vec512Mask8 {
-        unsafe { _mm512_testn_epi8_mask(a.raw, b.raw) }
-    }
-
-    #[inline]
-    pub fn testn16(a: Vec512, b: Vec512) -> Vec512Mask16 {
-        unsafe { _mm512_testn_epi16_mask(a.raw, b.raw) }
-    }
-
-    /*----------------------------------------------------------------*/
-
     pub const SIZE: usize = size_of::<Vec512>();
     pub const CHUNKS_8: usize = Self::SIZE / size_of::<u8>();
     pub const CHUNKS_16: usize = Self::SIZE / size_of::<u16>();
     pub const CHUNKS_32: usize = Self::SIZE / size_of::<u32>();
-    pub const CHUNKS_64: usize = Self::SIZE / size_of::<u64>();
+    pub const CHUNKS_64: usize = Self::SIZE / size_of::<u16>();
 }
 
 impl From<Vec128> for Vec512 {
@@ -844,28 +381,28 @@ impl From<__m512i> for Vec512 {
 impl From<[u8; 64]> for Vec512 {
     #[inline]
     fn from(arr: [u8; 64]) -> Self {
-        unsafe { _mm512_loadu_si512(arr.as_ptr().cast()).into() }
+        unsafe { Vec512::load(arr.as_ptr()) }
     }
 }
 
 impl From<[u16; 32]> for Vec512 {
     #[inline]
     fn from(arr: [u16; 32]) -> Self {
-        unsafe { _mm512_loadu_si512(arr.as_ptr().cast()).into() }
+        unsafe { Vec512::load(arr.as_ptr())  }
     }
 }
 
 impl From<[u32; 16]> for Vec512 {
     #[inline]
     fn from(arr: [u32; 16]) -> Self {
-        unsafe { _mm512_loadu_si512(arr.as_ptr().cast()).into() }
+        unsafe { Vec512::load(arr.as_ptr()) }
     }
 }
 
 impl From<[u64; 8]> for Vec512 {
     #[inline]
     fn from(arr: [u64; 8]) -> Self {
-        unsafe { _mm512_loadu_si512(arr.as_ptr().cast()).into() }
+        unsafe { Vec512::load(arr.as_ptr())  }
     }
 }
 

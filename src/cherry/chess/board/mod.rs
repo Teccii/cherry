@@ -540,7 +540,7 @@ impl Board {
         let mut minor_hash = 0;
         let mut major_hash = 0;
 
-        let mailbox = self.into_mailbox();
+        let mailbox = self.as_mailbox();
         for &sq in &Square::ALL {
             let place = mailbox[sq];
 
@@ -599,14 +599,14 @@ impl Board {
 
     #[inline]
     pub fn calc_attacks_to(&self, sq: Square) -> [PieceMask; Color::COUNT] {
-        let (ray_coords, ray_valid) = superpiece_rays(sq);
+        let (ray_coords, ray_valid) = geometry::superpiece_rays(sq);
         let ray_places = Vec512::permute8(ray_coords, self.board.inner);
 
         let blockers = ray_places.nonzero8();
         let color = ray_places.msb8();
-        let visible = superpiece_attacks(blockers, ray_valid) & blockers;
+        let visible = geometry::superpiece_attacks(blockers, ray_valid) & blockers;
 
-        let attackers = attackers_from_rays(ray_places);
+        let attackers = geometry::attackers_from_rays(ray_places);
         let white_attackers = !color & visible & attackers;
         let black_attackers = color & visible & attackers;
 
@@ -620,35 +620,14 @@ impl Board {
         [PieceMask::new(white_mask), PieceMask::new(black_mask)]
     }
 
-    #[inline]
-    pub fn calc_attacks_to_by(&self, sq: Square, color: Color) -> PieceMask {
-        let (ray_coords, ray_valid) = superpiece_rays(sq);
-        let ray_places = Vec512::permute8(ray_coords, self.board.inner);
-
-        let blockers = ray_places.nonzero8();
-        let our_color = match color {
-            Color::White => !ray_places.msb8(),
-            Color::Black => ray_places.msb8()
-        };
-        let visible = superpiece_attacks(blockers, ray_valid) & blockers;
-
-        let attackers = attackers_from_rays(ray_places);
-        let color_attackers = our_color & visible & attackers;
-        let color_count = color_attackers.count_ones() as i32;
-        let color_coords = Vec512::compress8(color_attackers, ray_coords).into_vec128();
-        let color_mask = Vec128::findset8(color_coords, color_count, unsafe { Vec128::load(self.index_to_square[color].into_inner().as_ptr()) });
-
-        PieceMask::new(color_mask)
-    }
-
     /*----------------------------------------------------------------*/
 
     #[inline]
     fn move_piece<const UPDATE_DEST_SLIDERS: bool>(&mut self, color: Color, src: Square, dest: Square, piece: Piece, index: PieceIndex) {
         self.index_to_square[color][index] = Some(dest);
 
-        let (src_ray_coords, src_ray_valid) = superpiece_rays(src);
-        let (dest_ray_coords, dest_ray_valid) = superpiece_rays(dest);
+        let (src_ray_coords, src_ray_valid) = geometry::superpiece_rays(src);
+        let (dest_ray_coords, dest_ray_valid) = geometry::superpiece_rays(dest);
         let new_place = Vec512::splat8(Place::from_piece(piece, color, index).into_inner());
 
         let mut new_board = self.board.inner;
@@ -658,22 +637,22 @@ impl Board {
         new_board = Vec512::blend8(dest.bitboard().0, new_board, new_place);
         self.board.inner = new_board;
 
-        let src_swapped_perm = superpiece_inv_rays_swapped(src);
-        let dest_swapped_perm = superpiece_inv_rays_swapped(dest);
+        let src_swapped_perm = geometry::superpiece_inv_rays_swapped(src);
+        let dest_swapped_perm = geometry::superpiece_inv_rays_swapped(dest);
 
         let src_blockers = src_ray_places.nonzero8();
         let dest_blockers = dest_ray_places.nonzero8();
-        let src_sliders = sliders_from_rays(src_ray_places);
-        let dest_sliders = sliders_from_rays(dest_ray_places);
-        let src_raymask = superpiece_attacks(src_blockers, src_ray_valid);
-        let dest_raymask = superpiece_attacks(dest_blockers, dest_ray_valid);
+        let src_sliders = geometry::sliders_from_rays(src_ray_places);
+        let dest_sliders = geometry::sliders_from_rays(dest_ray_places);
+        let src_raymask = geometry::superpiece_attacks(src_blockers, src_ray_valid);
+        let dest_raymask = geometry::superpiece_attacks(dest_blockers, dest_ray_valid);
 
         let src_visible = src_sliders & src_raymask;
         let dest_visible = dest_sliders & dest_raymask;
         let src_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(src_visible, Vec512::permute8(src_ray_coords, new_board)));
         let dest_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(dest_visible, dest_ray_places));
-        let src_updates = Vec512::mask8((src_raymask & NON_HORSE_ATTACK_MASK).rotate_left(32), src_visible_ids);
-        let dest_updates = Vec512::mask8((dest_raymask & NON_HORSE_ATTACK_MASK).rotate_left(32), dest_visible_ids);
+        let src_updates = Vec512::mask8((src_raymask & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32), src_visible_ids);
+        let dest_updates = Vec512::mask8((dest_raymask & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32), dest_visible_ids);
 
         let src_updates = Vec512::permute8_mz(!src_swapped_perm.msb8(), src_swapped_perm, src_updates);
         let dest_updates = Vec512::permute8_mz(!dest_swapped_perm.msb8(), dest_swapped_perm, dest_updates);
@@ -694,7 +673,7 @@ impl Board {
 
         let piece_mask = Vec512::splat16(index.into_mask().into_inner());
         let not_piece_mask = Vec512::splat16(!index.into_mask().into_inner());
-        let attacker_mask = dest_raymask & attack_mask(piece, color);
+        let attacker_mask = dest_raymask & geometry::attack_mask(piece, color);
         let add_mask = Vec512::mask_bitshuffle(!dest_swapped_perm.msb8(), Vec512::splat64(attacker_mask.rotate_left(32)), dest_swapped_perm);
 
         let mut update00 = Vec512::mask16(!src_color as Vec512Mask16, src_bits0);
@@ -722,13 +701,13 @@ impl Board {
 
     #[inline]
     fn update_slider(&mut self, sq: Square) {
-        let (ray_coords, ray_valid) = superpiece_rays(sq);
+        let (ray_coords, ray_valid) = geometry::superpiece_rays(sq);
         let ray_places = Vec512::permute8(ray_coords, self.board.inner);
-        let swapped_perm = superpiece_inv_rays_swapped(sq);
+        let swapped_perm = geometry::superpiece_inv_rays_swapped(sq);
 
         let blockers = ray_places.nonzero8();
-        let sliders = sliders_from_rays(ray_places);
-        let raymask = superpiece_attacks(blockers, ray_valid) & NON_HORSE_ATTACK_MASK;
+        let sliders = geometry::sliders_from_rays(ray_places);
+        let raymask = geometry::superpiece_attacks(blockers, ray_valid) & geometry::NON_HORSE_ATTACK_MASK;
 
         let visible = raymask & sliders;
         let visible_ids = Vec512::lane_splat8to64(Vec512::mask8(visible, ray_places));
@@ -752,14 +731,14 @@ impl Board {
     #[inline]
     fn add_attacks(&mut self, sq: Square, piece: Piece, color: Color, index: PieceIndex) {
         let piece_mask = Vec512::splat16(index.into_mask().into_inner());
-        let (ray_coords, ray_valid) = superpiece_rays(sq);
+        let (ray_coords, ray_valid) = geometry::superpiece_rays(sq);
         let ray_places = Vec512::permute8(ray_coords, self.board.inner);
-        let perm = superpiece_inv_rays(sq);
+        let perm = geometry::superpiece_inv_rays(sq);
 
         let blockers = ray_places.nonzero8();
-        let raymask = superpiece_attacks(blockers, ray_valid);
+        let raymask = geometry::superpiece_attacks(blockers, ray_valid);
 
-        let attacker_mask = raymask & attack_mask(piece, color);
+        let attacker_mask = raymask & geometry::attack_mask(piece, color);
         let add_mask = Vec512::mask_bitshuffle(!perm.msb8(), Vec512::splat64(attacker_mask), perm);
 
         self.attack_tables[color].inner[0] |= Vec512::mask16(add_mask as Vec512Mask16, piece_mask);
@@ -822,7 +801,7 @@ impl Board {
     #[inline]
     fn toggle_stm(&mut self) {
         self.stm = !self.stm;
-        self.hash ^= ZOBRIST.stm;
+        self.hash ^= ZOBRIST.stm();
     }
 }
 

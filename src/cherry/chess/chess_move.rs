@@ -66,13 +66,6 @@ impl Move {
         Move { bits: NonZeroU16::new(bits).unwrap() }
     }
 
-    #[inline]
-    pub fn from_bits(bits: u16) -> Move {
-        assert_ne!(bits, 0);
-
-        Move { bits: NonZeroU16::new(bits).unwrap() }
-    }
-
     /*----------------------------------------------------------------*/
 
     #[inline]

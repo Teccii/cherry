@@ -251,8 +251,8 @@ impl Board {
         let stm = self.stm;
         let attack_table = self.attack_table(!stm);
 
-        let (king_rays, rays_valid) = superpiece_rays(our_king);
-        let (king_leaps, leaps_valid) = adjacents(our_king);
+        let (king_rays, rays_valid) = geometry::superpiece_rays(our_king);
+        let (king_leaps, leaps_valid) = geometry::adjacents(our_king);
         let king_leaps16 = king_leaps.zext8to16lo();
 
         let places = Vec512::permute8(Vec512::from(king_leaps), self.board.inner).into_vec128();
@@ -365,21 +365,21 @@ impl Board {
     pub(super) fn calc_pins(&self, our_king: Square) -> (Wordboard, Bitboard) {
         let stm = self.stm;
 
-        let (ray_coords, ray_valid) = superpiece_rays(our_king);
+        let (ray_coords, ray_valid) = geometry::superpiece_rays(our_king);
         let ray_places = Vec512::permute8(ray_coords, self.board.inner);
-        let perm = superpiece_inv_rays(our_king);
+        let perm = geometry::superpiece_inv_rays(our_king);
 
-        let blockers = ray_places.nonzero8() & NON_HORSE_ATTACK_MASK;
+        let blockers = ray_places.nonzero8() & geometry::NON_HORSE_ATTACK_MASK;
         let color = ray_places.msb8();
         let their_pieces = (color ^ match stm {
             Color::White => Bitboard::EMPTY,
             Color::Black => Bitboard::FULL,
         }) & blockers;
 
-        let potentially_pinned = blockers & superpiece_attacks(blockers, ray_valid);
-        let maybe_attacking = their_pieces & sliders_from_rays(ray_places);
+        let potentially_pinned = blockers & geometry::superpiece_attacks(blockers, ray_valid);
+        let maybe_attacking = their_pieces & geometry::sliders_from_rays(ray_places);
         let not_closest = blockers & !potentially_pinned;
-        let pin_raymasks = superpiece_attacks(not_closest, ray_valid) & NON_HORSE_ATTACK_MASK;
+        let pin_raymasks = geometry::superpiece_attacks(not_closest, ray_valid) & geometry::NON_HORSE_ATTACK_MASK;
         let potential_attackers = not_closest & pin_raymasks;
         let attackers = maybe_attacking & potential_attackers;
 

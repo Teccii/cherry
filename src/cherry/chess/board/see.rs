@@ -1,4 +1,3 @@
-use std::arch::x86_64::_mm256_slli_epi64;
 use crate::*;
 
 impl Board {
@@ -34,9 +33,9 @@ impl Board {
         }
 
         let board = Vec512::mask8(!from.bitboard().0, self.board.inner);
-        let (ray_coords, ray_valid) = superpiece_rays(to);
+        let (ray_coords, ray_valid) = geometry::superpiece_rays(to);
         let ray_places = Vec512::permute8(ray_coords, board);
-        let attackers = ray_valid & attackers_from_rays(ray_places);
+        let attackers = ray_valid & geometry::attackers_from_rays(ray_places);
         let color = ray_places.msb8();
 
         let mut occupied = ray_places.nonzero8() & ray_valid;
@@ -57,13 +56,13 @@ impl Board {
             ])
         );
 
-        /*#[cfg(target_feature = "avx512f")]
+        #[cfg(target_feature = "avx512f")]
         let bit_pieces = Vec512::gf2p8matmul8(
             Vec512::gf2p8matmul8(Vec512::splat64(0x8040201008040201), bit_pieces),
             Vec512::splat64(0x8040201008040201)
-        );*/
+        );
 
-        //#[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
+        #[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
         let bit_pieces = {
             let temp = (bit_pieces ^ Vec512::shr64::<7>(bit_pieces)) & Vec512::splat64(0x00AA00AA00AA00AA);
             let vec = bit_pieces ^ temp ^ Vec512::shl64::<7>(temp);
@@ -94,7 +93,7 @@ impl Board {
 
         #[inline]
         fn next_attackers(occupied: u64, attackers: u64, color: u64, stm: Color) -> Bitboard {
-            superpiece_attacks(occupied, occupied) & attackers & (!color ^ match stm {
+            geometry::superpiece_attacks(occupied, occupied) & attackers & (!color ^ match stm {
                 Color::White => Bitboard::EMPTY,
                 Color::Black => Bitboard::FULL,
             })

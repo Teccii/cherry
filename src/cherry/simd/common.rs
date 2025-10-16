@@ -38,11 +38,6 @@ impl Vec128 {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn into_u32(self) -> u32 {
-        unsafe { _mm_cvtsi128_si32(self.raw) as u32 }
-    }
-
-    #[inline]
     pub fn into_u64(self) -> u64 {
         unsafe { _mm_cvtsi128_si64(self.raw) as u64 }
     }
@@ -91,6 +86,11 @@ impl Vec128 {
         unsafe { _mm_add_epi32(a.raw, b.raw).into() }
     }
 
+    #[inline]
+    pub fn add64(a: Vec128, b: Vec128) -> Vec128 {
+        unsafe { _mm_add_epi64(a.raw, b.raw).into() }
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -108,6 +108,11 @@ impl Vec128 {
         unsafe { _mm_sub_epi32(a.raw, b.raw).into() }
     }
 
+    #[inline]
+    pub fn sub64(a: Vec128, b: Vec128) -> Vec128 {
+        unsafe { _mm_sub_epi64(a.raw, b.raw).into() }
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -116,18 +121,8 @@ impl Vec128 {
     }
 
     #[inline]
-    pub fn shlv16(vec: Vec128, shift: Vec128) -> Vec128 {
-        unsafe { _mm_sllv_epi16(vec.raw, shift.raw).into() }
-    }
-
-    #[inline]
-    pub fn shr16<const SHIFT: i32>(vec: Vec128) -> Vec128 {
+    pub fn shr16<const SHIFT:i32>(vec: Vec128) -> Vec128 {
         unsafe { _mm_srli_epi16::<SHIFT>(vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn shrv16(vec: Vec128, shift: Vec128) -> Vec128 {
-        unsafe { _mm_srlv_epi16(vec.raw, shift.raw).into() }
     }
 
     /*----------------------------------------------------------------*/
@@ -182,28 +177,28 @@ impl From<__m128i> for Vec128 {
 impl From<[u8; 16]> for Vec128 {
     #[inline]
     fn from(arr: [u8; 16]) -> Self {
-        unsafe { _mm_loadu_si128(arr.as_ptr().cast()).into() }
+        unsafe { Vec128::load(arr.as_ptr()) }
     }
 }
 
 impl From<[u16; 8]> for Vec128 {
     #[inline]
     fn from(arr: [u16; 8]) -> Self {
-        unsafe { _mm_loadu_si128(arr.as_ptr().cast()).into() }
+        unsafe { Vec128::load(arr.as_ptr()) }
     }
 }
 
 impl From<[u32; 4]> for Vec128 {
     #[inline]
     fn from(arr: [u32; 4]) -> Self {
-        unsafe { _mm_loadu_si128(arr.as_ptr().cast()).into() }
+        unsafe { Vec128::load(arr.as_ptr()) }
     }
 }
 
 impl From<[u64; 2]> for Vec128 {
     #[inline]
     fn from(arr: [u64; 2]) -> Self {
-        unsafe { _mm_loadu_si128(arr.as_ptr().cast()).into() }
+        unsafe { Vec128::load(arr.as_ptr()) }
     }
 }
 
@@ -346,6 +341,11 @@ impl Vec256 {
         unsafe { _mm256_sub_epi32(a.raw, b.raw).into() }
     }
 
+    #[inline]
+    pub fn sub64(a: Vec256, b: Vec256) -> Vec256 {
+        unsafe { _mm256_sub_epi64(a.raw, b.raw).into() }
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -354,18 +354,8 @@ impl Vec256 {
     }
 
     #[inline]
-    pub fn shlv16(vec: Vec256, shift: Vec256) -> Vec256 {
-        unsafe { _mm256_sllv_epi16(vec.raw, shift.raw).into() }
-    }
-
-    #[inline]
     pub fn shr16<const SHIFT: i32>(vec: Vec256) -> Vec256 {
         unsafe { _mm256_srli_epi16::<SHIFT>(vec.raw).into() }
-    }
-
-    #[inline]
-    pub fn shrv16(vec: Vec256, shift: Vec256) -> Vec256 {
-        unsafe { _mm256_srlv_epi16(vec.raw, shift.raw).into() }
     }
 
     /*----------------------------------------------------------------*/

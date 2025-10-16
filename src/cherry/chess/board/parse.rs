@@ -92,18 +92,6 @@ impl Board {
             return None;
         }
 
-        println!("Empty {}", board.empty());
-        println!("Occupied {}", board.occupied());
-        println!("White {}", board.colors(Color::White));
-        println!("Black {}", board.colors(Color::Black));
-        println!("Pawn {}", board.pieces(Piece::Pawn));
-        println!("Knight {}", board.pieces(Piece::Knight));
-        println!("Bishop {}", board.pieces(Piece::Bishop));
-        println!("Rook {}", board.pieces(Piece::Rook));
-        println!("Queen {}", board.pieces(Piece::Queen));
-        println!("King {}", board.pieces(Piece::King));
-
-
         if castle_rights != "-" {
             for c in castle_rights.chars() {
                 let color = Color::index(c.is_ascii_lowercase() as usize);

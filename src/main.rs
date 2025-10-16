@@ -1,9 +1,9 @@
-#![allow(incomplete_features)]
 #![feature(str_split_whitespace_remainder)]
 #![feature(generic_const_exprs)]
 #![feature(sync_unsafe_cell)]
 #![feature(portable_simd)]
-#![feature(new_zeroed_alloc)]
+#![allow(incomplete_features)]
+#![allow(dead_code)]
 
 mod cherry;
 

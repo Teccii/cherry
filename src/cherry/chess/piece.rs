@@ -16,7 +16,6 @@ impl PieceIndex {
     pub const fn into_inner(self) -> u8 {
         self.0
     }
-    
 
     #[inline]
     pub const fn into_mask(self) -> PieceMask {
@@ -69,18 +68,6 @@ impl PieceMask {
     #[inline]
     pub const fn lsb(self) -> PieceIndex {
         PieceIndex::new(self.0.trailing_zeros() as u8)
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub const fn set(&mut self, index: PieceIndex) {
-        self.0 |= index.into_mask().0;
-    }
-
-    #[inline]
-    pub const fn clear(&mut self, index: PieceIndex) {
-        self.0 &= !index.into_mask().0;
     }
 
     /*----------------------------------------------------------------*/
