@@ -109,14 +109,14 @@ impl Board {
                         let rook_mask = between(our_king, corner_rook) | corner_rook;
                         let valid_rooks = board.color_pieces(Piece::Rook, color) & rook_mask;
 
-                        valid_rooks.try_next_square().map(Square::file)?
+                        valid_rooks.try_next_square_back().map(Square::file)?
                     },
                     'q' => {
                         let corner_rook = Square::new(File::A, our_backrank);
                         let rook_mask = between(our_king, corner_rook) | corner_rook;
                         let valid_rooks = board.color_pieces(Piece::Rook, color) & rook_mask;
 
-                        valid_rooks.try_next_square_back().map(Square::file)?
+                        valid_rooks.try_next_square().map(Square::file)?
                     },
                     _ => return None,
                 };
