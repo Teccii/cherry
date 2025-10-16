@@ -122,27 +122,24 @@ impl Vec128 {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn expand_mask8(mut mask: Vec128Mask8) -> Vec128 {
-        let mut temp = [0u8; Self::CHUNKS_8];
+    pub fn expand_mask8(mask: Vec128Mask8) -> Vec128 {
+        unsafe {
+            let vec = _mm_cvtsi32_si128(mask as i32);
+            let shuffled = _mm_shuffle_epi8(vec, _mm_set_epi64x(0x0101010101010101, 0));
+            let and_mask = _mm_set1_epi64x(0x8040201008040201u64 as i64);
 
-        while mask != 0 {
-            temp[mask.trailing_zeros() as usize] = u8::MAX;
-            mask &= mask.wrapping_sub(1);
+            _mm_cmpeq_epi8(and_mask, _mm_and_si128(and_mask, shuffled)).into()
         }
-
-        Vec128::from(temp)
     }
 
     #[inline]
-    pub fn expand_mask16(mut mask: Vec128Mask16) -> Vec128 {
-        let mut temp = [0u16; Self::CHUNKS_16];
+    pub fn expand_mask16(mask: Vec128Mask16) -> Vec128 {
+        unsafe {
+            let vec = _mm_set1_epi16(mask as i16);
+            let and_mask = _mm_setr_epi16(0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80);
 
-        while mask != 0 {
-            temp[mask.trailing_zeros() as usize] = u16::MAX;
-            mask &= mask.wrapping_sub(1);
+            _mm_cmpeq_epi16(and_mask, _mm_and_si128(vec, and_mask)).into()
         }
-
-        Vec128::from(temp)
     }
 }
 
@@ -328,6 +325,21 @@ impl Vec256 {
     #[inline]
     pub fn neq8(a: Vec256, b: Vec256) -> Vec256Mask8 {
         !Vec256::eq8(a, b)
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn expand_mask16(mask: Vec256Mask16) -> Vec256 {
+        unsafe {
+            let vec = _mm256_set1_epi16(mask as i16);
+            let and_mask = _mm256_setr_epi16(
+                0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
+                0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x4000, 0x8000u16 as i16
+            );
+
+            _mm256_cmpeq_epi16(and_mask, _mm256_and_si256(vec, and_mask)).into()
+        }
     }
 
     /*----------------------------------------------------------------*/
@@ -754,15 +766,11 @@ impl Vec512 {
     }
 
     #[inline]
-    pub fn expand_mask16(mut mask: Vec512Mask16) -> Vec512 {
-        let mut temp = [0u16; Self::CHUNKS_16];
-
-        while mask != 0 {
-            temp[mask.trailing_zeros() as usize] = u16::MAX;
-            mask &= mask.wrapping_sub(1);
-        }
-
-        Vec512::from(temp)
+    pub fn expand_mask16(mask: Vec512Mask16) -> Vec512 {
+        Vec512::from([
+            Vec256::expand_mask16(mask as Vec256Mask16),
+            Vec256::expand_mask16((mask >> 16) as Vec256Mask16)
+        ])
     }
 
     /*----------------------------------------------------------------*/

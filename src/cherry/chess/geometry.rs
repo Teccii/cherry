@@ -11,7 +11,7 @@ const fn expand_sq(sq: Square) -> u8 {
 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
 fn compress_coords_128(coords: Vec128) -> (Vec128, Vec128Mask8) {
     let valid = Vec128::testn8(coords, Vec128::splat8(0x88));
-    let compressed = (coords & Vec128::splat8(0x07)) | (Vec128::shr16::<1>(coords) & Vec128::splat8(0x38));
+    let compressed = Vec128::sub8(coords, Vec128::shr16::<1>(coords & Vec128::splat8(0x70)));
 
     (compressed, valid)
 }
@@ -20,7 +20,7 @@ fn compress_coords_128(coords: Vec128) -> (Vec128, Vec128Mask8) {
 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
 fn compress_coords_512(coords: Vec512) -> (Vec512, Vec512Mask8) {
     let valid = Vec512::testn8(coords, Vec512::splat8(0x88));
-    let compressed = (coords & Vec512::splat8(0x07)) | (Vec512::shr16::<1>(coords) & Vec512::splat8(0x38));
+    let compressed = Vec512::sub8(coords, Vec512::shr16::<1>(coords & Vec512::splat8(0x70)));
 
     (compressed, valid)
 }
