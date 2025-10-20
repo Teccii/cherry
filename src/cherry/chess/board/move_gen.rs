@@ -135,16 +135,6 @@ impl Board {
         let (pin_mask, pinned) = self.calc_pins(stm);
         let masked_attack_table = *(*our_attack_table & pin_mask).as_mailbox();
 
-        /*for &sq in &Square::ALL {
-            let mut attackers = String::new();
-
-            for index in masked_attack_table[sq] {
-                attackers.push_str(format!("{}{} ", self.index_to_piece[stm][index].unwrap(), self.index_to_square[stm][index].unwrap()).as_str());
-            }
-
-            println!("{}: {}", sq, attackers);
-        }*/
-
         let valid_pieces = self.index_to_piece[stm].valid();
         let pawn_mask = self.index_to_piece[stm].mask_eq(Piece::Pawn);
         let non_pawn_mask = valid_pieces & !pawn_mask & !PieceMask::KING;
