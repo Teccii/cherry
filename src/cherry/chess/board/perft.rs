@@ -25,6 +25,22 @@ mod tests {
         nodes
     }
 
+    /*#[test]
+    fn test() {
+        let mut board = Board::default();
+        board.make_move(Move::parse(&board, false, "d2d4").unwrap());
+        board.make_move(Move::parse(&board, false, "e7e6").unwrap());
+        board.make_move(Move::parse(&board, false, "c2c3").unwrap());
+        board.make_move(Move::parse(&board, false, "f8b4").unwrap());
+
+        let moves = board.gen_moves();
+
+        for &mv in moves.iter() {
+            let mut board = board.clone();
+            board.make_move(mv);
+        }
+    }*/
+
     macro_rules! perft_test {
         ($name:ident: $board:expr; $($nodes:expr),*) => {
             #[test]

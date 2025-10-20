@@ -20,9 +20,7 @@ impl Rank {
     #[inline]
     pub const fn index(i: usize) -> Rank {
         if i < Rank::COUNT {
-            return unsafe {
-                ::core::mem::transmute::<u8, Rank>(i as u8)
-            };
+            return unsafe { core::mem::transmute::<u8, Rank>(i as u8) };
         }
         
         panic!("Rank::index(): Index out of bounds");
@@ -31,9 +29,7 @@ impl Rank {
     #[inline]
     pub const fn try_index(i: usize) -> Option<Rank> {
         if i < Rank::COUNT {
-            return Some(unsafe {
-                ::core::mem::transmute::<u8, Rank>(i as u8)
-            });
+            return Some(unsafe { core::mem::transmute::<u8, Rank>(i as u8) });
         }
 
         None

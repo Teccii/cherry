@@ -14,7 +14,7 @@ impl Board {
             features.push(format!("{}: {}", String::from("En Passant").bright_green(), sq));
         }
 
-        if self.castle_rights[0] != CastleRights::EMPTY || self.castle_rights[1] != CastleRights::EMPTY {
+        if self.castle_rights[0] != CastleRights::default() || self.castle_rights[1] != CastleRights::default() {
             let mut rights = String::new();
             for &color in &Color::ALL {
                 let mut write_rights = |file: Option<File>, right_char: char| {

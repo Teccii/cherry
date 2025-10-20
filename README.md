@@ -4,8 +4,9 @@ Its internals, such as board representation and move generation are heavily base
 
 ## Features
 ### Move Generation
-- Fixed shift fancy black magic bitboards
-- PEXT is used if BMI2 intrinsics are available
+- Incremental Attack Tables
+- Incremental Xray Tables
+- 
 
 ### Move Ordering
 - Hash Move

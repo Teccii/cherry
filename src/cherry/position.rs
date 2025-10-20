@@ -16,7 +16,7 @@ impl Position {
 
         Position {
             board,
-            board_history: Vec::new(),
+            board_history: Vec::with_capacity(MAX_PLY as usize),
             nnue,
         }
     }

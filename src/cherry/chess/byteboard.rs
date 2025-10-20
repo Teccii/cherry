@@ -74,7 +74,7 @@ impl Place {
     /*----------------------------------------------------------------*/
 
     pub const EMPTY: Place = Place(0);
-    pub const SLIDER_BIT: u8 = 0b100 <<4;
+    pub const SLIDER_BIT: u8 = 0b100 << 4;
 }
 
 /*----------------------------------------------------------------*/
@@ -92,6 +92,11 @@ impl Byteboard {
     }
 
     #[inline]
+    pub fn into_mailbox(self) -> [Place; Square::COUNT] {
+        unsafe { core::mem::transmute(self) }
+    }
+
+    #[inline]
     pub fn as_mailbox(&self) -> &[Place; Square::COUNT] {
         unsafe { &*ptr::from_ref(&self.inner).cast() }
     }
@@ -99,12 +104,12 @@ impl Byteboard {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub(crate) fn get(&self, sq: Square) -> Place {
+    pub fn get(&self, sq: Square) -> Place {
         self.as_mailbox()[sq]
     }
 
     #[inline]
-    pub(crate) fn set(&mut self, sq: Square, place: Place) {
+    pub fn set(&mut self, sq: Square, place: Place) {
         self.inner = Vec512::mask_splat8(self.inner, sq.bitboard().0, place.into_inner());
     }
 
@@ -216,6 +221,11 @@ impl Wordboard {
     #[inline]
     pub const fn new(a: Vec512, b: Vec512) -> Wordboard {
         Wordboard { inner: [a, b] }
+    }
+
+    #[inline]
+    pub fn into_mailbox(self) -> [PieceMask; Square::COUNT] {
+        unsafe { core::mem::transmute(self) }
     }
 
     #[inline]

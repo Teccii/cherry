@@ -106,7 +106,7 @@ fn slider_mask() -> Vec512 {
 
 #[inline]
 pub fn sliders_from_rays(rays: Vec512) -> u64 {
-    (rays & Vec512::splat8(0b100 << 4)).nonzero8() & (rays & slider_mask()).nonzero8()
+    (rays & Vec512::splat8(Place::SLIDER_BIT)).nonzero8() & (rays & slider_mask()).nonzero8()
 }
 
 /*----------------------------------------------------------------*/

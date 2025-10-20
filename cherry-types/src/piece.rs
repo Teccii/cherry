@@ -16,9 +16,7 @@ impl Piece {
     #[inline]
     pub const fn index(i: usize) -> Piece {
         if i < Piece::COUNT {
-            return unsafe {
-                ::core::mem::transmute::<u8, Piece>(i as u8)
-            };
+            return unsafe { core::mem::transmute::<u8, Piece>(i as u8) };
         }
         
         panic!("Piece::index(): Index out of bounds");
@@ -27,9 +25,7 @@ impl Piece {
     #[inline]
     pub const fn try_index(i: usize) -> Option<Piece> {
         if i < Piece::COUNT {
-            return Some(unsafe {
-                ::core::mem::transmute::<u8, Piece>(i as u8)
-            });
+            return Some(unsafe { core::mem::transmute::<u8, Piece>(i as u8) });
         }
         
         None

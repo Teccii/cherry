@@ -535,7 +535,7 @@ pub fn q_search<Node: NodeType>(
     mut alpha: Score,
     beta: Score,
 ) -> Score {
-    if ctx.abort_now || shared_ctx.time_man.abort_search(ctx.nodes.global()) {
+    if ctx.abort_now || (ctx.nodes.local() % 1024 == 0 && shared_ctx.time_man.abort_search(ctx.nodes.global())) {
         ctx.abort_now();
 
         return Score::INFINITE;

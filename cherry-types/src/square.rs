@@ -25,9 +25,7 @@ impl Square {
     #[inline]
     pub const fn index(i: usize) -> Square {
         if i < Square::COUNT {
-            return unsafe {
-                ::core::mem::transmute::<u8, Square>(i as u8)
-            };
+            return unsafe { core::mem::transmute::<u8, Square>(i as u8) };
         }
 
         panic!("Square::index(): Index out of bounds");
@@ -36,9 +34,7 @@ impl Square {
     #[inline]
     pub const fn try_index(i: usize) -> Option<Square> {
         if i < Square::COUNT {
-            return Some(unsafe {
-                ::core::mem::transmute::<u8, Square>(i as u8)
-            });
+            return Some(unsafe { core::mem::transmute::<u8, Square>(i as u8) });
         }
 
         None

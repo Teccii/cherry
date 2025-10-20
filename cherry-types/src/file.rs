@@ -20,9 +20,7 @@ impl File {
     #[inline]
     pub const fn index(i: usize) -> File {
         if i < File::COUNT {
-            return unsafe {
-                ::core::mem::transmute::<u8, File>(i as u8)
-            };
+            return unsafe { core::mem::transmute::<u8, File>(i as u8) };
         }
         panic!("File::index(): Index out of bounds");
     }
@@ -30,9 +28,7 @@ impl File {
     #[inline]
     pub const fn try_index(i: usize) -> Option<File> {
         if i < File::COUNT {
-            return Some(unsafe {
-                ::core::mem::transmute::<u8, File>(i as u8)
-            });
+            return Some(unsafe { core::mem::transmute::<u8, File>(i as u8) });
         }
         
         None
