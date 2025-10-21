@@ -128,6 +128,18 @@ impl Board {
     }
 
     #[inline]
+    pub fn pinners(&self, color: Color) -> Bitboard {
+        let their_king = self.king(!color);
+        let mut pinners = Bitboard::EMPTY;
+
+        for index in self.xray_table(color).get(their_king) {
+            pinners |= self.index_to_square[color][index].unwrap();
+        }
+
+        pinners
+    }
+
+    #[inline]
     pub fn pinned(&self, color: Color) -> Bitboard {
         let our_king = self.king(color);
         let our_pieces = self.colors(color);
@@ -682,7 +694,7 @@ impl Board {
             let src_color = src_updates.msb8();
             let dest_color = dest_updates.msb8();
 
-            let update_mask = Vec512::splat8(0xF);
+            let update_mask = Vec512::splat8(Place::INDEX_MASK);
             let src_masked_updates = src_updates & update_mask;
             let dest_masked_updates = dest_updates & update_mask;
 
@@ -749,7 +761,7 @@ impl Board {
 
             let updates = Vec512::mask8(raymask1.rotate_left(32), visible_ids);
             let updates = Vec512::permute8_mz(!swapped_perm.msb8(), swapped_perm, updates);
-            let masked_updates = updates & Vec512::splat8(0xF);
+            let masked_updates = updates & Vec512::splat8(Place::INDEX_MASK);
             let valid_updates = updates.nonzero8();
             let color = updates.msb8();
 

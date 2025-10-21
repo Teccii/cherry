@@ -74,6 +74,9 @@ impl Place {
     /*----------------------------------------------------------------*/
 
     pub const EMPTY: Place = Place(0);
+    pub const INDEX_MASK: u8 = 0xF;
+    pub const PIECE_MASK: u8 = 0x70;
+    pub const COLOR_MASK: u8 = 0x80;
     pub const SLIDER_BIT: u8 = 0b100 << 4;
 }
 
