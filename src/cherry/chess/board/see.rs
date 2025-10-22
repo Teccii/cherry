@@ -49,15 +49,6 @@ impl Board {
             };
         }
 
-        let pinners = [
-            ray_valid & Vec512::permute8(ray_coords, Vec512::mask8(self.pinners(Color::White).0, board)).nonzero8(),
-            ray_valid & Vec512::permute8(ray_coords, Vec512::mask8(self.pinners(Color::Black).0, board)).nonzero8(),
-        ];
-        let pinned = [
-            ray_valid & Vec512::permute8(ray_coords, Vec512::mask8(self.pinned(Color::White).0, board)).nonzero8(),
-            ray_valid & Vec512::permute8(ray_coords, Vec512::mask8(self.pinned(Color::Black).0, board)).nonzero8(),
-        ];
-
         #[cfg(target_feature = "avx512f")]
         let piece_rays_vec = {
             let bits_to_piece = Vec512::permute8_128(
@@ -116,23 +107,15 @@ impl Board {
         }
 
         loop {
-            let mut stm_attackers = next_attackers(ray_occupied, ray_attackers, ray_colors, stm);
+            let current_attackers = next_attackers(ray_occupied, ray_attackers, ray_colors, stm);
 
-            if stm_attackers == 0 {
+            if current_attackers == 0 {
                 break;
             }
 
-            if (pinners[!stm] & ray_occupied) != 0 {
-                stm_attackers &= !pinned[stm];
-
-                if stm_attackers == 0 {
-                    break;
-                }
-            }
-
-            let next = (piece_rays_vec & Vec512::splat64(stm_attackers)).nonzero64().trailing_zeros();
+            let next = (piece_rays_vec & Vec512::splat64(current_attackers)).nonzero64().trailing_zeros();
             let piece = Piece::from_bits(((next + 2) % 8) as u8).unwrap();
-            let br = piece_rays[next as usize] & stm_attackers;
+            let br = piece_rays[next as usize] & current_attackers;
             ray_occupied ^= br & br.wrapping_neg();
 
             balance = -balance - 1 - W::see_value(piece);
