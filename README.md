@@ -6,7 +6,6 @@ Its internals, such as board representation and move generation are heavily base
 ### Move Generation
 - Incremental Attack Tables
 - Incremental Xray Tables
-- 
 
 ### Move Ordering
 - Hash Move
