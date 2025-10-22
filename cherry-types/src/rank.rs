@@ -1,4 +1,5 @@
-use std::{fmt, str::FromStr};
+use core::{fmt, str::FromStr};
+use core::ops::{Index, IndexMut};
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -19,9 +20,7 @@ impl Rank {
     #[inline]
     pub const fn index(i: usize) -> Rank {
         if i < Rank::COUNT {
-            return unsafe {
-                ::core::mem::transmute::<u8, Rank>(i as u8)
-            };
+            return unsafe { core::mem::transmute::<u8, Rank>(i as u8) };
         }
         
         panic!("Rank::index(): Index out of bounds");
@@ -30,9 +29,7 @@ impl Rank {
     #[inline]
     pub const fn try_index(i: usize) -> Option<Rank> {
         if i < Rank::COUNT {
-            return Some(unsafe {
-                ::core::mem::transmute::<u8, Rank>(i as u8)
-            });
+            return Some(unsafe { core::mem::transmute::<u8, Rank>(i as u8) });
         }
 
         None
@@ -108,6 +105,23 @@ impl Rank {
         Rank::Eighth
     ];
 }
+
+impl<T> Index<Rank> for [T; Rank::COUNT] {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, rank: Rank) -> &Self::Output {
+        unsafe { self.get_unchecked(rank as usize) }
+    }
+}
+
+impl<T> IndexMut<Rank> for [T; Rank::COUNT] {
+    #[inline]
+    fn index_mut(&mut self, rank: Rank) -> &mut Self::Output {
+        unsafe { self.get_unchecked_mut(rank as usize) }
+    }
+}
+
 
 impl fmt::Display for Rank {
     #[inline]

@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use core::time::Duration;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -13,7 +13,6 @@ pub enum UciCommand {
     IsReady,
     PonderHit,
     Position(Board, Vec<Move>),
-    Analyse(Vec<SearchLimit>),
     Go(Vec<SearchLimit>),
     SetOption {
         name: String,
@@ -104,7 +103,7 @@ impl UciCommand {
                             fen += " ";
                         }
                         
-                        Board::from_str(fen.trim()).map_err(|_| UciParseError::InvalidArguments)?
+                        Board::from_fen(fen.trim()).ok_or(UciParseError::InvalidArguments)?
                     },
                     _ => return Err(UciParseError::InvalidArguments)
                 };
@@ -119,21 +118,15 @@ impl UciCommand {
                     let mut board_copy = board.clone();
 
                     while let Some(mv_token) = reader.next() {
-                        let mv = Move::parse(&board_copy, chess960, mv_token.trim()).map_err(|_| UciParseError::InvalidArguments)?;
-                        
-                        if board_copy.is_legal(mv) {
-                            board_copy.make_move(mv);
-                        } else {
-                            break;
-                        }
-
+                        let mv = Move::parse(&board_copy, chess960, mv_token.trim()).ok_or(UciParseError::InvalidArguments)?;
+                        board_copy.make_move(mv);
                         moves.push(mv);
                     }
                 }
                 
                 Ok(UciCommand::Position(board, moves))
             },
-            "analyse" | "go" => {
+            "go" => {
                 let mut limits = Vec::new();
                 let mut tokens = reader.peekable();
                 let keywords = &[
@@ -196,11 +189,7 @@ impl UciCommand {
                     });
                 }
 
-                Ok(if token == "go" {
-                    UciCommand::Go(limits)
-                } else {
-                    UciCommand::Analyse(limits)
-                })
+                Ok(UciCommand::Go(limits))
             },
             "setoption" => {
                 reader.next().filter(|&s| s == "name").ok_or(UciParseError::InvalidArguments)?;

@@ -1,8 +1,4 @@
-use std::{
-    mem::MaybeUninit,
-    sync::Arc,
-    ptr
-};
+use std::{mem::MaybeUninit, sync::Arc, ptr};
 use arrayvec::ArrayVec;
 use crate::*;
 
@@ -61,6 +57,7 @@ impl NetworkWeights {
         unsafe { weights.assume_init() }
     }
 
+    #[inline]
     pub fn default() -> Arc<NetworkWeights> {
         Self::new(NETWORK_BYTES)
     }
@@ -128,40 +125,32 @@ impl Nnue {
         let mut update = UpdateBuffer::default();
         let (from, to) = (mv.from(), mv.to());
         let piece = old_board.piece_on(from).unwrap();
-        let color = old_board.stm();
+        let stm = old_board.stm();
 
-        if old_board.is_castling(mv) {
+        if mv.is_castling() {
             let (king, rook) = if from.file() < to.file() {
                 (File::G, File::F)
             } else {
                 (File::C, File::D)
             };
 
-            let back_rank = Rank::First.relative_to(color);
-
-            update.move_piece(Piece::King, color, from, Square::new(king, back_rank));
-            update.move_piece(Piece::Rook, color, to, Square::new(rook, back_rank));
+            let back_rank = Rank::First.relative_to(stm);
+            update.move_piece(Piece::King, stm, from, Square::new(king, back_rank));
+            update.move_piece(Piece::Rook, stm, to, Square::new(rook, back_rank));
         } else if let Some(promotion) = mv.promotion() {
-            update.remove_piece(piece, color, from);
-            update.add_piece(promotion, color, to);
+            update.remove_piece(piece, stm, from);
+            update.add_piece(promotion, stm, to);
 
-            if old_board.is_capture(mv) {
-                update.remove_piece(old_board.piece_on(to).unwrap(), !color, to);
+            if mv.is_capture() {
+                update.remove_piece(old_board.piece_on(to).unwrap(), !stm, to);
             }
         } else {
-            update.move_piece(piece, color, from, to);
-
-            if let Some(victim) = old_board.victim(mv) {
-                let sq = if old_board.is_en_passant(mv) {
-                    Square::new(
-                        old_board.en_passant().unwrap(),
-                        Rank::Fifth.relative_to(old_board.stm())
-                    )
-                } else {
-                    mv.to()
-                };
-
-                update.remove_piece(victim, !color, sq);
+            update.move_piece(piece, stm, from, to);
+            
+            if mv.is_en_passant() {
+                update.remove_piece(Piece::Pawn, !stm, Square::new(old_board.en_passant().unwrap(), Rank::Fifth.relative_to(stm)));
+            } else if mv.is_capture() {
+                update.remove_piece(old_board.piece_on(to).unwrap(), !stm, to);
             }
         }
 
@@ -170,7 +159,7 @@ impl Nnue {
         self.acc_mut().dirty = [true; Color::COUNT];
 
         if piece == Piece::King && (from.file() > File::D) != (to.file() > File::D) {
-            self.reset(new_board, weights, color);
+            self.reset(new_board, weights, stm);
         }
     }
 

@@ -1,5 +1,4 @@
-use std::cell::SyncUnsafeCell;
-
+use core::cell::SyncUnsafeCell;
 use pyrrhic_rs::{EngineAdapter, TableBases, WdlProbeResult};
 use crate::*;
 

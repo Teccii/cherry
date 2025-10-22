@@ -1,4 +1,5 @@
-use std::{fmt, str::FromStr};
+use core::{fmt, str::FromStr};
+use core::ops::{Index, IndexMut};
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -24,9 +25,7 @@ impl Square {
     #[inline]
     pub const fn index(i: usize) -> Square {
         if i < Square::COUNT {
-            return unsafe {
-                ::core::mem::transmute::<u8, Square>(i as u8)
-            };
+            return unsafe { core::mem::transmute::<u8, Square>(i as u8) };
         }
 
         panic!("Square::index(): Index out of bounds");
@@ -35,9 +34,7 @@ impl Square {
     #[inline]
     pub const fn try_index(i: usize) -> Option<Square> {
         if i < Square::COUNT {
-            return Some(unsafe {
-                ::core::mem::transmute::<u8, Square>(i as u8)
-            });
+            return Some(unsafe { core::mem::transmute::<u8, Square>(i as u8) });
         }
 
         None
@@ -151,6 +148,24 @@ impl Square {
         Square::A8, Square::B8, Square::C8, Square::D8, Square::E8, Square::F8, Square::G8, Square::H8,
     ];
 }
+
+impl<T> Index<Square> for [T; Square::COUNT] {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, sq: Square) -> &Self::Output {
+        unsafe { self.get_unchecked(sq as usize) }
+    }
+}
+
+impl<T> IndexMut<Square> for [T; Square::COUNT] {
+    #[inline]
+    fn index_mut(&mut self, sq: Square) -> &mut Self::Output {
+        unsafe { self.get_unchecked_mut(sq as usize) }
+    }
+}
+
+/*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum SquareParseError {

@@ -1,4 +1,5 @@
-use std::{fmt, str::FromStr};
+use core::{fmt, str::FromStr};
+use core::ops::{Index, IndexMut};
 use crate::Bitboard;
 
 /*----------------------------------------------------------------*/
@@ -19,9 +20,7 @@ impl File {
     #[inline]
     pub const fn index(i: usize) -> File {
         if i < File::COUNT {
-            return unsafe {
-                ::core::mem::transmute::<u8, File>(i as u8)
-            };
+            return unsafe { core::mem::transmute::<u8, File>(i as u8) };
         }
         panic!("File::index(): Index out of bounds");
     }
@@ -29,9 +28,7 @@ impl File {
     #[inline]
     pub const fn try_index(i: usize) -> Option<File> {
         if i < File::COUNT {
-            return Some(unsafe {
-                ::core::mem::transmute::<u8, File>(i as u8)
-            });
+            return Some(unsafe { core::mem::transmute::<u8, File>(i as u8) });
         }
         
         None
@@ -115,6 +112,24 @@ impl File {
         File::H
     ];
 }
+
+impl<T> Index<File> for [T; File::COUNT] {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, file: File) -> &Self::Output {
+        unsafe { self.get_unchecked(file as usize) }
+    }
+}
+
+impl<T> IndexMut<File> for [T; File::COUNT] {
+    #[inline]
+    fn index_mut(&mut self, file: File) -> &mut Self::Output {
+        unsafe { self.get_unchecked_mut(file as usize) }
+    }
+}
+
+/*----------------------------------------------------------------*/
 
 impl fmt::Display for File {
     #[inline]

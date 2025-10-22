@@ -1,11 +1,12 @@
 # Cherry
 Cherry is a UCI chess engine written in Rust.
-Its internals are a modified version of the [`cozy-chess`](https://github.com/analog-hors/cozy-chess) library written by analog-hors.
+Its internals, such as board representation and move generation are heavily based on [`Rose`](https://github.com/87flowers/Rose/) by 87flowers.
 
 ## Features
 ### Move Generation
-- Fixed shift fancy black magic bitboards
-- PEXT is used if BMI2 intrinsics are available
+- Incremental Attack Tables
+- Incremental Xray Tables
+- 
 
 ### Move Ordering
 - Hash Move
@@ -37,7 +38,7 @@ Its internals are a modified version of the [`cozy-chess`](https://github.com/an
   - SEE Pruning
 
 ### Evaluation
-- NNUE `(768->768)x2->8`
+- NNUE `(768->1024)x2->8`
   - Dual Perspective
   - Horizontally mirrored piece-square inputs
   - Eight output buckets

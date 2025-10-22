@@ -90,33 +90,33 @@ impl History {
 
     #[inline]
     pub fn get_quiet(&self, board: &Board, mv: Move) -> i32 {
-        self.quiets[board.stm() as usize]
-            [mv.from() as usize]
-            [mv.to() as usize]
+        self.quiets[board.stm()]
+            [mv.from()]
+            [mv.to()]
     }
     
     #[inline]
     fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
-        &mut self.quiets[board.stm() as usize]
-            [mv.from() as usize]
-            [mv.to() as usize]
+        &mut self.quiets[board.stm()]
+            [mv.from()]
+            [mv.to()]
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn get_tactic(&self, board: &Board, mv: Move, see: bool) -> i32 {
-        self.tactics[board.stm() as usize]
-            [board.piece_on(mv.from()).unwrap() as usize]
-            [mv.to() as usize]
+        self.tactics[board.stm()]
+            [board.piece_on(mv.from()).unwrap()]
+            [mv.to()]
             [see as usize]
     }
 
     #[inline]
     fn get_tactic_mut(&mut self, board: &Board, mv: Move, see: bool) -> &mut i32 {
-        &mut self.tactics[board.stm() as usize]
-            [board.piece_on(mv.from()).unwrap() as usize]
-            [mv.to() as usize]
+        &mut self.tactics[board.stm()]
+            [board.piece_on(mv.from()).unwrap()]
+            [mv.to()]
             [see as usize]
     }
 
@@ -130,9 +130,9 @@ impl History {
     ) -> Option<i32> {
         let prev_mv = prev_mv?;
 
-        Some(self.counter_move[board.stm() as usize]
-            [prev_mv.piece as usize][prev_mv.to as usize]
-            [board.piece_on(mv.from()).unwrap() as usize][mv.to() as usize])
+        Some(self.counter_move[board.stm()]
+            [prev_mv.piece][prev_mv.to]
+            [board.piece_on(mv.from()).unwrap()][mv.to()])
     }
 
     fn get_counter_move_mut(
@@ -143,9 +143,9 @@ impl History {
     ) -> Option<&mut i32> {
         let prev_mv = prev_mv?;
 
-        Some(&mut self.counter_move[board.stm() as usize]
-            [prev_mv.piece as usize][prev_mv.to as usize]
-            [board.piece_on(mv.from()).unwrap() as usize][mv.to() as usize])
+        Some(&mut self.counter_move[board.stm()]
+            [prev_mv.piece][prev_mv.to]
+            [board.piece_on(mv.from()).unwrap()][mv.to()])
     }
 
     /*----------------------------------------------------------------*/
@@ -158,9 +158,9 @@ impl History {
     ) -> Option<i32> {
         let prev_mv = prev_mv?;
 
-        Some(self.follow_up[board.stm() as usize]
-            [prev_mv.piece as usize][prev_mv.to as usize]
-            [board.piece_on(mv.from()).unwrap() as usize][mv.to() as usize])
+        Some(self.follow_up[board.stm()]
+            [prev_mv.piece][prev_mv.to]
+            [board.piece_on(mv.from()).unwrap()][mv.to()])
     }
 
     fn get_follow_up_mut(
@@ -171,9 +171,9 @@ impl History {
     ) -> Option<&mut i32> {
         let prev_mv = prev_mv?;
 
-        Some(&mut self.follow_up[board.stm() as usize]
-            [prev_mv.piece as usize][prev_mv.to as usize]
-            [board.piece_on(mv.from()).unwrap() as usize][mv.to() as usize])
+        Some(&mut self.follow_up[board.stm()]
+            [prev_mv.piece][prev_mv.to]
+            [board.piece_on(mv.from()).unwrap()][mv.to()])
     }
 
     /*----------------------------------------------------------------*/
@@ -194,9 +194,9 @@ impl History {
     pub fn get_corr(&self, board: &Board) -> i32 {
         let stm = board.stm();
         let mut corr = 0;
-        corr += W::pawn_corr_frac() * self.pawn_corr[stm as usize][board.pawn_hash() as usize % PAWN_CORR_SIZE];
-        corr += W::minor_corr_frac() * self.minor_corr[stm as usize][board.minor_hash() as usize % MINOR_CORR_SIZE];
-        corr += W::major_corr_frac() * self.major_corr[stm as usize][board.major_hash() as usize % MAJOR_CORR_SIZE];
+        corr += W::pawn_corr_frac() * self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize];
+        corr += W::major_corr_frac() * self.major_corr[stm][(board.major_hash() % MAJOR_CORR_SIZE as u64) as usize];
+        corr += W::minor_corr_frac() * self.minor_corr[stm][(board.minor_hash() % MINOR_CORR_SIZE as u64) as usize];
 
         corr / MAX_CORR
     }
@@ -214,7 +214,7 @@ impl History {
         bad_tactics: &[Move],
         depth: u8
     ) {
-        if board.is_tactic(best_move) {
+        if best_move.is_tactic() {
             History::update_value(
                 self.get_tactic_mut(board, best_move, best_move_see),
                 delta(depth, W::tactic_bonus_base(), W::tactic_bonus_mul(), W::tactic_bonus_max())

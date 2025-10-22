@@ -473,127 +473,6 @@ impl Engine {
                     value
                 )).unwrap();
             },
-
-            //Idea from Jackal https://github.com/TomaszJaworski777/Jackal
-            UciCommand::Analyse(limits) => {
-                let mut searcher = self.searcher.lock().unwrap();
-                let searcher = &mut *searcher;
-                let board = searcher.pos.board().clone();
-                let do_search = !limits.is_empty();
-
-                println!("{}", board.pretty_print(self.chess960));
-                println!(
-                    "\n\n[{}] {}%",
-                    ".".repeat(50),
-                    "0".bright_green()
-                );
-
-                let score = if do_search {
-                    searcher.search::<NoInfo>(limits.clone()).2
-                } else {
-                    searcher.pos.eval(&searcher.shared_ctx.weights)
-                };
-                let mut diffs = [0; Square::COUNT];
-
-                let occ = board.occupied();
-                let white = board.colors(Color::White);
-                let pawns = board.pieces(Piece::Pawn);
-                let rooks = board.pieces(Piece::Rook);
-                let kings = board.pieces(Piece::King);
-                let pinned = board.pinned();
-
-                let removable = board.occupied() & !kings & !pinned;
-                let count = removable.popcnt();
-
-                for (i, sq) in removable.iter().enumerate() {
-                    let mut builder = BoardBuilder::from_board(&board);
-                    builder.set_piece(sq, None);
-
-                    if rooks.has(sq) {
-                        if white.has(sq) {
-                            let short = board.king(Color::White).file() < sq.file();
-                            builder.set_castle_rights(Color::White, None, short);
-                        } else {
-                            let short = board.king(Color::Black).file() < sq.file();
-                            builder.set_castle_rights(Color::Black, None, short);
-                        }
-                    }
-
-                    if board.en_passant().is_some() && pawns.has(sq) {
-                        let file = board.en_passant().unwrap();
-
-                        if sq == Square::new(file, Rank::Fifth.relative_to(board.stm())) {
-                            builder.set_en_passant(None);
-                        }
-                    }
-
-                    let new_board = builder.build().unwrap();
-                    searcher.pos.set_board(new_board, &searcher.shared_ctx.weights);
-
-                    diffs[sq as usize] = if do_search {
-                        (score - searcher.search::<NoInfo>(limits.clone()).2).0
-                    } else {
-                        (score - searcher.pos.eval(&searcher.shared_ctx.weights).0).0
-                    };
-
-                    let progress = 50 * i / count;
-
-                    println!(
-                        "\x1B[1F{} {}%",
-                        progress_bar(progress, 50),
-                        format!("{}", 100 * i / count).bright_green()
-                    );
-                }
-
-                let (min, max) = (i32::from(*diffs.iter().min().unwrap()), i32::from(*diffs.iter().max().unwrap()));
-                println!("\x1B[1F\x1B[2K╔═══════╤═══════╤═══════╤═══════╤═══════╤═══════╤═══════╤═══════╗");
-                for &rank in Rank::ALL.iter().rev() {
-                    println!("║       │       │       │       │       │       │       │       ║");
-                    print!("║");
-                    for &file in &File::ALL {
-                        let sq = Square::new(file, rank);
-
-                        if !occ.has(sq) {
-                            print!("    ");
-                        } else {
-                            let piece: char = board.piece_on(sq).unwrap().into();
-                            if white.has(sq) {
-                                print!("   {}", String::from(piece.to_ascii_uppercase()).bright_green());
-                            } else {
-                                print!("   {}", String::from(piece).blue());
-                            }
-                        }
-
-                        print!("   {}", if file == File::H { '║' } else { '│' });
-                    }
-
-                    print!("\n║");
-                    for &file in &File::ALL {
-                        let sq = Square::new(file, rank);
-
-                        if !occ.has(sq) || kings.has(sq) {
-                            print!("       ");
-                        } else if pinned.has(sq) {
-                            print!("  {}  ", "PIN".bright_black());
-                        } else {
-                            let diff = i32::from(diffs[sq as usize]);
-                            print!("{:^7}", if diff < 0 {
-                                format!("{}", diff).truecolor(255, (255i32 * (diff - min) / -min) as u8, 0)
-                            } else {
-                                format!("{}", diff).truecolor((255i32 * (max - diff) / max) as u8,255,0)
-                            });
-                        }
-
-                        print!("{}", if file == File::H { '║' } else { '│' });
-                    }
-
-                    println!("\n{}", if rank == Rank::First {
-                        "╚═══════╧═══════╧═══════╧═══════╧═══════╧═══════╧═══════╧═══════╝"
-                    } else {
-                        "╟───────┼───────┼───────┼───────┼───────┼───────┼───────┼───────╢"
-                    });
-                }
-            },
             UciCommand::Bench { depth, threads, hash } => {
                 let mut searcher = self.searcher.lock().unwrap();
                 let searcher = &mut *searcher;
@@ -604,7 +483,7 @@ impl Engine {
                 searcher.threads = threads;
 
                 let start_time = Instant::now();
-                for pos in BENCH_POSITIONS.iter().map(|fen| fen.parse::<Board>().unwrap()) {
+                for pos in BENCH_POSITIONS.iter().map(|&fen| Board::from_fen(fen).unwrap()) {
                     searcher.pos.set_board(pos.clone(), &searcher.shared_ctx.weights);
                     searcher.clean_ttable();
 

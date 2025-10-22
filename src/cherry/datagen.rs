@@ -24,7 +24,6 @@ use viriformat::{
 };
 use rand::{Rng, rngs::ThreadRng};
 use colored::Colorize;
-use cherry_chess::*;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -168,11 +167,7 @@ fn datagen_worker(
         }
 
         let mut initial_board = ViriBoard::new();
-        initial_board.set_from_fen(if options.dfrc {
-            format!("{:#}", searcher.pos.board())
-        } else {
-            format!("{}", searcher.pos.board())
-        }.as_str()).unwrap();
+        initial_board.set_from_fen(format!("{}", searcher.pos.board().to_fen(options.dfrc)).as_str()).unwrap();
 
         let mut game = Game::new(&initial_board);
         let mut game_len = match searcher.pos.stm() {
@@ -189,10 +184,10 @@ fn datagen_worker(
             );
 
             let viri_move = match mv.flag() {
-                MoveFlag::None => ViriMove::new(from, to),
-                MoveFlag::Promotion => ViriMove::new_with_promo(from, to, ViriPiece::new(mv.promotion().unwrap() as u8).unwrap()),
                 MoveFlag::EnPassant => ViriMove::new_with_flags(from, to, ViriMoveFlag::EnPassant),
-                MoveFlag::Castling => ViriMove::new_with_flags(from, to, ViriMoveFlag::Castle),
+                MoveFlag::ShortCastling | MoveFlag::LongCastling => ViriMove::new_with_flags(from, to, ViriMoveFlag::Castle),
+                _ if mv.is_promotion() => ViriMove::new_with_promo(from, to, ViriPiece::new(mv.promotion().unwrap() as u8).unwrap()),
+                _ => ViriMove::new(from, to),
             };
             let eval = eval * searcher.pos.stm().sign();
             game.add_move(viri_move, eval.0);
@@ -211,7 +206,8 @@ fn datagen_worker(
             searcher.make_move(mv);
             searcher.reset_nnue();
 
-            if searcher.pos.is_draw() || game_len >= 300 {
+            let status = searcher.pos.board().status();
+            if status == BoardStatus::Draw || searcher.pos.insufficient_material() || searcher.pos.repetition() || game_len >= 300 {
                 result = if searcher.pos.insufficient_material() {
                     GameOutcome::Draw(DrawType::InsufficientMaterial)
                 } else if searcher.pos.repetition() {
@@ -225,7 +221,7 @@ fn datagen_worker(
                 break 'game;
             }
 
-            if searcher.pos.board().status() == BoardStatus::Checkmate {
+            if status == BoardStatus::Checkmate {
                 result = match searcher.pos.stm() {
                     Color::White => GameOutcome::WhiteWin(WinType::Mate),
                     Color::Black => GameOutcome::BlackWin(WinType::Mate)
@@ -323,12 +319,7 @@ impl OpeningGenerator for StdOpeningGenerator {
         let moves = 8 + rng.random_bool(0.5) as usize;
 
         for _ in 0..moves {
-            let mut legals = Vec::new();
-            board.gen_moves(|moves| {
-                legals.extend(moves);
-                false
-            });
-
+            let legals = board.gen_moves();
             board.make_move(legals[rng.random_range(0..legals.len())]);
             if board.status() != BoardStatus::Ongoing {
                 return Self::gen_opening(rng);
@@ -344,19 +335,14 @@ impl OpeningGenerator for StdOpeningGenerator {
 
 impl OpeningGenerator for DfrcOpeningGenerator {
     fn gen_opening(rng: &mut ThreadRng) -> Board {
-        let mut board = BoardBuilder::double_chess960(
+        let mut board = Board::dfrc_startpos(
             rng.random_range(0..960),
             rng.random_range(0..960),
-        ).build().unwrap();
+        );
         let moves = 8 + rng.random_bool(0.5) as usize;
 
         for _ in 0..moves {
-            let mut legals = Vec::new();
-            board.gen_moves(|moves| {
-                legals.extend(moves);
-                false
-            });
-
+            let legals = board.gen_moves();
             board.make_move(legals[rng.random_range(0..legals.len())]);
             if board.status() != BoardStatus::Ongoing {
                 return Self::gen_opening(rng);
