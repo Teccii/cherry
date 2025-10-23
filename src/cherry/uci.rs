@@ -20,7 +20,7 @@ pub enum UciCommand {
     Eval,
     Display,
     Bench {
-        depth: u16,
+        depth: u8,
         threads: u16,
         hash: u64,
     },
@@ -43,7 +43,7 @@ pub enum SearchLimit {
     BlackInc(Duration),
     MoveTime(Duration),
     MovesToGo(u16),
-    MaxDepth(u16),
+    MaxDepth(u8),
     MaxNodes(u64),
     Infinite,
     Ponder,
@@ -73,7 +73,7 @@ impl UciCommand {
             "ponderhit" => Ok(UciCommand::PonderHit),
             #[cfg(feature = "tune")] "spsa" => Ok(UciCommand::PrintSpsa),
             "bench" => Ok(UciCommand::Bench {
-                depth: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(5),
+                depth: reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(5),
                 threads: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1),
                 hash: reader.next().and_then(|s| s.parse::<u64>().ok()).unwrap_or(16)
             }),
@@ -174,7 +174,7 @@ impl UciCommand {
                             SearchLimit::MovesToGo(moves_to_go)
                         },
                         "depth" => {
-                            let depth = tokens.next().and_then(|s| s.parse::<u16>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                            let depth = tokens.next().and_then(|s| s.parse::<u8>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::MaxDepth(depth)
                         },
                         "nodes" => {

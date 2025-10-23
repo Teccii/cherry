@@ -11,7 +11,7 @@ pub trait SearchInfo {
         thread: &ThreadData,
         shared: &SharedData,
         score: Score,
-        depth: u16,
+        depth: u8,
     );
 }
 
@@ -36,7 +36,7 @@ impl SearchInfo for UciInfo {
         thread: &ThreadData,
         shared: &SharedData,
         score: Score,
-        depth: u16,
+        depth: u8,
     ) {
         let nodes = thread.nodes.global();
         let time = shared.time_man.elapsed();
@@ -68,6 +68,6 @@ impl SearchInfo for NoInfo {
         _: &ThreadData,
         _: &SharedData,
         _: Score,
-        _: u16,
+        _: u8,
     ) { }
 }

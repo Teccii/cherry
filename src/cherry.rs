@@ -52,6 +52,7 @@ mod search {
     mod move_picker;
     mod search;
     mod searcher;
+    mod ttable;
     mod time;
     mod weights;
 
@@ -60,6 +61,7 @@ mod search {
     pub use move_picker::*;
     pub use search::*;
     pub use searcher::*;
+    pub use ttable::*;
     pub use time::*;
     pub use weights::*;
 }

@@ -29,6 +29,7 @@ pub struct ScoredMove(pub Move, pub i32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Stage {
+    TTMove,
     GenMoves,
     YieldGoodTactics,
     YieldQuiets,
@@ -40,6 +41,7 @@ pub struct MovePicker {
     stage: Stage,
     skip_quiets: bool,
     skip_bad_tactics: bool,
+    tt_move: Option<Move>,
     good_tactics: SmallVec<[ScoredMove; 64]>,
     bad_tactics: SmallVec<[ScoredMove; 32]>,
     quiets: SmallVec<[ScoredMove; 64]>,
@@ -47,11 +49,12 @@ pub struct MovePicker {
 
 impl MovePicker {
     #[inline]
-    pub fn new() -> MovePicker {
+    pub fn new(tt_move: Option<Move>) -> MovePicker {
         MovePicker {
-            stage: Stage::GenMoves,
+            stage: Stage::TTMove,
             skip_quiets: false,
             skip_bad_tactics: false,
+            tt_move,
             good_tactics: SmallVec::new(),
             bad_tactics: SmallVec::new(),
             quiets: SmallVec::new(),
@@ -69,11 +72,29 @@ impl MovePicker {
     }
 
     pub fn next(&mut self, pos: &mut Position, history: &History) -> Option<ScoredMove> {
+        if self.stage == Stage::TTMove {
+            self.stage = Stage::GenMoves;
+            
+            if let Some(mv) = self.tt_move {
+                let score = if mv.is_tactic() {
+                    history.get_tactic(pos.board(), mv)
+                } else {
+                    history.get_quiet(pos.board(), mv)
+                };
+                
+                return Some(ScoredMove(mv, score));
+            }
+        }
+        
         if self.stage == Stage::GenMoves {
             self.stage = Stage::YieldGoodTactics;
 
             let moves = pos.board().gen_moves();
             for &mv in moves.iter() {
+                if self.tt_move == Some(mv) {
+                    continue;
+                }
+
                 if mv.is_tactic() {
                     self.good_tactics.push(ScoredMove(mv, history.get_tactic(pos.board(), mv)));
                 } else {

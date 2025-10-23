@@ -5,6 +5,7 @@ use crate::*;
 
 #[derive(Clone)]
 pub struct SharedData {
+    pub ttable: Arc<TTable>,
     pub time_man: Arc<TimeManager>,
     pub nnue_weights: Arc<NetworkWeights>,
 }
@@ -109,12 +110,17 @@ pub struct Searcher {
 }
 
 impl Searcher {
+    #[inline]
     pub fn new(board: Board, time_man: Arc<TimeManager>) -> Searcher {
         let nnue_weights = NetworkWeights::default();
         
         Searcher {
             pos: Position::new(board, &nnue_weights),
-            shared_data: SharedData { time_man, nnue_weights },
+            shared_data: SharedData {
+                ttable: Arc::new(TTable::new(16)),
+                time_man,
+                nnue_weights
+            },
             thread_data: ThreadData::default(),
             threads: 1,
             ponder: false,
@@ -124,12 +130,12 @@ impl Searcher {
 
     /*----------------------------------------------------------------*/
 
-    pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u16, u64) {
+    pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u8, u64) {
         self.thread_data.reset();
         self.shared_data.time_man.init(self.pos.stm(), &limits);
         self.reset_nnue();
 
-        let mut result = (None, None, Score::ZERO, 0u16, 0u64);
+        let mut result = (None, None, Score::ZERO, 0u8, 0u64);
 
         rayon::scope(|s| {
             let frc = self.frc;
@@ -173,6 +179,18 @@ impl Searcher {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub fn resize_ttable(&mut self, mb: u64) {
+        self.shared_data.ttable = Arc::new(TTable::new(mb));
+    }
+
+    #[inline]
+    pub fn clear_ttable(&mut self) {
+        self.shared_data.ttable.clear();
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
     pub fn set_board(&mut self, board: Board) {
         self.pos.set_board(board, &self.shared_data.nnue_weights);
     }
@@ -194,7 +212,7 @@ pub fn search_worker<Info: SearchInfo>(
     shared: &SharedData,
     mut info: Info,
     worker: u16,
-) -> (Option<Move>, Option<Move>, Score, u16, u64) {
+) -> (Option<Move>, Option<Move>, Score, u8, u64) {
     let mut best_move: Option<Move> = None;
     let mut ponder_move: Option<Move> = None;
     let mut score = -Score::INFINITE;

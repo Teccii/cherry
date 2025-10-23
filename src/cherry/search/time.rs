@@ -22,7 +22,7 @@ pub struct TimeManager {
     use_max_depth: AtomicBool,
     use_max_nodes: AtomicBool,
     use_soft_nodes: AtomicBool,
-    max_depth: AtomicU16,
+    max_depth: AtomicU8,
     max_nodes: AtomicU64,
 
     no_manage: AtomicBool,
@@ -44,7 +44,7 @@ impl TimeManager {
             use_max_depth: AtomicBool::new(false),
             use_max_nodes: AtomicBool::new(false),
             use_soft_nodes: AtomicBool::new(false),
-            max_depth: AtomicU16::new(MAX_DEPTH),
+            max_depth: AtomicU8::new(MAX_DEPTH),
             max_nodes: AtomicU64::new(u64::MAX),
             no_manage: AtomicBool::new(true),
             pondering: AtomicBool::new(false),
@@ -193,7 +193,7 @@ impl TimeManager {
     }
 
     #[inline]
-    pub fn abort_id(&self, depth: u16, nodes: u64) -> bool {
+    pub fn abort_id(&self, depth: u8, nodes: u64) -> bool {
         self.abort_now() || self.timeout_id(nodes)
             || (self.use_max_depth() && self.max_depth.load(Ordering::Relaxed) <= depth)
             || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)

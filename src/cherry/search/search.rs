@@ -50,12 +50,33 @@ pub fn search<Node: NodeType>(
     thread.sel_depth = thread.sel_depth.max(ply);
     thread.nodes.inc();
 
+    let mut best_move = None;
+    let tt_entry = shared.ttable.fetch(pos.board());
+
+    if let Some(entry) = tt_entry {
+        best_move = entry.mv.filter(|&mv| pos.board().is_pseudolegal(mv));
+
+        if !Node::PV && entry.depth as i32 >= depth / DEPTH_SCALE {
+            let score = entry.score;
+
+            match entry.flag {
+                TTFlag::Exact => return score,
+                TTFlag::UpperBound => if score <= alpha {
+                    return score;
+                },
+                TTFlag::LowerBound => if score >= beta {
+                    return score;
+                },
+                TTFlag::None => unreachable!()
+            }
+        }
+    }
+
     let in_check = pos.board().in_check();
 
-    let mut best_move = None;
     let mut best_score = None;
     let mut moves_seen = 0;
-    let mut move_picker = MovePicker::new();
+    let mut move_picker = MovePicker::new(best_move);
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
 
@@ -63,7 +84,6 @@ pub fn search<Node: NodeType>(
         pos.make_move(mv, &shared.nnue_weights);
         let score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
         pos.unmake_move();
-
         moves_seen += 1;
 
         if ply == 0 && moves_seen == 1 {
@@ -118,7 +138,24 @@ pub fn search<Node: NodeType>(
         thread.nodes.flush();
     }
 
-    best_score.unwrap_or(alpha)
+    let best_score = best_score.unwrap();
+    let flag = match () {
+        _ if best_score <= alpha => TTFlag::UpperBound,
+        _ if best_score >= beta => TTFlag::LowerBound,
+        _ => TTFlag::Exact,
+    };
+
+    shared.ttable.store(
+        pos.board(),
+        (depth / DEPTH_SCALE) as u8,
+        Score::INFINITE,
+        best_score,
+        best_move,
+        flag,
+        Node::PV || tt_entry.is_some_and(|e| e.pv)
+    );
+
+    best_score
 }
 
 /*----------------------------------------------------------------*/
@@ -167,7 +204,7 @@ fn q_search<Node: NodeType>(
 
     let mut best_score = None;
     let mut moves_seen = 0;
-    let mut move_picker = MovePicker::new();
+    let mut move_picker = MovePicker::new(None);
 
     if !in_check {
         move_picker.skip_bad_tactics();

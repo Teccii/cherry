@@ -103,7 +103,7 @@ impl Engine {
                     },
                     ThreadCommand::Position(searcher, board, moves) => {
                         let mut searcher = searcher.lock().unwrap();
-                        let searcher = &mut *searcher; //???
+                        let searcher = &mut *searcher;
 
                         searcher.set_board(board);
                         for mv in moves {
@@ -121,16 +121,16 @@ impl Engine {
                             } else {
                                 searcher.shared_data.nnue_weights = NetworkWeights::new(&fs::read(value).unwrap());
                             },
-                            //"Hash" => searcher.resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
-                            //"SyzygyProbeDepth" => searcher.shared_ctx.syzygy_depth = value.parse::<u8>().unwrap(),
+                            "Hash" => searcher.resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
+                            //"SyzygyProbeDepth" => searcher.shared_data.syzygy_depth = value.parse::<u8>().unwrap(),
                             "Ponder" => searcher.ponder = value.parse::<bool>().unwrap(),
                             "UCI_Chess960" => searcher.frc = value.parse::<bool>().unwrap(),
                             _ => { }
                         }
                     },
                     ThreadCommand::NewGame(searcher) => {
-                        /*let mut searcher = searcher.lock().unwrap();
-                        searcher.clean_ttable();*/
+                        let mut searcher = searcher.lock().unwrap();
+                        searcher.clear_ttable();
                     },
                     ThreadCommand::Quit => return,
                 }
@@ -169,7 +169,7 @@ impl Engine {
                 println!("id name Cherry v{}", ENGINE_VERSION);
                 println!("id author Tecci");
                 println!("option name Threads type spin default 1 min 1 max 65535");
-                //println!("option name Hash type spin default 16 min 1 max {}", MAX_TT_SIZE);
+                println!("option name Hash type spin default 16 min 1 max {}", MAX_TT_SIZE);
                 println!("option name EvalFile type string default <default>");
                 println!("option name SyzygyPath type string default <empty>");
                 println!("option name SyzygyProbeDepth type spin default 1 min 0 max 128");
@@ -456,13 +456,13 @@ impl Engine {
                 let mut bench_data = Vec::new();
                 let limits = vec![SearchLimit::MaxDepth(depth)];
 
-                //searcher.resize_ttable(hash);
+                searcher.resize_ttable(hash);
                 searcher.threads = threads;
 
                 let start_time = Instant::now();
                 for pos in BENCH_POSITIONS.iter().map(|&fen| Board::from_fen(fen).unwrap()) {
                     searcher.pos.set_board(pos.clone(), &searcher.shared_data.nnue_weights);
-                    //searcher.clean_ttable();
+                    searcher.clear_ttable();
 
                     let start_time = Instant::now();
                     let (best_move, _, score, _, nodes) = searcher.search::<NoInfo>(limits.clone());
