@@ -4,9 +4,11 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
+pub const MAX_MOVES: usize = 256;
+
 #[derive(Debug, Clone)]
 pub struct MoveList {
-    inner: ArrayVec<Move, 256>
+    inner: ArrayVec<Move, MAX_MOVES>
 }
 
 impl MoveList {

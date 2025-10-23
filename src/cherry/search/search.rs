@@ -42,13 +42,19 @@ pub fn search<Node: NodeType>(
         return pos.eval(&shared.nnue_weights);
     }
 
+    if ply != 0 && pos.is_draw() {
+        return Score::ZERO;
+    }
+
     thread.sel_depth = thread.sel_depth.max(ply);
     thread.nodes.inc();
 
-    let moves = pos.board().gen_moves();
+    let in_check = pos.board().in_check();
+
+    let mut move_picker = MovePicker::new();
     let mut moves_seen = 0;
 
-    for &mv in moves.iter() {
+    while let Some(ScoredMove(mv, _)) = move_picker.next(pos) {
         pos.make_move(mv, &shared.nnue_weights);
         let score = -search::<PV>(pos, thread, shared, depth - 1024, ply + 1, -beta, -alpha);
         pos.unmake_move();
@@ -76,6 +82,14 @@ pub fn search<Node: NodeType>(
         if score >= beta {
             return beta;
         }
+    }
+
+    if moves_seen == 0 {
+        return if in_check {
+            Score::new_mated(ply)
+        } else {
+            Score::ZERO
+        };
     }
 
     if ply == 0 {

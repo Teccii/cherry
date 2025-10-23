@@ -1,5 +1,4 @@
 use std::sync::{Arc, atomic::*};
-use smallvec::{Array, SmallVec};
 use colored::Colorize;
 
 /*----------------------------------------------------------------*/
@@ -81,17 +80,6 @@ impl Clone for BatchedAtomicCounter {
 }
 
 /*----------------------------------------------------------------*/
-
-pub fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item>  {
-    let len = vec.len();
-
-    if index >= len {
-        return None;
-    }
-
-    vec.swap(index, len - 1);
-    vec.pop()
-}
 
 pub fn new_zeroed<T>() -> Box<T> {
     unsafe { Box::new_zeroed().assume_init() }

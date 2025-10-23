@@ -48,12 +48,14 @@ mod nnue {
 
 mod search {
     mod info;
+    mod move_picker;
     mod search;
     mod searcher;
     mod time;
     mod weights;
 
     pub use info::*;
+    pub use move_picker::*;
     pub use search::*;
     pub use searcher::*;
     pub use time::*;
