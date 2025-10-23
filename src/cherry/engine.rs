@@ -1,5 +1,4 @@
 use std::{fs, fmt::Write, io::Write as _, time::Instant, sync::{Arc, Mutex, mpsc::*}};
-use colored::Colorize;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -66,8 +65,6 @@ pub enum ThreadCommand {
     SetOption(Arc<Mutex<Searcher>>, String, String),
     Position(Arc<Mutex<Searcher>>, Board, Vec<Move>),
     NewGame(Arc<Mutex<Searcher>>),
-    Uci(Arc<Mutex<Searcher>>),
-    Icu(Arc<Mutex<Searcher>>),
     Quit,
 }
 
@@ -94,21 +91,11 @@ impl Engine {
                         let mut searcher = searcher.lock().unwrap();
                         let mut output = String::new();
 
-                        if searcher.uci {
-                            let (mv, ponder, _, _, _) = searcher.search::<UciInfo>(limits);
-                            write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.chess960)).unwrap();
+                        let (mv, ponder, _, _, _) = searcher.search::<UciInfo>(limits);
+                        write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.frc)).unwrap();
 
-                            if let Some(ponder) = ponder {
-                                write!(output, " ponder {}", ponder).unwrap();
-                            }
-                        } else {
-                            let (mv, _, _, _, _) = searcher.search::<PrettyInfo>(limits);
-                            write!(
-                                output,
-                                "\x1B[31E{}: {}",
-                                "Best Move".bright_black(),
-                                mv.display(&searcher.pos.board(), searcher.chess960)
-                            ).unwrap();
+                        if let Some(ponder) = ponder {
+                            write!(output, " ponder {}", ponder).unwrap();
                         }
 
                         println!("{}", output);
@@ -130,28 +117,20 @@ impl Engine {
                         match name.as_str() {
                             "Threads" => searcher.threads = value.parse::<u16>().unwrap(),
                             "EvalFile" => if value == "<default>" {
-                                searcher.shared_ctx.weights = NetworkWeights::default();
+                                searcher.shared_data.nnue_weights = NetworkWeights::default();
                             } else {
-                                searcher.shared_ctx.weights = NetworkWeights::new(&fs::read(value).unwrap());
+                                searcher.shared_data.nnue_weights = NetworkWeights::new(&fs::read(value).unwrap());
                             },
-                            "Hash" => searcher.resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
-                            "SyzygyProbeDepth" => searcher.shared_ctx.syzygy_depth = value.parse::<u8>().unwrap(),
+                            //"Hash" => searcher.resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
+                            //"SyzygyProbeDepth" => searcher.shared_ctx.syzygy_depth = value.parse::<u8>().unwrap(),
                             "Ponder" => searcher.ponder = value.parse::<bool>().unwrap(),
-                            "UCI_Chess960" => searcher.chess960 = value.parse::<bool>().unwrap(),
+                            "UCI_Chess960" => searcher.frc = value.parse::<bool>().unwrap(),
                             _ => { }
                         }
                     },
                     ThreadCommand::NewGame(searcher) => {
-                        let mut searcher = searcher.lock().unwrap();
-                        searcher.clean_ttable();
-                    },
-                    ThreadCommand::Uci(searcher) => {
-                        let mut searcher = searcher.lock().unwrap();
-                        searcher.uci = true;
-                    },
-                    ThreadCommand::Icu(searcher) => {
-                        let mut searcher = searcher.lock().unwrap();
-                        searcher.uci = false;
+                        /*let mut searcher = searcher.lock().unwrap();
+                        searcher.clean_ttable();*/
                     },
                     ThreadCommand::Quit => return,
                 }
@@ -190,7 +169,7 @@ impl Engine {
                 println!("id name Cherry v{}", ENGINE_VERSION);
                 println!("id author Tecci");
                 println!("option name Threads type spin default 1 min 1 max 65535");
-                println!("option name Hash type spin default 16 min 1 max {}", MAX_TT_SIZE);
+                //println!("option name Hash type spin default 16 min 1 max {}", MAX_TT_SIZE);
                 println!("option name EvalFile type string default <default>");
                 println!("option name SyzygyPath type string default <empty>");
                 println!("option name SyzygyProbeDepth type spin default 1 min 0 max 128");
@@ -261,10 +240,8 @@ impl Engine {
                 }
                 println!("uciok");
 
-                self.sender.send(ThreadCommand::Uci(Arc::clone(&self.searcher))).unwrap();
                 io::stdout().flush().unwrap();
             },
-            UciCommand::Icu => self.sender.send(ThreadCommand::Icu(Arc::clone(&self.searcher))).unwrap(),
             UciCommand::IsReady => println!("readyok"),
             UciCommand::PonderHit => self.time_man.ponderhit(),
             UciCommand::Stop => self.time_man.stop(),
@@ -279,7 +256,7 @@ impl Engine {
                 let mut searcher = self.searcher.lock().unwrap();
                 let searcher = &mut *searcher;
 
-                println!("Eval: {:#}", searcher.pos.eval(&searcher.shared_ctx.weights));
+                println!("Eval: {:#}", searcher.pos.eval(&searcher.shared_data.nnue_weights));
             }
             #[cfg(feature = "tune")] UciCommand::PrintSpsa => {
                 macro_rules! print_spsa {
@@ -479,19 +456,19 @@ impl Engine {
                 let mut bench_data = Vec::new();
                 let limits = vec![SearchLimit::MaxDepth(depth)];
 
-                searcher.resize_ttable(hash);
+                //searcher.resize_ttable(hash);
                 searcher.threads = threads;
 
                 let start_time = Instant::now();
                 for pos in BENCH_POSITIONS.iter().map(|&fen| Board::from_fen(fen).unwrap()) {
-                    searcher.pos.set_board(pos.clone(), &searcher.shared_ctx.weights);
-                    searcher.clean_ttable();
+                    searcher.pos.set_board(pos.clone(), &searcher.shared_data.nnue_weights);
+                    //searcher.clean_ttable();
 
                     let start_time = Instant::now();
                     let (best_move, _, score, _, nodes) = searcher.search::<NoInfo>(limits.clone());
                     bench_data.push((
                         best_move.display(&pos, false),
-                        start_time.elapsed().as_millis() as u64,
+                        start_time.elapsed().as_millis().max(1) as u64,
                         score.0,
                         nodes
                     ));

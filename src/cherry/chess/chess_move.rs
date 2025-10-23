@@ -136,8 +136,8 @@ impl Move {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn display(self, board: &Board, chess960: bool) -> Move {
-        if chess960 {
+    pub fn display(self, board: &Board, frc: bool) -> Move {
+        if frc {
             return self;
         }
 
@@ -161,7 +161,7 @@ impl Move {
     }
 
     #[inline]
-    pub fn parse(board: &Board, chess960: bool, mv: &str) -> Option<Move> {
+    pub fn parse(board: &Board, frc: bool, mv: &str) -> Option<Move> {
         let from = mv.get(0..2)?.parse::<Square>().ok()?;
         let mut to = mv.get(2..4)?.parse::<Square>().ok()?;
         let promotion = if let Some(s) = mv.get(4..5) {
@@ -177,7 +177,7 @@ impl Move {
         let is_capture = board.piece_on(to).is_some();
         let flag = match board.piece_on(from)? {
             Piece::Pawn => Move::parse_pawn_flag(board, from, to, is_capture, promotion)?,
-            Piece::King => Move::parse_king_flag(board, chess960, from, &mut to, is_capture),
+            Piece::King => Move::parse_king_flag(board, frc, from, &mut to, is_capture),
             _ if is_capture => MoveFlag::Capture,
             _ => MoveFlag::Normal,
         };

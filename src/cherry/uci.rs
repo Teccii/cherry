@@ -8,7 +8,6 @@ pub type Result<T> = std::result::Result<T, UciParseError>;
 #[derive(Debug, Clone)]
 pub enum UciCommand {
     Uci,
-    Icu,
     NewGame,
     IsReady,
     PonderHit,
@@ -21,7 +20,7 @@ pub enum UciCommand {
     Eval,
     Display,
     Bench {
-        depth: u8,
+        depth: u16,
         threads: u16,
         hash: u64,
     },
@@ -44,7 +43,7 @@ pub enum SearchLimit {
     BlackInc(Duration),
     MoveTime(Duration),
     MovesToGo(u16),
-    MaxDepth(u8),
+    MaxDepth(u16),
     MaxNodes(u64),
     Infinite,
     Ponder,
@@ -65,7 +64,6 @@ impl UciCommand {
         
         match token {
             "uci" => Ok(UciCommand::Uci),
-            "icu" => Ok(UciCommand::Icu),
             "ucinewgame" => Ok(UciCommand::NewGame),
             "isready" => Ok(UciCommand::IsReady),
             "stop" => Ok(UciCommand::Stop),
@@ -75,7 +73,7 @@ impl UciCommand {
             "ponderhit" => Ok(UciCommand::PonderHit),
             #[cfg(feature = "tune")] "spsa" => Ok(UciCommand::PrintSpsa),
             "bench" => Ok(UciCommand::Bench {
-                depth: reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(12),
+                depth: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(5),
                 threads: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1),
                 hash: reader.next().and_then(|s| s.parse::<u64>().ok()).unwrap_or(16)
             }),
@@ -175,8 +173,8 @@ impl UciCommand {
                             let moves_to_go = tokens.next().and_then(|s| s.parse::<u16>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::MovesToGo(moves_to_go)
                         },
-                        "depth" =>{
-                            let depth = tokens.next().and_then(|s| s.parse::<u8>().ok()).ok_or(UciParseError::InvalidArguments)?;
+                        "depth" => {
+                            let depth = tokens.next().and_then(|s| s.parse::<u16>().ok()).ok_or(UciParseError::InvalidArguments)?;
                             SearchLimit::MaxDepth(depth)
                         },
                         "nodes" => {

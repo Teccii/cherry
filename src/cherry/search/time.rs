@@ -1,4 +1,4 @@
-use std::{sync::{Mutex, atomic::*}, time::*};
+use std::{sync::atomic::*, time::*};
 use atomic_time::AtomicInstant;
 use crate::*;
 
@@ -17,15 +17,12 @@ pub struct TimeManager {
     target_time: AtomicU64,
     max_time: AtomicU64,
     move_overhead: AtomicU64,
-    
-    prev_move: Mutex<Option<Move>>,
-    move_stability: AtomicU16,
 
     moves_to_go: AtomicU16,
     use_max_depth: AtomicBool,
     use_max_nodes: AtomicBool,
     use_soft_nodes: AtomicBool,
-    max_depth: AtomicU8,
+    max_depth: AtomicU16,
     max_nodes: AtomicU64,
 
     no_manage: AtomicBool,
@@ -43,13 +40,11 @@ impl TimeManager {
             target_time: AtomicU64::new(0),
             max_time: AtomicU64::new(0),
             move_overhead: AtomicU64::new(MOVE_OVERHEAD),
-            prev_move: Mutex::new(None),
-            move_stability: AtomicU16::new(0),
             moves_to_go: AtomicU16::new(EXPECTED_MOVES),
             use_max_depth: AtomicBool::new(false),
             use_max_nodes: AtomicBool::new(false),
             use_soft_nodes: AtomicBool::new(false),
-            max_depth: AtomicU8::new(MAX_DEPTH),
+            max_depth: AtomicU16::new(MAX_DEPTH),
             max_nodes: AtomicU64::new(u64::MAX),
             no_manage: AtomicBool::new(true),
             pondering: AtomicBool::new(false),
@@ -61,8 +56,6 @@ impl TimeManager {
     /*----------------------------------------------------------------*/
 
     pub fn init(&self, stm: Color, limits: &[SearchLimit]) {
-        *self.prev_move.lock().unwrap() = None;
-        self.move_stability.store(0, Ordering::Relaxed);
         self.abort_now.store(false, Ordering::Relaxed);
 
         let mut w_time = 0;
@@ -162,47 +155,7 @@ impl TimeManager {
         self.start.store(Instant::now(), Ordering::Relaxed);
     }
     
-    pub fn deepen(
-        &self,
-        thread: u16,
-        depth: u8,
-        eval: Score,
-        static_eval: Score,
-        move_nodes: u64,
-        nodes: u64,
-        mv: Move,
-    ) {
-        if thread != 0 || depth < 4 || self.no_manage.load(Ordering::Relaxed) {
-            return;
-        }
-
-        let mut prev_move = self.prev_move.lock().unwrap();
-        let mut move_stability = self.move_stability.load(Ordering::Relaxed);
-
-        move_stability = (move_stability + 1).min(4);
-        if *prev_move != Some(mv) {
-            move_stability = 0;
-        }
-
-        *prev_move = Some(mv);
-        self.move_stability.store(move_stability, Ordering::Relaxed);
-
-        let complexity = if !eval.is_decisive() {
-            0.8 * f32::from((static_eval - eval).abs().0) * (depth as f32).ln()
-        } else {
-            1.0
-        };
-
-        let stability_factor = STABILITY_FACTOR[move_stability as usize];
-        let subtree_factor = 0.5 + 2.5 * (1.0 - move_nodes as f32 / nodes as f32);
-        let complexity_factor = f32::max(0.8 + complexity.clamp(0.0, 200.0) / 400.0, 1.0);
-        
-        let base_time = self.base_time.load(Ordering::Relaxed);
-        let max_time = self.max_time.load(Ordering::Relaxed);
-        let new_target = (base_time as f32 * stability_factor * subtree_factor * complexity_factor) as u64;
-        
-        self.target_time.store(new_target.min(max_time), Ordering::Relaxed);
-    }
+    pub fn deepen(&self) { }
 
     #[inline]
     pub fn stop(&self) {
@@ -240,7 +193,7 @@ impl TimeManager {
     }
 
     #[inline]
-    pub fn abort_id(&self, depth: u8, nodes: u64) -> bool {
+    pub fn abort_id(&self, depth: u16, nodes: u64) -> bool {
         self.abort_now() || self.timeout_id(nodes)
             || (self.use_max_depth() && self.max_depth.load(Ordering::Relaxed) <= depth)
             || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)

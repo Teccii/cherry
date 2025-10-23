@@ -4,13 +4,13 @@ use colored::Colorize;
 
 /*----------------------------------------------------------------*/
 
-pub const MAX_DEPTH: u8 = 128;
+pub const MAX_DEPTH: u16 = 256;
 pub const MAX_PLY: u16 = 256;
 pub const REDUCTION_SCALE: i32 = 1024;
 
 /*----------------------------------------------------------------*/
 
-#[derive(Debug)]
+#[derive(Default)]
 pub struct BatchedAtomicCounter {
     global: Arc<AtomicU64>,
     local: u64,
@@ -65,8 +65,7 @@ impl BatchedAtomicCounter {
     }
 
     /*----------------------------------------------------------------*/
-
-
+    
     pub const BATCH_SIZE: u64 = 2048;
 }
 

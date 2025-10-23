@@ -47,25 +47,17 @@ mod nnue {
 }
 
 mod search {
-    mod history;
     mod info;
-    mod move_picker;
     mod search;
     mod searcher;
     mod time;
-    mod ttable;
     mod weights;
-    mod window;
 
-    pub use history::*;
     pub use info::*;
-    pub use move_picker::*;
     pub use search::*;
     pub use searcher::*;
     pub use time::*;
-    pub use ttable::*;
     pub use weights::*;
-    pub use window::*;
 }
 
 #[cfg(feature = "datagen")] mod datagen;
