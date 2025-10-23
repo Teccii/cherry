@@ -55,6 +55,7 @@ pub fn search<Node: NodeType>(
     let mut best_move = None;
     let mut moves_seen = 0;
     let mut move_picker = MovePicker::new();
+    let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history) {
@@ -85,14 +86,18 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             if !thread.abort_now {
-                thread.history.update(pos.board(), mv, &quiets, depth);
+                thread.history.update(pos.board(), mv, &tactics, &quiets, depth);
             }
 
             return beta;
         }
 
-        if best_move != Some(mv) && !mv.is_tactic() {
-            quiets.push(mv);
+        if best_move != Some(mv) {
+            if mv.is_tactic() {
+                tactics.push(mv);
+            } else {
+                quiets.push(mv);
+            }
         }
     }
 

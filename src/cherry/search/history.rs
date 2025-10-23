@@ -14,6 +14,7 @@ fn delta(depth: i32, base: i32, mul: i32, max: i32) -> i32 {
 #[derive(Clone)]
 pub struct History {
     quiets: Box<ColorTo<SquareTo<SquareTo<i32>>>>,
+    tactics: Box<ColorTo<PieceTo<SquareTo<i32>>>>,
 }
 
 impl History {
@@ -36,14 +37,32 @@ impl History {
 
     /*----------------------------------------------------------------*/
 
+    #[inline]
+    pub fn get_tactic(&self, board: &Board, mv: Move) -> i32 {
+        self.tactics[board.stm()][board.piece_on(mv.from()).unwrap()][mv.to()]
+    }
+
+    #[inline]
+    pub fn get_tactic_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
+        &mut self.tactics[board.stm()][board.piece_on(mv.from()).unwrap()][mv.to()]
+    }
+
+    /*----------------------------------------------------------------*/
+
     pub fn update(
         &mut self,
         board: &Board,
         best_move: Move,
+        tactics: &[Move],
         quiets: &[Move],
         depth: i32,
     ) {
-        if !best_move.is_tactic() {
+        if best_move.is_tactic() {
+            History::update_value(
+                self.get_tactic_mut(board, best_move),
+                delta(depth, W::tactic_bonus_base(), W::tactic_bonus_mul(), W::tactic_bonus_max())
+            );
+        } else {
             History::update_value(
                 self.get_quiet_mut(board, best_move),
                 delta(depth, W::quiet_bonus_base(), W::quiet_bonus_mul(), W::quiet_bonus_max())
@@ -55,6 +74,13 @@ impl History {
                     -delta(depth, W::quiet_malus_base(), W::quiet_malus_mul(), W::quiet_malus_max())
                 );
             }
+        }
+
+        for &mv in tactics {
+            History::update_value(
+                self.get_tactic_mut(board, mv),
+                -delta(depth, W::tactic_malus_base(), W::tactic_malus_mul(), W::tactic_malus_max())
+            );
         }
     }
 
@@ -70,6 +96,9 @@ impl History {
 impl Default for History {
     #[inline]
     fn default() -> History {
-        History { quiets: new_zeroed() }
+        History {
+            quiets: new_zeroed(),
+            tactics: new_zeroed(),
+        }
     }
 }

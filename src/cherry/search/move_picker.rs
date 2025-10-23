@@ -61,7 +61,7 @@ impl MovePicker {
             let moves = pos.board().gen_moves();
             for &mv in moves.iter() {
                 if mv.is_tactic() {
-                    self.good_tactics.push(ScoredMove(mv, 0));
+                    self.good_tactics.push(ScoredMove(mv, history.get_tactic(pos.board(), mv)));
                 } else {
                     self.quiets.push(ScoredMove(mv, history.get_quiet(pos.board(), mv)));
                 }
