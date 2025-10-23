@@ -5,8 +5,6 @@ mod print;
 mod see;
 mod startpos;
 
-pub use move_gen::*;
-
 use core::ops::Deref;
 use crate::*;
 

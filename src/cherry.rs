@@ -47,6 +47,7 @@ mod nnue {
 }
 
 mod search {
+    mod history;
     mod info;
     mod move_picker;
     mod search;
@@ -54,6 +55,7 @@ mod search {
     mod time;
     mod weights;
 
+    pub use history::*;
     pub use info::*;
     pub use move_picker::*;
     pub use search::*;

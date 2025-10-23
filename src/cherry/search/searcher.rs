@@ -14,6 +14,7 @@ pub struct ThreadData {
     pub nodes: BatchedAtomicCounter,
     pub search_stack: Vec<SearchStack>,
     pub root_pv: PrincipalVariation,
+    pub history: History,
     pub sel_depth: u16,
     pub abort_now: bool,
 }
@@ -23,6 +24,7 @@ impl ThreadData {
     pub fn reset(&mut self) {
         self.nodes.reset();
         self.search_stack = vec![SearchStack::default(); MAX_PLY as usize + 1];
+        self.history.reset();
         self.sel_depth = 0;
         self.abort_now = false;
     }
@@ -35,6 +37,7 @@ impl Default for ThreadData {
             nodes: BatchedAtomicCounter::default(),
             search_stack: vec![SearchStack::default(); MAX_PLY as usize + 1],
             root_pv: PrincipalVariation::default(),
+            history: History::default(),
             sel_depth: 0,
             abort_now: false,
         }
@@ -203,7 +206,7 @@ pub fn search_worker<Info: SearchInfo>(
             &mut pos,
             thread,
             shared,
-            i32::from(depth) * 1024,
+            i32::from(depth) * DEPTH_SCALE,
             0,
             -Score::INFINITE,
             Score::INFINITE,

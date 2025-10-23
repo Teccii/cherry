@@ -1,7 +1,18 @@
-use arrayvec::ArrayVec;
+use smallvec::SmallVec;
 use crate::*;
 
-fn select_next(moves: &ArrayVec<ScoredMove, MAX_MOVES>) -> Option<usize> {
+fn select_next_64(moves: &SmallVec<[ScoredMove; 64]>) -> Option<usize> {
+    if moves.is_empty() {
+        return None;
+    }
+
+    moves.iter()
+        .enumerate()
+        .max_by_key(|(_, mv)| mv.1)
+        .map(|(i, _)| i)
+}
+
+fn select_next_32(moves: &SmallVec<[ScoredMove; 32]>) -> Option<usize> {
     if moves.is_empty() {
         return None;
     }
@@ -14,7 +25,7 @@ fn select_next(moves: &ArrayVec<ScoredMove, MAX_MOVES>) -> Option<usize> {
 
 /*----------------------------------------------------------------*/
 
-pub struct ScoredMove(pub Move, pub i16);
+pub struct ScoredMove(pub Move, pub i32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Stage {
@@ -27,9 +38,9 @@ pub enum Stage {
 
 pub struct MovePicker {
     stage: Stage,
-    good_tactics: ArrayVec<ScoredMove, MAX_MOVES>,
-    bad_tactics: ArrayVec<ScoredMove, MAX_MOVES>,
-    quiets: ArrayVec<ScoredMove, MAX_MOVES>,
+    good_tactics: SmallVec<[ScoredMove; 64]>,
+    bad_tactics: SmallVec<[ScoredMove; 32]>,
+    quiets: SmallVec<[ScoredMove; 64]>,
 }
 
 impl MovePicker {
@@ -37,13 +48,13 @@ impl MovePicker {
     pub fn new() -> MovePicker {
         MovePicker {
             stage: Stage::GenMoves,
-            good_tactics: ArrayVec::new(),
-            bad_tactics: ArrayVec::new(),
-            quiets: ArrayVec::new(),
+            good_tactics: SmallVec::new(),
+            bad_tactics: SmallVec::new(),
+            quiets: SmallVec::new(),
         }
     }
 
-    pub fn next(&mut self, pos: &mut Position) -> Option<ScoredMove> {
+    pub fn next(&mut self, pos: &mut Position, history: &History) -> Option<ScoredMove> {
         if self.stage == Stage::GenMoves {
             self.stage = Stage::YieldGoodTactics;
 
@@ -52,7 +63,7 @@ impl MovePicker {
                 if mv.is_tactic() {
                     self.good_tactics.push(ScoredMove(mv, 0));
                 } else {
-                    self.quiets.push(ScoredMove(mv, 0));
+                    self.quiets.push(ScoredMove(mv, history.get_quiet(pos.board(), mv)));
                 }
             }
         }
@@ -60,8 +71,8 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.stage == Stage::YieldGoodTactics {
-            while let Some(index) = select_next(&self.good_tactics) {
-                let mv = self.good_tactics.swap_pop(index).unwrap();
+            while let Some(index) = select_next_64(&self.good_tactics) {
+                let mv = swap_pop(&mut self.good_tactics, index).unwrap();
 
                 if pos.board().cmp_see(mv.0, 0) {
                     return Some(mv);
@@ -77,8 +88,8 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.stage == Stage::YieldQuiets {
-            if let Some(index) = select_next(&self.quiets) {
-                return self.quiets.swap_pop(index);
+            if let Some(index) = select_next_64(&self.quiets) {
+                return swap_pop(&mut self.quiets, index);
             }
 
             self.stage = Stage::YieldBadTactics;
@@ -87,8 +98,8 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.stage == Stage::YieldBadTactics {
-            if let Some(index) = select_next(&self.bad_tactics) {
-                return self.bad_tactics.swap_pop(index);
+            if let Some(index) = select_next_32(&self.bad_tactics) {
+                return swap_pop(&mut self.bad_tactics, index)
             }
 
             self.stage = Stage::Finished;

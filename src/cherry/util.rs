@@ -1,11 +1,19 @@
 use std::sync::{Arc, atomic::*};
+use smallvec::{Array, SmallVec};
 use colored::Colorize;
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
 pub const MAX_DEPTH: u16 = 256;
 pub const MAX_PLY: u16 = 256;
-pub const REDUCTION_SCALE: i32 = 1024;
+pub const DEPTH_SCALE: i32 = 1024;
+
+/*----------------------------------------------------------------*/
+
+pub type ColorTo<T> = [T; Color::COUNT];
+pub type PieceTo<T> = [T; Piece::COUNT];
+pub type SquareTo<T> = [T; Square::COUNT];
 
 /*----------------------------------------------------------------*/
 
@@ -81,6 +89,19 @@ impl Clone for BatchedAtomicCounter {
 
 /*----------------------------------------------------------------*/
 
+pub fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item>  {
+    let len = vec.len();
+
+    if index >= len {
+        return None;
+    }
+
+    vec.swap(index, len - 1);
+    vec.pop()
+}
+
+
+#[inline]
 pub fn new_zeroed<T>() -> Box<T> {
     unsafe { Box::new_zeroed().assume_init() }
 }

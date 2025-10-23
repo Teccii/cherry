@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -51,12 +52,14 @@ pub fn search<Node: NodeType>(
 
     let in_check = pos.board().in_check();
 
-    let mut move_picker = MovePicker::new();
+    let mut best_move = None;
     let mut moves_seen = 0;
+    let mut move_picker = MovePicker::new();
+    let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
 
-    while let Some(ScoredMove(mv, _)) = move_picker.next(pos) {
+    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history) {
         pos.make_move(mv, &shared.nnue_weights);
-        let score = -search::<PV>(pos, thread, shared, depth - 1024, ply + 1, -beta, -alpha);
+        let score = -search::<PV>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
         pos.unmake_move();
 
         moves_seen += 1;
@@ -70,6 +73,7 @@ pub fn search<Node: NodeType>(
 
         if score > alpha {
             alpha = score;
+            best_move = Some(mv);
 
             if Node::PV && !thread.abort_now {
                 let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
@@ -80,7 +84,15 @@ pub fn search<Node: NodeType>(
         }
 
         if score >= beta {
+            if !thread.abort_now {
+                thread.history.update(pos.board(), mv, &quiets, depth);
+            }
+
             return beta;
+        }
+
+        if best_move != Some(mv) && !mv.is_tactic() {
+            quiets.push(mv);
         }
     }
 
