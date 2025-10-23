@@ -5,7 +5,7 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-pub const MAX_DEPTH: u16 = 256;
+pub const MAX_DEPTH: u16 = 128;
 pub const MAX_PLY: u16 = 256;
 pub const DEPTH_SCALE: i32 = 1024;
 

@@ -38,6 +38,8 @@ pub enum Stage {
 
 pub struct MovePicker {
     stage: Stage,
+    skip_quiets: bool,
+    skip_bad_tactics: bool,
     good_tactics: SmallVec<[ScoredMove; 64]>,
     bad_tactics: SmallVec<[ScoredMove; 32]>,
     quiets: SmallVec<[ScoredMove; 64]>,
@@ -48,10 +50,22 @@ impl MovePicker {
     pub fn new() -> MovePicker {
         MovePicker {
             stage: Stage::GenMoves,
+            skip_quiets: false,
+            skip_bad_tactics: false,
             good_tactics: SmallVec::new(),
             bad_tactics: SmallVec::new(),
             quiets: SmallVec::new(),
         }
+    }
+
+    #[inline]
+    pub fn skip_quiets(&mut self) {
+        self.skip_quiets = true;
+    }
+
+    #[inline]
+    pub fn skip_bad_tactics(&mut self) {
+        self.skip_bad_tactics = true;
     }
 
     pub fn next(&mut self, pos: &mut Position, history: &History) -> Option<ScoredMove> {
@@ -88,21 +102,28 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.stage == Stage::YieldQuiets {
-            if let Some(index) = select_next_64(&self.quiets) {
-                return swap_pop(&mut self.quiets, index);
-            }
+            if self.skip_quiets {
+                self.stage = Stage::YieldBadTactics;
+            } else {
+                if let Some(index) = select_next_64(&self.quiets) {
+                    return swap_pop(&mut self.quiets, index);
+                }
 
-            self.stage = Stage::YieldBadTactics;
+                self.stage = Stage::YieldBadTactics;
+            }
         }
 
         /*----------------------------------------------------------------*/
-
         if self.stage == Stage::YieldBadTactics {
-            if let Some(index) = select_next_32(&self.bad_tactics) {
-                return swap_pop(&mut self.bad_tactics, index)
-            }
+            if self.skip_bad_tactics {
+                self.stage = Stage::Finished;
+            } else {
+                if let Some(index) = select_next_32(&self.bad_tactics) {
+                    return swap_pop(&mut self.bad_tactics, index)
+                }
 
-            self.stage = Stage::Finished;
+                self.stage = Stage::Finished;
+            }
         }
 
         None

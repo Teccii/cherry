@@ -44,7 +44,7 @@ pub fn search<Node: NodeType>(
     }
 
     if depth <= 0 || ply >= MAX_PLY {
-        return pos.eval(&shared.nnue_weights);
+        return q_search::<Node>(pos, thread, shared, ply, alpha, beta);
     }
 
     thread.sel_depth = thread.sel_depth.max(ply);
@@ -116,6 +116,92 @@ pub fn search<Node: NodeType>(
 
     if ply == 0 {
         thread.nodes.flush();
+    }
+
+    best_score.unwrap_or(alpha)
+}
+
+/*----------------------------------------------------------------*/
+
+fn q_search<Node: NodeType>(
+    pos: &mut Position,
+    thread: &mut ThreadData,
+    shared: &SharedData,
+    ply: u16,
+    mut alpha: Score,
+    beta: Score,
+) -> Score {
+    if thread.abort_now || shared.time_man.abort_search(thread.nodes.global()) {
+        thread.abort_now = true;
+
+        return Score::INFINITE;
+    }
+
+    if Node::PV {
+        thread.search_stack[ply as usize].pv.len = 0;
+    }
+
+    if pos.is_draw() {
+        return Score::ZERO;
+    }
+
+    if ply >= MAX_PLY {
+        return pos.eval(&shared.nnue_weights);
+    }
+
+    thread.sel_depth = thread.sel_depth.max(ply);
+    thread.nodes.inc();
+
+    let in_check = pos.board().in_check();
+    let static_eval = pos.eval(&shared.nnue_weights);
+
+    if !in_check {
+        if static_eval >= beta {
+            return static_eval;
+        }
+
+        if static_eval >= alpha {
+            alpha = static_eval;
+        }
+    }
+
+    let mut best_score = None;
+    let mut moves_seen = 0;
+    let mut move_picker = MovePicker::new();
+
+    if !in_check {
+        move_picker.skip_quiets();
+    }
+
+    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history) {
+        pos.make_move(mv, &shared.nnue_weights);
+        let score = -q_search::<Node>(pos, thread, shared, ply + 1, -beta, -alpha);
+        pos.unmake_move();
+
+        moves_seen += 1;
+
+        if best_score.is_none() || score > best_score.unwrap() {
+            best_score = Some(score);
+        }
+
+        if score > alpha {
+            alpha = score;
+
+            if Node::PV && !thread.abort_now {
+                let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
+                let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
+
+                parent.pv.update(mv, &child.pv);
+            }
+        }
+
+        if score >= beta {
+            break;
+        }
+    }
+
+    if moves_seen == 0 && in_check {
+        return Score::new_mated(ply);
     }
 
     best_score.unwrap_or(alpha)
