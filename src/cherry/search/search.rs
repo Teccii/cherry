@@ -39,12 +39,12 @@ pub fn search<Node: NodeType>(
         thread.search_stack[ply as usize].pv.len = 0;
     }
 
-    if depth <= 0 || ply >= MAX_PLY {
-        return pos.eval(&shared.nnue_weights);
-    }
-
     if ply != 0 && pos.is_draw() {
         return Score::ZERO;
+    }
+
+    if depth <= 0 || ply >= MAX_PLY {
+        return pos.eval(&shared.nnue_weights);
     }
 
     thread.sel_depth = thread.sel_depth.max(ply);
