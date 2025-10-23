@@ -170,6 +170,7 @@ fn q_search<Node: NodeType>(
     let mut move_picker = MovePicker::new();
 
     if !in_check {
+        move_picker.skip_bad_tactics();
         move_picker.skip_quiets();
     }
 
