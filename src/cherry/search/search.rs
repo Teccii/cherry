@@ -46,11 +46,21 @@ pub fn search<Node: NodeType>(
     thread.nodes.inc();
 
     let moves = pos.board().gen_moves();
+    let mut moves_seen = 0;
 
     for &mv in moves.iter() {
         pos.make_move(mv, &shared.nnue_weights);
         let score = -search::<PV>(pos, thread, shared, depth - 1024, ply + 1, -beta, -alpha);
         pos.unmake_move();
+
+        moves_seen += 1;
+
+        if ply == 0 && moves_seen == 1 {
+            let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
+            let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
+
+            parent.pv.update(mv, &child.pv);
+        }
 
         if score > alpha {
             alpha = score;
@@ -67,7 +77,7 @@ pub fn search<Node: NodeType>(
             return beta;
         }
     }
-    
+
     if ply == 0 {
         thread.nodes.flush();
     }
