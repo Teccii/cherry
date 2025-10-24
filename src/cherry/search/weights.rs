@@ -117,6 +117,8 @@ weights! {
     rfp_depth         | RFP_DEPTH:         i32 => 12288,
     rfp_margin        | RFP_MARGIN:        i32 => 80,
     rfp_cutoff_lerp   | RFP_CUTOFF_LERP:   i32 => 512,
+    nmp_depth         | NMP_DEPTH:         i32 => 3072,
+    nmp_reduction     | NMP_REDUCTION:     i32 => 3072,
     see_quiet_margin  | SEE_QUIET_MARGIN:  i32 => -89,
     see_tactic_margin | SEE_TACTIC_MARGIN: i32 => -62,
     cont_margin       | CONT_MARGIN:       i32 => -3268,
@@ -154,7 +156,7 @@ impl W {
     }
 }
 
-pub const NMP_DEPTH: u8 = 5;
+
 pub const SEE_DEPTH: u8 = 10;
 pub const HIST_DEPTH: u8 = 10;
 pub const FUTILE_DEPTH: u8 = 6;

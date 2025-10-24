@@ -80,6 +80,23 @@ pub fn search<Node: NodeType>(
         if depth < W::rfp_depth() && static_eval >= beta + rfp_margin {
             return static_eval;
         }
+
+        if depth >= W::nmp_depth()
+            && thread.search_stack[ply as usize - 1].move_played.is_some()
+            && pos.null_move() {
+
+            thread.search_stack[ply as usize].move_played = None;
+            let score = -search::<Node>(pos, thread, shared, depth - W::nmp_reduction(), ply + 1, -beta, -beta + 1);
+            pos.unmake_null_move();
+
+            if thread.abort_now {
+                return Score::INFINITE;
+            }
+
+            if score >= beta {
+                return beta;
+            }
+        }
     }
 
     let mut best_score = None;
@@ -91,7 +108,10 @@ pub fn search<Node: NodeType>(
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history) {
         let mut score;
+
+        thread.search_stack[ply as usize].move_played = Some(mv);
         pos.make_move(mv, &shared.nnue_weights);
+
         if moves_seen == 0 {
             score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
         } else {
@@ -231,6 +251,7 @@ fn q_search<Node: NodeType>(
     }
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history) {
+        thread.search_stack[ply as usize].move_played = Some(mv);
         pos.make_move(mv, &shared.nnue_weights);
         let score = -q_search::<Node>(pos, thread, shared, ply + 1, -beta, -alpha);
         pos.unmake_move();
