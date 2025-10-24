@@ -79,10 +79,20 @@ pub fn search<Node: NodeType>(
     let mut move_picker = MovePicker::new(best_move);
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
+    let mut flag = TTFlag::UpperBound;
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history) {
+        let mut score;
         pos.make_move(mv, &shared.nnue_weights);
-        let score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
+        if moves_seen == 0 {
+            score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
+        } else {
+            score = -search::<NonPV>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
+
+            if Node::PV && score > alpha {
+                score = -search::<PV>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
+            }
+        }
         pos.unmake_move();
         moves_seen += 1;
 
@@ -93,6 +103,10 @@ pub fn search<Node: NodeType>(
             parent.pv.update(mv, &child.pv);
         }
 
+        if thread.abort_now {
+            return Score::INFINITE;
+        }
+
         if best_score.is_none() || score > best_score.unwrap() {
             best_score = Some(score);
         }
@@ -100,6 +114,7 @@ pub fn search<Node: NodeType>(
         if score > alpha {
             alpha = score;
             best_move = Some(mv);
+            flag = TTFlag::Exact;
 
             if Node::PV && !thread.abort_now {
                 let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
@@ -110,6 +125,8 @@ pub fn search<Node: NodeType>(
         }
 
         if score >= beta {
+            flag = TTFlag::LowerBound;
+
             if !thread.abort_now {
                 thread.history.update(pos.board(), mv, &tactics, &quiets, depth);
             }
@@ -139,12 +156,6 @@ pub fn search<Node: NodeType>(
     }
 
     let best_score = best_score.unwrap();
-    let flag = match () {
-        _ if best_score <= alpha => TTFlag::UpperBound,
-        _ if best_score >= beta => TTFlag::LowerBound,
-        _ => TTFlag::Exact,
-    };
-
     shared.ttable.store(
         pos.board(),
         (depth / DEPTH_SCALE) as u8,
@@ -215,8 +226,11 @@ fn q_search<Node: NodeType>(
         pos.make_move(mv, &shared.nnue_weights);
         let score = -q_search::<Node>(pos, thread, shared, ply + 1, -beta, -alpha);
         pos.unmake_move();
-
         moves_seen += 1;
+
+        if thread.abort_now {
+            return Score::INFINITE;
+        }
 
         if best_score.is_none() || score > best_score.unwrap() {
             best_score = Some(score);

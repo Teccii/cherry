@@ -230,6 +230,10 @@ pub fn search_worker<Info: SearchInfo>(
             Score::INFINITE,
         );
 
+        if depth > 1 && thread.abort_now {
+            break 'id;
+        }
+
         thread.root_pv = thread.search_stack[0].pv.clone();
         best_move = thread.root_pv.moves[0];
         ponder_move = thread.root_pv.moves[1];
@@ -246,7 +250,7 @@ pub fn search_worker<Info: SearchInfo>(
             shared.time_man.deepen();
         }
 
-        if (depth > 1 && thread.abort_now) || depth >= MAX_DEPTH || shared.time_man.abort_id(depth, thread.nodes.global()) {
+        if depth >= MAX_DEPTH || shared.time_man.abort_id(depth, thread.nodes.global()) {
             break 'id;
         }
 

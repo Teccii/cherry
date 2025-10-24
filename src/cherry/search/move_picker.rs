@@ -75,7 +75,7 @@ impl MovePicker {
         if self.stage == Stage::TTMove {
             self.stage = Stage::GenMoves;
             
-            if let Some(mv) = self.tt_move {
+            if let Some(mv) = self.tt_move && pos.board().is_legal(mv) {
                 let score = if mv.is_tactic() {
                     history.get_tactic(pos.board(), mv)
                 } else {

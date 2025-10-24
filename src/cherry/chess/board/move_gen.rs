@@ -359,7 +359,7 @@ impl Board {
     }
 
     #[inline]
-    fn calc_pins(&self, color: Color) -> (Wordboard, Bitboard) {
+    pub(super) fn calc_pins(&self, color: Color) -> (Wordboard, Bitboard) {
         let our_king = self.king(color);
         let our_pieces = self.colors(color);
         let pinners = self.xray_table(!color).get(our_king);
