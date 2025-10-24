@@ -114,7 +114,7 @@ weights! {
     queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973,
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 25100,
 
-    rfp_depth         | RFP_DEPTH:         i32 => 12288,
+    rfp_depth         | RFP_DEPTH:         i32 => 6144,
     rfp_margin        | RFP_MARGIN:        i32 => 80,
     rfp_cutoff_lerp   | RFP_CUTOFF_LERP:   i32 => 512,
     nmp_depth         | NMP_DEPTH:         i32 => 3072,
