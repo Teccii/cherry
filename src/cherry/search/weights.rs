@@ -114,13 +114,14 @@ weights! {
     queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973,
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 25100,
 
-    rfp_margin        | RFP_MARGIN:        i16 => 80,
+    rfp_depth         | RFP_DEPTH:         i32 => 12288,
+    rfp_margin        | RFP_MARGIN:        i32 => 80,
     rfp_cutoff_lerp   | RFP_CUTOFF_LERP:   i32 => 512,
-    see_quiet_margin  | SEE_QUIET_MARGIN:  i16 => -89,
-    see_tactic_margin | SEE_TACTIC_MARGIN: i16 => -62,
+    see_quiet_margin  | SEE_QUIET_MARGIN:  i32 => -89,
+    see_tactic_margin | SEE_TACTIC_MARGIN: i32 => -62,
     cont_margin       | CONT_MARGIN:       i32 => -3268,
-    futile_base       | FUTILE_BASE:       i16 => 93,
-    futile_margin     | FUTILE_MARGIN:     i16 => 79,
+    futile_base       | FUTILE_BASE:       i32 => 93,
+    futile_margin     | FUTILE_MARGIN:     i32 => 79,
 
     lmr_quiet_base    | LMR_QUIET_BASE:    i32 => 579,
     lmr_quiet_div     | LMR_QUIET_DIV:     i32 => 1626,
@@ -153,7 +154,6 @@ impl W {
     }
 }
 
-pub const RFP_DEPTH: u8 = 12;
 pub const NMP_DEPTH: u8 = 5;
 pub const SEE_DEPTH: u8 = 10;
 pub const HIST_DEPTH: u8 = 10;

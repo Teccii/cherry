@@ -73,6 +73,14 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.board().in_check();
+    let static_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
+
+    if !Node::PV && !in_check {
+        let rfp_margin = (W::rfp_margin() * depth / DEPTH_SCALE) as i16;
+        if depth < W::rfp_depth() && static_eval >= beta + rfp_margin {
+            return static_eval;
+        }
+    }
 
     let mut best_score = None;
     let mut moves_seen = 0;
@@ -159,7 +167,7 @@ pub fn search<Node: NodeType>(
     shared.ttable.store(
         pos.board(),
         (depth / DEPTH_SCALE) as u8,
-        Score::INFINITE,
+        static_eval,
         best_score,
         best_move,
         flag,
