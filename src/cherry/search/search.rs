@@ -107,7 +107,17 @@ pub fn search<Node: NodeType>(
     let mut flag = TTFlag::UpperBound;
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history) {
+        let is_tactic = mv.is_tactic();
         let mut score;
+
+        if !Node::PV && ply != 0 && best_score.map_or(false, |s: Score| !s.is_loss()) {
+            if !is_tactic {
+                let lmp_margin = W::lmp_base() + W::lmp_margin() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
+                if moves_seen as i64 * 1024 >= lmp_margin {
+                    move_picker.skip_quiets();
+                }
+            }
+        }
 
         thread.search_stack[ply as usize].move_played = Some(mv);
         pos.make_move(mv, &shared.nnue_weights);
@@ -115,7 +125,7 @@ pub fn search<Node: NodeType>(
         if moves_seen == 0 {
             score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
         } else {
-            let lmr = get_lmr(mv.is_tactic(), (depth / DEPTH_SCALE) as u8, moves_seen);
+            let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
 
             score = -search::<NonPV>(pos, thread, shared, depth - lmr - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
 
@@ -169,7 +179,7 @@ pub fn search<Node: NodeType>(
         }
 
         if best_move != Some(mv) {
-            if mv.is_tactic() {
+            if is_tactic {
                 tactics.push(mv);
             } else {
                 quiets.push(mv);

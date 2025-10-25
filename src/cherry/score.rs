@@ -42,6 +42,16 @@ impl Score {
     }
 
     #[inline]
+    pub fn is_win(self) -> bool {
+        self >= Score::MIN_MATE
+    }
+
+    #[inline]
+    pub fn is_loss(self) -> bool {
+        self <= -Score::MIN_MATE
+    }
+
+    #[inline]
     pub fn mate_in(self) -> Option<i16> {
         if self.is_mate() {
             let abs_score = self.abs();

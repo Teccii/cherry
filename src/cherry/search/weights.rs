@@ -119,6 +119,8 @@ weights! {
     rfp_cutoff_lerp   | RFP_CUTOFF_LERP:   i32 => 512,
     nmp_depth         | NMP_DEPTH:         i32 => 3072,
     nmp_reduction     | NMP_REDUCTION:     i32 => 3072,
+    lmp_base          | LMP_BASE:          i64 => 4096,
+    lmp_margin        | LMP_MARGIN:        i64 => 1024,
     see_quiet_margin  | SEE_QUIET_MARGIN:  i32 => -89,
     see_tactic_margin | SEE_TACTIC_MARGIN: i32 => -62,
     cont_margin       | CONT_MARGIN:       i32 => -3268,
