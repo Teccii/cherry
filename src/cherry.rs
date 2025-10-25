@@ -55,6 +55,7 @@ mod search {
     mod ttable;
     mod time;
     mod weights;
+    mod window;
 
     pub use history::*;
     pub use info::*;
@@ -64,6 +65,7 @@ mod search {
     pub use ttable::*;
     pub use time::*;
     pub use weights::*;
+    pub use window::*;
 }
 
 #[cfg(feature = "datagen")] mod datagen;

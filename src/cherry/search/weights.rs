@@ -140,6 +140,10 @@ weights! {
     cut_node_reduction      | CUT_NODE_REDUCTION:      i32 => 1112,
     non_pv_reduction        | NON_PV_REDUCTION:        i32 => 965,
     check_reduction         | CHECK_REDUCTION:         i32 => 1034,
+
+    asp_window_depth   | ASP_WINDOW_DEPTH:   u8  => 3,
+    asp_window_initial | ASP_WINDOW_INITIAL: i16 => 20,
+    asp_window_expand  | ASP_WINDOW_EXPAND:  i16 => 48,
 }
 
 impl W {

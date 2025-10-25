@@ -214,31 +214,56 @@ pub fn search_worker<Info: SearchInfo>(
     mut info: Info,
     worker: u16,
 ) -> (Option<Move>, Option<Move>, Score, u8, u64) {
+    let mut window = Window::new(W::asp_window_initial());
     let mut best_move: Option<Move> = None;
     let mut ponder_move: Option<Move> = None;
     let mut score = -Score::INFINITE;
     let mut depth = 1;
 
     'id: loop {
-        thread.sel_depth = 0;
-        score = search::<PV>(
-            &mut pos,
-            thread,
-            shared,
-            i32::from(depth) * DEPTH_SCALE,
-            0,
-            -Score::INFINITE,
-            Score::INFINITE,
-        );
-        thread.nodes.flush();
+        window.reset();
 
-        if depth > 1 && thread.abort_now {
-            break 'id;
+        'asp: loop {
+            let (alpha, beta) = if depth >= W::asp_window_depth() {
+                window.get()
+            } else {
+                (-Score::INFINITE, Score::INFINITE)
+            };
+
+            thread.sel_depth = 0;
+            let new_score = search::<PV>(
+                &mut pos,
+                thread,
+                shared,
+                i32::from(depth) * DEPTH_SCALE,
+                0,
+                alpha,
+                beta,
+            );
+            thread.nodes.flush();
+
+            if depth > 1 && thread.abort_now {
+                break 'id;
+            }
+
+            window.set_center(new_score);
+            if new_score > alpha && new_score < beta {
+                thread.root_pv = thread.search_stack[0].pv.clone();
+                best_move = thread.root_pv.moves[0];
+                ponder_move = thread.root_pv.moves[1];
+                score = new_score;
+
+                break 'asp;
+            }
+
+            if new_score <= alpha {
+                window.fail_low();
+            } else {
+                window.fail_high();
+            }
+
+            window.expand();
         }
-
-        thread.root_pv = thread.search_stack[0].pv.clone();
-        best_move = thread.root_pv.moves[0];
-        ponder_move = thread.root_pv.moves[1];
 
         if worker == 0 {
             info.update(
@@ -248,12 +273,14 @@ pub fn search_worker<Info: SearchInfo>(
                 score,
                 depth,
             );
-
-            shared.time_man.deepen();
         }
 
         if depth >= MAX_DEPTH || shared.time_man.abort_id(depth, thread.nodes.global()) {
             break 'id;
+        }
+
+        if worker == 0 {
+            shared.time_man.deepen();
         }
 
         depth += 1;
