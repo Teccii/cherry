@@ -115,7 +115,13 @@ pub fn search<Node: NodeType>(
         if moves_seen == 0 {
             score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
         } else {
-            score = -search::<NonPV>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
+            let lmr = get_lmr(mv.is_tactic(), (depth / DEPTH_SCALE) as u8, moves_seen);
+
+            score = -search::<NonPV>(pos, thread, shared, depth - lmr - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
+
+            if lmr > 0 && score > alpha {
+                score = -search::<NonPV>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
+            }
 
             if Node::PV && score > alpha {
                 score = -search::<PV>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
@@ -177,10 +183,6 @@ pub fn search<Node: NodeType>(
         } else {
             Score::ZERO
         };
-    }
-
-    if ply == 0 {
-        thread.nodes.flush();
     }
 
     let best_score = best_score.unwrap();

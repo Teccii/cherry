@@ -230,6 +230,7 @@ pub fn search_worker<Info: SearchInfo>(
             -Score::INFINITE,
             Score::INFINITE,
         );
+        thread.nodes.flush();
 
         if depth > 1 && thread.abort_now {
             break 'id;
