@@ -116,6 +116,11 @@ pub fn search<Node: NodeType>(
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
+
+                let futile_margin = (W::futile_base() + W::futile_margin() * depth / DEPTH_SCALE) as i16;
+                if depth <= W::futile_depth() && !in_check && static_eval <= alpha - futile_margin {
+                    move_picker.skip_quiets();
+                }
             }
         }
 

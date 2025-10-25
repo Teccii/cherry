@@ -121,11 +121,12 @@ weights! {
     nmp_reduction     | NMP_REDUCTION:     i32 => 3072,
     lmp_base          | LMP_BASE:          i64 => 4096,
     lmp_margin        | LMP_MARGIN:        i64 => 1024,
+    futile_depth      | FUTILE_DEPTH:      i32 => 8192,
+    futile_base       | FUTILE_BASE:       i32 => 93,
+    futile_margin     | FUTILE_MARGIN:     i32 => 79,
     see_quiet_margin  | SEE_QUIET_MARGIN:  i32 => -89,
     see_tactic_margin | SEE_TACTIC_MARGIN: i32 => -62,
     cont_margin       | CONT_MARGIN:       i32 => -3268,
-    futile_base       | FUTILE_BASE:       i32 => 93,
-    futile_margin     | FUTILE_MARGIN:     i32 => 79,
 
     lmr_quiet_base    | LMR_QUIET_BASE:    i32 => 579,
     lmr_quiet_div     | LMR_QUIET_DIV:     i32 => 1626,
@@ -165,4 +166,3 @@ impl W {
 
 pub const SEE_DEPTH: u8 = 10;
 pub const HIST_DEPTH: u8 = 10;
-pub const FUTILE_DEPTH: u8 = 6;
