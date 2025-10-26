@@ -87,6 +87,7 @@ pub fn search<Node: NodeType>(
 
         if depth >= W::nmp_depth()
             && thread.search_stack[ply as usize - 1].move_played.is_some()
+            && static_eval >= beta
             && pos.null_move() {
 
             thread.search_stack[ply as usize].move_played = None;
