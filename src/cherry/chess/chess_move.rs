@@ -66,6 +66,11 @@ impl Move {
         Move { bits: NonZeroU16::new(bits).unwrap() }
     }
 
+    #[inline]
+    pub const fn from_bits(bits: u16) -> Move {
+        Move { bits: NonZeroU16::new(bits).unwrap() }
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]

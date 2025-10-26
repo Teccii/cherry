@@ -5,6 +5,8 @@ mod print;
 mod see;
 mod startpos;
 
+pub use move_gen::*;
+
 use core::ops::Deref;
 use crate::*;
 
@@ -506,132 +508,6 @@ impl Board {
         self.toggle_stm();
 
         true
-    }
-
-    #[inline]
-    pub fn is_pseudolegal(&self, mv: Move) -> bool {
-        let (src, dest, flag) = (mv.from(), mv.to(), mv.flag());
-        let (src_place, dest_place) = (self.board.get(src), self.board.get(dest));
-        let (src_piece, src_index) = if !src_place.is_empty() {
-            (src_place.piece().unwrap(), src_place.index().unwrap())
-        } else {
-            return false;
-        };
-        let stm = self.stm;
-
-        if src_place.color().unwrap() != stm {
-            return false;
-        }
-
-        match mv.flag() {
-            MoveFlag::Normal => dest_place.is_empty() && if src_piece == Piece::Pawn {
-                dest.offset(0, -stm.sign() as i8) == src
-            } else {
-                self.attack_table(stm).get(dest).has(src_index)
-            },
-            MoveFlag::Capture => !dest_place.is_empty() && dest_place.color().unwrap() != stm && self.attack_table(stm).get(dest).has(src_index),
-            MoveFlag::EnPassant => src_piece == Piece::Pawn && self.ep_square().is_some_and(|ep| dest == ep) && self.attack_table(stm).get(dest).has(src_index),
-            MoveFlag::DoublePush => src_piece == Piece::Pawn && src.rank() == Rank::Second.relative_to(stm) && dest.rank() == Rank::Fourth.relative_to(stm),
-            _ if mv.is_castling() => src_piece == Piece::King && {
-                let our_backrank = Rank::First.relative_to(stm);
-                let castle_rights = if flag == MoveFlag::ShortCastling {
-                    self.castle_rights(stm).short
-                } else {
-                    self.castle_rights(stm).long
-                };
-
-                src.rank() == our_backrank && Some(dest) == castle_rights.map(|f| Square::new(f, our_backrank))
-            },
-            _ if mv.is_promotion() => src_piece == Piece::Pawn && {
-                let is_capture = mv.is_capture();
-
-                src.rank() == Rank::Seventh.relative_to(stm)
-                    && dest.rank() == Rank::Eighth.relative_to(stm)
-                    && is_capture == !dest_place.is_empty()
-                    && is_capture == self.attack_table(stm).get(dest).has(src_index)
-            },
-            _ => false
-        }
-    }
-
-    #[inline]
-    pub fn is_legal(&self, mv: Move) -> bool {
-        let (src, dest, flag) = (mv.from(), mv.to(), mv.flag());
-        let src_place = self.board.get(src);
-        let (src_piece, src_index) = (src_place.piece().unwrap(), src_place.index().unwrap());
-        let stm = self.stm;
-
-        if src_piece == Piece::King {
-            if mv.is_castling() {
-                let pinned = self.pinned(stm);
-                let blockers = self.occupied();
-                let their_attacks = self.attack_table(!stm).all();
-                let our_backrank = Rank::First.relative_to(stm);
-                let rights = self.castle_rights(stm);
-
-                macro_rules! check_castling {
-                    ($pinned:ident, $blockers:ident, $their_attacks:ident, $our_backrank:ident, $king_src:ident, $rook_src:expr, $king_dest:expr, $rook_dest:expr) => {
-                        if let Some(rook_src) = $rook_src.map(|f| Square::new(f, $our_backrank)) {
-                            let king_dest = Square::new($king_dest, $our_backrank);
-                            let rook_dest = Square::new($rook_dest, $our_backrank);
-                            let king_to_rook = between($king_src, rook_src);
-                            let king_to_dest = between($king_src, king_dest);
-                            let must_be_safe = king_to_dest | king_dest;
-                            let must_be_empty = must_be_safe | king_to_rook | rook_dest;
-                            let blockers = $blockers ^ $king_src ^ rook_src;
-
-                            if $pinned.has(rook_src)
-                                || !blockers.is_disjoint(must_be_empty)
-                                || !$their_attacks.is_disjoint(must_be_safe) {
-                                return false;
-                            }
-                        }
-                    }
-                }
-
-                if flag == MoveFlag::ShortCastling {
-                    check_castling!(pinned, blockers, their_attacks, our_backrank, src, rights.short, File::G, File::F);
-                } else {
-                    check_castling!(pinned, blockers, their_attacks, our_backrank, src, rights.long, File::C, File::D);
-                }
-
-                true
-            } else {
-                self.attack_table(!stm).get(dest).is_empty()
-            }
-        } else {
-            let our_king = self.king(stm);
-            let checkers = self.attack_table(!stm).get(our_king);
-
-            if checkers.popcnt() > 1 {
-                if checkers.popcnt() == 2 {
-                    return false;
-                }
-
-                let checker_index = checkers.lsb();
-                let checker_piece = self.index_to_piece[!stm][checker_index].unwrap();
-                let checker_sq = self.index_to_square[!stm][checker_index].unwrap();
-
-                let valid_dest = if checker_piece == Piece::Knight {
-                    checker_sq.bitboard()
-                } else {
-                    between(our_king, checker_sq) | checker_sq
-                };
-
-                if !valid_dest.has(dest) {
-                    return false;
-                }
-            }
-
-            let (pin_mask, pinned) = self.calc_pins(stm);
-            let masked_attack_table = *(*self.attack_table(stm) & pin_mask).as_mailbox();
-
-            if src_piece == Piece::Pawn && !mv.is_capture() {
-                !pinned.has(src) || our_king.file().bitboard().has(src)
-            } else {
-                masked_attack_table[dest].has(src_index)
-            }
-        }
     }
 
     /*----------------------------------------------------------------*/

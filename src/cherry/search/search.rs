@@ -54,7 +54,7 @@ pub fn search<Node: NodeType>(
     let tt_entry = shared.ttable.fetch(pos.board());
 
     if let Some(entry) = tt_entry {
-        best_move = entry.mv.filter(|&mv| pos.board().is_pseudolegal(mv));
+        best_move = entry.mv;
 
         if !Node::PV && entry.depth as i32 >= depth / DEPTH_SCALE {
             let score = entry.score;

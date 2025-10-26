@@ -42,6 +42,7 @@ pub struct MovePicker {
     skip_quiets: bool,
     skip_bad_tactics: bool,
     tt_move: Option<Move>,
+    move_list: MoveList,
     good_tactics: SmallVec<[ScoredMove; 64]>,
     bad_tactics: SmallVec<[ScoredMove; 32]>,
     quiets: SmallVec<[ScoredMove; 64]>,
@@ -55,6 +56,7 @@ impl MovePicker {
             skip_quiets: false,
             skip_bad_tactics: false,
             tt_move,
+            move_list: MoveList::empty(),
             good_tactics: SmallVec::new(),
             bad_tactics: SmallVec::new(),
             quiets: SmallVec::new(),
@@ -75,22 +77,29 @@ impl MovePicker {
         if self.stage == Stage::TTMove {
             self.stage = Stage::GenMoves;
             
-            if let Some(mv) = self.tt_move && pos.board().is_legal(mv) {
-                let score = if mv.is_tactic() {
-                    history.get_tactic(pos.board(), mv)
-                } else {
-                    history.get_quiet(pos.board(), mv)
-                };
+            if let Some(mv) = self.tt_move {
+                self.move_list = pos.board().gen_moves();
                 
-                return Some(ScoredMove(mv, score));
+                if self.move_list.contains(&mv) {
+                    let score = if mv.is_tactic() {
+                        history.get_tactic(pos.board(), mv)
+                    } else {
+                        history.get_quiet(pos.board(), mv)
+                    };
+
+                    return Some(ScoredMove(mv, score));
+                }
             }
         }
         
         if self.stage == Stage::GenMoves {
             self.stage = Stage::YieldGoodTactics;
 
-            let moves = pos.board().gen_moves();
-            for &mv in moves.iter() {
+            if self.move_list.is_empty() {
+                self.move_list = pos.board().gen_moves();
+            }
+            
+            for &mv in self.move_list.iter() {
                 if self.tt_move == Some(mv) {
                     continue;
                 }
