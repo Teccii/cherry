@@ -116,6 +116,7 @@ weights! {
 
     rfp_depth         | RFP_DEPTH:         i32 => 6144,
     rfp_margin        | RFP_MARGIN:        i32 => 80,
+    rfp_improving     | RFP_IMPROVING:     i32 => 80,
     rfp_cutoff_lerp   | RFP_CUTOFF_LERP:   i32 => 512,
     nmp_depth         | NMP_DEPTH:         i32 => 3072,
     nmp_reduction     | NMP_REDUCTION:     i32 => 3072,

@@ -74,9 +74,13 @@ pub fn search<Node: NodeType>(
 
     let in_check = pos.board().in_check();
     let static_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
+    let improving = (ply >= 2).then(|| thread.search_stack[ply as usize - 2].static_eval)
+        .is_some_and(|prev_eval| !in_check && static_eval > prev_eval);
+
+    thread.search_stack[ply as usize].static_eval = static_eval;
 
     if !Node::PV && !in_check {
-        let rfp_margin = (W::rfp_margin() * depth / DEPTH_SCALE) as i16;
+        let rfp_margin = (W::rfp_margin() * depth / DEPTH_SCALE - W::rfp_improving() * improving as i32) as i16;
         if depth < W::rfp_depth() && static_eval >= beta + rfp_margin {
             return static_eval;
         }

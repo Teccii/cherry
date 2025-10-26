@@ -95,6 +95,7 @@ impl Default for PrincipalVariation {
 
 #[derive(Clone, Default)]
 pub struct SearchStack {
+    pub static_eval: Score,
     pub move_played: Option<Move>,
     pub pv: PrincipalVariation,
 }
