@@ -32,7 +32,7 @@ pub fn search<Node: NodeType>(
     if ply != 0 && (thread.abort_now || shared.time_man.abort_search(thread.nodes.global())) {
         thread.abort_now = true;
 
-        return Score::INFINITE;
+        return Score::ZERO;
     }
 
     if Node::PV {
@@ -153,7 +153,7 @@ pub fn search<Node: NodeType>(
         }
 
         if thread.abort_now {
-            return Score::INFINITE;
+            return Score::ZERO;
         }
 
         if best_score.is_none() || score > best_score.unwrap() {
@@ -227,7 +227,7 @@ fn q_search<Node: NodeType>(
     if thread.abort_now || shared.time_man.abort_search(thread.nodes.global()) {
         thread.abort_now = true;
 
-        return Score::INFINITE;
+        return Score::ZERO;
     }
 
     if Node::PV {
@@ -275,7 +275,7 @@ fn q_search<Node: NodeType>(
         moves_seen += 1;
 
         if thread.abort_now {
-            return Score::INFINITE;
+            return Score::ZERO;
         }
 
         if best_score.is_none() || score > best_score.unwrap() {
