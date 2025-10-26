@@ -43,7 +43,7 @@ pub fn search<Node: NodeType>(
         return Score::ZERO;
     }
 
-    if depth <= 0 || ply >= MAX_PLY {
+    if depth <= W::qs_depth() || ply >= MAX_PLY {
         return q_search::<Node>(pos, thread, shared, ply, alpha, beta);
     }
 
@@ -80,7 +80,7 @@ pub fn search<Node: NodeType>(
     thread.search_stack[ply as usize].static_eval = static_eval;
 
     if !Node::PV && !in_check {
-        let rfp_margin = (W::rfp_margin() * depth / DEPTH_SCALE - W::rfp_improving() * improving as i32) as i16;
+        let rfp_margin = (W::rfp_base() + W::rfp_scale() * depth / DEPTH_SCALE - W::rfp_improving() * improving as i32) as i16;
         if depth < W::rfp_depth() && static_eval >= beta + rfp_margin {
             return static_eval;
         }
@@ -89,9 +89,10 @@ pub fn search<Node: NodeType>(
             && thread.search_stack[ply as usize - 1].move_played.is_some()
             && static_eval >= beta
             && pos.null_move() {
+            let nmp_reduction = (W::nmp_base() + W::nmp_scale() * depth as i64 / 1024) as i32;
 
             thread.search_stack[ply as usize].move_played = None;
-            let score = -search::<Node>(pos, thread, shared, depth - W::nmp_reduction(), ply + 1, -beta, -beta + 1);
+            let score = -search::<Node>(pos, thread, shared, depth - nmp_reduction, ply + 1, -beta, -beta + 1);
             pos.unmake_null_move();
 
             if thread.abort_now {
@@ -104,10 +105,10 @@ pub fn search<Node: NodeType>(
         }
     }
 
-    let lmp_margin = W::lmp_base() + W::lmp_margin() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
+    let lmp_margin = W::lmp_base() + W::lmp_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
     let see_margins = [
-        (W::see_quiet_margin() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)) as i16,
-        (W::see_tactic_margin() * depth / DEPTH_SCALE) as i16,
+        (W::see_quiet_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)) as i16,
+        (W::see_tactic_scale() * depth / DEPTH_SCALE) as i16,
     ];
 
     let mut best_score = None;
@@ -127,7 +128,7 @@ pub fn search<Node: NodeType>(
                     move_picker.skip_quiets();
                 }
 
-                let futile_margin = (W::futile_base() + W::futile_margin() * depth / DEPTH_SCALE) as i16;
+                let futile_margin = (W::futile_base() + W::futile_scale() * depth / DEPTH_SCALE) as i16;
                 if depth <= W::futile_depth() && !in_check && static_eval <= alpha - futile_margin {
                     move_picker.skip_quiets();
                 }

@@ -218,11 +218,11 @@ impl Engine {
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
                     RFP_MARGIN        => W::rfp_margin(),            0, 2048;
                     RFP_CUTOFF_LERP   => W::rfp_cutoff_lerp(),       0, 1024;
-                    SEE_QUIET_MARGIN  => W::see_quiet_margin(),  -2048, 0;
-                    SEE_TACTIC_MARGIN => W::see_tactic_margin(), -2048, 0;
+                    SEE_QUIET_MARGIN  => W::see_quiet_scale(),  -2048, 0;
+                    SEE_TACTIC_MARGIN => W::see_tactic_scale(), -2048, 0;
                     CONT_MARGIN       => W::cont_margin(),      -16384, 0;
                     FUTILE_BASE       => W::futile_base(),           0, 2048;
-                    FUTILE_MARGIN     => W::futile_margin(),         0, 2048;
+                    FUTILE_MARGIN     => W::futile_scale(),         0, 2048;
                     LMR_QUIET_BASE    => W::lmr_quiet_base(),    -1024, 1024;
                     LMR_QUIET_DIV     => W::lmr_quiet_div(),        32, 16384;
                     LMR_TACTICAL_BASE => W::lmr_tactical_base(), -1024, 1024;
