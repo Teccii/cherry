@@ -62,6 +62,11 @@ impl MovePicker {
             quiets: SmallVec::new(),
         }
     }
+    
+    #[inline]
+    pub fn stage(&self) -> Stage {
+        self.stage
+    }
 
     #[inline]
     pub fn skip_quiets(&mut self) {

@@ -286,18 +286,20 @@ impl_score_i16_assign_ops! {
 
 #[test]
 fn test_score() {
-    assert_eq!(Score::INFINITE.is_mate(), false);
-    assert_eq!((-Score::INFINITE).is_mate(), false);
-    
+    assert!(!Score::INFINITE.is_mate());
+    assert!(!(-Score::INFINITE).is_mate());
+
     for i in 0..MAX_PLY {
         let mate_score = Score::new_mate(i);
         let mated_score = Score::new_mated(i);
         
-        assert_eq!(mate_score.is_mate(), true);
-        assert_eq!(mated_score.is_mate(), true);
+        assert!(mate_score.is_mate());
+        assert!(mated_score.is_mate());
+        assert!(mate_score.is_win());
+        assert!(mated_score.is_loss());
         assert_eq!(mate_score.mate_in().unwrap(), i as i16);
         assert_eq!(mated_score.mate_in().unwrap(), -(i as i16));
-        assert_eq!(Score::INFINITE > mate_score, true);
-        assert_eq!(-Score::INFINITE < mated_score, true);
+        assert!(Score::INFINITE > mate_score);
+        assert!(-Score::INFINITE < mated_score);
     }
 }

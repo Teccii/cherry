@@ -99,6 +99,12 @@ pub fn search<Node: NodeType>(
         }
     }
 
+    let lmp_margin = W::lmp_base() + W::lmp_margin() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
+    let see_margins = [
+        (W::see_quiet_margin() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)) as i16,
+        (W::see_tactic_margin() * depth / DEPTH_SCALE) as i16,
+    ];
+
     let mut best_score = None;
     let mut moves_seen = 0;
     let mut move_picker = MovePicker::new(best_move);
@@ -112,7 +118,6 @@ pub fn search<Node: NodeType>(
 
         if !Node::PV && ply != 0 && best_score.map_or(false, |s: Score| !s.is_loss()) {
             if !is_tactic {
-                let lmp_margin = W::lmp_base() + W::lmp_margin() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
@@ -121,6 +126,12 @@ pub fn search<Node: NodeType>(
                 if depth <= W::futile_depth() && !in_check && static_eval <= alpha - futile_margin {
                     move_picker.skip_quiets();
                 }
+            }
+
+            if depth <= W::see_depth()
+                && move_picker.stage() > Stage::YieldGoodTactics
+                && !pos.board().cmp_see(mv, see_margins[is_tactic as usize]) {
+                continue;
             }
         }
 

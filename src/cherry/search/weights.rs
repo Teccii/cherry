@@ -124,7 +124,8 @@ weights! {
     futile_depth      | FUTILE_DEPTH:      i32 => 8192,
     futile_base       | FUTILE_BASE:       i32 => 93,
     futile_margin     | FUTILE_MARGIN:     i32 => 79,
-    see_quiet_margin  | SEE_QUIET_MARGIN:  i32 => -89,
+    see_depth         | SEE_DEPTH:         i32 => 10240,
+    see_quiet_margin  | SEE_QUIET_MARGIN:  i64 => -89,
     see_tactic_margin | SEE_TACTIC_MARGIN: i32 => -62,
     cont_margin       | CONT_MARGIN:       i32 => -3268,
 
@@ -163,6 +164,4 @@ impl W {
     }
 }
 
-
-pub const SEE_DEPTH: u8 = 10;
 pub const HIST_DEPTH: u8 = 10;
