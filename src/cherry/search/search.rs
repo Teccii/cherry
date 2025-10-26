@@ -113,12 +113,13 @@ pub fn search<Node: NodeType>(
 
     let mut best_score = None;
     let mut moves_seen = 0;
+    let mut flag = TTFlag::UpperBound;
     let mut move_picker = MovePicker::new(best_move);
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
-    let mut flag = TTFlag::UpperBound;
+    let cont_indices = ContIndices::new(&thread.search_stack, ply);
 
-    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history) {
+    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         let is_tactic = mv.is_tactic();
         let mut score;
 
@@ -141,7 +142,7 @@ pub fn search<Node: NodeType>(
             }
         }
 
-        thread.search_stack[ply as usize].move_played = Some(mv);
+        thread.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv, &shared.nnue_weights);
 
         if moves_seen == 0 {
@@ -194,7 +195,7 @@ pub fn search<Node: NodeType>(
             flag = TTFlag::LowerBound;
 
             if !thread.abort_now {
-                thread.history.update(pos.board(), mv, &tactics, &quiets, depth);
+                thread.history.update(pos.board(), &cont_indices, mv, &tactics, &quiets, depth);
             }
 
             break;
@@ -278,14 +279,15 @@ fn q_search<Node: NodeType>(
     let mut best_score = None;
     let mut moves_seen = 0;
     let mut move_picker = MovePicker::new(None);
+    let cont_indices = ContIndices::new(&thread.search_stack, ply);
 
     if !in_check {
         move_picker.skip_bad_tactics();
         move_picker.skip_quiets();
     }
 
-    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history) {
-        thread.search_stack[ply as usize].move_played = Some(mv);
+    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
+        thread.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv, &shared.nnue_weights);
         let score = -q_search::<Node>(pos, thread, shared, ply + 1, -beta, -alpha);
         pos.unmake_move();

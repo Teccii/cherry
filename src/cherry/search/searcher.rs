@@ -96,8 +96,24 @@ impl Default for PrincipalVariation {
 #[derive(Clone, Default)]
 pub struct SearchStack {
     pub static_eval: Score,
-    pub move_played: Option<Move>,
+    pub move_played: Option<MoveData>,
     pub pv: PrincipalVariation,
+}
+
+#[derive(Copy, Clone)]
+pub struct MoveData {
+    pub piece: Piece,
+    pub mv: Move,
+}
+
+impl MoveData {
+    #[inline]
+    pub fn new(board: &Board, mv: Move) -> MoveData {
+        MoveData {
+            piece: board.piece_on(mv.from()).unwrap(),
+            mv
+        }
+    } 
 }
 
 /*----------------------------------------------------------------*/

@@ -78,7 +78,7 @@ impl MovePicker {
         self.skip_bad_tactics = true;
     }
 
-    pub fn next(&mut self, pos: &mut Position, history: &History) -> Option<ScoredMove> {
+    pub fn next(&mut self, pos: &mut Position, history: &History, indices: &ContIndices) -> Option<ScoredMove> {
         if self.stage == Stage::TTMove {
             self.stage = Stage::GenMoves;
             
@@ -89,7 +89,7 @@ impl MovePicker {
                     let score = if mv.is_tactic() {
                         history.get_tactic(pos.board(), mv)
                     } else {
-                        history.get_quiet(pos.board(), mv)
+                        history.get_quiet_total(pos.board(), indices, mv)
                     };
 
                     return Some(ScoredMove(mv, score));
@@ -112,7 +112,7 @@ impl MovePicker {
                 if mv.is_tactic() {
                     self.good_tactics.push(ScoredMove(mv, history.get_tactic(pos.board(), mv)));
                 } else {
-                    self.quiets.push(ScoredMove(mv, history.get_quiet(pos.board(), mv)));
+                    self.quiets.push(ScoredMove(mv, history.get_quiet_total(pos.board(), indices, mv)));
                 }
             }
         }

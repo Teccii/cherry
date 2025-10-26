@@ -12,9 +12,26 @@ fn delta(depth: i32, base: i32, mul: i32, max: i32) -> i32 {
 /*----------------------------------------------------------------*/
 
 #[derive(Clone)]
+pub struct ContIndices {
+    pub counter_move: Option<MoveData>,
+}
+
+impl ContIndices {
+    #[inline]
+    pub fn new(search_stack: &[SearchStack], ply: u16) -> ContIndices {
+        ContIndices {
+            counter_move: (ply >= 1).then(|| search_stack[ply as usize - 1].move_played).flatten(),
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Clone)]
 pub struct History {
-    quiets: Box<ColorTo<SquareTo<SquareTo<i32>>>>,
-    tactics: Box<ColorTo<PieceTo<SquareTo<i32>>>>,
+    quiets: Box<ColorTo<SquareTo<SquareTo<i32>>>>, //Indexing: [stm][from][to]
+    tactics: Box<ColorTo<PieceTo<SquareTo<i32>>>>, //Indexing: [stm][piece][to]
+    counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i32>>>>>>, //Indexing: [stm][prev piece][prev to][piece][to]
 }
 
 impl History {
@@ -49,9 +66,39 @@ impl History {
 
     /*----------------------------------------------------------------*/
 
+    #[inline]
+    pub fn get_counter_move(&self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<i32> {
+        let prev_mv = prev_mv?;
+
+        Some(self.counter_move[board.stm()]
+            [prev_mv.piece][prev_mv.mv.to()]
+            [board.piece_on(mv.from()).unwrap()][mv.to()]
+        )
+    }
+
+    #[inline]
+     fn get_counter_move_mut(&mut self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<&mut i32> {
+        let prev_mv = prev_mv?;
+
+        Some(&mut self.counter_move[board.stm()]
+            [prev_mv.piece][prev_mv.mv.to()]
+            [board.piece_on(mv.from()).unwrap()][mv.to()]
+        )
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn get_quiet_total(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
+        self.get_quiet(board, mv) + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default()
+    }
+
+    /*----------------------------------------------------------------*/
+
     pub fn update(
         &mut self,
         board: &Board,
+        indices: &ContIndices,
         best_move: Move,
         tactics: &[Move],
         quiets: &[Move],
@@ -73,6 +120,22 @@ impl History {
                     self.get_quiet_mut(board, mv),
                     -delta(depth, W::quiet_malus_base(), W::quiet_malus_mul(), W::quiet_malus_max())
                 );
+            }
+
+            /*----------------------------------------------------------------*/
+
+            if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move) {
+                History::update_value(
+                    value,
+                    delta(depth, W::cont1_bonus_base(), W::cont1_bonus_mul(), W::cont1_bonus_max())
+                );
+
+                for &mv in quiets {
+                    History::update_value(
+                        self.get_counter_move_mut(board, mv, indices.counter_move).unwrap(),
+                        -delta(depth, W::cont1_malus_base(), W::cont1_malus_mul(), W::cont1_malus_max())
+                    );
+                }
             }
         }
 
@@ -99,6 +162,7 @@ impl Default for History {
         History {
             quiets: new_zeroed(),
             tactics: new_zeroed(),
+            counter_move: new_zeroed(),
         }
     }
 }
