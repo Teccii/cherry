@@ -263,8 +263,24 @@ fn q_search<Node: NodeType>(
     thread.sel_depth = thread.sel_depth.max(ply);
     thread.nodes.inc();
 
+    let tt_entry = shared.ttable.fetch(pos.board());
+    if let Some(entry) = tt_entry {
+        let score = entry.score;
+
+        match entry.flag {
+            TTFlag::Exact => return score,
+            TTFlag::UpperBound => if score <= alpha {
+                return score;
+            },
+            TTFlag::LowerBound => if score >= beta {
+                return score;
+            },
+            TTFlag::None => unreachable!()
+        }
+    }
+
     let in_check = pos.board().in_check();
-    let static_eval = pos.eval(&shared.nnue_weights);
+    let static_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
 
     if !in_check {
         if static_eval >= beta {
