@@ -105,12 +105,6 @@ pub fn search<Node: NodeType>(
         }
     }
 
-    let lmp_margin = W::lmp_base() + W::lmp_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
-    let see_margins = [
-        (W::see_quiet_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)) as i16,
-        (W::see_tactic_scale() * depth / DEPTH_SCALE) as i16,
-    ];
-
     let mut best_score = None;
     let mut moves_seen = 0;
     let mut flag = TTFlag::UpperBound;
@@ -121,24 +115,33 @@ pub fn search<Node: NodeType>(
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         let is_tactic = mv.is_tactic();
+        let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
         let mut score;
 
         if !Node::PV && ply != 0 && best_score.map_or(false, |s: Score| !s.is_loss()) {
-            if !is_tactic {
+            if is_tactic {
+                let see_margin = (W::see_tactic_scale() * depth / DEPTH_SCALE) as i16;
+                if depth <= W::see_depth()
+                    && move_picker.stage() == Stage::YieldBadTactics
+                    && !pos.board().cmp_see(mv, see_margin) {
+                    continue;
+                }
+            } else {
+                let lmp_margin = W::lmp_base() + W::lmp_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
 
-                let futile_margin = (W::futile_base() + W::futile_scale() * depth / DEPTH_SCALE) as i16;
-                if depth <= W::futile_depth() && !in_check && static_eval <= alpha - futile_margin {
+                let r_depth = depth - lmr;
+                let futile_margin = (W::futile_base() + W::futile_scale() * r_depth / DEPTH_SCALE) as i16;
+                if r_depth <= W::futile_depth() && !in_check && static_eval <= alpha - futile_margin {
                     move_picker.skip_quiets();
                 }
-            }
 
-            if depth <= W::see_depth()
-                && move_picker.stage() > Stage::YieldGoodTactics
-                && !pos.board().cmp_see(mv, see_margins[is_tactic as usize]) {
-                continue;
+                let see_margin = (W::see_tactic_scale() * depth / DEPTH_SCALE) as i16;
+                if depth <= W::see_depth() && !pos.board().cmp_see(mv, see_margin) {
+                    continue;
+                }
             }
         }
 
@@ -148,8 +151,6 @@ pub fn search<Node: NodeType>(
         if moves_seen == 0 {
             score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
         } else {
-            let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
-
             score = -search::<NonPV>(pos, thread, shared, depth - lmr - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
 
             if lmr > 0 && score > alpha {
