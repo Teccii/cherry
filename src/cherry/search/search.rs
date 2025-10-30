@@ -73,9 +73,24 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.board().in_check();
-    let static_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
-    let improving = (ply >= 2).then(|| thread.search_stack[ply as usize - 2].static_eval)
-        .is_some_and(|prev_eval| !in_check && static_eval > prev_eval);
+    let static_eval = if !in_check {
+        tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights))
+    } else {
+        Score::NONE
+    };
+    let improving = !in_check && {
+        let ss = &thread.search_stack;
+        let prev2 = ply.wrapping_sub(2) as usize;
+        let prev4 = ply.wrapping_sub(4) as usize;
+
+        if ply >= 2 && ss[prev2].static_eval != Score::NONE {
+            static_eval > ss[prev2].static_eval
+        } else if ply >= 4 && ss[prev4].static_eval != Score::NONE {
+            static_eval > ss[prev4].static_eval
+        } else {
+            true
+        }
+    };
 
     thread.search_stack[ply as usize].static_eval = static_eval;
 
@@ -280,9 +295,8 @@ fn q_search<Node: NodeType>(
     }
 
     let in_check = pos.board().in_check();
-    let static_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
-
     if !in_check {
+        let static_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
         if static_eval >= beta {
             return static_eval;
         }

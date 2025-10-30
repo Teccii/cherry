@@ -123,6 +123,7 @@ impl Score {
     pub const MIN_TB_WIN: Score = Score(i16::MAX - (3 * MAX_PLY + 1) as i16);
     
     pub const ZERO: Score = Score(0);
+    pub const NONE: Score = Score(i16::MIN);
     pub const INFINITE: Score = Score(i16::MAX - (MAX_PLY as i16 / 2));
 }
 
