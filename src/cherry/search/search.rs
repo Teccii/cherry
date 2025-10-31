@@ -122,7 +122,7 @@ pub fn search<Node: NodeType>(
 
     let lmp_margin = W::lmp_base() + W::lmp_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
     let see_margins = [
-        (W::see_quiet_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)) as i16,
+        (W::see_quiet_scale() * depth / DEPTH_SCALE) as i16,
         (W::see_tactic_scale() * depth / DEPTH_SCALE) as i16,
     ];
 

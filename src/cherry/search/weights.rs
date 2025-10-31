@@ -129,7 +129,7 @@ weights! {
     futile_base       | FUTILE_BASE:       i32 => 93,
     futile_scale      | FUTILE_SCALE:      i32 => 79,
     see_depth         | SEE_DEPTH:         i32 => 10240,
-    see_quiet_scale   | SEE_QUIET_SCALE:   i64 => -89,
+    see_quiet_scale   | SEE_QUIET_SCALE:   i32 => -89,
     see_tactic_scale  | SEE_TACTIC_SCALE:  i32 => -62,
     cont_margin       | CONT_MARGIN:       i32 => -3268,
 
