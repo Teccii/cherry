@@ -130,6 +130,7 @@ pub fn search<Node: NodeType>(
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         let is_tactic = mv.is_tactic();
+        let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
         let mut score;
 
         if !Node::PV && ply != 0 && best_score.map_or(false, |s: Score| !s.is_loss()) {
@@ -146,8 +147,9 @@ pub fn search<Node: NodeType>(
                     move_picker.skip_quiets();
                 }
 
-                let futile_margin = (W::futile_base() + W::futile_scale() * depth / DEPTH_SCALE) as i16;
-                if depth <= W::futile_depth() && !in_check && static_eval <= alpha - futile_margin {
+                let lmr_depth = (depth - lmr).max(0);
+                let futile_margin = (W::futile_base() + W::futile_scale() * lmr_depth / DEPTH_SCALE) as i16;
+                if lmr_depth <= W::futile_depth() && !in_check && static_eval <= alpha - futile_margin {
                     move_picker.skip_quiets();
                 }
                 
@@ -166,8 +168,6 @@ pub fn search<Node: NodeType>(
         if moves_seen == 0 {
             score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
         } else {
-            let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
-
             score = -search::<NonPV>(pos, thread, shared, depth - lmr - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
 
             if lmr > 0 && score > alpha {
