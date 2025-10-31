@@ -99,10 +99,10 @@ impl History {
         &mut self,
         board: &Board,
         indices: &ContIndices,
+        depth: i32,
         best_move: Move,
         tactics: &[Move],
         quiets: &[Move],
-        depth: i32,
     ) {
         if best_move.is_tactic() {
             History::update_value(

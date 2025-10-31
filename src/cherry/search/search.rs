@@ -120,12 +120,6 @@ pub fn search<Node: NodeType>(
         }
     }
 
-    let lmp_margin = W::lmp_base() + W::lmp_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
-    let see_margins = [
-        (W::see_quiet_scale() * depth / DEPTH_SCALE) as i16,
-        (W::see_tactic_scale() * depth / DEPTH_SCALE) as i16,
-    ];
-
     let mut best_score = None;
     let mut moves_seen = 0;
     let mut flag = TTFlag::UpperBound;
@@ -139,7 +133,15 @@ pub fn search<Node: NodeType>(
         let mut score;
 
         if !Node::PV && ply != 0 && best_score.map_or(false, |s: Score| !s.is_loss()) {
-            if !is_tactic {
+            if is_tactic {
+                let see_margin = (W::see_tactic_scale() * depth / DEPTH_SCALE) as i16;
+                if depth <= W::see_depth()
+                    && move_picker.stage() > Stage::YieldGoodTactics
+                    && !pos.board().cmp_see(mv, see_margin) {
+                    continue;
+                }
+            } else {
+                let lmp_margin = W::lmp_base() + W::lmp_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
@@ -148,12 +150,13 @@ pub fn search<Node: NodeType>(
                 if depth <= W::futile_depth() && !in_check && static_eval <= alpha - futile_margin {
                     move_picker.skip_quiets();
                 }
-            }
-
-            if depth <= W::see_depth()
-                && move_picker.stage() > Stage::YieldGoodTactics
-                && !pos.board().cmp_see(mv, see_margins[is_tactic as usize]) {
-                continue;
+                
+                let see_margin = (W::see_quiet_scale() * depth / DEPTH_SCALE) as i16;
+                if depth <= W::see_depth()
+                    && move_picker.stage() > Stage::YieldGoodTactics
+                    && !pos.board().cmp_see(mv, see_margin) {
+                    continue;
+                }
             }
         }
 
@@ -210,7 +213,7 @@ pub fn search<Node: NodeType>(
             flag = TTFlag::LowerBound;
 
             if !thread.abort_now {
-                thread.history.update(pos.board(), &cont_indices, mv, &tactics, &quiets, depth);
+                thread.history.update(pos.board(), &cont_indices, depth, mv, &tactics, &quiets);
             }
 
             break;

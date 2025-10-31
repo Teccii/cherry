@@ -1,22 +1,8 @@
 use smallvec::SmallVec;
 use crate::*;
 
-fn select_next_64(moves: &SmallVec<[ScoredMove; 64]>) -> Option<usize> {
-    if moves.is_empty() {
-        return None;
-    }
-
-    moves.iter()
-        .enumerate()
-        .max_by_key(|(_, mv)| mv.1)
-        .map(|(i, _)| i)
-}
-
-fn select_next_32(moves: &SmallVec<[ScoredMove; 32]>) -> Option<usize> {
-    if moves.is_empty() {
-        return None;
-    }
-
+#[inline]
+fn select_next(moves: &[ScoredMove]) -> Option<usize> {
     moves.iter()
         .enumerate()
         .max_by_key(|(_, mv)| mv.1)
@@ -120,7 +106,7 @@ impl MovePicker {
         /*----------------------------------------------------------------*/
 
         if self.stage == Stage::YieldGoodTactics {
-            while let Some(index) = select_next_64(&self.good_tactics) {
+            while let Some(index) = select_next(&self.good_tactics) {
                 let mv = swap_pop(&mut self.good_tactics, index).unwrap();
 
                 if pos.board().cmp_see(mv.0, 0) {
@@ -140,7 +126,7 @@ impl MovePicker {
             if self.skip_quiets {
                 self.stage = Stage::YieldBadTactics;
             } else {
-                if let Some(index) = select_next_64(&self.quiets) {
+                if let Some(index) = select_next(&self.quiets) {
                     return swap_pop(&mut self.quiets, index);
                 }
 
@@ -153,7 +139,7 @@ impl MovePicker {
             if self.skip_bad_tactics {
                 self.stage = Stage::Finished;
             } else {
-                if let Some(index) = select_next_32(&self.bad_tactics) {
+                if let Some(index) = select_next(&self.bad_tactics) {
                     return swap_pop(&mut self.bad_tactics, index)
                 }
 
