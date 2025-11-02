@@ -153,8 +153,8 @@ pub fn search<Node: NodeType>(
                     move_picker.skip_quiets();
                 }
                 
-                let see_margin = (W::see_quiet_scale() * depth / DEPTH_SCALE) as i16;
-                if depth <= W::see_depth()
+                let see_margin = (W::see_quiet_scale() * lmr_depth / DEPTH_SCALE) as i16;
+                if lmr_depth <= W::see_depth()
                     && move_picker.stage() > Stage::YieldGoodTactics
                     && !pos.board().cmp_see(mv, see_margin) {
                     continue;
