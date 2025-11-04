@@ -29,7 +29,7 @@ pub fn search<Node: NodeType>(
     mut alpha: Score,
     beta: Score,
 ) -> Score {
-    if ply != 0 && (thread.abort_now || shared.time_man.abort_search(thread.nodes.global())) {
+    if ply != 0 && (thread.abort_now || (thread.nodes.local() % 1024 == 0 && shared.time_man.abort_search(thread.nodes.global()))) {
         thread.abort_now = true;
 
         return Score::ZERO;
@@ -260,7 +260,7 @@ fn q_search<Node: NodeType>(
     mut alpha: Score,
     beta: Score,
 ) -> Score {
-    if thread.abort_now || shared.time_man.abort_search(thread.nodes.global()) {
+    if thread.abort_now || (thread.nodes.local() % 1024 == 0 && shared.time_man.abort_search(thread.nodes.global())) {
         thread.abort_now = true;
 
         return Score::ZERO;
