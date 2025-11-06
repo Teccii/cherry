@@ -178,16 +178,16 @@ fn datagen_worker(
 
         'game: loop {
             let (mv, _, eval, _, _) = searcher.search::<NoInfo>(limits.clone());
-            let (from, to) = (
-                ViriSquare::new(mv.from() as u8).unwrap(),
-                ViriSquare::new(mv.to() as u8).unwrap()
+            let (src, dest) = (
+                ViriSquare::new(mv.src() as u8).unwrap(),
+                ViriSquare::new(mv.dest() as u8).unwrap()
             );
 
             let viri_move = match mv.flag() {
-                MoveFlag::EnPassant => ViriMove::new_with_flags(from, to, ViriMoveFlag::EnPassant),
-                MoveFlag::ShortCastling | MoveFlag::LongCastling => ViriMove::new_with_flags(from, to, ViriMoveFlag::Castle),
-                _ if mv.is_promotion() => ViriMove::new_with_promo(from, to, ViriPiece::new(mv.promotion().unwrap() as u8).unwrap()),
-                _ => ViriMove::new(from, to),
+                MoveFlag::EnPassant => ViriMove::new_with_flags(src, dest, ViriMoveFlag::EnPassant),
+                MoveFlag::ShortCastling | MoveFlag::LongCastling => ViriMove::new_with_flags(src, dest, ViriMoveFlag::Castle),
+                _ if mv.is_promotion() => ViriMove::new_with_promo(src, dest, ViriPiece::new(mv.promotion().unwrap() as u8).unwrap()),
+                _ => ViriMove::new(src, dest),
             };
             let eval = eval * searcher.pos.stm().sign();
             game.add_move(viri_move, eval.0);

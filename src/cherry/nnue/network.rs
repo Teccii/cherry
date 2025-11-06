@@ -123,34 +123,34 @@ impl Nnue {
         mv: Move
     ) {
         let mut update = UpdateBuffer::default();
-        let (from, to) = (mv.from(), mv.to());
-        let piece = old_board.piece_on(from).unwrap();
+        let (src, dest) = (mv.src(), mv.dest());
+        let piece = old_board.piece_on(src).unwrap();
         let stm = old_board.stm();
 
         if mv.is_castling() {
-            let (king, rook) = if from.file() < to.file() {
+            let (king, rook) = if src.file() < dest.file() {
                 (File::G, File::F)
             } else {
                 (File::C, File::D)
             };
 
             let back_rank = Rank::First.relative_to(stm);
-            update.move_piece(Piece::King, stm, from, Square::new(king, back_rank));
-            update.move_piece(Piece::Rook, stm, to, Square::new(rook, back_rank));
+            update.move_piece(Piece::King, stm, src, Square::new(king, back_rank));
+            update.move_piece(Piece::Rook, stm, dest, Square::new(rook, back_rank));
         } else if let Some(promotion) = mv.promotion() {
-            update.remove_piece(piece, stm, from);
-            update.add_piece(promotion, stm, to);
+            update.remove_piece(piece, stm, src);
+            update.add_piece(promotion, stm, dest);
 
             if mv.is_capture() {
-                update.remove_piece(old_board.piece_on(to).unwrap(), !stm, to);
+                update.remove_piece(old_board.piece_on(dest).unwrap(), !stm, dest);
             }
         } else {
-            update.move_piece(piece, stm, from, to);
+            update.move_piece(piece, stm, src, dest);
             
             if mv.is_en_passant() {
                 update.remove_piece(Piece::Pawn, !stm, Square::new(old_board.en_passant().unwrap(), Rank::Fifth.relative_to(stm)));
             } else if mv.is_capture() {
-                update.remove_piece(old_board.piece_on(to).unwrap(), !stm, to);
+                update.remove_piece(old_board.piece_on(dest).unwrap(), !stm, dest);
             }
         }
 
@@ -158,7 +158,7 @@ impl Nnue {
         self.acc_index += 1;
         self.acc_mut().dirty = [true; Color::COUNT];
 
-        if piece == Piece::King && (from.file() > File::D) != (to.file() > File::D) {
+        if piece == Piece::King && (src.file() > File::D) != (dest.file() > File::D) {
             self.reset(new_board, weights, stm);
         }
     }

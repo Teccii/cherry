@@ -29,9 +29,9 @@ impl ContIndices {
 
 #[derive(Clone)]
 pub struct History {
-    quiets: Box<ColorTo<SquareTo<SquareTo<i32>>>>, //Indexing: [stm][from][to]
-    tactics: Box<ColorTo<PieceTo<SquareTo<i32>>>>, //Indexing: [stm][piece][to]
-    counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i32>>>>>>, //Indexing: [stm][prev piece][prev to][piece][to]
+    quiets: Box<ColorTo<SquareTo<BoolTo<SquareTo<i32>>>>>, //Indexing: [stm][src][dest threatened][dest]
+    tactics: Box<ColorTo<PieceTo<SquareTo<i32>>>>, //Indexing: [stm][piece][dest]
+    counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i32>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
 }
 
 impl History {
@@ -44,24 +44,32 @@ impl History {
 
     #[inline]
     pub fn get_quiet(&self, board: &Board, mv: Move) -> i32 {
-        self.quiets[board.stm()][mv.from()][mv.to()]
+        let stm = board.stm();
+        let dest = mv.dest();
+        let dest_threatened = !board.attack_table(!stm).get(dest).is_empty();
+
+        self.quiets[stm][mv.src()][dest_threatened as usize][dest]
     }
 
     #[inline]
     pub fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
-        &mut self.quiets[board.stm()][mv.from()][mv.to()]
+        let stm = board.stm();
+        let dest = mv.dest();
+        let dest_threatened = !board.attack_table(!stm).get(dest).is_empty();
+
+        &mut self.quiets[stm][mv.src()][dest_threatened as usize][dest]
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn get_tactic(&self, board: &Board, mv: Move) -> i32 {
-        self.tactics[board.stm()][board.piece_on(mv.from()).unwrap()][mv.to()]
+        self.tactics[board.stm()][board.piece_on(mv.src()).unwrap()][mv.dest()]
     }
 
     #[inline]
     pub fn get_tactic_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
-        &mut self.tactics[board.stm()][board.piece_on(mv.from()).unwrap()][mv.to()]
+        &mut self.tactics[board.stm()][board.piece_on(mv.src()).unwrap()][mv.dest()]
     }
 
     /*----------------------------------------------------------------*/
@@ -71,8 +79,8 @@ impl History {
         let prev_mv = prev_mv?;
 
         Some(self.counter_move[board.stm()]
-            [prev_mv.piece][prev_mv.mv.to()]
-            [board.piece_on(mv.from()).unwrap()][mv.to()]
+            [prev_mv.piece][prev_mv.mv.dest()]
+            [board.piece_on(mv.src()).unwrap()][mv.dest()]
         )
     }
 
@@ -81,8 +89,8 @@ impl History {
         let prev_mv = prev_mv?;
 
         Some(&mut self.counter_move[board.stm()]
-            [prev_mv.piece][prev_mv.mv.to()]
-            [board.piece_on(mv.from()).unwrap()][mv.to()]
+            [prev_mv.piece][prev_mv.mv.dest()]
+            [board.piece_on(mv.src()).unwrap()][mv.dest()]
         )
     }
 

@@ -79,12 +79,12 @@ impl Move {
     }
 
     #[inline]
-    pub const fn from(self) -> Square {
+    pub const fn src(self) -> Square {
         Square::index((self.bits.get() & 0b111111) as usize)
     }
 
     #[inline]
-    pub const fn to(self) -> Square {
+    pub const fn dest(self) -> Square {
         Square::index(((self.bits.get() >> 6) & 0b111111) as usize)
     }
 
@@ -146,23 +146,23 @@ impl Move {
             return self;
         }
 
-        let (from, mut to, flag) = (self.from(), self.to(), self.flag());
+        let (src, mut dest, flag) = (self.src(), self.dest(), self.flag());
 
         let stm = board.stm();
         let our_backrank = Rank::First.relative_to(stm);
         let castle_src = Square::new(File::E, our_backrank);
 
-        if from == castle_src && from == board.king(stm) {
+        if src == castle_src && src == board.king(stm) {
             let rights = board.castle_rights(stm);
 
-            if Some(to) == rights.short.map(|f| Square::new(f, our_backrank)) {
-                to = Square::new(File::G, our_backrank);
-            } else if Some(to) == rights.long.map(|f| Square::new(f, our_backrank)) {
-                to = Square::new(File::C, our_backrank);
+            if Some(dest) == rights.short.map(|f| Square::new(f, our_backrank)) {
+                dest = Square::new(File::G, our_backrank);
+            } else if Some(dest) == rights.long.map(|f| Square::new(f, our_backrank)) {
+                dest = Square::new(File::C, our_backrank);
             }
         }
 
-        Move::new(from, to, flag)
+        Move::new(src, dest, flag)
     }
 
     #[inline]
@@ -266,7 +266,7 @@ impl Move {
 impl fmt::Display for Move {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}", self.from(), self.to())?;
+        write!(f, "{}{}", self.src(), self.dest())?;
 
         if let Some(piece) = self.promotion() {
             write!(f, "{}", piece)?;

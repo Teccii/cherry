@@ -110,7 +110,7 @@ impl MoveData {
     #[inline]
     pub fn new(board: &Board, mv: Move) -> MoveData {
         MoveData {
-            piece: board.piece_on(mv.from()).unwrap(),
+            piece: board.piece_on(mv.src()).unwrap(),
             mv
         }
     } 

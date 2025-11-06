@@ -193,7 +193,7 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     pub fn make_move(&mut self, mv: Move) {
-        let (src, dest) = (mv.from(), mv.to());
+        let (src, dest) = (mv.src(), mv.dest());
         let (src_place, dest_place) = (self.board.get(src), self.board.get(dest));
         let (src_id, dest_id) = (src_place.index().unwrap(), dest_place.index());
         let (src_piece, dest_piece) = (src_place.piece().unwrap(), dest_place.piece());

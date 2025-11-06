@@ -6,7 +6,7 @@ impl Board {
             return threshold <= 0;
         }
 
-        let (from, to, flag) = (mv.from(), mv.to(), mv.flag());
+        let (from, to, flag) = (mv.src(), mv.dest(), mv.flag());
 
         let next_victim = mv.promotion().unwrap_or_else(|| self.piece_on(from).unwrap());
         let mut balance = -threshold + match flag {
