@@ -29,7 +29,7 @@ impl ContIndices {
 
 #[derive(Clone)]
 pub struct History {
-    quiets: Box<ColorTo<SquareTo<BoolTo<SquareTo<i32>>>>>, //Indexing: [stm][src][dest threatened][dest]
+    quiets: Box<ColorTo<BoolTo<SquareTo<BoolTo<SquareTo<i32>>>>>>, //Indexing: [stm][src threatened][src][dest threatened][dest]
     tactics: Box<ColorTo<PieceTo<SquareTo<i32>>>>, //Indexing: [stm][piece][dest]
     counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i32>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
 }
@@ -45,19 +45,21 @@ impl History {
     #[inline]
     pub fn get_quiet(&self, board: &Board, mv: Move) -> i32 {
         let stm = board.stm();
-        let dest = mv.dest();
+        let (src, dest) = (mv.src(), mv.dest());
+        let src_threatened = !board.attack_table(!stm).get(src).is_empty();
         let dest_threatened = !board.attack_table(!stm).get(dest).is_empty();
 
-        self.quiets[stm][mv.src()][dest_threatened as usize][dest]
+        self.quiets[stm][src_threatened as usize][mv.src()][dest_threatened as usize][dest]
     }
 
     #[inline]
     pub fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
         let stm = board.stm();
-        let dest = mv.dest();
+        let (src, dest) = (mv.src(), mv.dest());
+        let src_threatened = !board.attack_table(!stm).get(src).is_empty();
         let dest_threatened = !board.attack_table(!stm).get(dest).is_empty();
 
-        &mut self.quiets[stm][mv.src()][dest_threatened as usize][dest]
+        &mut self.quiets[stm][src_threatened as usize][mv.src()][dest_threatened as usize][dest]
     }
 
     /*----------------------------------------------------------------*/
