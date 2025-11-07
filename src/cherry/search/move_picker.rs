@@ -73,7 +73,7 @@ impl MovePicker {
                 
                 if self.move_list.contains(&mv) {
                     let score = if mv.is_tactic() {
-                        history.get_tactic(pos.board(), mv)
+                        history.get_tactic(pos.board(), mv) as i32
                     } else {
                         history.get_quiet_total(pos.board(), indices, mv)
                     };
@@ -96,7 +96,7 @@ impl MovePicker {
                 }
 
                 if mv.is_tactic() {
-                    self.good_tactics.push(ScoredMove(mv, history.get_tactic(pos.board(), mv)));
+                    self.good_tactics.push(ScoredMove(mv, history.get_tactic(pos.board(), mv) as i32));
                 } else {
                     self.quiets.push(ScoredMove(mv, history.get_quiet_total(pos.board(), indices, mv)));
                 }

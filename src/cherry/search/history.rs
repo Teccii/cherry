@@ -29,9 +29,9 @@ impl ContIndices {
 
 #[derive(Clone)]
 pub struct History {
-    quiets: Box<ColorTo<BoolTo<SquareTo<BoolTo<SquareTo<i32>>>>>>, //Indexing: [stm][src threatened][src][dest threatened][dest]
-    tactics: Box<ColorTo<PieceTo<SquareTo<i32>>>>, //Indexing: [stm][piece][dest]
-    counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i32>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
+    quiets: Box<ColorTo<BoolTo<SquareTo<BoolTo<SquareTo<i16>>>>>>, //Indexing: [stm][src threatened][src][dest threatened][dest]
+    tactics: Box<ColorTo<PieceTo<SquareTo<i16>>>>, //Indexing: [stm][piece][dest]
+    counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
 }
 
 impl History {
@@ -43,7 +43,7 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_quiet(&self, board: &Board, mv: Move) -> i32 {
+    pub fn get_quiet(&self, board: &Board, mv: Move) -> i16 {
         let stm = board.stm();
         let (src, dest) = (mv.src(), mv.dest());
         let src_threatened = !board.attack_table(!stm).get(src).is_empty();
@@ -53,7 +53,7 @@ impl History {
     }
 
     #[inline]
-    pub fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
+    pub fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
         let stm = board.stm();
         let (src, dest) = (mv.src(), mv.dest());
         let src_threatened = !board.attack_table(!stm).get(src).is_empty();
@@ -65,19 +65,19 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_tactic(&self, board: &Board, mv: Move) -> i32 {
+    pub fn get_tactic(&self, board: &Board, mv: Move) -> i16 {
         self.tactics[board.stm()][board.piece_on(mv.src()).unwrap()][mv.dest()]
     }
 
     #[inline]
-    pub fn get_tactic_mut(&mut self, board: &Board, mv: Move) -> &mut i32 {
+    pub fn get_tactic_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
         &mut self.tactics[board.stm()][board.piece_on(mv.src()).unwrap()][mv.dest()]
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_counter_move(&self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<i32> {
+    pub fn get_counter_move(&self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<i16> {
         let prev_mv = prev_mv?;
 
         Some(self.counter_move[board.stm()]
@@ -87,7 +87,7 @@ impl History {
     }
 
     #[inline]
-     fn get_counter_move_mut(&mut self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<&mut i32> {
+     fn get_counter_move_mut(&mut self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<&mut i16> {
         let prev_mv = prev_mv?;
 
         Some(&mut self.counter_move[board.stm()]
@@ -100,7 +100,7 @@ impl History {
 
     #[inline]
     pub fn get_quiet_total(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
-        self.get_quiet(board, mv) + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default()
+        self.get_quiet(board, mv) as i32 + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() as i32
     }
 
     /*----------------------------------------------------------------*/
@@ -158,11 +158,11 @@ impl History {
     }
 
     #[inline]
-    fn update_value(value: &mut i32, amount: i32) {
+    fn update_value(value: &mut i16, amount: i32) {
         let amount = amount.clamp(-MAX_HISTORY, MAX_HISTORY);
-        let decay = *value * amount.abs() / MAX_HISTORY;
+        let decay = (*value as i32 * amount.abs() / MAX_HISTORY) as i16;
 
-        *value += amount - decay;
+        *value += amount as i16 - decay;
     }
 }
 
