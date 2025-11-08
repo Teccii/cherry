@@ -155,7 +155,27 @@ impl TimeManager {
         self.start.store(Instant::now(), Ordering::Relaxed);
     }
     
-    pub fn deepen(&self) { }
+    pub fn deepen(
+        &self,
+        depth: u8,
+        _score: Score,
+        _static_eval: Score,
+        _best_move: Move,
+        move_nodes: u64,
+        nodes: u64,
+    ) {
+        if depth < 4 || self.no_manage.load(Ordering::Relaxed) {
+            return;
+        }
+
+        let subtree_factor = 2.5 - 1.5 * move_nodes as f32 / nodes as f32;
+        
+        let base_time = self.base_time.load(Ordering::Relaxed);
+        let max_time = self.max_time.load(Ordering::Relaxed);
+        let new_target = (base_time as f32 * subtree_factor) as u64;
+
+        self.target_time.store(new_target.min(max_time), Ordering::Relaxed);
+    }
 
     #[inline]
     pub fn stop(&self) {

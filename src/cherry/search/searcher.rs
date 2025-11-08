@@ -14,6 +14,7 @@ pub struct SharedData {
 pub struct ThreadData {
     pub nodes: BatchedAtomicCounter,
     pub search_stack: Vec<SearchStack>,
+    pub root_nodes: SquareTo<SquareTo<u64>>,
     pub root_pv: PrincipalVariation,
     pub history: History,
     pub sel_depth: u16,
@@ -25,6 +26,7 @@ impl ThreadData {
     pub fn reset(&mut self) {
         self.nodes.reset();
         self.search_stack = vec![SearchStack::default(); MAX_PLY as usize + 1];
+        self.root_nodes = [[0u64; Square::COUNT]; Square::COUNT];
         self.history.reset();
         self.sel_depth = 0;
         self.abort_now = false;
@@ -37,6 +39,7 @@ impl Default for ThreadData {
         ThreadData {
             nodes: BatchedAtomicCounter::default(),
             search_stack: vec![SearchStack::default(); MAX_PLY as usize + 1],
+            root_nodes: [[0u64; Square::COUNT]; Square::COUNT],
             root_pv: PrincipalVariation::default(),
             history: History::default(),
             sel_depth: 0,
@@ -189,6 +192,8 @@ impl Searcher {
             self.thread_data = thread;
         });
 
+        self.shared_data.ttable.age();
+
         let (best_move, ponder_move, score, depth, nodes) = result;
 
         (best_move.unwrap(), ponder_move.filter(|_| self.ponder), score, depth, nodes)
@@ -232,6 +237,7 @@ pub fn search_worker<Info: SearchInfo>(
     worker: u16,
 ) -> (Option<Move>, Option<Move>, Score, u8, u64) {
     let mut window = Window::new(W::asp_window_initial());
+    let static_eval = pos.eval(&shared.nnue_weights);
     let mut best_move: Option<Move> = None;
     let mut ponder_move: Option<Move> = None;
     let mut score = -Score::INFINITE;
@@ -297,7 +303,16 @@ pub fn search_worker<Info: SearchInfo>(
         }
 
         if worker == 0 {
-            shared.time_man.deepen();
+            let best_move = best_move.unwrap();
+
+            shared.time_man.deepen(
+                depth,
+                score,
+                static_eval,
+                best_move,
+                thread.root_nodes[best_move.src()][best_move.dest()],
+                thread.nodes.local(),
+            );
         }
 
         depth += 1;

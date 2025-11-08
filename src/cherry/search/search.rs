@@ -130,6 +130,7 @@ pub fn search<Node: NodeType>(
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         let is_tactic = mv.is_tactic();
+        let nodes = thread.nodes.local();
         let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
         let mut score;
 
@@ -181,11 +182,15 @@ pub fn search<Node: NodeType>(
         pos.unmake_move();
         moves_seen += 1;
 
-        if ply == 0 && moves_seen == 1 {
-            let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
-            let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
+        if ply == 0 {
+            thread.root_nodes[mv.src()][mv.dest()] += thread.nodes.local() - nodes;
 
-            parent.pv.update(mv, &child.pv);
+            if moves_seen == 1 {
+                let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
+                let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
+
+                parent.pv.update(mv, &child.pv);
+            }
         }
 
         if thread.abort_now {
