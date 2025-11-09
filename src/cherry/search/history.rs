@@ -2,7 +2,10 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
+pub const MAX_CORR: i32 = 1024;
 pub const MAX_HISTORY: i32 = 16384;
+
+pub const PAWN_CORR_SIZE: usize = 4096;
 
 #[inline]
 fn delta(depth: i32, base: i32, mul: i32, max: i32) -> i32 {
@@ -32,6 +35,7 @@ pub struct History {
     quiets: Box<ColorTo<BoolTo<SquareTo<BoolTo<SquareTo<i16>>>>>>, //Indexing: [stm][src threatened][src][dest threatened][dest]
     tactics: Box<ColorTo<PieceTo<SquareTo<i16>>>>, //Indexing: [stm][piece][dest]
     counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
+    pawn_corr: Box<ColorTo<[i16; PAWN_CORR_SIZE]>>, //Indexing: [stm][pawn hash % size]
 }
 
 impl History {
@@ -103,6 +107,16 @@ impl History {
         self.get_quiet(board, mv) as i32 + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() as i32
     }
 
+    #[inline]
+    pub fn get_corr(&self, board: &Board) -> i32 {
+        let stm = board.stm();
+        let mut corr = 0;
+        
+        corr += W::pawn_corr_frac() * self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize] as i32;
+
+        corr / MAX_CORR
+    }
+
     /*----------------------------------------------------------------*/
 
     pub fn update(
@@ -158,9 +172,26 @@ impl History {
     }
 
     #[inline]
+    pub fn update_corr(&mut self, board: &Board, depth: i32, score: Score, static_eval: Score) {
+        let stm = board.stm();
+        let amount = ((score.0 as i64 - static_eval.0 as i64) * depth as i64 / DEPTH_SCALE as i64 / 8) as i32;
+        let pawn_corr = &mut self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize];
+
+        History::update_corr_value(pawn_corr, amount);
+    }
+
+    #[inline]
     fn update_value(value: &mut i16, amount: i32) {
         let amount = amount.clamp(-MAX_HISTORY, MAX_HISTORY);
         let decay = (*value as i32 * amount.abs() / MAX_HISTORY) as i16;
+
+        *value += amount as i16 - decay;
+    }
+
+    #[inline]
+    fn update_corr_value(value: &mut i16, amount: i32) {
+        let amount = amount.clamp(-MAX_CORR / 4, MAX_CORR / 4);
+        let decay = (*value as i32 * amount.abs() / MAX_CORR) as i16;
 
         *value += amount as i16 - decay;
     }
@@ -173,6 +204,7 @@ impl Default for History {
             quiets: new_zeroed(),
             tactics: new_zeroed(),
             counter_move: new_zeroed(),
+            pawn_corr: new_zeroed(),
         }
     }
 }

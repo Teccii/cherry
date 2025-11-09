@@ -73,11 +73,16 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.board().in_check();
-    let static_eval = if !in_check {
-        tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights))
+    let (raw_eval, static_eval, _corr) = if !in_check {
+        let raw_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
+        let corr = thread.history.get_corr(pos.board());
+        let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
+
+        (raw_eval, static_eval, corr)
     } else {
-        Score::NONE
+        (Score::NONE, Score::NONE, 0)
     };
+
     let improving = !in_check && {
         let ss = &thread.search_stack;
         let prev2 = ply.wrapping_sub(2) as usize;
@@ -245,12 +250,21 @@ pub fn search<Node: NodeType>(
     shared.ttable.store(
         pos.board(),
         (depth / DEPTH_SCALE) as u8,
-        static_eval,
+        raw_eval,
         best_score,
         best_move,
         flag,
         Node::PV || tt_entry.is_some_and(|e| e.pv)
     );
+
+    if !in_check && best_move.is_none_or(|mv| !mv.is_tactic()) && match flag {
+        TTFlag::Exact => true,
+        TTFlag::LowerBound => best_score > static_eval,
+        TTFlag::UpperBound => best_score < static_eval,
+        TTFlag::None => unreachable!(),
+    } {
+        thread.history.update_corr(pos.board(), depth, best_score, static_eval);
+    }
 
     best_score
 }
@@ -304,7 +318,10 @@ fn q_search<Node: NodeType>(
 
     let in_check = pos.board().in_check();
     if !in_check {
-        let static_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
+        let raw_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
+        let corr = thread.history.get_corr(pos.board());
+        let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
+
         if static_eval >= beta {
             return static_eval;
         }
