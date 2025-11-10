@@ -69,8 +69,8 @@ macro_rules! weights {
 /*----------------------------------------------------------------*/
 
 weights! {
-    pawn_corr_frac  | PAWN_CORR_FRAC:  i32 => 61,
-    minor_corr_frac | MINOR_CORR_FRAC: i32 => 70,
+    pawn_corr_frac  | PAWN_CORR_FRAC:  i32 => 64,
+    minor_corr_frac | MINOR_CORR_FRAC: i32 => 64,
     major_corr_frac | MAJOR_CORR_FRAC: i32 => 64,
 
     quiet_bonus_base | QUIET_BONUS_BASE: i32 => 130,
