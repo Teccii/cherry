@@ -133,10 +133,10 @@ pub fn search<Node: NodeType>(
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
     let cont_indices = ContIndices::new(&thread.search_stack, ply);
 
-    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
+    while let Some(ScoredMove(mv, stat_score)) = move_picker.next(pos, &thread.history, &cont_indices) {
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
-        let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
+        let mut lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
         let mut score;
 
         if !Node::PV && ply != 0 && best_score.map_or(false, |s: Score| !s.is_loss()) {
@@ -174,6 +174,10 @@ pub fn search<Node: NodeType>(
         if moves_seen == 0 {
             score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
         } else {
+            if !is_tactic {
+                lmr -= stat_score / W::hist_quiet_reduction();
+            }
+            
             score = -search::<NonPV>(pos, thread, shared, depth - lmr - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
 
             if lmr > 0 && score > alpha {
