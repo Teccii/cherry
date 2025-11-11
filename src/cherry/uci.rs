@@ -73,7 +73,7 @@ impl UciCommand {
             "ponderhit" => Ok(UciCommand::PonderHit),
             #[cfg(feature = "tune")] "spsa" => Ok(UciCommand::PrintSpsa),
             "bench" => Ok(UciCommand::Bench {
-                depth: reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(12),
+                depth: reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(15),
                 threads: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1),
                 hash: reader.next().and_then(|s| s.parse::<u64>().ok()).unwrap_or(16)
             }),
