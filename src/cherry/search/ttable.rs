@@ -5,6 +5,28 @@ use crate::*;
 
 pub const MAX_TT_SIZE: u64 = 64 * 1024 * 1024; //64 TiB
 
+#[inline]
+fn score_from_tt(score: Score, ply: u16) -> Score {
+    if score < -Score::MIN_MATE {
+        score + ply as i16
+    } else if score > Score::MIN_MATE {
+        score - ply as i16
+    } else {
+        score
+    }
+}
+
+#[inline]
+fn score_to_tt(score: Score, ply: u16) -> Score {
+    if score < -Score::MIN_MATE {
+        score - ply as i16
+    } else if score > Score::MIN_MATE {
+        score + ply as i16
+    } else {
+        score
+    }
+}
+
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -145,14 +167,21 @@ impl TTable {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn fetch(&self, board: &Board) -> Option<TTData> {
+    pub fn fetch(&self, board: &Board, ply: u16) -> Option<TTData> {
         let hash = board.hash();
         let index = self.index(hash);
 
         let entry = &self.entries[index];
 
         if entry.hash() == hash {
-            return Some(entry.data()).filter(|d| d.flag != TTFlag::None);
+            let mut data = entry.data();
+            
+            return if data.flag != TTFlag::None {
+                data.score = score_from_tt(data.score, ply);
+                Some(data)
+            } else {
+                None
+            };
         }
 
         None
@@ -163,17 +192,18 @@ impl TTable {
         &self,
         board: &Board,
         depth: u8,
+        ply: u16,
         eval: Score,
         score: Score,
         mv: Option<Move>,
         flag: TTFlag,
         pv: bool
     ) {
-        let old_data = self.fetch(board);
+        let old_data = self.fetch(board, ply);
         let new_data = TTData::new(
             depth,
             eval,
-            score,
+            score_to_tt(score, ply),
             mv.or_else(|| old_data.and_then(|d| d.mv)),
             flag,
             pv,

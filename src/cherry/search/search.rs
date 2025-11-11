@@ -51,7 +51,7 @@ pub fn search<Node: NodeType>(
     thread.nodes.inc();
 
     let mut best_move = None;
-    let tt_entry = shared.ttable.fetch(pos.board());
+    let tt_entry = shared.ttable.fetch(pos.board(), ply);
 
     if let Some(entry) = tt_entry {
         best_move = entry.mv;
@@ -250,6 +250,7 @@ pub fn search<Node: NodeType>(
     shared.ttable.store(
         pos.board(),
         (depth / DEPTH_SCALE) as u8,
+        ply,
         raw_eval,
         best_score,
         best_move,
@@ -300,7 +301,7 @@ fn q_search<Node: NodeType>(
     thread.sel_depth = thread.sel_depth.max(ply);
     thread.nodes.inc();
 
-    let tt_entry = shared.ttable.fetch(pos.board());
+    let tt_entry = shared.ttable.fetch(pos.board(), ply);
     if let Some(entry) = tt_entry {
         let score = entry.score;
 
