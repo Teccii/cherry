@@ -14,22 +14,22 @@ impl Score {
 
     #[inline]
     pub fn new_mate(ply: u16) -> Score {
-        Score::MAX_MATE - ply as i16
+        Score::MIN_MATE - ply as i16
     }
 
     #[inline]
     pub fn new_mated(ply: u16) -> Score {
-        -Score::MAX_MATE + ply as i16
+        -Score::MIN_MATE + ply as i16
     }
 
     #[inline]
     pub fn new_tb_win(ply: u16) -> Score {
-        Score::MAX_TB_WIN - ply as i16
+        Score::MIN_TB_WIN - ply as i16
     }
 
     #[inline]
     pub fn new_tb_loss(ply: u16) -> Score {
-        -Score::MAX_TB_WIN + ply as i16
+        -Score::MIN_TB_WIN + ply as i16
     }
 
     /*----------------------------------------------------------------*/
@@ -43,12 +43,12 @@ impl Score {
 
     #[inline]
     pub fn is_win(self) -> bool {
-        self >= Score::MIN_MATE
+        self >= Score::MAX_MATE
     }
 
     #[inline]
     pub fn is_loss(self) -> bool {
-        self <= -Score::MIN_MATE
+        self <= -Score::MAX_MATE
     }
 
     #[inline]
@@ -57,7 +57,7 @@ impl Score {
             let abs_score = self.abs();
             let sign = self.0.signum();
 
-            return Some(sign * (Score::MAX_MATE.0 - abs_score.0));
+            return Some(sign * (Score::MIN_MATE.0 - abs_score.0));
         }
 
         None
@@ -76,7 +76,7 @@ impl Score {
             let abs_score = self.abs();
             let sign = self.0.signum();
 
-            return Some(sign * (Score::MAX_TB_WIN.0 - abs_score.0));
+            return Some(sign * (Score::MIN_TB_WIN.0 - abs_score.0));
         }
 
         None
@@ -117,14 +117,14 @@ impl Score {
 
     /*----------------------------------------------------------------*/
 
-    pub const MIN_MATE: Score = Score(i16::MAX - (2 * MAX_PLY) as i16);
-    pub const MAX_MATE: Score = Score(i16::MAX - MAX_PLY as i16);
-    pub const MAX_TB_WIN: Score = Score(i16::MAX - (2 * MAX_PLY + 1) as i16);
-    pub const MIN_TB_WIN: Score = Score(i16::MAX - (3 * MAX_PLY + 1) as i16);
+    pub const MIN_MATE: Score = Score(i16::MAX - MAX_PLY as i16);
+    pub const MAX_MATE: Score = Score(i16::MAX - (2 * MAX_PLY) as i16);
+    pub const MIN_TB_WIN: Score = Score(i16::MAX - (2 * MAX_PLY + 1) as i16);
+    pub const MAX_TB_WIN: Score = Score(i16::MAX - (3 * MAX_PLY + 1) as i16);
     
     pub const ZERO: Score = Score(0);
     pub const NONE: Score = Score(i16::MIN);
-    pub const INFINITE: Score = Score(i16::MAX - (MAX_PLY as i16 / 2));
+    pub const INFINITE: Score = Score(i16::MAX - (MAX_PLY as i16 - 1));
 }
 
 impl fmt::Display for Score {

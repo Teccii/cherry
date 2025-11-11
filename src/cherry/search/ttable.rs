@@ -7,9 +7,9 @@ pub const MAX_TT_SIZE: u64 = 64 * 1024 * 1024; //64 TiB
 
 #[inline]
 fn score_from_tt(score: Score, ply: u16) -> Score {
-    if score < -Score::MIN_MATE {
+    if score.is_loss() {
         score + ply as i16
-    } else if score > Score::MIN_MATE {
+    } else if score.is_win() {
         score - ply as i16
     } else {
         score
@@ -18,9 +18,9 @@ fn score_from_tt(score: Score, ply: u16) -> Score {
 
 #[inline]
 fn score_to_tt(score: Score, ply: u16) -> Score {
-    if score < -Score::MIN_MATE {
+    if score.is_loss() {
         score - ply as i16
-    } else if score > Score::MIN_MATE {
+    } else if score.is_win() {
         score + ply as i16
     } else {
         score
