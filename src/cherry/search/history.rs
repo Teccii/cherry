@@ -7,6 +7,7 @@ pub const MAX_HISTORY: i32 = 16384;
 
 pub const PAWN_CORR_SIZE: usize = 4096;
 pub const MINOR_CORR_SIZE: usize = 16384;
+pub const MAJOR_CORR_SIZE: usize = 16384;
 
 #[inline]
 fn delta(depth: i32, base: i32, mul: i32, max: i32) -> i32 {
@@ -38,6 +39,7 @@ pub struct History {
     counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
     pawn_corr: Box<ColorTo<[i16; PAWN_CORR_SIZE]>>, //Indexing: [stm][pawn hash % size]
     minor_corr: Box<ColorTo<[i16; MINOR_CORR_SIZE]>>, //Indexing: [stm][minor hash % size]
+    major_corr: Box<ColorTo<[i16; MAJOR_CORR_SIZE]>>, //Indexing: [stm][major hash % size]
 }
 
 impl History {
@@ -116,6 +118,7 @@ impl History {
         
         corr += W::pawn_corr_frac() * self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize] as i32;
         corr += W::minor_corr_frac() * self.minor_corr[stm][(board.minor_hash() % MINOR_CORR_SIZE as u64) as usize] as i32;
+        corr += W::major_corr_frac() * self.major_corr[stm][(board.major_hash() % MAJOR_CORR_SIZE as u64) as usize] as i32;
 
         corr / MAX_CORR
     }
@@ -180,9 +183,11 @@ impl History {
         let amount = ((score.0 as i64 - static_eval.0 as i64) * depth as i64 / DEPTH_SCALE as i64 / 8) as i32;
         let pawn_corr = &mut self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize];
         let minor_corr = &mut self.minor_corr[stm][(board.minor_hash() % MINOR_CORR_SIZE as u64) as usize];
+        let major_corr = &mut self.major_corr[stm][(board.major_hash() % MAJOR_CORR_SIZE as u64) as usize];
 
         History::update_corr_value(pawn_corr, amount);
         History::update_corr_value(minor_corr, amount);
+        History::update_corr_value(major_corr, amount);
     }
 
     #[inline]
@@ -211,6 +216,7 @@ impl Default for History {
             counter_move: new_zeroed(),
             pawn_corr: new_zeroed(),
             minor_corr: new_zeroed(),
+            major_corr: new_zeroed(),
         }
     }
 }
