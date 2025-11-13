@@ -214,11 +214,7 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             flag = TTFlag::LowerBound;
-
-            if !thread.abort_now {
-                thread.history.update(pos.board(), &cont_indices, depth, mv, &tactics, &quiets);
-            }
-
+            thread.history.update(pos.board(), &cont_indices, depth, mv, &tactics, &quiets);
             break;
         }
 
