@@ -19,6 +19,7 @@ fn delta(depth: i32, base: i32, mul: i32, max: i32) -> i32 {
 #[derive(Clone)]
 pub struct ContIndices {
     pub counter_move: Option<MoveData>,
+    pub follow_up: Option<MoveData>,
 }
 
 impl ContIndices {
@@ -26,6 +27,7 @@ impl ContIndices {
     pub fn new(search_stack: &[SearchStack], ply: u16) -> ContIndices {
         ContIndices {
             counter_move: (ply >= 1).then(|| search_stack[ply as usize - 1].move_played).flatten(),
+            follow_up: (ply >= 2).then(|| search_stack[ply as usize - 2].move_played).flatten(),
         }
     }
 }
@@ -37,6 +39,7 @@ pub struct History {
     quiets: Box<ColorTo<BoolTo<SquareTo<BoolTo<SquareTo<i16>>>>>>, //Indexing: [stm][src threatened][src][dest threatened][dest]
     tactics: Box<ColorTo<PieceTo<SquareTo<i16>>>>, //Indexing: [stm][piece][dest]
     counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
+    follow_up: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
     pawn_corr: Box<ColorTo<[i16; PAWN_CORR_SIZE]>>, //Indexing: [stm][pawn hash % size]
     minor_corr: Box<ColorTo<[i16; MINOR_CORR_SIZE]>>, //Indexing: [stm][minor hash % size]
     major_corr: Box<ColorTo<[i16; MAJOR_CORR_SIZE]>>, //Indexing: [stm][major hash % size]
@@ -107,8 +110,32 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub fn get_follow_up(&self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<i16> {
+        let prev_mv = prev_mv?;
+
+        Some(self.follow_up[board.stm()]
+            [prev_mv.piece][prev_mv.mv.dest()]
+            [board.piece_on(mv.src()).unwrap()][mv.dest()]
+        )
+    }
+
+    #[inline]
+    fn get_follow_up_mut(&mut self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<&mut i16> {
+        let prev_mv = prev_mv?;
+
+        Some(&mut self.follow_up[board.stm()]
+            [prev_mv.piece][prev_mv.mv.dest()]
+            [board.piece_on(mv.src()).unwrap()][mv.dest()]
+        )
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
     pub fn get_quiet_total(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
-        self.get_quiet(board, mv) as i32 + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() as i32
+        self.get_quiet(board, mv) as i32
+            + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() as i32
+            + self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default() as i32
     }
 
     #[inline]
@@ -167,6 +194,22 @@ impl History {
                     );
                 }
             }
+
+            /*----------------------------------------------------------------*/
+
+            if let Some(value) = self.get_follow_up_mut(board, best_move, indices.follow_up) {
+                History::update_value(
+                    value,
+                    delta(depth, W::cont2_bonus_base(), W::cont2_bonus_mul(), W::cont2_bonus_max())
+                );
+
+                for &mv in quiets {
+                    History::update_value(
+                        self.get_follow_up_mut(board, mv, indices.follow_up).unwrap(),
+                        -delta(depth, W::cont2_malus_base(), W::cont2_malus_mul(), W::cont2_malus_max())
+                    );
+                }
+            }
         }
 
         for &mv in tactics {
@@ -214,6 +257,7 @@ impl Default for History {
             quiets: new_zeroed(),
             tactics: new_zeroed(),
             counter_move: new_zeroed(),
+            follow_up: new_zeroed(),
             pawn_corr: new_zeroed(),
             minor_corr: new_zeroed(),
             major_corr: new_zeroed(),
