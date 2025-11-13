@@ -97,7 +97,7 @@ impl MovePicker {
 
                 if mv.is_tactic() {
                     self.good_tactics.push(ScoredMove(mv, history.get_tactic(pos.board(), mv) as i32));
-                } else {
+                } else if !self.skip_quiets {
                     self.quiets.push(ScoredMove(mv, history.get_quiet_total(pos.board(), indices, mv)));
                 }
             }
@@ -112,7 +112,10 @@ impl MovePicker {
                 if pos.board().cmp_see(mv.0, 0) {
                     return Some(mv);
                 } else {
-                    self.bad_tactics.push(mv);
+                    if !self.skip_bad_tactics {
+                        self.bad_tactics.push(mv);
+                    }
+
                     continue;
                 }
             }
