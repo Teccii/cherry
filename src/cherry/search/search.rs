@@ -187,19 +187,19 @@ pub fn search<Node: NodeType>(
         pos.unmake_move();
         moves_seen += 1;
 
-        if ply == 0 {
-            thread.root_nodes[mv.src()][mv.dest()] += thread.nodes.local() - nodes;
-
-            if moves_seen == 1 {
-                let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
-                let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
-
-                parent.pv.update(mv, &child.pv);
-            }
-        }
-
         if thread.abort_now {
             return Score::ZERO;
+        }
+
+        if ply == 0 {
+            thread.root_nodes[mv.src()][mv.dest()] += thread.nodes.local() - nodes;
+        }
+
+        if Node::PV && (moves_seen == 1 || score > alpha) {
+            let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
+            let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
+
+            parent.pv.update(mv, &child.pv);
         }
 
         if best_score.is_none() || score > best_score.unwrap() {
@@ -210,13 +210,6 @@ pub fn search<Node: NodeType>(
             alpha = score;
             best_move = Some(mv);
             flag = TTFlag::Exact;
-
-            if Node::PV && !thread.abort_now {
-                let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
-                let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
-
-                parent.pv.update(mv, &child.pv);
-            }
         }
 
         if score >= beta {
@@ -353,19 +346,19 @@ fn q_search<Node: NodeType>(
             return Score::ZERO;
         }
 
+        if Node::PV && (moves_seen == 1 || score > alpha) {
+            let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
+            let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
+
+            parent.pv.update(mv, &child.pv);
+        }
+
         if best_score.is_none() || score > best_score.unwrap() {
             best_score = Some(score);
         }
 
         if score > alpha {
             alpha = score;
-
-            if Node::PV && !thread.abort_now {
-                let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
-                let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
-
-                parent.pv.update(mv, &child.pv);
-            }
         }
 
         if score >= beta {

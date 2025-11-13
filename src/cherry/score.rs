@@ -38,7 +38,7 @@ impl Score {
     pub fn is_mate(self) -> bool {
         let abs_score = self.abs();
 
-        abs_score >= Score::MIN_MATE && abs_score <= Score::MAX_MATE
+        abs_score >= Score::MAX_MATE && abs_score <= Score::MIN_MATE
     }
 
     #[inline]
@@ -67,7 +67,7 @@ impl Score {
     pub fn is_tb(self) -> bool {
         let abs_score = self.abs();
         
-        abs_score >= Score::MIN_TB_WIN && abs_score <= Score::MAX_TB_WIN
+        abs_score >= Score::MAX_TB_WIN && abs_score <= Score::MIN_TB_WIN
     }
     
     #[inline]
