@@ -10,6 +10,7 @@ pub trait SearchInfo {
         board: &Board,
         thread: &ThreadData,
         shared: &SharedData,
+        bound: TTFlag,
         score: Score,
         depth: u8,
     );
@@ -35,6 +36,7 @@ impl SearchInfo for UciInfo {
         board: &Board,
         thread: &ThreadData,
         shared: &SharedData,
+        bound: TTFlag,
         score: Score,
         depth: u8,
     ) {
@@ -42,10 +44,16 @@ impl SearchInfo for UciInfo {
         let time = shared.time_man.elapsed();
 
         println!(
-            "info depth {} seldepth {} score {} time {} nodes {} nps {} pv {}",
+            "info depth {} seldepth {} score {} {}time {} nodes {} nps {} pv {}",
             depth,
             thread.sel_depth,
             score,
+            match bound {
+                TTFlag::Exact => "",
+                TTFlag::UpperBound => "upperbound ",
+                TTFlag::LowerBound => "lowerbound ",
+                TTFlag::None => "",
+            },
             time,
             nodes,
             nodes / time.max(1) * 1000,
@@ -67,6 +75,7 @@ impl SearchInfo for NoInfo {
         _: &Board,
         _: &ThreadData,
         _: &SharedData,
+        _: TTFlag,
         _: Score,
         _: u8,
     ) { }

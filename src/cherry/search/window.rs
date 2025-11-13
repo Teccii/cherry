@@ -30,7 +30,6 @@ impl Window {
 
     #[inline]
     pub fn reset(&mut self) {
-        self.window = self.start;
         self.alpha = self.center.0.checked_sub(self.window).map_or(-Score::INFINITE, Score::new);
         self.beta = self.center.0.checked_add(self.window).map_or(Score::INFINITE, Score::new);
     }

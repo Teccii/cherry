@@ -281,8 +281,30 @@ pub fn search_worker<Info: SearchInfo>(
 
             if new_score <= alpha {
                 window.fail_low();
+
+                if worker == 0 {
+                    info.update(
+                        pos.board(),
+                        &thread,
+                        &shared,
+                        TTFlag::UpperBound,
+                        score,
+                        depth,
+                    );
+                }
             } else {
                 window.fail_high();
+
+                if worker == 0 {
+                    info.update(
+                        pos.board(),
+                        &thread,
+                        &shared,
+                        TTFlag::LowerBound,
+                        score,
+                        depth,
+                    );
+                }
             }
 
             window.expand();
@@ -293,6 +315,7 @@ pub fn search_worker<Info: SearchInfo>(
                 pos.board(),
                 &thread,
                 &shared,
+                TTFlag::Exact,
                 score,
                 depth,
             );
@@ -326,6 +349,7 @@ pub fn search_worker<Info: SearchInfo>(
                 pos.board(),
                 &thread,
                 &shared,
+                TTFlag::Exact,
                 score,
                 depth,
             );
@@ -337,6 +361,7 @@ pub fn search_worker<Info: SearchInfo>(
             pos.board(),
             &thread,
             &shared,
+            TTFlag::Exact,
             score,
             depth,
         );
