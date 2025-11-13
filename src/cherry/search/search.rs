@@ -27,7 +27,7 @@ pub fn search<Node: NodeType>(
     depth: i32,
     ply: u16,
     mut alpha: Score,
-    beta: Score,
+    mut beta: Score,
 ) -> Score {
     if ply != 0 && (thread.abort_now || (thread.nodes.local() % 1024 == 0 && shared.time_man.abort_search(thread.nodes.global()))) {
         thread.abort_now = true;
@@ -39,8 +39,17 @@ pub fn search<Node: NodeType>(
         thread.search_stack[ply as usize].pv.len = 0;
     }
 
-    if ply != 0 && pos.is_draw() {
-        return Score::ZERO;
+    if ply != 0 {
+        if pos.is_draw() {
+            return Score::ZERO;
+        }
+
+        alpha = alpha.max(Score::new_mated(ply));
+        beta = beta.min(Score::new_mate(ply + 1));
+
+        if alpha >= beta {
+            return alpha;
+        }
     }
 
     if depth <= 0 || ply >= MAX_PLY {
