@@ -148,7 +148,13 @@ pub fn search<Node: NodeType>(
                     continue;
                 }
             } else {
-                let lmp_margin = W::lmp_base() + W::lmp_scale() * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
+                let (lmp_base, lmp_scale) = if improving {
+                    (W::lmp_improving_base(), W::lmp_improving_scale())
+                } else {
+                    (W::lmp_base(), W::lmp_scale())
+                };
+                
+                let lmp_margin = lmp_base + lmp_scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
