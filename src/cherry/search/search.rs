@@ -51,7 +51,11 @@ pub fn search<Node: NodeType>(
     thread.nodes.inc();
 
     let mut best_move = None;
-    let tt_entry = shared.ttable.fetch(pos.board(), ply);
+    let skip_move = thread.search_stack[ply as usize].skip_move;
+    let tt_entry = match skip_move {
+        Some(_) => None,
+        None => shared.ttable.fetch(pos.board(), ply),
+    };
 
     if let Some(entry) = tt_entry {
         best_move = entry.mv;
@@ -73,7 +77,7 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.board().in_check();
-    let (raw_eval, static_eval, _corr) = if !in_check {
+    let (raw_eval, static_eval, _corr) = if !in_check && skip_move.is_none() {
         let raw_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
         let corr = thread.history.get_corr(pos.board());
         let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
@@ -83,7 +87,7 @@ pub fn search<Node: NodeType>(
         (Score::NONE, Score::NONE, 0)
     };
 
-    let improving = !in_check && {
+    let improving = !in_check && skip_move.is_none() && {
         let ss = &thread.search_stack;
         let prev2 = ply.wrapping_sub(2) as usize;
         let prev4 = ply.wrapping_sub(4) as usize;
@@ -99,7 +103,7 @@ pub fn search<Node: NodeType>(
 
     thread.search_stack[ply as usize].static_eval = static_eval;
 
-    if !Node::PV && !in_check {
+    if !Node::PV && !in_check && skip_move.is_none() {
         let rfp_margin = (W::rfp_base() + W::rfp_scale() * depth / DEPTH_SCALE - W::rfp_improving() * improving as i32) as i16;
         if depth < W::rfp_depth() && static_eval >= beta + rfp_margin {
             return static_eval;
@@ -134,6 +138,10 @@ pub fn search<Node: NodeType>(
     let cont_indices = ContIndices::new(&thread.search_stack, ply);
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
+        if skip_move == Some(mv) {
+            continue;
+        }
+
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
         let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
@@ -174,20 +182,41 @@ pub fn search<Node: NodeType>(
             }
         }
 
+        let mut ext = 0;
+        if ply != 0
+            && depth >= W::singular_depth()
+            && skip_move.is_none()
+            && let Some(entry) = tt_entry
+            && entry.mv == Some(mv)
+            && entry.depth as i32 * DEPTH_SCALE + W::singular_depth_margin() >= depth
+            && entry.flag != TTFlag::UpperBound {
+            let s_beta = entry.score - (depth * W::singular_beta_margin() / (DEPTH_SCALE * 64)) as i16;
+            let s_depth = depth * W::singular_search_depth() / (DEPTH_SCALE * DEPTH_SCALE);
+
+            thread.search_stack[ply as usize].skip_move = Some(mv);
+            let s_score = search::<NonPV>(pos, thread, shared, s_depth, ply, s_beta - 1, s_beta);
+            thread.search_stack[ply as usize].skip_move = None;
+
+            if s_score < s_beta {
+                ext += W::singular_ext();
+            }
+        }
+
         thread.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv, &shared.nnue_weights);
 
+        let new_depth = depth + ext - 1 * DEPTH_SCALE;
         if moves_seen == 0 {
-            score = -search::<Node>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
+            score = -search::<Node>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha);
         } else {
-            score = -search::<NonPV>(pos, thread, shared, depth - lmr - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
+            score = -search::<NonPV>(pos, thread, shared, new_depth - lmr, ply + 1, -alpha - 1, -alpha);
 
             if lmr > 0 && score > alpha {
-                score = -search::<NonPV>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -alpha - 1, -alpha);
+                score = -search::<NonPV>(pos, thread, shared, new_depth, ply + 1, -alpha - 1, -alpha);
             }
 
             if Node::PV && score > alpha {
-                score = -search::<PV>(pos, thread, shared, depth - 1 * DEPTH_SCALE, ply + 1, -beta, -alpha);
+                score = -search::<PV>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha);
             }
         }
         pos.unmake_move();
@@ -234,7 +263,9 @@ pub fn search<Node: NodeType>(
     }
 
     if moves_seen == 0 {
-        return if in_check {
+        return if skip_move.is_some() {
+            alpha
+        } else if in_check {
             Score::new_mated(ply)
         } else {
             Score::ZERO
@@ -242,24 +273,26 @@ pub fn search<Node: NodeType>(
     }
 
     let best_score = best_score.unwrap();
-    shared.ttable.store(
-        pos.board(),
-        (depth / DEPTH_SCALE) as u8,
-        ply,
-        raw_eval,
-        best_score,
-        best_move,
-        flag,
-        Node::PV || tt_entry.is_some_and(|e| e.pv)
-    );
+    if skip_move.is_none() {
+        shared.ttable.store(
+            pos.board(),
+            (depth / DEPTH_SCALE) as u8,
+            ply,
+            raw_eval,
+            best_score,
+            best_move,
+            flag,
+            Node::PV || tt_entry.is_some_and(|e| e.pv)
+        );
 
-    if !in_check && best_move.is_none_or(|mv| !mv.is_tactic()) && match flag {
-        TTFlag::Exact => true,
-        TTFlag::LowerBound => best_score > static_eval,
-        TTFlag::UpperBound => best_score < static_eval,
-        TTFlag::None => unreachable!(),
-    } {
-        thread.history.update_corr(pos.board(), depth, best_score, static_eval);
+        if !in_check && best_move.is_none_or(|mv| !mv.is_tactic()) && match flag {
+            TTFlag::Exact => true,
+            TTFlag::LowerBound => best_score > static_eval,
+            TTFlag::UpperBound => best_score < static_eval,
+            TTFlag::None => unreachable!(),
+        } {
+            thread.history.update_corr(pos.board(), depth, best_score, static_eval);
+        }
     }
 
     best_score
