@@ -147,7 +147,7 @@ pub fn search<Node: NodeType>(
         let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
         let mut score;
 
-        if !Node::PV && ply != 0 && best_score.map_or(false, |s: Score| !s.is_loss()) {
+        if !Node::PV && best_score.map_or(false, |s: Score| !s.is_loss()) {
             if is_tactic {
                 let see_margin = (W::see_tactic_scale() * depth / DEPTH_SCALE) as i16;
                 if depth <= W::see_depth()
