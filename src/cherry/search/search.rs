@@ -168,7 +168,7 @@ pub fn search<Node: NodeType>(
                 }
 
                 let lmr_depth = (depth - lmr).max(0);
-                let futile_margin = (W::futile_base() + W::futile_scale() * lmr_depth / DEPTH_SCALE) as i16;
+                let futile_margin = (W::futile_base() + W::futile_scale() * lmr_depth / DEPTH_SCALE + W::futile_improving() * improving as i32) as i16;
                 if lmr_depth <= W::futile_depth() && !in_check && static_eval + futile_margin <= alpha {
                     move_picker.skip_quiets();
                 }
