@@ -105,7 +105,7 @@ pub fn search<Node: NodeType>(
 
     if !Node::PV && !in_check && skip_move.is_none() {
         let rfp_margin = (W::rfp_base() + W::rfp_scale() * depth / DEPTH_SCALE - W::rfp_improving() * improving as i32) as i16;
-        if depth < W::rfp_depth() && static_eval >= beta + rfp_margin {
+        if depth < W::rfp_depth() && static_eval - rfp_margin >= beta {
             return static_eval;
         }
 
@@ -169,7 +169,7 @@ pub fn search<Node: NodeType>(
 
                 let lmr_depth = (depth - lmr).max(0);
                 let futile_margin = (W::futile_base() + W::futile_scale() * lmr_depth / DEPTH_SCALE) as i16;
-                if lmr_depth <= W::futile_depth() && !in_check && static_eval <= alpha - futile_margin {
+                if lmr_depth <= W::futile_depth() && !in_check && static_eval + futile_margin <= alpha {
                     move_picker.skip_quiets();
                 }
                 
