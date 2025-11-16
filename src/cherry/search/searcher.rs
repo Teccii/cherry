@@ -280,32 +280,23 @@ pub fn search_worker<Info: SearchInfo>(
                 break 'asp;
             }
 
-            if new_score <= alpha {
+            let (score, bound) = if new_score <= alpha {
                 window.fail_low();
-
-                if worker == 0 {
-                    info.update(
-                        pos.board(),
-                        &thread,
-                        &shared,
-                        TTFlag::UpperBound,
-                        score,
-                        depth,
-                    );
-                }
+                (alpha, TTFlag::UpperBound)
             } else {
                 window.fail_high();
+                (beta, TTFlag::LowerBound)
+            };
 
-                if worker == 0 {
-                    info.update(
-                        pos.board(),
-                        &thread,
-                        &shared,
-                        TTFlag::LowerBound,
-                        score,
-                        depth,
-                    );
-                }
+            if worker == 0 && shared.time_man.elapsed() >= 1000 {
+                info.update(
+                    pos.board(),
+                    &thread,
+                    &shared,
+                    bound,
+                    score,
+                    depth,
+                );
             }
 
             window.expand();
