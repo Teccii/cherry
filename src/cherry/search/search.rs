@@ -199,6 +199,10 @@ pub fn search<Node: NodeType>(
 
             if s_score < s_beta {
                 ext += W::singular_ext();
+
+                if !Node::PV && s_score + W::singular_dext_margin() < s_beta {
+                    ext += W::singular_dext();
+                }
             }
         }
 

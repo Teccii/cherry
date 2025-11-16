@@ -137,7 +137,9 @@ weights! {
     singular_depth_margin | SINGULAR_DEPTH_MARGIN: i32 => 3072,
     singular_beta_margin  | SINGULAR_BETA_MARGIN:  i32 => 196,
     singular_search_depth | SINGULAR_SEARCH_DEPTH: i32 => 512,
+    singular_dext_margin  | SINGULAR_DEXT_MARGIN:  i16 => 30,
     singular_ext          | SINGULAR_EXT:          i32 => 1024,
+    singular_dext         | SINGULAR_DEXT:         i32 => 1024,
 
     lmr_quiet_base    | LMR_QUIET_BASE:    i32 => 579,
     lmr_quiet_div     | LMR_QUIET_DIV:     i32 => 1626,
