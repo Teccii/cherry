@@ -29,8 +29,8 @@ pub fn init_lmr() {
             let x = if i != 0 { (i as f32).ln() } else { 0.0 };
             let y = if j != 0 { (j as f32).ln() } else { 0.0 };
 
-            quiet_table[i][j] = DEPTH_SCALE * (quiet_base + x * y / quiet_div) as i32;
-            tactical_table[i][j] = DEPTH_SCALE * (tactical_base + x * y / tactical_div) as i32;
+            quiet_table[i][j] = (DEPTH_SCALE as f32 * (quiet_base + x * y / quiet_div)) as i32;
+            tactical_table[i][j] = (DEPTH_SCALE as f32 * (tactical_base + x * y / tactical_div)) as i32;
         }
     }
 
