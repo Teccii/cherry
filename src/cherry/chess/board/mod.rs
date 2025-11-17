@@ -43,6 +43,8 @@ pub struct Board {
     pawn_hash: u64,
     minor_hash: u64,
     major_hash: u64,
+    white_hash: u64,
+    black_hash: u64,
     hash: u64,
     stm: Color,
 }
@@ -98,6 +100,16 @@ impl Board {
     #[inline]
     pub const fn major_hash(&self) -> u64 {
         self.major_hash
+    }
+
+    #[inline]
+    pub const fn white_hash(&self) -> u64 {
+        self.white_hash
+    }
+
+    #[inline]
+    pub const fn black_hash(&self) -> u64 {
+        self.black_hash
     }
 
     #[inline]
@@ -513,11 +525,14 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn calc_hashes(&self) -> (u64, u64, u64, u64) {
+    pub fn calc_hashes(&self) -> (u64, u64, u64, u64, u64, u64) {
         let mut hash = 0;
         let mut pawn_hash = 0;
         let mut minor_hash = 0;
         let mut major_hash = 0;
+        let mut white_hash = 0;
+        let mut black_hash = 0;
+
 
         let mailbox = self.as_mailbox();
         for &sq in &Square::ALL {
@@ -535,6 +550,13 @@ impl Board {
                     Piece::King => {
                         minor_hash ^= value;
                         major_hash ^= value;
+                    }
+                }
+
+                if piece != Piece::Pawn {
+                    match color {
+                        Color::White => white_hash ^= value,
+                        Color::Black => black_hash ^= value,
                     }
                 }
             }
@@ -560,7 +582,7 @@ impl Board {
             hash ^= ZOBRIST.stm;
         }
 
-        (hash, pawn_hash, minor_hash, major_hash)
+        (hash, pawn_hash, minor_hash, major_hash, white_hash, black_hash)
     }
 
     #[inline]
@@ -785,6 +807,13 @@ impl Board {
             Piece::King => {
                 self.minor_hash ^= value;
                 self.major_hash ^= value;
+            }
+        }
+
+        if piece != Piece::Pawn {
+            match color {
+                Color::White => self.white_hash ^= value,
+                Color::Black => self.black_hash ^= value,
             }
         }
     }

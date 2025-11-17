@@ -129,6 +129,8 @@ impl Board {
             pawn_hash: 0,
             minor_hash: 0,
             major_hash: 0,
+            white_hash: 0,
+            black_hash: 0,
             hash: 0,
             stm: Color::White,
         };
@@ -137,7 +139,7 @@ impl Board {
         write_scharnagl(&mut board, Color::Black, black_scharnagl);
 
         (board.attack_tables, board.xray_tables) = board.calc_attacks();
-        (board.hash, board.pawn_hash, board.minor_hash, board.major_hash) = board.calc_hashes();
+        (board.hash, board.pawn_hash, board.minor_hash, board.major_hash, board.white_hash, board.black_hash) = board.calc_hashes();
         board
     }
 }

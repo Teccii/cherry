@@ -72,6 +72,8 @@ weights! {
     pawn_corr_frac  | PAWN_CORR_FRAC:  i32 => 64,
     minor_corr_frac | MINOR_CORR_FRAC: i32 => 64,
     major_corr_frac | MAJOR_CORR_FRAC: i32 => 64,
+    white_corr_frac | WHITE_CORR_FRAC: i32 => 64,
+    black_corr_frac | BLACK_CORR_FRAC: i32 => 64,
 
     quiet_bonus_base | QUIET_BONUS_BASE: i32 => 130,
     quiet_bonus_mul  | QUIET_BONUS_MUL:  i32 => 127,
