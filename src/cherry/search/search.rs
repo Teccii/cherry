@@ -113,7 +113,12 @@ pub fn search<Node: NodeType>(
             && thread.search_stack[ply as usize - 1].move_played.is_some()
             && static_eval >= beta
             && pos.null_move() {
-            let nmp_reduction = (W::nmp_base() + W::nmp_scale() * depth as i64 / 1024) as i32;
+            let (nmp_base, nmp_scale) = if improving {
+                (W::nmp_improving_base(), W::nmp_improving_scale())
+            } else {
+                (W::nmp_base(), W::nmp_scale())
+            };
+            let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / DEPTH_SCALE as i64) as i32;
 
             thread.search_stack[ply as usize].move_played = None;
             let score = -search::<Node>(pos, thread, shared, depth - nmp_reduction, ply + 1, -beta, -beta + 1);

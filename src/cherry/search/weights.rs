@@ -123,6 +123,8 @@ weights! {
     nmp_depth             | NMP_DEPTH:             i32 => 3072,
     nmp_base              | NMP_BASE:              i64 => 3072,
     nmp_scale             | NMP_SCALE:             i64 => 340,
+    nmp_improving_base    | NMP_IMPROVING_BASE:    i64 => 4096,
+    nmp_improving_scale   | NMP_IMPROVING_SCALE:   i64 => 340,
     lmp_base              | LMP_BASE:              i64 => 2048,
     lmp_scale             | LMP_SCALE:             i64 => 512,
     lmp_improving_base    | LMP_BASE:              i64 => 4096,
