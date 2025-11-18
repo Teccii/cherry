@@ -43,7 +43,7 @@ pub fn search<Node: NodeType>(
         return Score::ZERO;
     }
 
-    if depth <= W::qs_depth() || ply >= MAX_PLY {
+    if depth <= 0 || ply >= MAX_PLY {
         return q_search::<Node>(pos, thread, shared, ply, alpha, beta);
     }
 
@@ -104,16 +104,34 @@ pub fn search<Node: NodeType>(
     thread.search_stack[ply as usize].static_eval = static_eval;
 
     if !Node::PV && !in_check && skip_move.is_none() {
-        let rfp_margin = (W::rfp_base() + W::rfp_scale() * depth / DEPTH_SCALE - W::rfp_improving() * improving as i32) as i16;
-        if depth < W::rfp_depth() && static_eval - rfp_margin >= beta {
-            return static_eval;
+        let (rfp_depth, rfp_base, rfp_scale, rfp_lerp) = if improving {
+            (W::rfp_improving_depth(), W::rfp_improving_base(), W::rfp_improving_scale(), W::rfp_improving_lerp())
+        } else {
+            (W::rfp_depth(), W::rfp_base(), W::rfp_scale(), W::rfp_lerp())
+        };
+
+        let rfp_margin = (rfp_base + rfp_scale * depth / DEPTH_SCALE) as i16;
+        if depth < rfp_depth && static_eval - rfp_margin >= beta {
+            return if !static_eval.is_win() && !beta.is_win() {
+                let (static_eval, beta) = (i32::from(static_eval.0), i32::from(beta.0));
+
+                Score::new((static_eval + rfp_lerp * (beta - static_eval) / 1024) as i16)
+            } else {
+                static_eval
+            };
         }
 
-        if depth >= W::nmp_depth()
+        let (nmp_depth, nmp_base, nmp_scale) = if improving {
+            (W::nmp_improving_depth(), W::nmp_improving_base(), W::nmp_improving_scale())
+        } else {
+            (W::nmp_depth(), W::nmp_base(), W::nmp_scale())
+        };
+
+        if depth >= nmp_depth
             && thread.search_stack[ply as usize - 1].move_played.is_some()
             && static_eval >= beta
             && pos.null_move() {
-            let nmp_reduction = (W::nmp_base() + W::nmp_scale() * depth as i64 / 1024) as i32;
+            let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / 1024) as i32;
 
             thread.search_stack[ply as usize].move_played = None;
             let score = -search::<Node>(pos, thread, shared, depth - nmp_reduction, ply + 1, -beta, -beta + 1);
@@ -149,8 +167,14 @@ pub fn search<Node: NodeType>(
 
         if !Node::PV && best_score.map_or(false, |s: Score| !s.is_loss()) {
             if is_tactic {
-                let see_margin = (W::see_tactic_scale() * depth / DEPTH_SCALE) as i16;
-                if depth <= W::see_depth()
+                let (see_depth, see_base, see_scale) = if improving {
+                    (W::see_tactic_improving_depth(), W::see_tactic_improving_base(), W::see_tactic_improving_scale())
+                } else {
+                    (W::see_tactic_depth(), W::see_tactic_base(), W::see_tactic_scale())
+                };
+
+                let see_margin = (see_base + see_scale * depth / DEPTH_SCALE) as i16;
+                if depth <= see_depth
                     && move_picker.stage() > Stage::YieldGoodTactics
                     && !pos.board().cmp_see(mv, see_margin) {
                     continue;
@@ -168,13 +192,25 @@ pub fn search<Node: NodeType>(
                 }
 
                 let lmr_depth = (depth - lmr).max(0);
-                let futile_margin = (W::futile_base() + W::futile_scale() * lmr_depth / DEPTH_SCALE) as i16;
-                if lmr_depth <= W::futile_depth() && !in_check && static_eval + futile_margin <= alpha {
+                let (futile_depth, futile_base, futile_scale) = if improving {
+                    (W::futile_improving_depth(), W::futile_improving_base(), W::futile_improving_scale())
+                } else {
+                    (W::futile_depth(), W::futile_base(), W::futile_scale())
+                };
+
+                let futile_margin = (futile_base + futile_scale * lmr_depth / DEPTH_SCALE) as i16;
+                if lmr_depth <= futile_depth && !in_check && static_eval + futile_margin <= alpha {
                     move_picker.skip_quiets();
                 }
-                
-                let see_margin = (W::see_quiet_scale() * lmr_depth / DEPTH_SCALE) as i16;
-                if lmr_depth <= W::see_depth()
+
+                let (see_depth, see_base, see_scale) = if improving {
+                    (W::see_quiet_improving_depth(), W::see_quiet_improving_base(), W::see_quiet_improving_scale())
+                } else {
+                    (W::see_quiet_depth(), W::see_quiet_base(), W::see_quiet_scale())
+                };
+
+                let see_margin = (see_base + see_scale * lmr_depth / DEPTH_SCALE) as i16;
+                if lmr_depth <= see_depth
                     && move_picker.stage() > Stage::YieldGoodTactics
                     && !pos.board().cmp_see(mv, see_margin) {
                     continue;
@@ -188,7 +224,7 @@ pub fn search<Node: NodeType>(
             && skip_move.is_none()
             && let Some(entry) = tt_entry
             && entry.mv == Some(mv)
-            && entry.depth as i32 * DEPTH_SCALE + W::singular_depth_margin() >= depth
+            && entry.depth as i32 * DEPTH_SCALE + W::singular_tt_depth() >= depth
             && entry.flag != TTFlag::UpperBound {
             let s_beta = entry.score - (depth * W::singular_beta_margin() / (DEPTH_SCALE * 64)) as i16;
             let s_depth = depth * W::singular_search_depth() / (DEPTH_SCALE * DEPTH_SCALE);
