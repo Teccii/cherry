@@ -241,6 +241,8 @@ pub fn search<Node: NodeType>(
                 }
             } else if s_beta >= beta {
                 return s_beta;
+            } else if entry.score >= beta {
+                ext = W::singular_neg_ext();
             }
         }
 
