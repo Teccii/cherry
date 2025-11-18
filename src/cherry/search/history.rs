@@ -38,7 +38,7 @@ impl ContIndices {
 #[derive(Clone)]
 pub struct History {
     quiets: Box<ColorTo<BoolTo<SquareTo<BoolTo<SquareTo<i16>>>>>>, //Indexing: [stm][src threatened][src][dest threatened][dest]
-    tactics: Box<ColorTo<PieceTo<SquareTo<i16>>>>, //Indexing: [stm][piece][dest]
+    tactics: Box<ColorTo<BoolTo<PieceTo<BoolTo<SquareTo<i16>>>>>>, //Indexing: [stm][src threatened][piece][dest_threatened][dest]
     counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
     follow_up: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
     pawn_corr: Box<ColorTo<[i16; PAWN_CORR_SIZE]>>, //Indexing: [stm][pawn hash % size]
@@ -80,12 +80,22 @@ impl History {
 
     #[inline]
     pub fn get_tactic(&self, board: &Board, mv: Move) -> i16 {
-        self.tactics[board.stm()][board.piece_on(mv.src()).unwrap()][mv.dest()]
+        let stm = board.stm();
+        let (src, dest) = (mv.src(), mv.dest());
+        let src_threatened = !board.attack_table(!stm).get(src).is_empty();
+        let dest_threatened = !board.attack_table(!stm).get(dest).is_empty();
+
+        self.tactics[stm][src_threatened as usize][board.piece_on(src).unwrap()][dest_threatened as usize][dest]
     }
 
     #[inline]
     pub fn get_tactic_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
-        &mut self.tactics[board.stm()][board.piece_on(mv.src()).unwrap()][mv.dest()]
+        let stm = board.stm();
+        let (src, dest) = (mv.src(), mv.dest());
+        let src_threatened = !board.attack_table(!stm).get(src).is_empty();
+        let dest_threatened = !board.attack_table(!stm).get(dest).is_empty();
+        
+        &mut self.tactics[stm][src_threatened as usize][board.piece_on(src).unwrap()][dest_threatened as usize][dest]
     }
 
     /*----------------------------------------------------------------*/
