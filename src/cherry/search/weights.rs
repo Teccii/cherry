@@ -160,6 +160,7 @@ weights! {
     singular_ext               | SINGULAR_EXT:               i32 => 1024,
     singular_dext              | SINGULAR_DEXT:              i32 => 1024,
     singular_neg_ext           | SINGULAR_NEG_EXT:           i32 => -1024,
+    tt_depth_bias              | TT_DEPTH_BIAS:              i32 => 0,
 
     lmr_quiet_base    | LMR_QUIET_BASE:    i32 => 579,
     lmr_quiet_div     | LMR_QUIET_DIV:     i32 => 1626,

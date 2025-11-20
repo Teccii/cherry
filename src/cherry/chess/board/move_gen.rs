@@ -131,7 +131,7 @@ impl Board {
         let stm = self.stm;
         let our_attack_table = self.attack_table(stm);
 
-        let (pin_mask, pinned) = self.calc_pins(stm);
+        let (pin_mask, pinned) = self.calc_pins();
         let masked_attack_table = *(*our_attack_table & pin_mask).as_mailbox();
 
         let valid_pieces = self.index_to_piece[stm].valid();
@@ -359,39 +359,45 @@ impl Board {
     }
 
     #[inline]
-    pub(super) fn calc_pins(&self, color: Color) -> (Wordboard, Bitboard) {
-        let our_king = self.king(color);
-        let our_pieces = self.colors(color);
-        let pinners = self.xray_table(!color).get(our_king);
-        let mut pinned = Bitboard::EMPTY;
-        let mut pinned_mask = PieceMask::EMPTY;
-        let mut at_mask0 = Vec512::zero();
-        let mut at_mask1 = Vec512::zero();
+    pub(super) fn calc_pins(&self) -> (Wordboard, Bitboard) {
+        let stm = self.stm;
+        let our_king = self.king(stm);
 
-        for index in pinners {
-            let pinner = self.index_to_square[!color][index].unwrap();
-            let between = between(our_king, pinner) | pinner;
-            let piece = our_pieces & between;
+        let (ray_coords, ray_valid) = geometry::superpiece_rays(our_king);
+        let ray_places = Vec512::permute8(ray_coords, self.board.inner);
+        let inv_perm = geometry::superpiece_inv_rays(our_king);
 
-            if piece.is_empty() {
-                continue;
-            }
+        let color = ray_places.msb8();
+        let blockers = ray_places.nonzero8() & geometry::NON_HORSE_ATTACK_MASK;
+        let sliders = geometry::sliders_from_rays(ray_places);
+        let closest = geometry::superpiece_attacks(blockers, ray_valid) & blockers;
+        let pin_raymask = geometry::superpiece_attacks(blockers & !closest, ray_valid) & geometry::NON_HORSE_ATTACK_MASK;
+        let second_closest = pin_raymask & blockers & !closest;
 
-            let piece_mask = self.get(piece.next_square()).index().unwrap().into_mask();
+        let their_pieces = (color ^ match stm {
+            Color::White => Bitboard::EMPTY,
+            Color::Black => Bitboard::FULL,
+        }) & blockers;
+        let pinners = their_pieces & sliders & second_closest;
+        let pinned = !their_pieces & Vec128::mask8(Vec128::from(pinners.0).nonzero8(), Vec128::from(closest)).into_u64();
 
-            let at_mask = Vec512::splat16(piece_mask.into_inner());
-            at_mask0 |= Vec512::mask16(between.0 as Vec512Mask16, at_mask);
-            at_mask1 |= Vec512::mask16((between.0 >> 32) as Vec512Mask16, at_mask);
+        let pinned_ids = Vec512::mask8(pin_raymask, Vec512::lane_splat8to64(Vec512::mask8(pinned.0, ray_places)));
+        let pinned_ids = Vec512::permute8_mz(!inv_perm.msb8(), inv_perm, pinned_ids);
 
-            pinned |= piece;
-            pinned_mask |= piece_mask;
-        }
+        let pinned_count = pinned.popcnt();
+        let pinned_coords = Vec512::compress8(pinned.0, ray_coords).into_vec128();
+        let sq_idx = unsafe { Vec128::load(self.index_to_square[stm].into_inner().as_ptr()) };
+        let piece_mask = Vec128::findset8(pinned_coords, pinned_count as i32, sq_idx);
 
-        let not_pinned = Vec512::splat16(!pinned_mask.into_inner());
-        at_mask0 |= not_pinned;
-        at_mask1 |= not_pinned;
+        let ones = Vec512::splat16(1);
+        let valid_ids = pinned_ids.nonzero8();
+        let masked_ids = pinned_ids & Vec512::splat8(Place::INDEX_MASK);
+        let bits0 = Vec512::shlv16_mz(valid_ids as Vec512Mask16, ones, masked_ids.into_vec256().zext8to16());
+        let bits1 = Vec512::shlv16_mz((valid_ids >> 32) as Vec512Mask16, ones, masked_ids.extract_vec256::<1>().zext8to16());
+        let table_mask0 = Vec512::splat16(!piece_mask) | bits0;
+        let table_mask1 = Vec512::splat16(!piece_mask) | bits1;
 
-        (Wordboard::new(at_mask0, at_mask1), pinned)
+        (Wordboard::new(table_mask0, table_mask1), Bitboard(pinned_ids.nonzero8()))
     }
 }
 

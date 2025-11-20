@@ -3,23 +3,25 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone)]
-pub struct Xorshift64 {
+pub struct SplitMix64 {
     pub state: u64
 }
 
-impl Xorshift64 {
+impl SplitMix64 {
     #[inline]
-    pub const fn new(state: u64) -> Xorshift64 {
-        Xorshift64 { state }
+    pub const fn new(state: u64) -> SplitMix64 {
+        SplitMix64 { state }
     }
 
     #[inline]
     pub const fn next(&mut self) -> u64 {
-        self.state ^= self.state << 13;
-        self.state ^= self.state >> 17;
-        self.state ^= self.state << 5;
+        self.state = self.state.wrapping_add(0x9e3779b97f4a7c15u64);
 
-        self.state
+        let mut temp = self.state;
+        temp = (temp ^ (temp >> 30)).wrapping_mul(0xbf58476d1ce4e5b9u64);
+        temp = (temp ^ (temp >> 27)).wrapping_mul(0x94d049bb133111ebu64);
+
+        temp ^ (temp >> 31)
     }
 }
 
@@ -36,7 +38,7 @@ pub struct Zobrist {
 impl Zobrist {
     pub const fn new(seed: u64) -> Zobrist {
         let mut zobrist = Zobrist::empty();
-        let mut rng = Xorshift64::new(seed);
+        let mut rng = SplitMix64::new(seed);
         let mut i = 0;
         while i < Color::COUNT {
             let mut j = 0;

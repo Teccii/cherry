@@ -18,7 +18,6 @@ impl Board {
 
         let mut board = Board {
             board: Byteboard::default(),
-            xray_tables: [Wordboard::default(); Color::COUNT],
             attack_tables: [Wordboard::default(); Color::COUNT],
             index_to_square: [IndexToSquare::default(); Color::COUNT],
             index_to_piece: [IndexToPiece::default(); Color::COUNT],
@@ -137,9 +136,9 @@ impl Board {
             board.set_en_passant(Some(sq.file()));
         }
 
+        board.attack_tables = board.calc_attacks();
         board.halfmove_clock = halfmove_clock.parse::<u8>().ok()?.min(100);
         board.fullmove_count = fullmove_count.parse::<u16>().ok()?.max(1);
-        (board.attack_tables, board.xray_tables) = board.calc_attacks();
         (board.hash, board.pawn_hash, board.minor_hash, board.major_hash, board.white_hash, board.black_hash) = board.calc_hashes();
 
         Some(board)

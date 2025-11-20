@@ -32,7 +32,6 @@ pub struct CastleRights {
 #[derive(Debug, Clone)]
 pub struct Board {
     board: Byteboard,
-    xray_tables: [Wordboard; Color::COUNT],
     attack_tables: [Wordboard; Color::COUNT],
     index_to_square: [IndexToSquare; Color::COUNT],
     index_to_piece: [IndexToPiece; Color::COUNT],
@@ -53,11 +52,6 @@ impl Board {
     #[inline]
     pub fn castle_rights(&self, color: Color) -> CastleRights {
         self.castle_rights[color]
-    }
-
-    #[inline]
-    pub fn xray_table(&self, color: Color) -> &Wordboard {
-        &self.xray_tables[color]
     }
 
     #[inline]
@@ -137,32 +131,6 @@ impl Board {
     #[inline]
     pub fn king(&self, color: Color) -> Square {
         self.index_to_square[color][PieceIndex::new(0)].unwrap()
-    }
-
-    #[inline]
-    pub fn pinners(&self, color: Color) -> Bitboard {
-        let their_king = self.king(!color);
-        let mut pinners = Bitboard::EMPTY;
-
-        for index in self.xray_table(color).get(their_king) {
-            pinners |= self.index_to_square[color][index].unwrap();
-        }
-
-        pinners
-    }
-
-    #[inline]
-    pub fn pinned(&self, color: Color) -> Bitboard {
-        let our_king = self.king(color);
-        let our_pieces = self.colors(color);
-        let pinners = self.xray_table(!color).get(our_king);
-        let mut pinned = Bitboard::EMPTY;
-
-        for index in pinners {
-            pinned |= our_pieces & between(our_king, self.index_to_square[!color][index].unwrap());
-        }
-
-        pinned
     }
 
     #[inline]
@@ -586,23 +554,19 @@ impl Board {
     }
 
     #[inline]
-    pub fn calc_attacks(&self) -> ([Wordboard; Color::COUNT], [Wordboard; Color::COUNT]) {
+    pub fn calc_attacks(&self) -> [Wordboard; Color::COUNT] {
         let mut attacks = [[PieceMask::EMPTY; Square::COUNT]; Color::COUNT];
-        let mut xrays = [[PieceMask::EMPTY; Square::COUNT]; Color::COUNT];
-
         for &sq in &Square::ALL {
-            let ([white_attacks, black_attacks], [white_xrays, black_xrays]) = self.calc_attacks_to(sq);
+            let [white_attacks, black_attacks] = self.calc_attacks_to(sq);
             attacks[Color::White][sq] = white_attacks;
             attacks[Color::Black][sq] = black_attacks;
-            xrays[Color::White][sq] = white_xrays;
-            xrays[Color::Black][sq] = black_xrays;
         }
 
-        unsafe { (core::mem::transmute(attacks), core::mem::transmute(xrays)) }
+        unsafe { core::mem::transmute(attacks) }
     }
 
     #[inline]
-    pub fn calc_attacks_to(&self, sq: Square) -> ([PieceMask; Color::COUNT], [PieceMask; Color::COUNT]) {
+    pub fn calc_attacks_to(&self, sq: Square) -> [PieceMask; Color::COUNT] {
         let (ray_coords, ray_valid) = geometry::superpiece_rays(sq);
         let ray_places = Vec512::permute8(ray_coords, self.board.inner);
 
@@ -610,25 +574,19 @@ impl Board {
         let blockers = ray_places.nonzero8();
         let attackers = geometry::attackers_from_rays(ray_places);
         let closest = geometry::superpiece_attacks(blockers, ray_valid) & blockers;
-        let second_closest = geometry::superpiece_attacks(blockers & !closest, ray_valid) & blockers & !closest;
-
         let white_sq_idx = unsafe { Vec128::load(self.index_to_square[Color::White].into_inner().as_ptr()) };
         let black_sq_idx = unsafe { Vec128::load(self.index_to_square[Color::Black].into_inner().as_ptr()) };
 
-        let calc_masks = |raymask: u64| {
-            let white = !color & raymask & attackers;
-            let black = color & raymask & attackers;
-            let white_count = white.count_ones() as i32;
-            let black_count = black.count_ones() as i32;
-            let white_coords = Vec512::compress8(white, ray_coords).into_vec128();
-            let black_coords = Vec512::compress8(black, ray_coords).into_vec128();
-            let white_mask = Vec128::findset8(white_coords, white_count, white_sq_idx);
-            let black_mask = Vec128::findset8(black_coords, black_count, black_sq_idx);
+        let white = !color & closest & attackers;
+        let black = color & closest & attackers;
+        let white_count = white.count_ones() as i32;
+        let black_count = black.count_ones() as i32;
+        let white_coords = Vec512::compress8(white, ray_coords).into_vec128();
+        let black_coords = Vec512::compress8(black, ray_coords).into_vec128();
+        let white_mask = Vec128::findset8(white_coords, white_count, white_sq_idx);
+        let black_mask = Vec128::findset8(black_coords, black_count, black_sq_idx);
 
-            [PieceMask::new(white_mask), PieceMask::new(black_mask)]
-        };
-
-        (calc_masks(closest), calc_masks(second_closest))
+        [PieceMask::new(white_mask), PieceMask::new(black_mask)]
     }
 
     /*----------------------------------------------------------------*/
@@ -657,73 +615,57 @@ impl Board {
         let dest_sliders = geometry::sliders_from_rays(dest_ray_places);
         let src_closest = geometry::superpiece_attacks(src_blockers, src_ray_valid);
         let dest_closest = geometry::superpiece_attacks(dest_blockers, dest_ray_valid);
-        let src_second_closest = geometry::superpiece_attacks(src_blockers & !src_closest, src_ray_valid);
-        let dest_second_closest = geometry::superpiece_attacks(dest_blockers & !dest_closest, dest_ray_valid);
 
-        let update_tables = |tables: &mut [Wordboard; Color::COUNT], src_raymask0: u64, dest_raymask0: u64, src_raymask1: u64, dest_raymask1: u64| {
-            let src_visible = src_sliders & src_raymask0;
-            let dest_visible = dest_sliders & dest_raymask0;
-            let src_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(src_visible, Vec512::permute8(src_ray_coords, new_board)));
-            let dest_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(dest_visible, dest_ray_places));
-            let src_updates = Vec512::mask8((src_raymask1 & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32), src_visible_ids);
-            let dest_updates = Vec512::mask8((dest_raymask1 & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32), dest_visible_ids);
+        let src_visible = src_sliders & src_closest;
+        let dest_visible = dest_sliders & dest_closest;
+        let src_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(src_visible, Vec512::permute8(src_ray_coords, new_board)));
+        let dest_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(dest_visible, dest_ray_places));
+        let src_updates = Vec512::mask8((src_closest & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32), src_visible_ids);
+        let dest_updates = Vec512::mask8((dest_closest & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32), dest_visible_ids);
 
-            let src_updates = Vec512::permute8_mz(!src_swapped_perm.msb8(), src_swapped_perm, src_updates);
-            let dest_updates = Vec512::permute8_mz(!dest_swapped_perm.msb8(), dest_swapped_perm, dest_updates);
-            let src_valid_updates = src_updates.nonzero8();
-            let dest_valid_updates = dest_updates.nonzero8();
-            let src_color = src_updates.msb8();
-            let dest_color = dest_updates.msb8();
+        let src_updates = Vec512::permute8_mz(!src_swapped_perm.msb8(), src_swapped_perm, src_updates);
+        let dest_updates = Vec512::permute8_mz(!dest_swapped_perm.msb8(), dest_swapped_perm, dest_updates);
+        let src_valid_updates = src_updates.nonzero8();
+        let dest_valid_updates = dest_updates.nonzero8();
+        let src_color = src_updates.msb8();
+        let dest_color = dest_updates.msb8();
 
-            let update_mask = Vec512::splat8(Place::INDEX_MASK);
-            let src_masked_updates = src_updates & update_mask;
-            let dest_masked_updates = dest_updates & update_mask;
+        let update_mask = Vec512::splat8(Place::INDEX_MASK);
+        let src_masked_updates = src_updates & update_mask;
+        let dest_masked_updates = dest_updates & update_mask;
 
-            let ones = Vec512::splat16(1);
-            let src_bits0 = Vec512::shlv16_mz(src_valid_updates as Vec512Mask16, ones, src_masked_updates.into_vec256().zext8to16());
-            let src_bits1 = Vec512::shlv16_mz((src_valid_updates >> 32) as Vec512Mask16, ones, src_masked_updates.extract_vec256::<1>().zext8to16());
-            let dest_bits0 = Vec512::shlv16_mz(dest_valid_updates as Vec512Mask16, ones, dest_masked_updates.into_vec256().zext8to16());
-            let dest_bits1 = Vec512::shlv16_mz((dest_valid_updates >> 32) as Vec512Mask16, ones, dest_masked_updates.extract_vec256::<1>().zext8to16());
+        let ones = Vec512::splat16(1);
+        let src_bits0 = Vec512::shlv16_mz(src_valid_updates as Vec512Mask16, ones, src_masked_updates.into_vec256().zext8to16());
+        let src_bits1 = Vec512::shlv16_mz((src_valid_updates >> 32) as Vec512Mask16, ones, src_masked_updates.extract_vec256::<1>().zext8to16());
+        let dest_bits0 = Vec512::shlv16_mz(dest_valid_updates as Vec512Mask16, ones, dest_masked_updates.into_vec256().zext8to16());
+        let dest_bits1 = Vec512::shlv16_mz((dest_valid_updates >> 32) as Vec512Mask16, ones, dest_masked_updates.extract_vec256::<1>().zext8to16());
 
-            let mut update00 = Vec512::mask16(!src_color as Vec512Mask16, src_bits0);
-            let mut update01 = Vec512::mask16(!(src_color >> 32) as Vec512Mask16, src_bits1);
-            let mut update10 = Vec512::mask16(src_color as Vec512Mask16, src_bits0);
-            let mut update11 = Vec512::mask16((src_color >> 32) as Vec512Mask16, src_bits1);
+        let mut update00 = Vec512::mask16(!src_color as Vec512Mask16, src_bits0);
+        let mut update01 = Vec512::mask16(!(src_color >> 32) as Vec512Mask16, src_bits1);
+        let mut update10 = Vec512::mask16(src_color as Vec512Mask16, src_bits0);
+        let mut update11 = Vec512::mask16((src_color >> 32) as Vec512Mask16, src_bits1);
 
-            if UPDATE_DEST_SLIDERS {
-                update00 ^= Vec512::mask16(!dest_color as Vec512Mask16, dest_bits0);
-                update01 ^= Vec512::mask16(!(dest_color >> 32) as Vec512Mask16, dest_bits1);
-                update10 ^= Vec512::mask16(dest_color as Vec512Mask16, dest_bits0);
-                update11 ^= Vec512::mask16((dest_color >> 32) as Vec512Mask16, dest_bits1);
-            }
+        if UPDATE_DEST_SLIDERS {
+            update00 ^= Vec512::mask16(!dest_color as Vec512Mask16, dest_bits0);
+            update01 ^= Vec512::mask16(!(dest_color >> 32) as Vec512Mask16, dest_bits1);
+            update10 ^= Vec512::mask16(dest_color as Vec512Mask16, dest_bits0);
+            update11 ^= Vec512::mask16((dest_color >> 32) as Vec512Mask16, dest_bits1);
+        }
 
-            tables[0].inner[0] ^= update00;
-            tables[0].inner[1] ^= update01;
-            tables[1].inner[0] ^= update10;
-            tables[1].inner[1] ^= update11;
-        };
-
-        update_tables(&mut self.attack_tables, src_closest, dest_closest, src_closest, dest_closest);
-        update_tables(&mut self.xray_tables, src_closest, dest_closest, src_second_closest, dest_second_closest);
-        update_tables(&mut self.xray_tables, src_second_closest & !src_closest, dest_second_closest & !dest_closest, src_closest, dest_closest);
+        self.attack_tables[0].inner[0] ^= update00;
+        self.attack_tables[0].inner[1] ^= update01;
+        self.attack_tables[1].inner[0] ^= update10;
+        self.attack_tables[1].inner[1] ^= update11;
 
         let piece_mask = Vec512::splat16(index.into_mask().into_inner());
         let not_piece_mask = Vec512::splat16(!index.into_mask().into_inner());
         let attack_mask = dest_closest & geometry::attack_mask(piece, color);
-        let xray_mask = dest_second_closest & !dest_closest & geometry::attack_mask(piece, color);
         let add_attack_mask = Vec512::mask_bitshuffle(!dest_swapped_perm.msb8(), Vec512::splat64(attack_mask.rotate_left(32)), dest_swapped_perm);
-        let add_xray_mask = Vec512::mask_bitshuffle(!dest_swapped_perm.msb8(), Vec512::splat64(xray_mask.rotate_left(32)), dest_swapped_perm);
 
         self.attack_tables[color].inner[0] &= not_piece_mask;
         self.attack_tables[color].inner[1] &= not_piece_mask;
         self.attack_tables[color].inner[0] |= Vec512::mask16(add_attack_mask as Vec512Mask16, piece_mask);
-        self.attack_tables[color].inner[1] |= Vec512::mask16((add_attack_mask >> 32) as Vec512Mask16, piece_mask);
-
-        self.xray_tables[color].inner[0] &= not_piece_mask;
-        self.xray_tables[color].inner[1] &= not_piece_mask;
-        self.xray_tables[color].inner[0] |= Vec512::mask16(add_xray_mask as Vec512Mask16, piece_mask);
-        self.xray_tables[color].inner[1] |= Vec512::mask16((add_xray_mask >> 32) as Vec512Mask16, piece_mask);
-    }
+        self.attack_tables[color].inner[1] |= Vec512::mask16((add_attack_mask >> 32) as Vec512Mask16, piece_mask); }
 
     #[inline]
     fn update_slider(&mut self, sq: Square) {
@@ -734,31 +676,23 @@ impl Board {
         let blockers = ray_places.nonzero8();
         let sliders = geometry::sliders_from_rays(ray_places);
         let closest = geometry::superpiece_attacks(blockers, ray_valid) & geometry::NON_HORSE_ATTACK_MASK;
-        let second_closest = geometry::superpiece_attacks(blockers & !closest, ray_valid) & geometry::NON_HORSE_ATTACK_MASK;
 
-        let update_tables = |tables: &mut [Wordboard; Color::COUNT], raymask0: u64, raymask1: u64| {
-            let visible = raymask0 & sliders;
-            let visible_ids = Vec512::lane_splat8to64(Vec512::mask8(visible, ray_places));
+        let visible = closest & sliders;
+        let visible_ids = Vec512::lane_splat8to64(Vec512::mask8(visible, ray_places));
+        let updates = Vec512::mask8(closest.rotate_left(32), visible_ids);
+        let updates = Vec512::permute8_mz(!swapped_perm.msb8(), swapped_perm, updates);
+        let masked_updates = updates & Vec512::splat8(Place::INDEX_MASK);
+        let valid_updates = updates.nonzero8();
+        let color = updates.msb8();
 
-            let updates = Vec512::mask8(raymask1.rotate_left(32), visible_ids);
-            let updates = Vec512::permute8_mz(!swapped_perm.msb8(), swapped_perm, updates);
-            let masked_updates = updates & Vec512::splat8(Place::INDEX_MASK);
-            let valid_updates = updates.nonzero8();
-            let color = updates.msb8();
+        let ones = Vec512::splat16(1);
+        let bits0 = Vec512::shlv16_mz(valid_updates as Vec512Mask16, ones, masked_updates.into_vec256().zext8to16());
+        let bits1 = Vec512::shlv16_mz((valid_updates >> 32) as Vec512Mask16, ones, masked_updates.extract_vec256::<1>().zext8to16());
 
-            let ones = Vec512::splat16(1);
-            let bits0 = Vec512::shlv16_mz(valid_updates as Vec512Mask16, ones, masked_updates.into_vec256().zext8to16());
-            let bits1 = Vec512::shlv16_mz((valid_updates >> 32) as Vec512Mask16, ones, masked_updates.extract_vec256::<1>().zext8to16());
-
-            tables[0].inner[0] ^= Vec512::mask16(!color as Vec512Mask16, bits0);
-            tables[0].inner[1] ^= Vec512::mask16(!(color >> 32) as Vec512Mask16, bits1);
-            tables[1].inner[0] ^= Vec512::mask16(color as Vec512Mask16, bits0);
-            tables[1].inner[1] ^= Vec512::mask16((color >> 32) as Vec512Mask16, bits1);
-        };
-
-        update_tables(&mut self.attack_tables, closest, closest);
-        update_tables(&mut self.xray_tables, closest, second_closest);
-        update_tables(&mut self.xray_tables, second_closest & !closest,  closest);
+        self.attack_tables[0].inner[0] ^= Vec512::mask16(!color as Vec512Mask16, bits0);
+        self.attack_tables[0].inner[1] ^= Vec512::mask16(!(color >> 32) as Vec512Mask16, bits1);
+        self.attack_tables[1].inner[0] ^= Vec512::mask16(color as Vec512Mask16, bits0);
+        self.attack_tables[1].inner[1] ^= Vec512::mask16((color >> 32) as Vec512Mask16, bits1);
     }
 
     #[inline]
@@ -766,22 +700,15 @@ impl Board {
         let piece_mask = Vec512::splat16(index.into_mask().into_inner());
         let (ray_coords, ray_valid) = geometry::superpiece_rays(sq);
         let ray_places = Vec512::permute8(ray_coords, self.board.inner);
-        let perm = geometry::superpiece_inv_rays(sq);
+        let inv_perm = geometry::superpiece_inv_rays(sq);
 
         let blockers = ray_places.nonzero8();
         let closest = geometry::superpiece_attacks(blockers, ray_valid);
-        let second_closest = geometry::superpiece_attacks(blockers & !closest, ray_valid) & !closest;
+        let attacker_mask = closest & geometry::attack_mask(piece, color);
+        let add_mask = Vec512::mask_bitshuffle(!inv_perm.msb8(), Vec512::splat64(attacker_mask), inv_perm);
 
-        let update_tables = |tables: &mut [Wordboard; Color::COUNT], raymask: u64| {
-            let attacker_mask = raymask & geometry::attack_mask(piece, color);
-            let add_mask = Vec512::mask_bitshuffle(!perm.msb8(), Vec512::splat64(attacker_mask), perm);
-
-            tables[color].inner[0] |= Vec512::mask16(add_mask as Vec512Mask16, piece_mask);
-            tables[color].inner[1] |= Vec512::mask16((add_mask >> 32) as Vec512Mask16, piece_mask);
-        };
-
-        update_tables(&mut self.attack_tables, closest);
-        update_tables(&mut self.xray_tables, second_closest);
+        self.attack_tables[color].inner[0] |= Vec512::mask16(add_mask as Vec512Mask16, piece_mask);
+        self.attack_tables[color].inner[1] |= Vec512::mask16((add_mask >> 32) as Vec512Mask16, piece_mask);
     }
 
     #[inline]
@@ -789,8 +716,6 @@ impl Board {
         let piece_mask = Vec512::splat16(!index.into_mask().into_inner());
         self.attack_tables[color].inner[0] &= piece_mask;
         self.attack_tables[color].inner[1] &= piece_mask;
-        self.xray_tables[color].inner[0] &= piece_mask;
-        self.xray_tables[color].inner[1] &= piece_mask;
     }
 
     /*----------------------------------------------------------------*/

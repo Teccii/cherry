@@ -320,7 +320,7 @@ pub fn search<Node: NodeType>(
     if skip_move.is_none() {
         shared.ttable.store(
             pos.board(),
-            (depth / DEPTH_SCALE) as u8,
+            ((depth + W::tt_depth_bias()) / DEPTH_SCALE) as u8,
             ply,
             raw_eval,
             best_score,

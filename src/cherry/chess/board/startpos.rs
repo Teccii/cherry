@@ -118,7 +118,6 @@ impl Board {
 
         let mut board = Board {  
             board: Byteboard::default(),
-            xray_tables: [Wordboard::default(); Color::COUNT],
             attack_tables: [Wordboard::default(); Color::COUNT],
             index_to_square: [IndexToSquare::default(); Color::COUNT],
             index_to_piece: [IndexToPiece::default(); Color::COUNT],
@@ -138,7 +137,7 @@ impl Board {
         write_scharnagl(&mut board, Color::White, white_scharnagl);
         write_scharnagl(&mut board, Color::Black, black_scharnagl);
 
-        (board.attack_tables, board.xray_tables) = board.calc_attacks();
+        board.attack_tables = board.calc_attacks();
         (board.hash, board.pawn_hash, board.minor_hash, board.major_hash, board.white_hash, board.black_hash) = board.calc_hashes();
         board
     }
