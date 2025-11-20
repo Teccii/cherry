@@ -62,7 +62,6 @@ impl PrincipalVariation {
         self.moves[0] = Some(best_move);
         self.len = child_pv.len + 1;
         self.moves[1..self.len].copy_from_slice(&child_pv.moves[..child_pv.len]);
-
     }
 
     pub fn display(&self, board: &Board, frc: bool) -> String {
@@ -248,7 +247,7 @@ pub fn search_worker<Info: SearchInfo>(
         window.reset();
 
         'asp: loop {
-            let (alpha, beta) = if depth >= W::asp_window_depth() {
+            let (alpha, beta) = if depth >= 3 {
                 window.get()
             } else {
                 (-Score::INFINITE, Score::INFINITE)
@@ -259,7 +258,7 @@ pub fn search_worker<Info: SearchInfo>(
                 &mut pos,
                 thread,
                 shared,
-                i32::from(depth) * DEPTH_SCALE,
+                depth as i32 * DEPTH_SCALE,
                 0,
                 alpha,
                 beta,

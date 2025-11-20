@@ -5,20 +5,16 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 pub const MOVE_OVERHEAD: u64 = 200;
-const EXPECTED_MOVES: u16 = 64;
-const STABILITY_FACTOR: [f32; 5] = [2.5, 1.2, 0.9, 0.8, 0.75];
 
 /*----------------------------------------------------------------*/
 
 pub struct TimeManager {
     start: AtomicInstant,
-
     base_time: AtomicU64,
-    target_time: AtomicU64,
-    max_time: AtomicU64,
-    move_overhead: AtomicU64,
+    soft_time: AtomicU64,
+    hard_time: AtomicU64,
 
-    moves_to_go: AtomicU16,
+    move_overhead: AtomicU64,
     use_max_depth: AtomicBool,
     use_max_nodes: AtomicBool,
     use_soft_nodes: AtomicBool,
@@ -37,10 +33,9 @@ impl TimeManager {
         TimeManager {
             start: AtomicInstant::new(Instant::now()),
             base_time: AtomicU64::new(0),
-            target_time: AtomicU64::new(0),
-            max_time: AtomicU64::new(0),
+            soft_time: AtomicU64::new(0),
+            hard_time: AtomicU64::new(0),
             move_overhead: AtomicU64::new(MOVE_OVERHEAD),
-            moves_to_go: AtomicU16::new(EXPECTED_MOVES),
             use_max_depth: AtomicBool::new(false),
             use_max_nodes: AtomicBool::new(false),
             use_soft_nodes: AtomicBool::new(false),
@@ -125,31 +120,40 @@ impl TimeManager {
         self.use_max_nodes.store(max_nodes.is_some(), Ordering::Relaxed);
         self.max_depth.store(max_depth.unwrap_or(MAX_DEPTH), Ordering::Relaxed);
         self.max_nodes.store(max_nodes.unwrap_or(u64::MAX), Ordering::Relaxed);
-
-        let moves_to_go = moves_to_go.unwrap_or(EXPECTED_MOVES) + 1;
-        self.moves_to_go.store(moves_to_go, Ordering::Relaxed);
         self.no_manage.store(infinite || move_time.is_some(), Ordering::Relaxed);
 
         if let Some(time) = move_time {
             self.base_time.store(time, Ordering::Relaxed);
-            self.target_time.store(time, Ordering::Relaxed);
-            self.max_time.store(time, Ordering::Relaxed);
+            self.soft_time.store(time, Ordering::Relaxed);
+            self.hard_time.store(time, Ordering::Relaxed);
         } else if use_soft_nodes && let Some(nodes) = max_nodes {
             self.base_time.store(nodes, Ordering::Relaxed);
-            self.target_time.store(nodes, Ordering::Relaxed);
-            self.max_time.store(20 * nodes, Ordering::Relaxed);
+            self.soft_time.store(nodes, Ordering::Relaxed);
+            self.hard_time.store(2000*nodes, Ordering::Relaxed);
+        } else if let Some(moves_to_go) = moves_to_go {
+            let (time, inc) = match stm {
+                Color::White => (w_time, w_inc),
+                Color::Black => (b_time, b_inc),
+            };
+            let move_overhead = self.move_overhead.load(Ordering::Relaxed);
+            let hard_time = (time * W::hard_time_frac() / 16384).min(time.saturating_sub(move_overhead));
+            let soft_time = ((time / moves_to_go as u64).saturating_sub(move_overhead) + inc).min(hard_time);
+
+            self.base_time.store(soft_time, Ordering::Relaxed);
+            self.soft_time.store(soft_time, Ordering::Relaxed);
+            self.hard_time.store(hard_time, Ordering::Relaxed);
         } else {
             let (time, inc) = match stm {
                 Color::White => (w_time, w_inc),
                 Color::Black => (b_time, b_inc),
             };
             let move_overhead = self.move_overhead.load(Ordering::Relaxed);
-            let max_time = (time * 3 / 5).min(time.saturating_sub(move_overhead));
-            let target_time = ((time / moves_to_go as u64).saturating_sub(move_overhead) + inc).min(max_time);
+            let hard_time = (time * W::hard_time_frac() / 16384).min(time.saturating_sub(move_overhead));
+            let soft_time = ((time * W::soft_time_frac() / 16384).saturating_sub(move_overhead) + inc).min(hard_time);
 
-            self.base_time.store(target_time, Ordering::Relaxed);
-            self.target_time.store(target_time, Ordering::Relaxed);
-            self.max_time.store(max_time, Ordering::Relaxed);
+            self.base_time.store(soft_time, Ordering::Relaxed);
+            self.soft_time.store(soft_time, Ordering::Relaxed);
+            self.hard_time.store(hard_time, Ordering::Relaxed);
         }
 
         self.start.store(Instant::now(), Ordering::Relaxed);
@@ -168,13 +172,13 @@ impl TimeManager {
             return;
         }
 
-        let subtree_factor = 2.5 - 1.5 * move_nodes as f32 / nodes as f32;
+        let subtree_factor = W::subtree_tm_base() - W::subtree_tm_scale() * move_nodes as f32 / nodes as f32;
         
         let base_time = self.base_time.load(Ordering::Relaxed);
-        let max_time = self.max_time.load(Ordering::Relaxed);
+        let hard_time = self.hard_time.load(Ordering::Relaxed);
         let new_target = (base_time as f32 * subtree_factor) as u64;
 
-        self.target_time.store(new_target.min(max_time), Ordering::Relaxed);
+        self.soft_time.store(new_target.min(hard_time), Ordering::Relaxed);
     }
 
     #[inline]
@@ -227,7 +231,7 @@ impl TimeManager {
             self.elapsed()
         };
 
-        !self.is_infinite() && self.max_time.load(Ordering::Relaxed) < elapsed
+        !self.is_infinite() && self.hard_time.load(Ordering::Relaxed) < elapsed
     }
 
     #[inline]
@@ -238,7 +242,7 @@ impl TimeManager {
             self.elapsed()
         };
 
-        !self.is_infinite() && self.target_time.load(Ordering::Relaxed) < elapsed
+        !self.is_infinite() && self.soft_time.load(Ordering::Relaxed) < elapsed
     }
 
     #[inline]

@@ -181,62 +181,118 @@ impl Engine {
                     PAWN_CORR_FRAC  => W::pawn_corr_frac(),  0, MAX_CORR;
                     MINOR_CORR_FRAC => W::minor_corr_frac(), 0, MAX_CORR;
                     MAJOR_CORR_FRAC => W::major_corr_frac(), 0, MAX_CORR;
+                    WHITE_CORR_FRAC => W::white_corr_frac(), 0, MAX_CORR;
+                    BLACK_CORR_FRAC => W::black_corr_frac(), 0, MAX_CORR;
+
                     QUIET_BONUS_BASE => W::quiet_bonus_base(), -512, 512;
                     QUIET_BONUS_MUL  => W::quiet_bonus_mul(),  -512, 512;
                     QUIET_BONUS_MAX  => W::quiet_bonus_max(),     1, 8192;
                     QUIET_MALUS_BASE => W::quiet_malus_base(), -512, 512;
                     QUIET_MALUS_MUL  => W::quiet_malus_mul(),  -512, 512;
                     QUIET_MALUS_MAX  => W::quiet_malus_max(),     1, 8192;
+
                     TACTIC_BONUS_BASE => W::tactic_bonus_base(), -512, 512;
                     TACTIC_BONUS_MUL  => W::tactic_bonus_mul(),  -512, 512;
                     TACTIC_BONUS_MAX  => W::tactic_bonus_max(),     1, 8192;
                     TACTIC_MALUS_BASE => W::tactic_malus_base(), -512, 512;
                     TACTIC_MALUS_MUL  => W::tactic_malus_mul(),  -512, 512;
                     TACTIC_MALUS_MAX  => W::tactic_malus_max(),     1, 8192;
+
                     CONT1_BONUS_BASE => W::cont1_bonus_base(), -512, 512;
                     CONT1_BONUS_MUL  => W::cont1_bonus_mul(),  -512, 512;
                     CONT1_BONUS_MAX  => W::cont1_bonus_max(),     1, 8192;
                     CONT1_MALUS_BASE => W::cont1_malus_base(), -512, 512;
                     CONT1_MALUS_MUL  => W::cont1_malus_mul(),  -512, 512;
                     CONT1_MALUS_MAX  => W::cont1_malus_max(),     1, 8192;
+
                     CONT2_BONUS_BASE => W::cont2_bonus_base(), -512, 512;
                     CONT2_BONUS_MUL  => W::cont2_bonus_mul(),  -512, 512;
                     CONT2_BONUS_MAX  => W::cont2_bonus_max(),     1, 8192;
                     CONT2_MALUS_BASE => W::cont2_malus_base(), -512, 512;
                     CONT2_MALUS_MUL  => W::cont2_malus_mul(),  -512, 512;
                     CONT2_MALUS_MAX  => W::cont2_malus_max(),     1, 8192;
+
                     PAWN_SEE_VALUE   => W::pawn_see_value(),   1, 4096;
                     KNIGHT_SEE_VALUE => W::knight_see_value(), 1, 4096;
                     BISHOP_SEE_VALUE => W::bishop_see_value(), 1, 4096;
                     ROOK_SEE_VALUE   => W::rook_see_value(),   1, 4096;
                     QUEEN_SEE_VALUE  => W::queen_see_value(),  1, 4096;
+
                     PAWN_MAT_SCALE   => W::pawn_mat_scale(),   1, 4096;
                     KNIGHT_MAT_SCALE => W::knight_mat_scale(), 1, 4096;
                     BISHOP_MAT_SCALE => W::bishop_mat_scale(), 1, 4096;
                     ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
-                    RFP_MARGIN        => W::rfp_margin(),            0, 2048;
-                    RFP_CUTOFF_LERP   => W::rfp_cutoff_lerp(),       0, 1024;
-                    SEE_QUIET_MARGIN  => W::see_quiet_scale(),  -2048, 0;
-                    SEE_TACTIC_MARGIN => W::see_tactic_scale(), -2048, 0;
-                    CONT_MARGIN       => W::cont_margin(),      -16384, 0;
-                    FUTILE_BASE       => W::futile_base(),           0, 2048;
-                    FUTILE_MARGIN     => W::futile_scale(),         0, 2048;
-                    LMR_QUIET_BASE    => W::lmr_quiet_base(),    -1024, 1024;
-                    LMR_QUIET_DIV     => W::lmr_quiet_div(),        32, 16384;
-                    LMR_TACTICAL_BASE => W::lmr_tactical_base(), -1024, 1024;
-                    LMR_TACTICAL_DIV  => W::lmr_tactical_div(),     32, 16384;
-                    TT_PV_REDUCTION         => W::tt_pv_reduction(),         0, 4096;
-                    TT_TACTIC_REDUCTION     => W::tt_tactic_reduction(),     0, 4096;
-                    HIGH_CORR_REDUCTION     => W::high_corr_reduction(),     0, 4096;
-                    HIGH_CORR_THRESHOLD     => W::high_corr_threshold(),     1, MAX_CORR;
-                    HIST_TACTIC_REDUCTION   => W::hist_tactic_reduction(),   1, 512;
-                    HIST_QUIET_REDUCTION    => W::hist_quiet_reduction(),    1, 512;
-                    NOT_IMPROVING_REDUCTION => W::not_improving_reduction(), 0, 4096;
-                    CUT_NODE_REDUCTION      => W::cut_node_reduction(),      0, 4096;
-                    NON_PV_REDUCTION        => W::non_pv_reduction(),        0, 4096;
-                    CHECK_REDUCTION         => W::check_reduction(),         0, 4096;
+
+                    RFP_DEPTH => W::rfp_depth(),    0, 16384;
+                    RFP_BASE  => W::rfp_base(),  -512, 512;
+                    RFP_SCALE => W::rfp_scale(), -512, 512;
+                    RFP_LERP  => W::rfp_lerp(),     0, 1024;
+                    RFP_IMPROVING_DEPTH => W::rfp_improving_depth(),    0, 16384;
+                    RFP_IMPROVING_BASE  => W::rfp_improving_base(),  -512, 512;
+                    RFP_IMPROVING_SCALE => W::rfp_improving_scale(), -512, 512;
+                    RFP_IMPROVING_LERP  => W::rfp_improving_lerp(),     0, 1024;
+
+                    NMP_DEPTH => W::nmp_depth(), 0, 16384;
+                    NMP_BASE  => W::nmp_base(),  0, 16384;
+                    NMP_SCALE => W::nmp_scale(), 0, 1024;
+                    NMP_IMPROVING_DEPTH => W::nmp_improving_depth(), 0, 16384;
+                    NMP_IMPROVING_BASE  => W::nmp_improving_base(),  0, 16384;
+                    NMP_IMPROVING_SCALE => W::nmp_improving_scale(), 0, 1024;
+
+                    LMP_BASE  => W::lmp_base(),  0, 4096;
+                    LMP_SCALE => W::lmp_scale(), 0, 2048;
+                    LMP_IMPROVING_BASE  => W::lmp_improving_base(),  0, 4096;
+                    LMP_IMPROVING_SCALE => W::lmp_improving_scale(), 0, 2048;
+
+                    FUTILE_DEPTH => W::futile_depth(),    0, 16384;
+                    FUTILE_BASE  => W::futile_base(),  -512, 512;
+                    FUTILE_SCALE => W::futile_scale(), -512, 512;
+                    FUTILE_IMPROVING_DEPTH => W::futile_improving_depth(),    0, 16384;
+                    FUTILE_IMPROVING_BASE  => W::futile_improving_base(),  -512, 512;
+                    FUTILE_IMPROVING_SCALE => W::futile_improving_scale(), -512, 512;
+
+                    SEE_QUIET_DEPTH => W::see_quiet_depth(),    0, 16384;
+                    SEE_QUIET_BASE  => W::see_quiet_base(),  -512, 512;
+                    SEE_QUIET_SCALE => W::see_quiet_scale(), -512, 512;
+                    SEE_QUIET_IMPROVING_DEPTH => W::see_quiet_improving_depth(),    0, 16384;
+                    SEE_QUIET_IMPROVING_BASE  => W::see_quiet_improving_base(),  -512, 512;
+                    SEE_QUIET_IMPROVING_SCALE => W::see_quiet_improving_scale(), -512, 512;
+
+                    SEE_TACTIC_DEPTH => W::see_tactic_depth(),    0, 16384;
+                    SEE_TACTIC_BASE  => W::see_tactic_base(),  -512, 512;
+                    SEE_TACTIC_SCALE => W::see_tactic_scale(), -512, 512;
+                    SEE_TACTIC_IMPROVING_DEPTH => W::see_tactic_improving_depth(),    0, 16384;
+                    SEE_TACTIC_IMPROVING_BASE  => W::see_tactic_improving_base(),  -512, 512;
+                    SEE_TACTIC_IMPROVING_SCALE => W::see_tactic_improving_scale(), -512, 512;
+
+                    SINGULAR_DEPTH        => W::singular_depth(),        0, 16384;
+                    SINGULAR_TT_DEPTH     => W::singular_tt_depth(),     0, 16384;
+                    SINGULAR_BETA_MARGIN  => W::singular_beta_margin(),  0, 256;
+                    SINGULAR_SEARCH_DEPTH => W::singular_search_depth(), 0, 1024;
+                    SINGULAR_DEXT_MARGIN  => W::singular_dext_margin(),  0, 64;
+                    SINGULAR_EXT          => W::singular_ext(),          0, 4096;
+                    SINGULAR_DEXT         => W::singular_dext(),         0, 4096;
+                    SINGULAR_NEG_EXT      => W::singular_neg_ext(),  -4096, 0;
+                    TT_DEPTH_BIAS         => W::tt_depth_bias(), -1024, 1024;
+
+                    LMR_QUIET_BASE => W::lmr_quiet_base(), 0, 2048;
+                    LMR_QUIET_DIV  => W::lmr_quiet_div(),  0, 8192;
+                    LMR_QUIET_IMPROVING_BASE => W::lmr_quiet_improving_base(), 0, 2048;
+                    LMR_QUIET_IMPROVING_DIV  => W::lmr_quiet_improving_div(),  0, 8192;
+                    LMR_TACTIC_BASE => W::lmr_tactic_base(), 0, 2048;
+                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),  0, 8192;
+                    LMR_TACTIC_IMPROVING_BASE => W::lmr_tactic_improving_base(), 0, 2048;
+                    LMR_TACTIC_IMPROVING_DIV  => W::lmr_tactic_improving_div(),  0, 8192;
+
+                    ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
+                    ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
+
+                    SOFT_TIME_FRAC   => W::soft_time_frac(),     0, 16384;
+                    HARD_TIME_FRAC   => W::hard_time_frac(),     0, 16384;
+                    SUBTREE_TM_BASE  => W::subtree_tm_base(),  0.0, 5.0;
+                    SUBTREE_TM_SCALE => W::subtree_tm_scale(), 0.0, 5.0;
                 }
                 println!("uciok");
 
@@ -267,71 +323,127 @@ impl Engine {
                             $default as f32,
                             $min as f32,
                             $max as f32,
-                            ($default as f32 / 10.0).abs(),
+                            ($max - $min).abs() as f32 / 20,
                         );
                     )*}
                 }
 
                 print_spsa! {
-                    PAWN_CORR_FRAC => W::pawn_corr_frac(),  0, MAX_CORR;
+                    PAWN_CORR_FRAC  => W::pawn_corr_frac(),  0, MAX_CORR;
                     MINOR_CORR_FRAC => W::minor_corr_frac(), 0, MAX_CORR;
                     MAJOR_CORR_FRAC => W::major_corr_frac(), 0, MAX_CORR;
+                    WHITE_CORR_FRAC => W::white_corr_frac(), 0, MAX_CORR;
+                    BLACK_CORR_FRAC => W::black_corr_frac(), 0, MAX_CORR;
+
                     QUIET_BONUS_BASE => W::quiet_bonus_base(), -512, 512;
                     QUIET_BONUS_MUL  => W::quiet_bonus_mul(),  -512, 512;
                     QUIET_BONUS_MAX  => W::quiet_bonus_max(),     1, 8192;
                     QUIET_MALUS_BASE => W::quiet_malus_base(), -512, 512;
                     QUIET_MALUS_MUL  => W::quiet_malus_mul(),  -512, 512;
                     QUIET_MALUS_MAX  => W::quiet_malus_max(),     1, 8192;
+
                     TACTIC_BONUS_BASE => W::tactic_bonus_base(), -512, 512;
                     TACTIC_BONUS_MUL  => W::tactic_bonus_mul(),  -512, 512;
                     TACTIC_BONUS_MAX  => W::tactic_bonus_max(),     1, 8192;
                     TACTIC_MALUS_BASE => W::tactic_malus_base(), -512, 512;
                     TACTIC_MALUS_MUL  => W::tactic_malus_mul(),  -512, 512;
                     TACTIC_MALUS_MAX  => W::tactic_malus_max(),     1, 8192;
+
                     CONT1_BONUS_BASE => W::cont1_bonus_base(), -512, 512;
                     CONT1_BONUS_MUL  => W::cont1_bonus_mul(),  -512, 512;
                     CONT1_BONUS_MAX  => W::cont1_bonus_max(),     1, 8192;
                     CONT1_MALUS_BASE => W::cont1_malus_base(), -512, 512;
                     CONT1_MALUS_MUL  => W::cont1_malus_mul(),  -512, 512;
                     CONT1_MALUS_MAX  => W::cont1_malus_max(),     1, 8192;
+
                     CONT2_BONUS_BASE => W::cont2_bonus_base(), -512, 512;
                     CONT2_BONUS_MUL  => W::cont2_bonus_mul(),  -512, 512;
                     CONT2_BONUS_MAX  => W::cont2_bonus_max(),     1, 8192;
                     CONT2_MALUS_BASE => W::cont2_malus_base(), -512, 512;
                     CONT2_MALUS_MUL  => W::cont2_malus_mul(),  -512, 512;
                     CONT2_MALUS_MAX  => W::cont2_malus_max(),     1, 8192;
+
                     PAWN_SEE_VALUE   => W::pawn_see_value(),   1, 4096;
                     KNIGHT_SEE_VALUE => W::knight_see_value(), 1, 4096;
                     BISHOP_SEE_VALUE => W::bishop_see_value(), 1, 4096;
                     ROOK_SEE_VALUE   => W::rook_see_value(),   1, 4096;
                     QUEEN_SEE_VALUE  => W::queen_see_value(),  1, 4096;
+
                     PAWN_MAT_SCALE   => W::pawn_mat_scale(),   1, 4096;
                     KNIGHT_MAT_SCALE => W::knight_mat_scale(), 1, 4096;
                     BISHOP_MAT_SCALE => W::bishop_mat_scale(), 1, 4096;
                     ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
-                    RFP_MARGIN        => W::rfp_margin(),             0, 2048;
-                    RFP_CUTOFF_LERP   => W::rfp_cutoff_lerp(),        0, 1024;
-                    SEE_QUIET_MARGIN  => W::see_quiet_margin(),   -2048, 0;
-                    SEE_TACTIC_MARGIN => W::see_tactic_margin(),  -2048, 0;
-                    CONT_MARGIN       => W::cont_margin(),       -16384, 0;
-                    FUTILE_BASE       => W::futile_base(),            0, 2048;
-                    FUTILE_MARGIN     => W::futile_margin(),          0, 2048;
-                    LMR_QUIET_BASE    => W::lmr_quiet_base(),    -1024, 1024;
-                    LMR_QUIET_DIV     => W::lmr_quiet_div(),        32, 16384;
-                    LMR_TACTICAL_BASE => W::lmr_tactical_base(), -1024, 1024;
-                    LMR_TACTICAL_DIV  => W::lmr_tactical_div(),     32, 16384;
-                    TT_PV_REDUCTION         => W::tt_pv_reduction(),         0, 4096;
-                    TT_TACTIC_REDUCTION     => W::tt_tactic_reduction(),     0, 4096;
-                    HIGH_CORR_REDUCTION     => W::high_corr_reduction(),     0, 4096;
-                    HIGH_CORR_THRESHOLD     => W::high_corr_threshold(),     1, MAX_CORR;
-                    HIST_TACTIC_REDUCTION   => W::hist_tactic_reduction(),   1, 512;
-                    HIST_QUIET_REDUCTION    => W::hist_quiet_reduction(),    1, 512;
-                    NOT_IMPROVING_REDUCTION => W::not_improving_reduction(), 0, 4096;
-                    CUT_NODE_REDUCTION      => W::cut_node_reduction(),      0, 4096;
-                    NON_PV_REDUCTION        => W::non_pv_reduction(),        0, 4096;
-                    CHECK_REDUCTION         => W::check_reduction(),         0, 4096;
+
+                    RFP_DEPTH => W::rfp_depth(),    0, 16384;
+                    RFP_BASE  => W::rfp_base(),  -512, 512;
+                    RFP_SCALE => W::rfp_scale(), -512, 512;
+                    RFP_LERP  => W::rfp_lerp(),     0, 1024;
+                    RFP_IMPROVING_DEPTH => W::rfp_improving_depth(),    0, 16384;
+                    RFP_IMPROVING_BASE  => W::rfp_improving_base(),  -512, 512;
+                    RFP_IMPROVING_SCALE => W::rfp_improving_scale(), -512, 512;
+                    RFP_IMPROVING_LERP  => W::rfp_improving_lerp(),     0, 1024;
+
+                    NMP_DEPTH => W::nmp_depth(), 0, 16384;
+                    NMP_BASE  => W::nmp_base(),  0, 16384;
+                    NMP_SCALE => W::nmp_scale(), 0, 1024;
+                    NMP_IMPROVING_DEPTH => W::nmp_improving_depth(), 0, 16384;
+                    NMP_IMPROVING_BASE  => W::nmp_improving_base(),  0, 16384;
+                    NMP_IMPROVING_SCALE => W::nmp_improving_scale(), 0, 1024;
+
+                    LMP_BASE  => W::lmp_base(),  0, 4096;
+                    LMP_SCALE => W::lmp_scale(), 0, 2048;
+                    LMP_IMPROVING_BASE  => W::lmp_improving_base(),  0, 4096;
+                    LMP_IMPROVING_SCALE => W::lmp_improving_scale(), 0, 2048;
+
+                    FUTILE_DEPTH => W::futile_depth(),    0, 16384;
+                    FUTILE_BASE  => W::futile_base(),  -512, 512;
+                    FUTILE_SCALE => W::futile_scale(), -512, 512;
+                    FUTILE_IMPROVING_DEPTH => W::futile_improving_depth(),    0, 16384;
+                    FUTILE_IMPROVING_BASE  => W::futile_improving_base(),  -512, 512;
+                    FUTILE_IMPROVING_SCALE => W::futile_improving_scale(), -512, 512;
+
+                    SEE_QUIET_DEPTH => W::see_quiet_depth(),    0, 16384;
+                    SEE_QUIET_BASE  => W::see_quiet_base(),  -512, 512;
+                    SEE_QUIET_SCALE => W::see_quiet_scale(), -512, 512;
+                    SEE_QUIET_IMPROVING_DEPTH => W::see_quiet_improving_depth(),    0, 16384;
+                    SEE_QUIET_IMPROVING_BASE  => W::see_quiet_improving_base(),  -512, 512;
+                    SEE_QUIET_IMPROVING_SCALE => W::see_quiet_improving_scale(), -512, 512;
+
+                    SEE_TACTIC_DEPTH => W::see_tactic_depth(),    0, 16384;
+                    SEE_TACTIC_BASE  => W::see_tactic_base(),  -512, 512;
+                    SEE_TACTIC_SCALE => W::see_tactic_scale(), -512, 512;
+                    SEE_TACTIC_IMPROVING_DEPTH => W::see_tactic_improving_depth(),    0, 16384;
+                    SEE_TACTIC_IMPROVING_BASE  => W::see_tactic_improving_base(),  -512, 512;
+                    SEE_TACTIC_IMPROVING_SCALE => W::see_tactic_improving_scale(), -512, 512;
+
+                    SINGULAR_DEPTH        => W::singular_depth(),        0, 16384;
+                    SINGULAR_TT_DEPTH     => W::singular_tt_depth(),     0, 16384;
+                    SINGULAR_BETA_MARGIN  => W::singular_beta_margin(),  0, 256;
+                    SINGULAR_SEARCH_DEPTH => W::singular_search_depth(), 0, 1024;
+                    SINGULAR_DEXT_MARGIN  => W::singular_dext_margin(),  0, 64;
+                    SINGULAR_EXT          => W::singular_ext(),          0, 4096;
+                    SINGULAR_DEXT         => W::singular_dext(),         0, 4096;
+                    SINGULAR_NEG_EXT      => W::singular_neg_ext(),  -4096, 0;
+                    TT_DEPTH_BIAS         => W::tt_depth_bias(), -1024, 1024;
+
+                    LMR_QUIET_BASE => W::lmr_quiet_base(), 0, 2048;
+                    LMR_QUIET_DIV  => W::lmr_quiet_div(),  0, 8192;
+                    LMR_QUIET_IMPROVING_BASE => W::lmr_quiet_improving_base(), 0, 2048;
+                    LMR_QUIET_IMPROVING_DIV  => W::lmr_quiet_improving_div(),  0, 8192;
+                    LMR_TACTIC_BASE => W::lmr_tactic_base(), 0, 2048;
+                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),  0, 8192;
+                    LMR_TACTIC_IMPROVING_BASE => W::lmr_tactic_improving_base(), 0, 2048;
+                    LMR_TACTIC_IMPROVING_DIV  => W::lmr_tactic_improving_div(),  0, 8192;
+
+                    ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
+                    ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
+
+                    SOFT_TIME_FRAC   => W::soft_time_frac(),     0, 16384;
+                    HARD_TIME_FRAC   => W::hard_time_frac(),     0, 16384;
+                    SUBTREE_TM_BASE  => W::subtree_tm_base(),  0.0, 5.0;
+                    SUBTREE_TM_SCALE => W::subtree_tm_scale(), 0.0, 5.0;
                 }
             },
             #[cfg(feature = "datagen")] UciCommand::DataGen {
@@ -380,67 +492,126 @@ impl Engine {
                     "PAWN_CORR_FRAC"  => PAWN_CORR_FRAC,  i32;
                     "MINOR_CORR_FRAC" => MINOR_CORR_FRAC, i32;
                     "MAJOR_CORR_FRAC" => MAJOR_CORR_FRAC, i32;
+                    "WHITE_CORR_FRAC" => WHITE_CORR_FRAC, i32;
+                    "BLACK_CORR_FRAC" => CORR_CORR_FRAC,  i32;
+
                     "QUIET_BONUS_BASE" => QUIET_BONUS_BASE, i32;
                     "QUIET_BONUS_MUL"  => QUIET_BONUS_MUL,  i32;
                     "QUIET_BONUS_MAX"  => QUIET_BONUS_MAX,  i32;
                     "QUIET_MALUS_BASE" => QUIET_MALUS_BASE, i32;
                     "QUIET_MALUS_MUL"  => QUIET_MALUS_MUL,  i32;
                     "QUIET_MALUS_MAX"  => QUIET_MALUS_MAX,  i32;
+
                     "TACTIC_BONUS_BASE" => TACTIC_BONUS_BASE, i32;
                     "TACTIC_BONUS_MUL"  => TACTIC_BONUS_MUL,  i32;
                     "TACTIC_BONUS_MAX"  => TACTIC_BONUS_MAX,  i32;
                     "TACTIC_MALUS_BASE" => TACTIC_MALUS_BASE, i32;
                     "TACTIC_MALUS_MUL"  => TACTIC_MALUS_MUL,  i32;
                     "TACTIC_MALUS_MAX"  => TACTIC_MALUS_MAX,  i32;
+
                     "CONT1_BONUS_BASE" => CONT1_BONUS_BASE, i32;
                     "CONT1_BONUS_MUL"  => CONT1_BONUS_MUL,  i32;
                     "CONT1_BONUS_MAX"  => CONT1_BONUS_MAX,  i32;
                     "CONT1_MALUS_BASE" => CONT1_MALUS_BASE, i32;
                     "CONT1_MALUS_MUL"  => CONT1_MALUS_MUL,  i32;
                     "CONT1_MALUS_MAX"  => CONT1_MALUS_MAX,  i32;
+
                     "CONT2_BONUS_BASE" => CONT2_BONUS_BASE, i32;
                     "CONT2_BONUS_MUL"  => CONT2_BONUS_MUL,  i32;
                     "CONT2_BONUS_MAX"  => CONT2_BONUS_MAX,  i32;
                     "CONT2_MALUS_BASE" => CONT2_MALUS_BASE, i32;
                     "CONT2_MALUS_MUL"  => CONT2_MALUS_MUL,  i32;
                     "CONT2_MALUS_MAX"  => CONT2_MALUS_MAX,  i32;
+
                     "PAWN_SEE_VALUE"   => PAWN_SEE_VALUE,   i16;
                     "KNIGHT_SEE_VALUE" => KNIGHT_SEE_VALUE, i16;
                     "BISHOP_SEE_VALUE" => BISHOP_SEE_VALUE, i16;
                     "ROOK_SEE_VALUE"   => ROOK_SEE_VALUE,   i16;
                     "QUEEN_SEE_VALUE"  => QUEEN_SEE_VALUE,  i16;
+
                     "PAWN_MAT_SCALE"   => PAWN_MAT_SCALE,   i32;
                     "KNIGHT_MAT_SCALE" => KNIGHT_MAT_SCALE, i32;
                     "BISHOP_MAT_SCALE" => BISHOP_MAT_SCALE, i32;
                     "ROOK_MAT_SCALE"   => ROOK_MAT_SCALE,   i32;
                     "QUEEN_MAT_SCALE"  => QUEEN_MAT_SCALE,  i32;
                     "MAT_SCALE_BASE"   => MAT_SCALE_BASE,   i32;
-                    "RFP_MARGIN"        => RFP_MARGIN,        i16;
-                    "RFP_CUTOFF_LERP"   => RFP_CUTOFF_LERP,   i32;
-                    "SEE_QUIET_MARGIN"  => SEE_QUIET_MARGIN,  i16;
-                    "SEE_TACTIC_MARGIN" => SEE_TACTIC_MARGIN, i16;
-                    "CONT_MARGIN"       => CONT_MARGIN,       i32;
-                    "FUTILE_BASE"       => FUTILE_BASE,       i16;
-                    "FUTILE_MARGIN"     => FUTILE_MARGIN,     i16;
-                    "LMR_QUIET_BASE"    => LMR_QUIET_BASE,    i32;
-                    "LMR_QUIET_DIV"     => LMR_QUIET_DIV,     i32;
-                    "LMR_TACTICAL_BASE" => LMR_TACTICAL_BASE, i32;
-                    "LMR_TACTICAL_DIV"  => LMR_TACTICAL_DIV,  i32;
-                    "TT_PV_REDUCTION"         => TT_PV_REDUCTION,         i32;
-                    "TT_TACTIC_REDUCTION"     => TT_TACTIC_REDUCTION,     i32;
-                    "HIGH_CORR_REDUCTION"     => HIGH_CORR_REDUCTION,     i32;
-                    "HIGH_CORR_THRESHOLD"     => HIGH_CORR_THRESHOLD,     i32;
-                    "HIST_TACTIC_REDUCTION"   => HIST_TACTIC_REDUCTION,   i32;
-                    "HIST_QUIET_REDUCTION"    => HIST_QUIET_REDUCTION,    i32;
-                    "NOT_IMPROVING_REDUCTION" => NOT_IMPROVING_REDUCTION, i32;
-                    "CUT_NODE_REDUCTION"      => CUT_NODE_REDUCTION,      i32;
-                    "NON_PV_REDUCTION"        => NON_PV_REDUCTION,        i32;
-                    "CHECK_REDUCTION"         => CHECK_REDUCTION,         i32;
+
+                    "RFP_DEPTH" => RFP_DEPTH, i32;
+                    "RFP_BASE"  => RFP_BASE,  i32;
+                    "RFP_SCALE" => RFP_SCALE, i32;
+                    "RFP_LERP"  => RFP_LERP,  i32;
+                    "RFP_IMPROVING_DEPTH" => RFP_IMPROVING_DEPTH, i32;
+                    "RFP_IMPROVING_BASE"  => RFP_IMPROVING_BASE,  i32;
+                    "RFP_IMPROVING_SCALE" => RFP_IMPROVING_SCALE, i32;
+                    "RFP_IMPROVING_LERP"  => RFP_IMPROVING_LERP,  i32;
+
+                    "NMP_DEPTH" => NMP_DEPTH, i32;
+                    "NMP_BASE"  => NMP_BASE,  i64;
+                    "NMP_SCALE" => NMP_SCALE, i64;
+                    "NMP_IMPROVING_DEPTH" => NMP_IMPROVING_DEPTH, i32;
+                    "NMP_IMPROVING_BASE"  => NMP_IMPROVING_BASE,  i64;
+                    "NMP_IMPROVING_SCALE" => NMP_IMPROVING_SCALE, i64;
+
+                    "LMP_BASE"  => LMP_BASE,  i64;
+                    "LMP_SCALE" => LMP_SCALE, i64;
+                    "LMP_IMPROVING_BASE"  => LMP_IMPROVING_BASE,  i64;
+                    "LMP_IMPROVING_SCALE" => LMP_IMPROVING_SCALE, i64;
+
+                    "FUTILE_DEPTH" => FUTILE_DEPTH, i32;
+                    "FUTILE_BASE"  => FUTILE_BASE,  i32;
+                    "FUTILE_SCALE" => FUTILE_SCALE, i32;
+                    "FUTILE_IMPROVING_DEPTH" => FUTILE_IMPROVING_DEPTH, i32;
+                    "FUTILE_IMPROVING_BASE"  => FUTILE_IMPROVING_BASE,  i32;
+                    "FUTILE_IMPROVING_SCALE" => FUTILE_IMPROVING_SCALE, i32;
+
+                    "SEE_QUIET_DEPTH" => SEE_QUIET_DEPTH, i32;
+                    "SEE_QUIET_BASE"  => SEE_QUIET_BASE,  i32;
+                    "SEE_QUIET_SCALE" => SEE_QUIET_SCALE, i32;
+                    "SEE_QUIET_IMPROVING_DEPTH" => SEE_QUIET_IMPROVING_DEPTH, i32;
+                    "SEE_QUIET_IMPROVING_BASE"  => SEE_QUIET_IMPROVING_BASE,  i32;
+                    "SEE_QUIET_IMPROVING_SCALE" => SEE_QUIET_IMPROVING_SCALE, i32;
+
+                    "SEE_TACTIC_DEPTH" => SEE_TACTIC_DEPTH, i32;
+                    "SEE_TACTIC_BASE" => SEE_TACTIC_BASE,  i32;
+                    "SEE_TACTIC_SCALE" => SEE_TACTIC_SCALE, i32;
+                    "SEE_TACTIC_IMPROVING_DEPTH" => SEE_TACTIC_IMPROVING_DEPTH, i32;
+                    "SEE_TACTIC_IMPROVING_BASE"  => SEE_TACTIC_IMPROVING_BASE,  i32;
+                    "SEE_TACTIC_IMPROVING_SCALE" => SEE_TACTIC_IMPROVING_SCALE, i32;
+
+                    "SINGULAR_DEPTH"        => SINGULAR_DEPTH,        i32;
+                    "SINGULAR_TT_DEPTH"     => SINGULAR_TT_DEPTH,     i32;
+                    "SINGULAR_BETA_MARGIN"  => SINGULAR_BETA_MARGIN,  i32;
+                    "SINGULAR_SEARCH_DEPTH" => SINGULAR_SEARCH_DEPTH, i32;
+                    "SINGULAR_DEXT_MARGIN"  => SINGULAR_DEXT_MARGIN,  i32;
+                    "SINGULAR_EXT"          => SINGULAR_EXT,          i32;
+                    "SINGULAR_DEXT"         => SINGULAR_DEXT,         i32;
+                    "SINGULAR_NEG_EXT"      => SINGULAR_NEG_EXT,      i32;
+                    "TT_DEPTH_BIAS"         => TT_DEPTH_BIAS,         i32;
+
+                    "LMR_QUIET_BASE" => LMR_QUIET_BASE, i32;
+                    "LMR_QUIET_DIV"  => LMR_QUIET_DIV,  i32;
+                    "LMR_QUIET_IMPROVING_BASE" => LMR_QUIET_IMPROVING_BASE, i32;
+                    "LMR_QUIET_IMPROVING_DIV"  => LMR_QUIET_IMPROVING_DIV,  i32;
+                    "LMR_TACTIC_BASE" => LMR_TACTIC_BASE, i32;
+                    "LMR_TACTIC_DIV"  => LMR_TACTIC_DIV,  i32;
+                    "LMR_TACTIC_IMPROVING_BASE" => LMR_TACTIC_IMPROVING_BASE, i32;
+                    "LMR_TACTIC_IMPROVING_DIV"  => LMR_TACTIC_IMPROVING_DIV,  i32;
+
+                    "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i16;
+                    "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i16;
+
+                    "SOFT_TIME_FRAC"   => SOFT_TIME_FRAC,   u64;
+                    "HARD_TIME_FRAC"   => HARD_TIME_FRAC,   u64;
+                    "SUBTREE_TM_BASE"  => SUBTREE_TM_BASE,  f32;
+                    "SUBTREE_TM_SCALE" => SUBTREE_TM_SCALE, f32;
                 }
 
                 #[cfg(feature = "tune")]
                 match name.as_str() {
-                    "LMR_QUIET_BASE" | "LMR_QUIET_DIV" | "LMR_TACTICAL_BASE" | "LMR_TACTICAL_DIV" => init_lmr(),
+                    "LMR_QUIET_BASE" | "LMR_QUIET_DIV" |
+                    "LMR_QUIET_IMPROVING_BASE" | "LMR_QUIET_IMPROVING_DIV" |
+                    "LMR_TACTIC_BASE" | "LMR_TACTIC_DIV" |
+                    "LMR_TACTIC_IMPROVING_BASE" | "LMR_TACTIC_IMRPOVING_DIV" => init_lmr(),
                     _ => { }
                 }
 

@@ -131,7 +131,7 @@ pub fn search<Node: NodeType>(
             && thread.search_stack[ply as usize - 1].move_played.is_some()
             && static_eval >= beta
             && pos.null_move() {
-            let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / 1024) as i32;
+            let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / DEPTH_SCALE as i64) as i32;
 
             thread.search_stack[ply as usize].move_played = None;
             let score = -search::<Node>(pos, thread, shared, depth - nmp_reduction, ply + 1, -beta, -beta + 1);
@@ -162,7 +162,7 @@ pub fn search<Node: NodeType>(
 
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
-        let lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
+        let lmr = get_lmr(is_tactic, improving, (depth / DEPTH_SCALE) as u8, moves_seen);
         let mut score;
 
         if !Node::PV && best_score.map_or(false, |s: Score| !s.is_loss()) {
@@ -186,11 +186,11 @@ pub fn search<Node: NodeType>(
                     (W::lmp_base(), W::lmp_scale())
                 };
                 
-                let lmp_margin = lmp_base + lmp_scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * 1024);
+                let lmp_margin = lmp_base + lmp_scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
-
+                
                 let lmr_depth = (depth - lmr).max(0);
                 let (futile_depth, futile_base, futile_scale) = if improving {
                     (W::futile_improving_depth(), W::futile_improving_base(), W::futile_improving_scale())
