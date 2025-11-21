@@ -77,7 +77,7 @@ pub fn search<Node: NodeType>(
     }
 
     let in_check = pos.board().in_check();
-    let (raw_eval, static_eval, _corr) = if !in_check && skip_move.is_none() {
+    let (raw_eval, static_eval, corr) = if !in_check && skip_move.is_none() {
         let raw_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
         let corr = thread.history.get_corr(pos.board());
         let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
@@ -104,13 +104,13 @@ pub fn search<Node: NodeType>(
     thread.search_stack[ply as usize].static_eval = static_eval;
 
     if !Node::PV && !in_check && skip_move.is_none() {
-        let (rfp_depth, rfp_base, rfp_scale, rfp_lerp) = if improving {
-            (W::rfp_improving_depth(), W::rfp_improving_base(), W::rfp_improving_scale(), W::rfp_improving_lerp())
+        let (rfp_depth, rfp_base, rfp_scale, rfp_corrplexity, rfp_lerp) = if improving {
+            (W::rfp_improving_depth(), W::rfp_improving_base(), W::rfp_improving_scale(), W::rfp_improving_corrplexity(), W::rfp_improving_lerp())
         } else {
-            (W::rfp_depth(), W::rfp_base(), W::rfp_scale(), W::rfp_lerp())
+            (W::rfp_depth(), W::rfp_base(), W::rfp_scale(), W::rfp_corrplexity(), W::rfp_lerp())
         };
 
-        let rfp_margin = (rfp_base + rfp_scale * depth / DEPTH_SCALE) as i16;
+        let rfp_margin = (rfp_base + rfp_scale * depth / DEPTH_SCALE + corr.abs() * rfp_corrplexity / 1024) as i16;
         if depth < rfp_depth && static_eval - rfp_margin >= beta {
             return if !static_eval.is_win() && !beta.is_win() {
                 let (static_eval, beta) = (i32::from(static_eval.0), i32::from(beta.0));
