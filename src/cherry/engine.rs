@@ -323,7 +323,7 @@ impl Engine {
                             $default as f32,
                             $min as f32,
                             $max as f32,
-                            ($max - $min).abs() as f32 / 20,
+                            ($max as f32 - $min as f32).abs() / 20.0,
                         );
                     )*}
                 }
@@ -493,7 +493,7 @@ impl Engine {
                     "MINOR_CORR_FRAC" => MINOR_CORR_FRAC, i32;
                     "MAJOR_CORR_FRAC" => MAJOR_CORR_FRAC, i32;
                     "WHITE_CORR_FRAC" => WHITE_CORR_FRAC, i32;
-                    "BLACK_CORR_FRAC" => CORR_CORR_FRAC,  i32;
+                    "BLACK_CORR_FRAC" => BLACK_CORR_FRAC, i32;
 
                     "QUIET_BONUS_BASE" => QUIET_BONUS_BASE, i32;
                     "QUIET_BONUS_MUL"  => QUIET_BONUS_MUL,  i32;
@@ -572,7 +572,7 @@ impl Engine {
                     "SEE_QUIET_IMPROVING_SCALE" => SEE_QUIET_IMPROVING_SCALE, i32;
 
                     "SEE_TACTIC_DEPTH" => SEE_TACTIC_DEPTH, i32;
-                    "SEE_TACTIC_BASE" => SEE_TACTIC_BASE,  i32;
+                    "SEE_TACTIC_BASE"  => SEE_TACTIC_BASE,  i32;
                     "SEE_TACTIC_SCALE" => SEE_TACTIC_SCALE, i32;
                     "SEE_TACTIC_IMPROVING_DEPTH" => SEE_TACTIC_IMPROVING_DEPTH, i32;
                     "SEE_TACTIC_IMPROVING_BASE"  => SEE_TACTIC_IMPROVING_BASE,  i32;
@@ -582,7 +582,7 @@ impl Engine {
                     "SINGULAR_TT_DEPTH"     => SINGULAR_TT_DEPTH,     i32;
                     "SINGULAR_BETA_MARGIN"  => SINGULAR_BETA_MARGIN,  i32;
                     "SINGULAR_SEARCH_DEPTH" => SINGULAR_SEARCH_DEPTH, i32;
-                    "SINGULAR_DEXT_MARGIN"  => SINGULAR_DEXT_MARGIN,  i32;
+                    "SINGULAR_DEXT_MARGIN"  => SINGULAR_DEXT_MARGIN,  i16;
                     "SINGULAR_EXT"          => SINGULAR_EXT,          i32;
                     "SINGULAR_DEXT"         => SINGULAR_DEXT,         i32;
                     "SINGULAR_NEG_EXT"      => SINGULAR_NEG_EXT,      i32;

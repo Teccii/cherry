@@ -101,7 +101,7 @@ weights! {
     tactic_bonus_max  | TACTIC_BONUS_MAX:  i32 => 1967,
     tactic_malus_base | TACTIC_MALUS_BASE: i32 => 128,
     tactic_malus_mul  | TACTIC_MALUS_MUL:  i32 => 129,
-    tactic_malus_max  | TACTIC_MALUS_MAX: i32 => 2012,
+    tactic_malus_max  | TACTIC_MALUS_MAX:  i32 => 2012,
 
     cont1_bonus_base | CONT1_BONUS_BASE: i32 => 133,
     cont1_bonus_mul  | CONT1_BONUS_MUL:  i32 => 137,
