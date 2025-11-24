@@ -22,10 +22,10 @@ pub fn get_lmr(is_tactic: bool, improving: bool, depth: u8, moves_seen: u16) -> 
 }
 
 pub fn init_lmr() {
-    let mut quiet_table = [[0; MAX_PLY as usize]; MAX_PLY as usize];
-    let mut quiet_improving_table = [[0; MAX_PLY as usize]; MAX_PLY as usize];
-    let mut tactic_table = [[0; MAX_PLY as usize]; MAX_PLY as usize];
-    let mut tactic_improving_table = [[0; MAX_PLY as usize]; MAX_PLY as usize];
+    let mut quiet_table: Box<LmrLookup> = new_zeroed();
+    let mut quiet_improving_table: Box<LmrLookup> = new_zeroed();
+    let mut tactic_table: Box<LmrLookup> = new_zeroed();
+    let mut tactic_improving_table: Box<LmrLookup> = new_zeroed();
 
     let (quiet_base, quiet_div) = (W::lmr_quiet_base() as f32 / 1024.0, W::lmr_quiet_div() as f32 / 1024.0);
     let (quiet_improving_base, quiet_improving_div) = (W::lmr_quiet_improving_base() as f32 / 1024.0, W::lmr_quiet_improving_div() as f32 / 1024.0);
@@ -50,10 +50,11 @@ pub fn init_lmr() {
         let lmr_tactic: &mut LmrLookup = &mut *LMR_TACTIC.get();
         let lmr_tactic_improving: &mut LmrLookup = &mut *LMR_TACTIC_IMPROVING.get();
 
-        *lmr_quiet = quiet_table;
-        *lmr_quiet_improving = quiet_improving_table;
-        *lmr_tactic = tactic_table;
-        *lmr_tactic_improving = tactic_improving_table;
+        lmr_quiet.copy_from_slice(&*quiet_table);
+        lmr_quiet_improving.copy_from_slice(&*quiet_improving_table);
+        lmr_tactic.copy_from_slice(&*tactic_table);
+        lmr_tactic_improving.copy_from_slice(&*tactic_improving_table);
+
     }
 }
 

@@ -14,7 +14,7 @@ pub struct SharedData {
 pub struct ThreadData {
     pub nodes: BatchedAtomicCounter,
     pub search_stack: Vec<SearchStack>,
-    pub root_nodes: SquareTo<SquareTo<u64>>,
+    pub root_nodes: Box<SquareTo<SquareTo<u64>>>,
     pub root_pv: PrincipalVariation,
     pub history: History,
     pub sel_depth: u16,
@@ -26,7 +26,7 @@ impl ThreadData {
     pub fn reset(&mut self) {
         self.nodes.reset();
         self.search_stack = vec![SearchStack::default(); MAX_PLY as usize + 1];
-        self.root_nodes = [[0u64; Square::COUNT]; Square::COUNT];
+        self.root_nodes = new_zeroed();
         self.history.reset();
         self.sel_depth = 0;
         self.abort_now = false;
@@ -39,7 +39,7 @@ impl Default for ThreadData {
         ThreadData {
             nodes: BatchedAtomicCounter::default(),
             search_stack: vec![SearchStack::default(); MAX_PLY as usize + 1],
-            root_nodes: [[0u64; Square::COUNT]; Square::COUNT],
+            root_nodes: new_zeroed(),
             root_pv: PrincipalVariation::default(),
             history: History::default(),
             sel_depth: 0,
