@@ -199,6 +199,10 @@ weights! {
     hard_time_frac   | HARD_TIME_FRAC:   u64 => 9830,
     subtree_tm_base  | SUBTREE_TM_BASE:  f32 => 2.5,
     subtree_tm_scale | SUBTREE_TM_SCALE: f32 => 1.5,
+    complexity_tm_base  | COMPLEXITY_TM_BASE:  f32 => 0.8,
+    complexity_tm_scale | COMPLEXITY_TM_SCALE: f32 => 0.8,
+    complexity_tm_max   | COMPLEXITY_TM_MAX:   f32 => 200.0,
+    complexity_tm_div   | COMPLEXITY_TM_DIV:   f32 => 400.0,
 }
 
 impl W {
