@@ -1,4 +1,4 @@
-use std::{sync::atomic::*, time::*};
+use std::{sync::{atomic::*, Mutex}, time::*};
 use atomic_time::AtomicInstant;
 use crate::*;
 
@@ -13,6 +13,9 @@ pub struct TimeManager {
     base_time: AtomicU64,
     soft_time: AtomicU64,
     hard_time: AtomicU64,
+
+    prev_move: Mutex<Option<Move>>,
+    move_stability: AtomicU8,
 
     move_overhead: AtomicU64,
     use_max_depth: AtomicBool,
@@ -35,6 +38,8 @@ impl TimeManager {
             base_time: AtomicU64::new(0),
             soft_time: AtomicU64::new(0),
             hard_time: AtomicU64::new(0),
+            prev_move: Mutex::new(None),
+            move_stability: AtomicU8::new(0),
             move_overhead: AtomicU64::new(MOVE_OVERHEAD),
             use_max_depth: AtomicBool::new(false),
             use_max_nodes: AtomicBool::new(false),
@@ -52,6 +57,8 @@ impl TimeManager {
 
     pub fn init(&self, stm: Color, limits: &[SearchLimit]) {
         self.abort_now.store(false, Ordering::Relaxed);
+        self.move_stability.store(0, Ordering::Relaxed);
+        *self.prev_move.lock().unwrap() = None;
 
         let mut w_time = 0;
         let mut b_time = 0;
@@ -164,7 +171,7 @@ impl TimeManager {
         depth: u8,
         score: Score,
         static_eval: Score,
-        _best_move: Move,
+        best_move: Move,
         move_nodes: u64,
         nodes: u64,
     ) {
@@ -172,21 +179,30 @@ impl TimeManager {
             return;
         }
 
+        let mut prev_move = self.prev_move.lock().unwrap();
+        let mut move_stability = self.move_stability.load(Ordering::Relaxed);
+
+        move_stability = (move_stability + 1).min(8);
+        if *prev_move != Some(best_move) {
+            move_stability = 0;
+        }
+
+        *prev_move = Some(best_move);
+        self.move_stability.store(move_stability, Ordering::Relaxed);
+
         let complexity = if !score.is_decisive() {
             W::complexity_tm_scale() * ((static_eval - score).abs().0 as f32) * (depth as f32).ln()
         } else {
             1.0
         };
 
+        let stability_factor = W::stability_tm_base() - W::stability_tm_scale() * move_stability as f32;
         let subtree_factor = W::subtree_tm_base() - W::subtree_tm_scale() * move_nodes as f32 / nodes as f32;
-        let complexity_factor = f32::max(
-            W::complexity_tm_base() + complexity.clamp(0.0, W::complexity_tm_max()) / W::complexity_tm_div(),
-            1.0
-        );
+        let complexity_factor = (W::complexity_tm_base() + complexity.clamp(0.0, W::complexity_tm_max()) / W::complexity_tm_div()).max(1.0);
         
         let base_time = self.base_time.load(Ordering::Relaxed);
         let hard_time = self.hard_time.load(Ordering::Relaxed);
-        let new_target = (base_time as f32 * subtree_factor * complexity_factor) as u64;
+        let new_target = (base_time as f32 * stability_factor * subtree_factor * complexity_factor) as u64;
 
         self.soft_time.store(new_target.min(hard_time), Ordering::Relaxed);
     }
