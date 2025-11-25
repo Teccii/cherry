@@ -178,6 +178,23 @@ pub fn search<Node: NodeType>(
                     && !pos.board().cmp_see(mv, see_margin) {
                     continue;
                 }
+
+                let (futile_depth, futile_base, futile_scale, futile_move_scale) = (
+                    W::futile_tactic_depth()[improving as usize],
+                    W::futile_tactic_base()[improving as usize],
+                    W::futile_tactic_scale()[improving as usize],
+                    W::futile_tactic_move_scale()[improving as usize],
+                );
+                let futile_margin = (futile_base + futile_scale * depth / DEPTH_SCALE + futile_move_scale * moves_seen as i32 / 64) as i16;
+                if !in_check && depth <= futile_depth
+                    && move_picker.stage() > Stage::YieldGoodTactics
+                    && static_eval + futile_margin <= alpha {
+                    if best_score.is_none_or(|s| !s.is_decisive() && s <= futile_margin){
+                        best_score = Some(Score::new(futile_margin));
+                    }
+
+                    break;
+                }
             } else {
                 let (lmp_base, lmp_scale) = (W::lmp_base()[improving as usize], W::lmp_scale()[improving as usize]);
                 let lmp_margin = lmp_base + lmp_scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64);
@@ -188,12 +205,12 @@ pub fn search<Node: NodeType>(
                 let lmr_depth = (depth - lmr).max(0);
 
                 let (futile_depth, futile_base, futile_scale) = (
-                    W::futile_depth()[improving as usize],
-                    W::futile_base()[improving as usize],
-                    W::futile_scale()[improving as usize],
+                    W::futile_quiet_depth()[improving as usize],
+                    W::futile_quiet_base()[improving as usize],
+                    W::futile_quiet_scale()[improving as usize],
                 );
                 let futile_margin = (futile_base + futile_scale * lmr_depth / DEPTH_SCALE) as i16;
-                if lmr_depth <= futile_depth && !in_check && static_eval + futile_margin <= alpha {
+                if !in_check && lmr_depth <= futile_depth && static_eval + futile_margin <= alpha {
                     move_picker.skip_quiets();
                 }
 

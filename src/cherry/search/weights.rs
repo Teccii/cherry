@@ -132,9 +132,13 @@ weights! {
     lmp_base  | LMP_BASE:  [i64; 2] => [2048, 4096],
     lmp_scale | LMP_SCALE: [i64; 2] => [512, 1024],
 
-    futile_depth | FUTILE_DEPTH: [i32; 2] => [8192, 8192],
-    futile_base  | FUTILE_BASE:  [i32; 2] => [93, 93],
-    futile_scale | FUTILE_SCALE: [i32; 2] => [79, 79],
+    futile_quiet_depth | FUTILE_QUIET_DEPTH: [i32; 2] => [8192, 8192],
+    futile_quiet_base  | FUTILE_QUIET_BASE:  [i32; 2] => [93, 93],
+    futile_quiet_scale | FUTILE_QUIET_SCALE: [i32; 2] => [79, 79],
+    futile_tactic_depth      | FUTILE_TACTIC_DEPTH:      [i32; 2] => [6144, 6144],
+    futile_tactic_base       | FUTILE_TACTIC_BASE:       [i32; 2] => [0, 0],
+    futile_tactic_scale      | FUTILE_TACTIC_SCALE:      [i32; 2] => [120, 120],
+    futile_tactic_move_scale | FUTILE_TACTIC_MOVE_SCALE: [i32; 2] => [186, 186],
 
     see_quiet_depth | SEE_QUIET_DEPTH: [i32; 2] => [10240, 10240],
     see_quiet_base  | SEE_QUIET_BASE:  [i32; 2] => [0, 0],
@@ -152,7 +156,7 @@ weights! {
     singular_ext          | SINGULAR_EXT:          [i32; 2] => [1024, 1024],
     singular_dext         | SINGULAR_DEXT:         [i32; 2] => [1024, 1024],
     singular_neg_ext      | SINGULAR_NEG_EXT:      [i32; 2] => [-1024, -1024],
-    
+
     tt_depth_bias | TT_DEPTH_BIAS: [i32; 2] => [0, 0],
 
     lmr_quiet_base  | LMR_QUIET_BASE:  [i32; 2] => [579, 579],
