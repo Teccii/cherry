@@ -135,6 +135,7 @@ weights! {
     futile_depth | FUTILE_DEPTH: [i32; 2] => [8192, 8192],
     futile_base  | FUTILE_BASE:  [i32; 2] => [93, 93],
     futile_scale | FUTILE_SCALE: [i32; 2] => [79, 79],
+    futile_hist  | FUTILE_HIST:  [i32; 2] => [341, 341],
 
     see_quiet_depth | SEE_QUIET_DEPTH: [i32; 2] => [10240, 10240],
     see_quiet_base  | SEE_QUIET_BASE:  [i32; 2] => [0, 0],

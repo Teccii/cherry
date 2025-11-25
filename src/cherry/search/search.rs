@@ -155,7 +155,7 @@ pub fn search<Node: NodeType>(
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
     let cont_indices = ContIndices::new(&thread.search_stack, ply);
 
-    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
+    while let Some(ScoredMove(mv, stat_score)) = move_picker.next(pos, &thread.history, &cont_indices) {
         if skip_move == Some(mv) {
             continue;
         }
@@ -187,12 +187,13 @@ pub fn search<Node: NodeType>(
                 
                 let lmr_depth = (depth - lmr).max(0);
 
-                let (futile_depth, futile_base, futile_scale) = (
+                let (futile_depth, futile_base, futile_scale, futile_hist) = (
                     W::futile_depth()[improving as usize],
                     W::futile_base()[improving as usize],
                     W::futile_scale()[improving as usize],
+                    W::futile_hist()[improving as usize],
                 );
-                let futile_margin = (futile_base + futile_scale * lmr_depth / DEPTH_SCALE) as i16;
+                let futile_margin = (futile_base + futile_scale * lmr_depth / DEPTH_SCALE + stat_score * futile_hist / MAX_HISTORY) as i16;
                 if lmr_depth <= futile_depth && !in_check && static_eval + futile_margin <= alpha {
                     move_picker.skip_quiets();
                 }
