@@ -151,7 +151,8 @@ weights! {
     singular_dext_margin  | SINGULAR_DEXT_MARGIN:  [i16; 2] => [30, 30],
     singular_ext          | SINGULAR_EXT:          [i32; 2] => [1024, 1024],
     singular_dext         | SINGULAR_DEXT:         [i32; 2] => [1024, 1024],
-    singular_neg_ext      | SINGULAR_NEG_EXT:      [i32; 2] => [-1024, -1024],
+    singular_cutnode_ext  | SINGULAR_CUTNODE_EXT:  [i32; 2] => [-1024, -1024],
+    singular_tt_ext       | SINGULAR_TT_EXT:       [i32; 2] => [-1024, -1024],
     
     tt_depth_bias | TT_DEPTH_BIAS: [i32; 2] => [0, 0],
 

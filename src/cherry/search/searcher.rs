@@ -262,6 +262,7 @@ pub fn search_worker<Info: SearchInfo>(
                 0,
                 alpha,
                 beta,
+                false
             );
             thread.nodes.flush();
 
