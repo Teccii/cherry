@@ -146,9 +146,9 @@ weights! {
 
     singular_depth        | SINGULAR_DEPTH:        [i32; 2] => [6144, 6144],
     singular_tt_depth     | SINGULAR_TT_DEPTH:     [i32; 2] => [3072, 3072],
-    singular_beta_margin  | SINGULAR_BETA_MARGIN:  [i32; 2] => [196, 196],
+    singular_beta_margin  | SINGULAR_BETA_MARGIN:  [i32; 2] => [96, 96],
     singular_search_depth | SINGULAR_SEARCH_DEPTH: [i32; 2] => [512, 512],
-    singular_dext_margin  | SINGULAR_DEXT_MARGIN:  [i16; 2] => [30, 30],
+    singular_dext_margin  | SINGULAR_DEXT_MARGIN:  [i16; 2] => [20, 20],
     singular_ext          | SINGULAR_EXT:          [i32; 2] => [1024, 1024],
     singular_dext         | SINGULAR_DEXT:         [i32; 2] => [1024, 1024],
     singular_neg_ext      | SINGULAR_NEG_EXT:      [i32; 2] => [-1024, -1024],
