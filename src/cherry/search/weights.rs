@@ -1,49 +1,60 @@
 use core::cell::SyncUnsafeCell;
 use crate::*;
 
+
 /*----------------------------------------------------------------*/
 
-type LmrLookup = [[[i32; MAX_PLY as usize]; MAX_PLY as usize]; 2];
+type LmrLookup = [[i32; MAX_PLY as usize]; MAX_PLY as usize];
 
-pub static LMR_QUIET: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[[0; MAX_PLY as usize]; MAX_PLY as usize]; 2]);
-pub static LMR_TACTIC: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[[0; MAX_PLY as usize]; MAX_PLY as usize]; 2]);
+pub static LMR_QUIET: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
+pub static LMR_QUIET_IMPROVING: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
+pub static LMR_TACTIC: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
+pub static LMR_TACTIC_IMPROVING: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
 
 #[inline]
 pub fn get_lmr(is_tactic: bool, improving: bool, depth: u8, moves_seen: u16) -> i32 {
-    if is_tactic {
-        unsafe { (*LMR_TACTIC.get())[improving as usize][depth as usize][moves_seen as usize] }
-    } else {
-        unsafe { (*LMR_QUIET.get())[improving as usize][depth as usize][moves_seen as usize] }
+    match (is_tactic, improving) {
+        (true, true) => unsafe { (*LMR_TACTIC_IMPROVING.get())[depth as usize][moves_seen as usize] },
+        (true, false) => unsafe { (*LMR_TACTIC.get())[depth as usize][moves_seen as usize] },
+        (false, true) => unsafe { (*LMR_QUIET_IMPROVING.get())[depth as usize][moves_seen as usize] },
+        (false, false) => unsafe { (*LMR_QUIET.get())[depth as usize][moves_seen as usize] },
     }
 }
 
 pub fn init_lmr() {
     let mut quiet_table: Box<LmrLookup> = new_zeroed();
+    let mut quiet_improving_table: Box<LmrLookup> = new_zeroed();
     let mut tactic_table: Box<LmrLookup> = new_zeroed();
+    let mut tactic_improving_table: Box<LmrLookup> = new_zeroed();
 
-    let (quiet_base, quiet_div) = (W::lmr_quiet_base()[0] as f32 / 1024.0, W::lmr_quiet_div()[0] as f32 / 1024.0);
-    let (quiet_improving_base, quiet_improving_div) = (W::lmr_quiet_base()[1] as f32 / 1024.0, W::lmr_quiet_div()[1] as f32 / 1024.0);
-    let (tactic_base, tactic_div) = (W::lmr_tactic_base()[0] as f32 / 1024.0, W::lmr_tactic_div()[0] as f32 / 1024.0);
-    let (tactic_improving_base, tactic_improving_div) = (W::lmr_tactic_base()[1] as f32 / 1024.0, W::lmr_tactic_div()[1] as f32 / 1024.0);
+    let (quiet_base, quiet_div) = (W::lmr_quiet_base() as f32 / 1024.0, W::lmr_quiet_div() as f32 / 1024.0);
+    let (quiet_improving_base, quiet_improving_div) = (W::lmr_quiet_improving_base() as f32 / 1024.0, W::lmr_quiet_improving_div() as f32 / 1024.0);
+    let (tactic_base, tactic_div) = (W::lmr_tactic_base() as f32 / 1024.0, W::lmr_tactic_div() as f32 / 1024.0);
+    let (tactic_improving_base, tactic_improving_div) = (W::lmr_tactic_improving_base() as f32 / 1024.0, W::lmr_tactic_improving_div() as f32 / 1024.0);
 
     for i in 0..MAX_PLY as usize {
         for j in 0..MAX_PLY as usize {
             let x = if i != 0 { (i as f32).ln() } else { 0.0 };
             let y = if j != 0 { (j as f32).ln() } else { 0.0 };
 
-            quiet_table[0][i][j] = DEPTH_SCALE * (quiet_base + x * y / quiet_div) as i32;
-            quiet_table[1][i][j] = DEPTH_SCALE * (quiet_improving_base + x * y / quiet_improving_div) as i32;
-            tactic_table[0][i][j] = DEPTH_SCALE * (tactic_base + x * y / tactic_div) as i32;
-            tactic_table[1][i][j] = DEPTH_SCALE * (tactic_improving_base + x * y / tactic_improving_div) as i32;
+            quiet_table[i][j] = DEPTH_SCALE * (quiet_base + x * y / quiet_div) as i32;
+            quiet_improving_table[i][j] = DEPTH_SCALE * (quiet_improving_base + x * y / quiet_improving_div) as i32;
+            tactic_table[i][j] = DEPTH_SCALE * (tactic_base + x * y / tactic_div) as i32;
+            tactic_improving_table[i][j] = DEPTH_SCALE * (tactic_improving_base + x * y / tactic_improving_div) as i32;
         }
     }
 
     unsafe {
         let lmr_quiet: &mut LmrLookup = &mut *LMR_QUIET.get();
+        let lmr_quiet_improving: &mut LmrLookup = &mut *LMR_QUIET_IMPROVING.get();
         let lmr_tactic: &mut LmrLookup = &mut *LMR_TACTIC.get();
+        let lmr_tactic_improving: &mut LmrLookup = &mut *LMR_TACTIC_IMPROVING.get();
 
         lmr_quiet.copy_from_slice(&*quiet_table);
+        lmr_quiet_improving.copy_from_slice(&*quiet_improving_table);
         lmr_tactic.copy_from_slice(&*tactic_table);
+        lmr_tactic_improving.copy_from_slice(&*tactic_improving_table);
+
     }
 }
 
@@ -120,45 +131,66 @@ weights! {
     queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973,
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 25100,
 
-    rfp_depth | RFP_DEPTH: [i32; 2] => [6144, 6144],
-    rfp_base  | RFP_BASE:  [i32; 2] => [0, -80],
-    rfp_scale | RFP_SCALE: [i32; 2] => [80, 80],
-    rfp_lerp  | RFP_LERP:  [i32; 2] => [512, 512],
+    rfp_depth                  | RFP_DEPTH:                  i32 => 6144,
+    rfp_base                   | RFP_BASE:                   i32 => 0,
+    rfp_scale                  | RFP_SCALE:                  i32 => 80,
+    rfp_lerp                   | RFP_LERP:                   i32 => 512,
+    rfp_improving_depth        | RFP_IMPROVING_DEPTH:        i32 => 6144,
+    rfp_improving_base         | RFP_IMPROVING_BASE:         i32 => -80,
+    rfp_improving_scale        | RFP_IMPROVING_SCALE:        i32 => 80,
+    rfp_improving_lerp         | RFP_IMPROVING_LERP:         i32 => 512,
 
-    nmp_depth | NMP_DEPTH: [i32; 2] => [3072, 3072],
-    nmp_base  | NMP_BASE:  [i64; 2] => [3072, 3072],
-    nmp_scale | NMP_SCALE: [i64; 2] => [340, 340],
+    nmp_depth                  | NMP_DEPTH:                  i32 => 3072,
+    nmp_base                   | NMP_BASE:                   i64 => 3072,
+    nmp_scale                  | NMP_SCALE:                  i64 => 340,
+    nmp_improving_depth        | NMP_IMPROVING_DEPTH:        i32 => 3072,
+    nmp_improving_base         | NMP_IMPROVING_BASE:         i64 => 3072,
+    nmp_improving_scale        | NMP_IMPROVING_SCALE:        i64 => 340,
 
-    lmp_base  | LMP_BASE:  [i64; 2] => [2048, 4096],
-    lmp_scale | LMP_SCALE: [i64; 2] => [512, 1024],
+    lmp_base                   | LMP_BASE:                   i64 => 2048,
+    lmp_scale                  | LMP_SCALE:                  i64 => 512,
+    lmp_improving_base         | LMP_IMPROVING_BASE:         i64 => 4096,
+    lmp_improving_scale        | LMP_IMPROVING_SCALE:        i64 => 1024,
 
-    futile_depth | FUTILE_DEPTH: [i32; 2] => [8192, 8192],
-    futile_base  | FUTILE_BASE:  [i32; 2] => [93, 93],
-    futile_scale | FUTILE_SCALE: [i32; 2] => [79, 79],
+    futile_depth               | FUTILE_DEPTH:               i32 => 8192,
+    futile_base                | FUTILE_BASE:                i32 => 93,
+    futile_scale               | FUTILE_SCALE:               i32 => 79,
+    futile_improving_depth     | FUTILE_IMPROVING_DEPTH:     i32 => 8192,
+    futile_improving_base      | FUTILE_IMPROVING_BASE:      i32 => 93,
+    futile_improving_scale     | FUTILE_IMPROVING_SCALE:     i32 => 79,
 
-    see_quiet_depth | SEE_QUIET_DEPTH: [i32; 2] => [10240, 10240],
-    see_quiet_base  | SEE_QUIET_BASE:  [i32; 2] => [0, 0],
-    see_quiet_scale | SEE_QUIET_SCALE: [i32; 2] => [-89, -89],
+    see_quiet_depth            | SEE_QUIET_DEPTH:            i32 => 10240,
+    see_quiet_base             | SEE_QUIET_BASE:             i32 => 0,
+    see_quiet_scale            | SEE_QUIET_SCALE:            i32 => -89,
+    see_quiet_improving_depth  | SEE_QUIET_IMPROVING_DEPTH:  i32 => 10240,
+    see_quiet_improving_base   | SEE_QUIET_IMPROVING_BASE:   i32 => 0,
+    see_quiet_improving_scale  | SEE_QUIET_IMPROVING_SCALE:  i32 => -89,
 
-    see_tactic_depth | SEE_TACTIC_DEPTH: [i32; 2] => [10240, 10240],
-    see_tactic_base  | SEE_TACTIC_BASE:  [i32; 2] => [0, 0],
-    see_tactic_scale | SEE_TACTIC_SCALE: [i32; 2] => [-62, -62],
+    see_tactic_depth           | SEE_TACTIC_DEPTH:           i32 => 10240,
+    see_tactic_base            | SEE_TACTIC_BASE:            i32 => 0,
+    see_tactic_scale           | SEE_TACTIC_SCALE:           i32 => -62,
+    see_tactic_improving_depth | SEE_TACTIC_IMPROVING_DEPTH: i32 => 10240,
+    see_tactic_improving_base  | SEE_TACTIC_IMPROVING_BASE:  i32 => 0,
+    see_tactic_improving_scale | SEE_TACTIC_IMPROVING_SCALE: i32 => -62,
 
-    singular_depth        | SINGULAR_DEPTH:        [i32; 2] => [6144, 6144],
-    singular_tt_depth     | SINGULAR_TT_DEPTH:     [i32; 2] => [3072, 3072],
-    singular_beta_margin  | SINGULAR_BETA_MARGIN:  [i32; 2] => [196, 196],
-    singular_search_depth | SINGULAR_SEARCH_DEPTH: [i32; 2] => [512, 512],
-    singular_dext_margin  | SINGULAR_DEXT_MARGIN:  [i16; 2] => [30, 30],
-    singular_ext          | SINGULAR_EXT:          [i32; 2] => [1024, 1024],
-    singular_dext         | SINGULAR_DEXT:         [i32; 2] => [1024, 1024],
-    singular_neg_ext      | SINGULAR_NEG_EXT:      [i32; 2] => [-1024, -1024],
-    
-    tt_depth_bias | TT_DEPTH_BIAS: [i32; 2] => [0, 0],
+    singular_depth             | SINGULAR_DEPTH:             i32 => 6144,
+    singular_tt_depth          | SINGULAR_TT_DEPTH:          i32 => 3072,
+    singular_beta_margin       | SINGULAR_BETA_MARGIN:       i32 => 196,
+    singular_search_depth      | SINGULAR_SEARCH_DEPTH:      i32 => 512,
+    singular_dext_margin       | SINGULAR_DEXT_MARGIN:       i16 => 30,
+    singular_ext               | SINGULAR_EXT:               i32 => 1024,
+    singular_dext              | SINGULAR_DEXT:              i32 => 1024,
+    singular_neg_ext           | SINGULAR_NEG_EXT:           i32 => -1024,
+    tt_depth_bias              | TT_DEPTH_BIAS:              i32 => 0,
 
-    lmr_quiet_base  | LMR_QUIET_BASE:  [i32; 2] => [579, 579],
-    lmr_quiet_div   | LMR_QUIET_DIV:   [i32; 2] => [1626, 1626],
-    lmr_tactic_base | LMR_TACTIC_BASE: [i32; 2] => [450, 450],
-    lmr_tactic_div  | LMR_TACTIC_DIV:  [i32; 2] => [3688, 3688],
+    lmr_quiet_base            | LMR_QUIET_BASE:              i32 => 579,
+    lmr_quiet_div             | LMR_QUIET_DIV:               i32 => 1626,
+    lmr_quiet_improving_base  | LMR_QUIET_IMPROVING_BASE:    i32 => 579,
+    lmr_quiet_improving_div   | LMR_QUIET_IMPROVING_DIV:     i32 => 1626,
+    lmr_tactic_base           | LMR_TACTIC_BASE:           i32 => 450,
+    lmr_tactic_div            | LMR_TACTIC_DIV:            i32 => 3688,
+    lmr_tactic_improving_base | LMR_TACTIC_IMPROVING_BASE: i32 => 450,
+    lmr_tactic_improving_div  | LMR_TACTIC_IMPROVING_DIV:  i32 => 3688,
 
     asp_window_initial | ASP_WINDOW_INITIAL: i16 => 20,
     asp_window_expand  | ASP_WINDOW_EXPAND:  i16 => 48,
