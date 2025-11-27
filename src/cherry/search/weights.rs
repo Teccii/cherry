@@ -1,36 +1,29 @@
 use core::cell::SyncUnsafeCell;
-use crate::*;
 
+use crate::*;
 
 /*----------------------------------------------------------------*/
 
 type LmrLookup = [[i32; MAX_PLY as usize]; MAX_PLY as usize];
 
 pub static LMR_QUIET: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
-pub static LMR_QUIET_IMPROVING: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
 pub static LMR_TACTIC: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
-pub static LMR_TACTIC_IMPROVING: SyncUnsafeCell<LmrLookup> = SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
 
 #[inline]
-pub fn get_lmr(is_tactic: bool, improving: bool, depth: u8, moves_seen: u16) -> i32 {
-    match (is_tactic, improving) {
-        (true, true) => unsafe { (*LMR_TACTIC_IMPROVING.get())[depth as usize][moves_seen as usize] },
-        (true, false) => unsafe { (*LMR_TACTIC.get())[depth as usize][moves_seen as usize] },
-        (false, true) => unsafe { (*LMR_QUIET_IMPROVING.get())[depth as usize][moves_seen as usize] },
-        (false, false) => unsafe { (*LMR_QUIET.get())[depth as usize][moves_seen as usize] },
+pub fn get_lmr(is_tactic: bool, depth: u8, moves_seen: u16) -> i32 {
+    if is_tactic {
+        unsafe { (*LMR_TACTIC.get())[depth as usize][moves_seen as usize] }
+    } else {
+        unsafe { (*LMR_QUIET.get())[depth as usize][moves_seen as usize] }
     }
 }
 
 pub fn init_lmr() {
     let mut quiet_table: Box<LmrLookup> = new_zeroed();
-    let mut quiet_improving_table: Box<LmrLookup> = new_zeroed();
     let mut tactic_table: Box<LmrLookup> = new_zeroed();
-    let mut tactic_improving_table: Box<LmrLookup> = new_zeroed();
 
     let (quiet_base, quiet_div) = (W::lmr_quiet_base() as f32 / 1024.0, W::lmr_quiet_div() as f32 / 1024.0);
-    let (quiet_improving_base, quiet_improving_div) = (W::lmr_quiet_improving_base() as f32 / 1024.0, W::lmr_quiet_improving_div() as f32 / 1024.0);
     let (tactic_base, tactic_div) = (W::lmr_tactic_base() as f32 / 1024.0, W::lmr_tactic_div() as f32 / 1024.0);
-    let (tactic_improving_base, tactic_improving_div) = (W::lmr_tactic_improving_base() as f32 / 1024.0, W::lmr_tactic_improving_div() as f32 / 1024.0);
 
     for i in 0..MAX_PLY as usize {
         for j in 0..MAX_PLY as usize {
@@ -38,23 +31,16 @@ pub fn init_lmr() {
             let y = if j != 0 { (j as f32).ln() } else { 0.0 };
 
             quiet_table[i][j] = DEPTH_SCALE * (quiet_base + x * y / quiet_div) as i32;
-            quiet_improving_table[i][j] = DEPTH_SCALE * (quiet_improving_base + x * y / quiet_improving_div) as i32;
             tactic_table[i][j] = DEPTH_SCALE * (tactic_base + x * y / tactic_div) as i32;
-            tactic_improving_table[i][j] = DEPTH_SCALE * (tactic_improving_base + x * y / tactic_improving_div) as i32;
         }
     }
 
     unsafe {
         let lmr_quiet: &mut LmrLookup = &mut *LMR_QUIET.get();
-        let lmr_quiet_improving: &mut LmrLookup = &mut *LMR_QUIET_IMPROVING.get();
         let lmr_tactic: &mut LmrLookup = &mut *LMR_TACTIC.get();
-        let lmr_tactic_improving: &mut LmrLookup = &mut *LMR_TACTIC_IMPROVING.get();
 
         lmr_quiet.copy_from_slice(&*quiet_table);
-        lmr_quiet_improving.copy_from_slice(&*quiet_improving_table);
         lmr_tactic.copy_from_slice(&*tactic_table);
-        lmr_tactic_improving.copy_from_slice(&*tactic_improving_table);
-
     }
 }
 
@@ -187,12 +173,10 @@ weights! {
 
     lmr_quiet_base            | LMR_QUIET_BASE:              i32 => 579,
     lmr_quiet_div             | LMR_QUIET_DIV:               i32 => 1626,
-    lmr_quiet_improving_base  | LMR_QUIET_IMPROVING_BASE:    i32 => 579,
-    lmr_quiet_improving_div   | LMR_QUIET_IMPROVING_DIV:     i32 => 1626,
     lmr_tactic_base           | LMR_TACTIC_BASE:           i32 => 450,
     lmr_tactic_div            | LMR_TACTIC_DIV:            i32 => 3688,
-    lmr_tactic_improving_base | LMR_TACTIC_IMPROVING_BASE: i32 => 450,
-    lmr_tactic_improving_div  | LMR_TACTIC_IMPROVING_DIV:  i32 => 3688,
+
+    cutnode_lmr | CUTNODE_LMR: i32 => 1024,
 
     asp_window_initial | ASP_WINDOW_INITIAL: i16 => 20,
     asp_window_expand  | ASP_WINDOW_EXPAND:  i16 => 48,
@@ -215,12 +199,12 @@ impl W {
     #[inline]
     pub const fn see_value(piece: Piece) -> i16 {
         match piece {
-            Piece::Pawn =>   W::pawn_see_value(),
+            Piece::Pawn => W::pawn_see_value(),
             Piece::Knight => W::knight_see_value(),
             Piece::Bishop => W::bishop_see_value(),
-            Piece::Rook =>   W::rook_see_value(),
-            Piece::Queen =>  W::queen_see_value(),
-            Piece::King =>   20000,
+            Piece::Rook => W::rook_see_value(),
+            Piece::Queen => W::queen_see_value(),
+            Piece::King => 20000,
         }
     }
 }

@@ -1,6 +1,8 @@
 use std::sync::{Arc, atomic::*};
-use smallvec::{Array, SmallVec};
+
 use colored::Colorize;
+use smallvec::{Array, SmallVec};
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -29,7 +31,7 @@ impl BatchedAtomicCounter {
     #[inline]
     pub fn new() -> BatchedAtomicCounter {
         BatchedAtomicCounter {
-            global: Arc::new(AtomicU64::new(0)), 
+            global: Arc::new(AtomicU64::new(0)),
             local: 0,
             buffer: 0,
         }
@@ -40,19 +42,19 @@ impl BatchedAtomicCounter {
     #[inline]
     pub fn inc(&mut self) {
         self.buffer += 1;
-        
+
         if self.buffer >= Self::BATCH_SIZE {
             self.flush();
         }
     }
-    
+
     #[inline]
     pub fn flush(&mut self) {
         self.global.fetch_add(self.buffer, Ordering::Relaxed);
         self.local += self.buffer;
         self.buffer = 0;
     }
-    
+
     #[inline]
     pub fn reset(&mut self) {
         self.global.store(0, Ordering::Relaxed);
@@ -66,14 +68,14 @@ impl BatchedAtomicCounter {
     pub fn global(&self) -> u64 {
         self.global.load(Ordering::Relaxed) + self.buffer
     }
-    
+
     #[inline]
     pub fn local(&self) -> u64 {
         self.local + self.buffer
     }
 
     /*----------------------------------------------------------------*/
-    
+
     pub const BATCH_SIZE: u64 = 2048;
 }
 
@@ -90,7 +92,7 @@ impl Clone for BatchedAtomicCounter {
 
 /*----------------------------------------------------------------*/
 
-pub fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item>  {
+pub fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item> {
     let len = vec.len();
 
     if index >= len {
@@ -100,7 +102,6 @@ pub fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item
     vec.swap(index, len - 1);
     vec.pop()
 }
-
 
 #[inline]
 pub fn new_zeroed<T>() -> Box<T> {

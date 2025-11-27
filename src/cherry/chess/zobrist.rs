@@ -4,7 +4,7 @@ use crate::*;
 
 #[derive(Debug, Clone)]
 pub struct SplitMix64 {
-    pub state: u64
+    pub state: u64,
 }
 
 impl SplitMix64 {
@@ -83,7 +83,7 @@ impl Zobrist {
             stm: 0,
         }
     }
-    
+
     #[inline]
     pub const fn piece(&self, sq: Square, piece: Piece, color: Color) -> u64 {
         self.pieces[color as usize][piece as usize][sq as usize]
@@ -93,12 +93,12 @@ impl Zobrist {
     pub const fn castle_rights(&self, file: File, color: Color) -> u64 {
         self.castle_rights[color as usize][file as usize]
     }
-    
+
     #[inline]
     pub const fn en_passant(&self, file: File) -> u64 {
         self.en_passant[file as usize]
     }
-    
+
     #[inline]
     pub const fn stm(&self) -> u64 {
         self.stm

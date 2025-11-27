@@ -21,7 +21,7 @@ pub type Vec512Mask64 = __mmask8;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Vec128 {
-    pub raw: __m128i
+    pub raw: __m128i,
 }
 
 impl Vec128 {
@@ -32,7 +32,9 @@ impl Vec128 {
 
     #[inline]
     pub unsafe fn store<T>(dst: *mut T, src: Vec128) {
-        unsafe { _mm_storeu_si128(dst.cast(), src.raw); }
+        unsafe {
+            _mm_storeu_si128(dst.cast(), src.raw);
+        }
     }
 
     /*----------------------------------------------------------------*/
@@ -116,12 +118,12 @@ impl Vec128 {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn shl16<const SHIFT:i32>(vec: Vec128) -> Vec128 {
+    pub fn shl16<const SHIFT: i32>(vec: Vec128) -> Vec128 {
         unsafe { _mm_slli_epi16::<SHIFT>(vec.raw).into() }
     }
 
     #[inline]
-    pub fn shr16<const SHIFT:i32>(vec: Vec128) -> Vec128 {
+    pub fn shr16<const SHIFT: i32>(vec: Vec128) -> Vec128 {
         unsafe { _mm_srli_epi16::<SHIFT>(vec.raw).into() }
     }
 
@@ -244,7 +246,7 @@ impl_vec128_assign_ops! {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Vec256 {
-    pub raw: __m256i
+    pub raw: __m256i,
 }
 
 impl Vec256 {
@@ -255,7 +257,9 @@ impl Vec256 {
 
     #[inline]
     pub unsafe fn store<T>(dst: *mut T, src: Vec256) {
-        unsafe { _mm256_storeu_si256(dst.cast(), src.raw); }
+        unsafe {
+            _mm256_storeu_si256(dst.cast(), src.raw);
+        }
     }
 
     /*----------------------------------------------------------------*/
@@ -349,7 +353,7 @@ impl Vec256 {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn shl16<const SHIFT:i32>(vec: Vec256) -> Vec256 {
+    pub fn shl16<const SHIFT: i32>(vec: Vec256) -> Vec256 {
         unsafe { _mm256_slli_epi16::<SHIFT>(vec.raw).into() }
     }
 

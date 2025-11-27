@@ -5,15 +5,7 @@ use crate::*;
 pub trait SearchInfo {
     fn new(frc: bool) -> Self;
 
-    fn update(
-        &mut self,
-        board: &Board,
-        thread: &ThreadData,
-        shared: &SharedData,
-        bound: TTFlag,
-        score: Score,
-        depth: u8,
-    );
+    fn update(&mut self, board: &Board, thread: &ThreadData, shared: &SharedData, bound: TTFlag, score: Score, depth: u8);
 }
 
 /*----------------------------------------------------------------*/
@@ -31,15 +23,7 @@ impl SearchInfo for UciInfo {
         Self { frc }
     }
 
-    fn update(
-        &mut self,
-        board: &Board,
-        thread: &ThreadData,
-        shared: &SharedData,
-        bound: TTFlag,
-        score: Score,
-        depth: u8,
-    ) {
+    fn update(&mut self, board: &Board, thread: &ThreadData, shared: &SharedData, bound: TTFlag, score: Score, depth: u8) {
         let nodes = thread.nodes.global();
         let time = shared.time_man.elapsed();
 
@@ -70,13 +54,5 @@ impl SearchInfo for NoInfo {
         Self
     }
 
-    fn update(
-        &mut self,
-        _: &Board,
-        _: &ThreadData,
-        _: &SharedData,
-        _: TTFlag,
-        _: Score,
-        _: u8,
-    ) { }
+    fn update(&mut self, _: &Board, _: &ThreadData, _: &SharedData, _: TTFlag, _: Score, _: u8) {}
 }

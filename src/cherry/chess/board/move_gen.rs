@@ -1,11 +1,13 @@
 use core::{ops::*, ptr};
+
 use arrayvec::ArrayVec;
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
 #[derive(Debug, Clone)]
 pub struct MoveList {
-    inner: ArrayVec<Move, 256>
+    inner: ArrayVec<Move, 256>,
 }
 
 impl MoveList {
@@ -113,10 +115,10 @@ impl Board {
                     } else {
                         between(our_king, checker_sq) | checker_sq
                     },
-                    Some(checker_piece)
+                    Some(checker_piece),
                 );
                 self.gen_king_moves_in_check::<1>(&mut moves, our_king, checkers);
-            },
+            }
             2 => self.gen_king_moves_in_check::<2>(&mut moves, our_king, checkers),
             _ => unreachable!(),
         }
@@ -148,8 +150,15 @@ impl Board {
         let src = unsafe { Vec128::load(self.index_to_square[stm].into_inner().as_ptr()) }.zext8to16();
         let pawn_info = pawns::pawn_info(stm);
 
-        self.gen_capture_promotions_for(moves, &masked_attack_table, pawn_mask, pawn_dest & their_pieces & pawn_info.promo_dest);
-        if let Some(sq) = self.ep_square() && (KING_MOVES || checker == Some(Piece::Pawn)) {
+        self.gen_capture_promotions_for(
+            moves,
+            &masked_attack_table,
+            pawn_mask,
+            pawn_dest & their_pieces & pawn_info.promo_dest,
+        );
+        if let Some(sq) = self.ep_square()
+            && (KING_MOVES || checker == Some(Piece::Pawn))
+        {
             let mask = masked_attack_table[sq] & pawn_mask;
 
             if !mask.is_empty() {
@@ -188,12 +197,30 @@ impl Board {
             }
         }
 
-        self.gen_captures_for(moves, &masked_attack_table, pawn_mask, src, pawn_dest & their_pieces & pawn_info.non_promo_dest);
+        self.gen_captures_for(
+            moves,
+            &masked_attack_table,
+            pawn_mask,
+            src,
+            pawn_dest & their_pieces & pawn_info.non_promo_dest,
+        );
         self.gen_captures_for(moves, &masked_attack_table, non_pawn_mask, src, non_pawn_dest & their_pieces);
 
         if KING_MOVES {
-            self.gen_captures_for(moves, &masked_attack_table, PieceMask::KING, src,king_dest & their_pieces & !their_attacks);
-            self.gen_quiets_for(moves, &masked_attack_table, PieceMask::KING, src, king_dest & empty & !their_attacks);
+            self.gen_captures_for(
+                moves,
+                &masked_attack_table,
+                PieceMask::KING,
+                src,
+                king_dest & their_pieces & !their_attacks,
+            );
+            self.gen_quiets_for(
+                moves,
+                &masked_attack_table,
+                PieceMask::KING,
+                src,
+                king_dest & empty & !their_attacks,
+            );
 
             let blockers = self.occupied();
             let our_backrank = Rank::First.relative_to(stm);
@@ -210,17 +237,31 @@ impl Board {
                         let must_be_empty = must_be_safe | king_to_rook | rook_dest;
                         let blockers = $blockers ^ $king_src ^ rook_src;
 
-                        if !pinned.has(rook_src)
-                            && blockers.is_disjoint(must_be_empty)
-                            && their_attacks.is_disjoint(must_be_safe) {
+                        if !pinned.has(rook_src) && blockers.is_disjoint(must_be_empty) && their_attacks.is_disjoint(must_be_safe) {
                             moves.push(Move::new($king_src, rook_src, $flag));
                         }
                     }
-                }
+                };
             }
 
-            write_castling!(blockers, our_backrank, our_king, rights.short, MoveFlag::ShortCastling, File::G, File::F);
-            write_castling!(blockers, our_backrank, our_king, rights.long, MoveFlag::LongCastling, File::C, File::D);
+            write_castling!(
+                blockers,
+                our_backrank,
+                our_king,
+                rights.short,
+                MoveFlag::ShortCastling,
+                File::G,
+                File::F
+            );
+            write_castling!(
+                blockers,
+                our_backrank,
+                our_king,
+                rights.long,
+                MoveFlag::LongCastling,
+                File::C,
+                File::D
+            );
         }
 
         self.gen_quiets_for(moves, &masked_attack_table, non_pawn_mask, src, non_pawn_dest & empty);
@@ -256,11 +297,12 @@ impl Board {
 
         let places = Vec512::permute8(Vec512::from(king_leaps), self.board.inner).into_vec128();
         let blockers = places.nonzero8();
-        let color = places.msb8();
-        let our_pieces = (color ^ match stm {
-            Color::White => u16::MAX,
-            Color::Black => 0,
-        }) & blockers;
+        let color = places.msb8()
+            ^ match stm {
+                Color::White => u16::MAX,
+                Color::Black => 0,
+            };
+        let our_pieces = blockers & color;
 
         let [half0, half1] = attack_table.inner.map(|v| v.zero16() as u32);
         let at_empty = interleave64(half0, half1);
@@ -277,7 +319,10 @@ impl Board {
             if checker_piece.is_slider() {
                 const VALID_MASK: [u8; 3] = [0b10101010, 0b01010101, 0b11111111];
 
-                let dir = (rays_valid & Vec512::eq8(king_rays, Vec512::splat8(checker_sq as u8))).rotate_left(32).trailing_zeros() / 8;
+                let dir = (rays_valid & Vec512::eq8(king_rays, Vec512::splat8(checker_sq as u8)))
+                    .rotate_left(32)
+                    .trailing_zeros()
+                    / 8;
                 additional_checks |= (1u8 << dir) & VALID_MASK[checker_piece.bits() as usize - Piece::Bishop.bits() as usize];
             }
 
@@ -293,14 +338,7 @@ impl Board {
     }
 
     #[inline]
-    fn gen_quiets_for(
-        &self,
-        moves: &mut MoveList,
-        attack_table: &[PieceMask; Square::COUNT],
-        mask: PieceMask,
-        src: Vec256,
-        dest: Bitboard,
-    ) {
+    fn gen_quiets_for(&self, moves: &mut MoveList, attack_table: &[PieceMask; Square::COUNT], mask: PieceMask, src: Vec256, dest: Bitboard) {
         for sq in dest {
             let mask = mask & attack_table[sq];
 
@@ -313,14 +351,7 @@ impl Board {
     }
 
     #[inline]
-    fn gen_captures_for(
-        &self,
-        moves: &mut MoveList,
-        attack_table: &[PieceMask; Square::COUNT],
-        mask: PieceMask,
-        src: Vec256,
-        dest: Bitboard,
-    ) {
+    fn gen_captures_for(&self, moves: &mut MoveList, attack_table: &[PieceMask; Square::COUNT], mask: PieceMask, src: Vec256, dest: Bitboard) {
         for sq in dest {
             let mask = mask & attack_table[sq];
 
@@ -333,13 +364,7 @@ impl Board {
     }
 
     #[inline]
-    fn gen_capture_promotions_for(
-        &self,
-        moves: &mut MoveList,
-        attack_table: &[PieceMask; Square::COUNT],
-        mask: PieceMask,
-        dest: Bitboard,
-    ) {
+    fn gen_capture_promotions_for(&self, moves: &mut MoveList, attack_table: &[PieceMask; Square::COUNT], mask: PieceMask, dest: Bitboard) {
         let stm = self.stm;
 
         for sq in dest {
@@ -367,17 +392,18 @@ impl Board {
         let ray_places = Vec512::permute8(ray_coords, self.board.inner);
         let inv_perm = geometry::superpiece_inv_rays(our_king);
 
-        let color = ray_places.msb8();
+        let color = ray_places.msb8()
+            ^ match stm {
+                Color::White => Bitboard::EMPTY,
+                Color::Black => Bitboard::FULL,
+            };
         let blockers = ray_places.nonzero8() & geometry::NON_HORSE_ATTACK_MASK;
         let sliders = geometry::sliders_from_rays(ray_places);
         let closest = geometry::superpiece_attacks(blockers, ray_valid) & blockers;
         let pin_raymask = geometry::superpiece_attacks(blockers & !closest, ray_valid) & geometry::NON_HORSE_ATTACK_MASK;
         let second_closest = pin_raymask & blockers & !closest;
 
-        let their_pieces = (color ^ match stm {
-            Color::White => Bitboard::EMPTY,
-            Color::Black => Bitboard::FULL,
-        }) & blockers;
+        let their_pieces = blockers & color;
         let pinners = their_pieces & sliders & second_closest;
         let pinned = !their_pieces & Vec128::mask8(Vec128::from(pinners.0).nonzero8(), Vec128::from(closest)).into_u64();
 
@@ -393,7 +419,11 @@ impl Board {
         let valid_ids = pinned_ids.nonzero8();
         let masked_ids = pinned_ids & Vec512::splat8(Place::INDEX_MASK);
         let bits0 = Vec512::shlv16_mz(valid_ids as Vec512Mask16, ones, masked_ids.into_vec256().zext8to16());
-        let bits1 = Vec512::shlv16_mz((valid_ids >> 32) as Vec512Mask16, ones, masked_ids.extract_vec256::<1>().zext8to16());
+        let bits1 = Vec512::shlv16_mz(
+            (valid_ids >> 32) as Vec512Mask16,
+            ones,
+            masked_ids.extract_vec256::<1>().zext8to16(),
+        );
         let table_mask0 = Vec512::splat16(!piece_mask) | bits0;
         let table_mask1 = Vec512::splat16(!piece_mask) | bits1;
 
@@ -405,6 +435,7 @@ impl Board {
 
 mod pawns {
     use cherry_types::*;
+
     use crate::{Move, MoveFlag, Vec256, Vec512};
 
     #[inline]
@@ -443,7 +474,7 @@ mod pawns {
                 promo_shift: 8,
                 double_shift: 48,
                 normal_shift: 16,
-            }
+            },
         }
     }
 
@@ -461,7 +492,12 @@ mod pawns {
         let normal_shift = stm.sign() * 8;
 
         for i in 16..48 {
-            normal_moves[i - 16] = Move::new(Square::index(i), Square::index((i as i16 + normal_shift) as usize), MoveFlag::Normal).bits();
+            normal_moves[i - 16] = Move::new(
+                Square::index(i),
+                Square::index((i as i16 + normal_shift) as usize),
+                MoveFlag::Normal,
+            )
+            .bits();
         }
 
         let mut double_moves = [0u16; 16];
@@ -473,8 +509,18 @@ mod pawns {
 
         for i in 0..8 {
             let src = i + double_offset;
-            double_moves[i] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::Normal).bits();
-            double_moves[i + 8] = Move::new(Square::index(src), Square::index((src as i16 + double_shift) as usize), MoveFlag::DoublePush).bits();
+            double_moves[i] = Move::new(
+                Square::index(src),
+                Square::index((src as i16 + normal_shift) as usize),
+                MoveFlag::Normal,
+            )
+            .bits();
+            double_moves[i + 8] = Move::new(
+                Square::index(src),
+                Square::index((src as i16 + double_shift) as usize),
+                MoveFlag::DoublePush,
+            )
+            .bits();
         }
 
         let mut promotions = [0u16; 32];
@@ -485,10 +531,30 @@ mod pawns {
 
         for i in 0..8 {
             let src = i + promotion_offset;
-            promotions[i * 4] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::PromotionQueen).bits();
-            promotions[i * 4 + 1] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::PromotionRook).bits();
-            promotions[i * 4 + 2] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::PromotionBishop).bits();
-            promotions[i * 4 + 3] = Move::new(Square::index(src), Square::index((src as i16 + normal_shift) as usize), MoveFlag::PromotionKnight).bits();
+            promotions[i * 4] = Move::new(
+                Square::index(src),
+                Square::index((src as i16 + normal_shift) as usize),
+                MoveFlag::PromotionQueen,
+            )
+            .bits();
+            promotions[i * 4 + 1] = Move::new(
+                Square::index(src),
+                Square::index((src as i16 + normal_shift) as usize),
+                MoveFlag::PromotionRook,
+            )
+            .bits();
+            promotions[i * 4 + 2] = Move::new(
+                Square::index(src),
+                Square::index((src as i16 + normal_shift) as usize),
+                MoveFlag::PromotionBishop,
+            )
+            .bits();
+            promotions[i * 4 + 3] = Move::new(
+                Square::index(src),
+                Square::index((src as i16 + normal_shift) as usize),
+                MoveFlag::PromotionKnight,
+            )
+            .bits();
         }
 
         PawnMoves {

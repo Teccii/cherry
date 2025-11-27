@@ -1,5 +1,9 @@
-use core::{fmt, str::FromStr};
-use core::ops::{Index, IndexMut};
+use core::{
+    fmt,
+    ops::{Index, IndexMut},
+    str::FromStr,
+};
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -13,7 +17,7 @@ pub enum Rank {
     Fifth,
     Sixth,
     Seventh,
-    Eighth
+    Eighth,
 }
 
 impl Rank {
@@ -22,7 +26,7 @@ impl Rank {
         if i < Rank::COUNT {
             return unsafe { core::mem::transmute::<u8, Rank>(i as u8) };
         }
-        
+
         panic!("Rank::index(): Index out of bounds");
     }
 
@@ -65,7 +69,7 @@ impl Rank {
     pub const fn flip(self) -> Rank {
         Rank::index(Rank::Eighth as usize - self as usize)
     }
-    
+
     #[inline]
     pub const fn relative_to(self, color: Color) -> Rank {
         match color {
@@ -80,12 +84,12 @@ impl Rank {
     pub const fn bitboard(self) -> Bitboard {
         Bitboard(0xFF << (8 * self as u8))
     }
-    
+
     #[inline]
     pub const fn above(self) -> Bitboard {
         Bitboard(0xFFFFFFFFFFFFFF00).shift::<Up>(self as i8)
     }
-    
+
     #[inline]
     pub const fn below(self) -> Bitboard {
         Bitboard(!self.above().0)
@@ -102,7 +106,7 @@ impl Rank {
         Rank::Fifth,
         Rank::Sixth,
         Rank::Seventh,
-        Rank::Eighth
+        Rank::Eighth,
     ];
 }
 
@@ -121,7 +125,6 @@ impl<T> IndexMut<Rank> for [T; Rank::COUNT] {
         unsafe { self.get_unchecked_mut(rank as usize) }
     }
 }
-
 
 impl fmt::Display for Rank {
     #[inline]
@@ -146,7 +149,7 @@ impl From<Rank> for char {
             Rank::Fifth => '5',
             Rank::Sixth => '6',
             Rank::Seventh => '7',
-            Rank::Eighth => '8'
+            Rank::Eighth => '8',
         }
     }
 }
@@ -165,7 +168,7 @@ impl TryFrom<char> for Rank {
             '6' => Ok(Rank::Sixth),
             '7' => Ok(Rank::Seventh),
             '8' => Ok(Rank::Eighth),
-            _ => Err(RankParseError)
+            _ => Err(RankParseError),
         }
     }
 }

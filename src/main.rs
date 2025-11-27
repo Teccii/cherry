@@ -1,15 +1,16 @@
 #![feature(str_split_whitespace_remainder)]
+#![feature(stmt_expr_attributes)]
 #![feature(generic_const_exprs)]
 #![feature(sync_unsafe_cell)]
-#![feature(portable_simd)]
 #![allow(incomplete_features)]
 #![allow(dead_code)]
 
 mod cherry;
 
 use std::{env, io};
-use colored::Colorize;
+
 use cherry::*;
+use colored::Colorize;
 
 /*----------------------------------------------------------------*/
 
@@ -18,9 +19,7 @@ fn main() {
 
     let mut buffer = String::new();
     let mut engine = Engine::new();
-    let args = env::args()
-        .skip(1)
-        .collect::<Vec<String>>();
+    let args = env::args().skip(1).collect::<Vec<String>>();
 
     if !args.is_empty() {
         for cmd in args {

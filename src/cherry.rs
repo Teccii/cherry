@@ -52,8 +52,8 @@ mod search {
     mod move_picker;
     mod search;
     mod searcher;
-    mod ttable;
     mod time;
+    mod ttable;
     mod weights;
     mod window;
 
@@ -62,13 +62,14 @@ mod search {
     pub use move_picker::*;
     pub use search::*;
     pub use searcher::*;
-    pub use ttable::*;
     pub use time::*;
+    pub use ttable::*;
     pub use weights::*;
     pub use window::*;
 }
 
-#[cfg(feature = "datagen")] mod datagen;
+#[cfg(feature = "datagen")]
+mod datagen;
 mod engine;
 mod position;
 mod score;
@@ -78,7 +79,8 @@ mod uci;
 mod util;
 
 pub use chess::*;
-#[cfg(feature = "datagen")] pub use datagen::*;
+#[cfg(feature = "datagen")]
+pub use datagen::*;
 pub use engine::*;
 pub use nnue::*;
 pub use position::*;

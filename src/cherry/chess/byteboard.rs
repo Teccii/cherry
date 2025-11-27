@@ -1,5 +1,6 @@
 use core::ops::BitAnd;
 use std::ptr;
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -143,17 +144,14 @@ impl Byteboard {
     #[inline]
     pub fn pieces(&self, piece: Piece) -> Bitboard {
         Bitboard(Vec512::eq8(
-            self.inner & Vec512::splat8(0b1110000),
-            Vec512::splat8(piece.bits() << 4)
+            self.inner & Vec512::splat8(Place::PIECE_MASK),
+            Vec512::splat8(piece.bits() << 4),
         ))
     }
 
     #[inline]
     pub fn color_pieces(&self, piece: Piece, color: Color) -> Bitboard {
-        Bitboard(self.colors(color).0 & Vec512::eq8(
-            self.inner & Vec512::splat8(0b1110000),
-            Vec512::splat8(piece.bits() << 4)
-        ))
+        self.colors(color) & self.pieces(piece)
     }
 
     /*----------------------------------------------------------------*/
@@ -235,13 +233,10 @@ impl Wordboard {
     pub fn as_mailbox(&self) -> &[PieceMask; Square::COUNT] {
         unsafe { &*self.inner.as_ptr().cast::<[PieceMask; Square::COUNT]>() }
     }
-    
+
     #[inline]
     pub fn all(&self) -> Bitboard {
-        Bitboard(interleave64(
-            self.inner[0].nonzero16() as u32,
-            self.inner[1].nonzero16() as u32
-        ))
+        Bitboard(interleave64(self.inner[0].nonzero16() as u32, self.inner[1].nonzero16() as u32))
     }
 
     #[inline]
@@ -250,7 +245,7 @@ impl Wordboard {
 
         Bitboard(interleave64(
             Vec512::test16(self.inner[0], mask) as u32,
-            Vec512::test16(self.inner[1], mask) as u32
+            Vec512::test16(self.inner[1], mask) as u32,
         ))
     }
 
@@ -263,10 +258,11 @@ impl Wordboard {
 impl Default for Wordboard {
     #[inline]
     fn default() -> Self {
-        Wordboard { inner: [Vec512::zero(); 2] }
+        Wordboard {
+            inner: [Vec512::zero(); 2],
+        }
     }
 }
-
 
 impl BitAnd for Wordboard {
     type Output = Wordboard;
@@ -274,10 +270,7 @@ impl BitAnd for Wordboard {
     #[inline]
     fn bitand(self, rhs: Self) -> Self::Output {
         Wordboard {
-            inner: [
-                self.inner[0] & rhs.inner[0],
-                self.inner[1] & rhs.inner[1],
-            ]
+            inner: [self.inner[0] & rhs.inner[0], self.inner[1] & rhs.inner[1]],
         }
     }
 }

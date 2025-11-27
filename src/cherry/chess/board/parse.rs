@@ -1,4 +1,5 @@
 use core::fmt::Write;
+
 use crate::*;
 
 impl Board {
@@ -77,8 +78,8 @@ impl Board {
             }
         }
 
-        if board.index_to_piece[Color::White][PieceIndex::new(0)].is_none()
-            || board.index_to_piece[Color::Black][PieceIndex::new(0)].is_none() {
+        if board.index_to_piece[Color::White][PieceIndex::new(0)].is_none() || board.index_to_piece[Color::Black][PieceIndex::new(0)].is_none()
+        {
             return None;
         }
 
@@ -112,14 +113,14 @@ impl Board {
                         let valid_rooks = board.color_pieces(Piece::Rook, color) & rook_mask;
 
                         valid_rooks.try_next_square_back().map(Square::file)?
-                    },
+                    }
                     'q' => {
                         let corner_rook = Square::new(File::A, our_backrank);
                         let rook_mask = between(our_king, corner_rook) | corner_rook;
                         let valid_rooks = board.color_pieces(Piece::Rook, color) & rook_mask;
 
                         valid_rooks.try_next_square().map(Square::file)?
-                    },
+                    }
                     _ => return None,
                 };
 
@@ -139,7 +140,14 @@ impl Board {
         board.attack_tables = board.calc_attacks();
         board.halfmove_clock = halfmove_clock.parse::<u8>().ok()?.min(100);
         board.fullmove_count = fullmove_count.parse::<u16>().ok()?.max(1);
-        (board.hash, board.pawn_hash, board.minor_hash, board.major_hash, board.white_hash, board.black_hash) = board.calc_hashes();
+        (
+            board.hash,
+            board.pawn_hash,
+            board.minor_hash,
+            board.major_hash,
+            board.white_hash,
+            board.black_hash,
+        ) = board.calc_hashes();
 
         Some(board)
     }
@@ -154,21 +162,21 @@ impl Board {
             for &file in File::ALL.iter() {
                 let sq = Square::new(file, rank);
 
-                 if let Some(piece) = self.piece_on(sq) {
-                     if empty > 0 {
-                         write!(fen, "{}", empty).unwrap();
-                         empty = 0;
-                     }
+                if let Some(piece) = self.piece_on(sq) {
+                    if empty > 0 {
+                        write!(fen, "{}", empty).unwrap();
+                        empty = 0;
+                    }
 
-                     let mut piece: char = piece.into();
-                     if self.color_on(sq).unwrap() == Color::White {
-                         piece = piece.to_ascii_uppercase();
-                     }
+                    let mut piece: char = piece.into();
+                    if self.color_on(sq).unwrap() == Color::White {
+                        piece = piece.to_ascii_uppercase();
+                    }
 
-                     write!(fen, "{}", piece).unwrap();
-                 } else {
-                     empty += 1;
-                 }
+                    write!(fen, "{}", piece).unwrap();
+                } else {
+                    empty += 1;
+                }
             }
 
             if empty > 0 {

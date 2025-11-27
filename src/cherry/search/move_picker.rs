@@ -1,12 +1,10 @@
 use smallvec::SmallVec;
+
 use crate::*;
 
 #[inline]
 fn select_next(moves: &[ScoredMove]) -> Option<usize> {
-    moves.iter()
-        .enumerate()
-        .max_by_key(|(_, mv)| mv.1)
-        .map(|(i, _)| i)
+    moves.iter().enumerate().max_by_key(|(_, mv)| mv.1).map(|(i, _)| i)
 }
 
 /*----------------------------------------------------------------*/
@@ -20,7 +18,7 @@ pub enum Stage {
     YieldGoodTactics,
     YieldQuiets,
     YieldBadTactics,
-    Finished
+    Finished,
 }
 
 pub struct MovePicker {
@@ -48,7 +46,7 @@ impl MovePicker {
             quiets: SmallVec::new(),
         }
     }
-    
+
     #[inline]
     pub fn stage(&self) -> Stage {
         self.stage
@@ -67,10 +65,10 @@ impl MovePicker {
     pub fn next(&mut self, pos: &mut Position, history: &History, indices: &ContIndices) -> Option<ScoredMove> {
         if self.stage == Stage::TTMove {
             self.stage = Stage::GenMoves;
-            
+
             if let Some(mv) = self.tt_move {
                 self.move_list = pos.board().gen_moves();
-                
+
                 if self.move_list.contains(&mv) {
                     let score = if mv.is_tactic() {
                         history.get_tactic(pos.board(), mv) as i32
@@ -82,14 +80,14 @@ impl MovePicker {
                 }
             }
         }
-        
+
         if self.stage == Stage::GenMoves {
             self.stage = Stage::YieldGoodTactics;
 
             if self.move_list.is_empty() {
                 self.move_list = pos.board().gen_moves();
             }
-            
+
             for &mv in self.move_list.iter() {
                 if self.tt_move == Some(mv) {
                     continue;
@@ -143,7 +141,7 @@ impl MovePicker {
                 self.stage = Stage::Finished;
             } else {
                 if let Some(index) = select_next(&self.bad_tactics) {
-                    return swap_pop(&mut self.bad_tactics, index)
+                    return swap_pop(&mut self.bad_tactics, index);
                 }
 
                 self.stage = Stage::Finished;

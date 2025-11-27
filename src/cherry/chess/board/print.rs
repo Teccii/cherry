@@ -1,5 +1,7 @@
 use core::fmt::Write;
+
 use colored::Colorize;
+
 use crate::*;
 
 impl Board {
@@ -19,12 +21,8 @@ impl Board {
             for &color in &Color::ALL {
                 let mut write_rights = |file: Option<File>, right_char: char| {
                     if let Some(file) = file {
-                        let mut right = if chess960 {
-                            file.into()
-                        } else {
-                            right_char
-                        };
-                        
+                        let mut right = if chess960 { file.into() } else { right_char };
+
                         if color == Color::White {
                             right = right.to_ascii_uppercase();
                         }
@@ -40,8 +38,16 @@ impl Board {
             features.push(format!("{}: {}", String::from("Castle Rights").bright_green(), rights));
         }
 
-        features.push(format!("{}: {}", String::from("Halfmove Clock").bright_green(), self.halfmove_clock));
-        features.push(format!("{}: {}", String::from("Fullmove Count").bright_green(), self.fullmove_count));
+        features.push(format!(
+            "{}: {}",
+            String::from("Halfmove Clock").bright_green(),
+            self.halfmove_clock
+        ));
+        features.push(format!(
+            "{}: {}",
+            String::from("Fullmove Count").bright_green(),
+            self.fullmove_count
+        ));
         features.push(format!("{}: {:?}", String::from("Side To Move").bright_green(), self.stm));
 
         writeln!(&mut result, "╔═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╗").unwrap();
@@ -57,7 +63,7 @@ impl Board {
                     if self.color_on(sq).unwrap() == Color::White {
                         write!(&mut result, " {}", String::from(piece.to_ascii_uppercase()).bright_green()).unwrap();
                     } else {
-                        write!(&mut result, " {}" , String::from(piece).bright_blue()).unwrap();
+                        write!(&mut result, " {}", String::from(piece).bright_blue()).unwrap();
                     }
                 } else {
                     write!(&mut result, " .").unwrap();
@@ -72,11 +78,16 @@ impl Board {
                 writeln!(&mut result, " {}", rank).unwrap();
             }
 
-            writeln!(&mut result, "{}", if rank == Rank::First {
-                "╚═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╝"
-            } else {
-                "╟───┼───┼───┼───┼───┼───┼───┼───╢"
-            }).unwrap();
+            writeln!(
+                &mut result,
+                "{}",
+                if rank == Rank::First {
+                    "╚═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╝"
+                } else {
+                    "╟───┼───┼───┼───┼───┼───┼───┼───╢"
+                }
+            )
+            .unwrap();
         }
 
         for &file in &File::ALL {

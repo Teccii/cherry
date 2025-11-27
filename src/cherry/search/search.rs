@@ -1,4 +1,5 @@
 use smallvec::SmallVec;
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -66,13 +67,15 @@ pub fn search<Node: NodeType>(
 
             match entry.flag {
                 TTFlag::Exact => return score,
-                TTFlag::UpperBound => if score <= alpha {
-                    return score;
-                },
-                TTFlag::LowerBound => if score >= beta {
-                    return score;
-                },
-                TTFlag::None => unreachable!()
+                TTFlag::UpperBound =>
+                    if score <= alpha {
+                        return score;
+                    },
+                TTFlag::LowerBound =>
+                    if score >= beta {
+                        return score;
+                    },
+                TTFlag::None => unreachable!(),
             }
         }
     }
@@ -106,7 +109,12 @@ pub fn search<Node: NodeType>(
 
     if !Node::PV && !in_check && skip_move.is_none() {
         let (rfp_depth, rfp_base, rfp_scale, rfp_lerp) = if improving {
-            (W::rfp_improving_depth(), W::rfp_improving_base(), W::rfp_improving_scale(), W::rfp_improving_lerp())
+            (
+                W::rfp_improving_depth(),
+                W::rfp_improving_base(),
+                W::rfp_improving_scale(),
+                W::rfp_improving_lerp(),
+            )
         } else {
             (W::rfp_depth(), W::rfp_base(), W::rfp_scale(), W::rfp_lerp())
         };
@@ -128,10 +136,7 @@ pub fn search<Node: NodeType>(
             (W::nmp_depth(), W::nmp_base(), W::nmp_scale())
         };
 
-        if depth >= nmp_depth
-            && thread.search_stack[ply as usize - 1].move_played.is_some()
-            && static_eval >= beta
-            && pos.null_move() {
+        if depth >= nmp_depth && thread.search_stack[ply as usize - 1].move_played.is_some() && static_eval >= beta && pos.null_move() {
             let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / DEPTH_SCALE as i64) as i32;
 
             thread.search_stack[ply as usize].move_played = None;
@@ -163,21 +168,23 @@ pub fn search<Node: NodeType>(
 
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
-        let lmr = get_lmr(is_tactic, improving, (depth / DEPTH_SCALE) as u8, moves_seen);
+        let mut lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
         let mut score;
 
         if !Node::PV && best_score.map_or(false, |s: Score| !s.is_loss()) {
             if is_tactic {
                 let (see_depth, see_base, see_scale) = if improving {
-                    (W::see_tactic_improving_depth(), W::see_tactic_improving_base(), W::see_tactic_improving_scale())
+                    (
+                        W::see_tactic_improving_depth(),
+                        W::see_tactic_improving_base(),
+                        W::see_tactic_improving_scale(),
+                    )
                 } else {
                     (W::see_tactic_depth(), W::see_tactic_base(), W::see_tactic_scale())
                 };
 
                 let see_margin = (see_base + see_scale * depth / DEPTH_SCALE) as i16;
-                if depth <= see_depth
-                    && move_picker.stage() > Stage::YieldGoodTactics
-                    && !pos.board().cmp_see(mv, see_margin) {
+                if depth <= see_depth && move_picker.stage() > Stage::YieldGoodTactics && !pos.board().cmp_see(mv, see_margin) {
                     continue;
                 }
             } else {
@@ -186,12 +193,12 @@ pub fn search<Node: NodeType>(
                 } else {
                     (W::lmp_base(), W::lmp_scale())
                 };
-                
+
                 let lmp_margin = lmp_base + lmp_scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
-                
+
                 let lmr_depth = (depth - lmr).max(0);
                 let (futile_depth, futile_base, futile_scale) = if improving {
                     (W::futile_improving_depth(), W::futile_improving_base(), W::futile_improving_scale())
@@ -205,15 +212,17 @@ pub fn search<Node: NodeType>(
                 }
 
                 let (see_depth, see_base, see_scale) = if improving {
-                    (W::see_quiet_improving_depth(), W::see_quiet_improving_base(), W::see_quiet_improving_scale())
+                    (
+                        W::see_quiet_improving_depth(),
+                        W::see_quiet_improving_base(),
+                        W::see_quiet_improving_scale(),
+                    )
                 } else {
                     (W::see_quiet_depth(), W::see_quiet_base(), W::see_quiet_scale())
                 };
 
                 let see_margin = (see_base + see_scale * lmr_depth / DEPTH_SCALE) as i16;
-                if lmr_depth <= see_depth
-                    && move_picker.stage() > Stage::YieldGoodTactics
-                    && !pos.board().cmp_see(mv, see_margin) {
+                if lmr_depth <= see_depth && move_picker.stage() > Stage::YieldGoodTactics && !pos.board().cmp_see(mv, see_margin) {
                     continue;
                 }
             }
@@ -226,7 +235,8 @@ pub fn search<Node: NodeType>(
             && let Some(entry) = tt_entry
             && entry.mv == Some(mv)
             && entry.depth as i32 * DEPTH_SCALE + W::singular_tt_depth() >= depth
-            && entry.flag != TTFlag::UpperBound {
+            && entry.flag != TTFlag::UpperBound
+        {
             let s_beta = entry.score - (depth * W::singular_beta_margin() / (DEPTH_SCALE * 64)) as i16;
             let s_depth = depth * W::singular_search_depth() / DEPTH_SCALE;
 
@@ -254,7 +264,15 @@ pub fn search<Node: NodeType>(
         if moves_seen == 0 {
             score = -search::<Node>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha, !Node::PV && !cut_node);
         } else {
-            score = -search::<NonPV>(pos, thread, shared, new_depth - lmr, ply + 1, -alpha - 1, -alpha, true);
+            if depth >= 2 {
+                lmr += W::cutnode_lmr() * cut_node as i32;
+            } else {
+                lmr = 0;
+            }
+
+            let lmr_depth = (new_depth - lmr).max(1 * DEPTH_SCALE).min(new_depth);
+
+            score = -search::<NonPV>(pos, thread, shared, lmr_depth, ply + 1, -alpha - 1, -alpha, true);
 
             if lmr > 0 && score > alpha {
                 score = -search::<NonPV>(pos, thread, shared, new_depth, ply + 1, -alpha - 1, -alpha, !cut_node);
@@ -319,11 +337,7 @@ pub fn search<Node: NodeType>(
 
     let best_score = best_score.unwrap();
     if skip_move.is_none() {
-        let depth_bias = if Node::PV {
-            W::tt_depth_pv_bias()
-        } else {
-            W::tt_depth_bias()
-        };
+        let depth_bias = if Node::PV { W::tt_depth_pv_bias() } else { W::tt_depth_bias() };
 
         shared.ttable.store(
             pos.board(),
@@ -333,15 +347,18 @@ pub fn search<Node: NodeType>(
             best_score,
             best_move,
             flag,
-            Node::PV || tt_entry.is_some_and(|e| e.pv)
+            Node::PV || tt_entry.is_some_and(|e| e.pv),
         );
 
-        if !in_check && best_move.is_none_or(|mv| !mv.is_tactic()) && match flag {
-            TTFlag::Exact => true,
-            TTFlag::LowerBound => best_score > static_eval,
-            TTFlag::UpperBound => best_score < static_eval,
-            TTFlag::None => unreachable!(),
-        } {
+        if !in_check
+            && best_move.is_none_or(|mv| !mv.is_tactic())
+            && match flag {
+                TTFlag::Exact => true,
+                TTFlag::LowerBound => best_score > static_eval,
+                TTFlag::UpperBound => best_score < static_eval,
+                TTFlag::None => unreachable!(),
+            }
+        {
             thread.history.update_corr(pos.board(), depth, best_score, static_eval);
         }
     }
@@ -386,13 +403,15 @@ fn q_search<Node: NodeType>(
 
         match entry.flag {
             TTFlag::Exact => return score,
-            TTFlag::UpperBound => if score <= alpha {
-                return score;
-            },
-            TTFlag::LowerBound => if score >= beta {
-                return score;
-            },
-            TTFlag::None => unreachable!()
+            TTFlag::UpperBound =>
+                if score <= alpha {
+                    return score;
+                },
+            TTFlag::LowerBound =>
+                if score >= beta {
+                    return score;
+                },
+            TTFlag::None => unreachable!(),
         }
     }
 

@@ -1,4 +1,11 @@
-use std::{fs, fmt::Write, io::Write as _, time::Instant, sync::{Arc, Mutex, mpsc::*}};
+use std::{
+    fmt::Write,
+    fs,
+    io::Write as _,
+    sync::{Arc, Mutex, mpsc::*},
+    time::Instant,
+};
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -78,61 +85,61 @@ pub struct Engine {
 impl Engine {
     pub fn new() -> Engine {
         let time_man = Arc::new(TimeManager::new());
-        let searcher = Arc::new(Mutex::new(Searcher::new(
-            Board::default(),
-            Arc::clone(&time_man),
-        )));
+        let searcher = Arc::new(Mutex::new(Searcher::new(Board::default(), Arc::clone(&time_man))));
 
         let (tx, rx): (Sender<ThreadCommand>, Receiver<ThreadCommand>) = channel();
-        std::thread::spawn(move || loop {
-            if let Ok(cmd) = rx.recv() {
-                match cmd {
-                    ThreadCommand::Go(searcher, limits) => {
-                        let mut searcher = searcher.lock().unwrap();
-                        let mut output = String::new();
+        std::thread::spawn(move || {
+            loop {
+                if let Ok(cmd) = rx.recv() {
+                    match cmd {
+                        ThreadCommand::Go(searcher, limits) => {
+                            let mut searcher = searcher.lock().unwrap();
+                            let mut output = String::new();
 
-                        let (mv, ponder, _, _, _) = searcher.search::<UciInfo>(limits);
-                        write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.frc)).unwrap();
+                            let (mv, ponder, _, _, _) = searcher.search::<UciInfo>(limits);
+                            write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.frc)).unwrap();
 
-                        if let Some(ponder) = ponder {
-                            write!(output, " ponder {}", ponder).unwrap();
+                            if let Some(ponder) = ponder {
+                                write!(output, " ponder {}", ponder).unwrap();
+                            }
+
+                            println!("{}", output);
+                            io::stdout().flush().unwrap();
                         }
+                        ThreadCommand::Position(searcher, board, moves) => {
+                            let mut searcher = searcher.lock().unwrap();
+                            let searcher = &mut *searcher;
 
-                        println!("{}", output);
-                        io::stdout().flush().unwrap();
-                    },
-                    ThreadCommand::Position(searcher, board, moves) => {
-                        let mut searcher = searcher.lock().unwrap();
-                        let searcher = &mut *searcher;
-
-                        searcher.set_board(board);
-                        for mv in moves {
-                            searcher.make_move(mv);
-                            searcher.reset_nnue();
+                            searcher.set_board(board);
+                            for mv in moves {
+                                searcher.make_move(mv);
+                                searcher.reset_nnue();
+                            }
                         }
-                    },
-                    ThreadCommand::SetOption(searcher, name, value) => {
-                        let mut searcher = searcher.lock().unwrap();
+                        ThreadCommand::SetOption(searcher, name, value) => {
+                            let mut searcher = searcher.lock().unwrap();
 
-                        match name.as_str() {
-                            "Threads" => searcher.threads = value.parse::<u16>().unwrap(),
-                            "EvalFile" => if value == "<default>" {
-                                searcher.shared_data.nnue_weights = NetworkWeights::default();
-                            } else {
-                                searcher.shared_data.nnue_weights = NetworkWeights::new(&fs::read(value).unwrap());
-                            },
-                            "Hash" => searcher.resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
-                            //"SyzygyProbeDepth" => searcher.shared_data.syzygy_depth = value.parse::<u8>().unwrap(),
-                            "Ponder" => searcher.ponder = value.parse::<bool>().unwrap(),
-                            "UCI_Chess960" => searcher.frc = value.parse::<bool>().unwrap(),
-                            _ => { }
+                            match name.as_str() {
+                                "Threads" => searcher.threads = value.parse::<u16>().unwrap(),
+                                "EvalFile" =>
+                                    if value == "<default>" {
+                                        searcher.shared_data.nnue_weights = NetworkWeights::default();
+                                    } else {
+                                        searcher.shared_data.nnue_weights = NetworkWeights::new(&fs::read(value).unwrap());
+                                    },
+                                "Hash" => searcher.resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
+                                //"SyzygyProbeDepth" => searcher.shared_data.syzygy_depth = value.parse::<u8>().unwrap(),
+                                "Ponder" => searcher.ponder = value.parse::<bool>().unwrap(),
+                                "UCI_Chess960" => searcher.frc = value.parse::<bool>().unwrap(),
+                                _ => {}
+                            }
                         }
-                    },
-                    ThreadCommand::NewGame(searcher) => {
-                        let mut searcher = searcher.lock().unwrap();
-                        searcher.clear_ttable();
-                    },
-                    ThreadCommand::Quit => return,
+                        ThreadCommand::NewGame(searcher) => {
+                            let mut searcher = searcher.lock().unwrap();
+                            searcher.clear_ttable();
+                        }
+                        ThreadCommand::Quit => return,
+                    }
                 }
             }
         });
@@ -146,7 +153,9 @@ impl Engine {
     }
 
     pub fn input(&mut self, input: &str, bytes: usize) -> bool {
-        let cmd = if bytes == 0 { UciCommand::Quit } else {
+        let cmd = if bytes == 0 {
+            UciCommand::Quit
+        } else {
             match UciCommand::parse(input, self.chess960) {
                 Ok(cmd) => cmd,
                 Err(e) => {
@@ -286,6 +295,8 @@ impl Engine {
                     LMR_TACTIC_IMPROVING_BASE => W::lmr_tactic_improving_base(), -4096, 4096;
                     LMR_TACTIC_IMPROVING_DIV  => W::lmr_tactic_improving_div(),  1, 4096;
 
+                    CUTNODE_LMR => W::cutnode_lmr(), 0, 4096;
+
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
@@ -305,7 +316,7 @@ impl Engine {
                 println!("uciok");
 
                 io::stdout().flush().unwrap();
-            },
+            }
             UciCommand::IsReady => println!("readyok"),
             UciCommand::PonderHit => self.time_man.ponderhit(),
             UciCommand::Stop => self.time_man.stop(),
@@ -315,14 +326,15 @@ impl Engine {
                 let board = searcher.pos.board();
 
                 println!("{}", board.pretty_print(self.chess960));
-            },
+            }
             UciCommand::Eval => {
                 let mut searcher = self.searcher.lock().unwrap();
                 let searcher = &mut *searcher;
 
                 println!("Eval: {:#}", searcher.pos.eval(&searcher.shared_data.nnue_weights));
             }
-            #[cfg(feature = "tune")] UciCommand::PrintSpsa => {
+            #[cfg(feature = "tune")]
+            UciCommand::PrintSpsa => {
                 macro_rules! print_spsa {
                     ($($name:ident => $default:expr, $min:expr, $max:expr;)*) => {$(
                         println!(
@@ -445,6 +457,8 @@ impl Engine {
                     LMR_TACTIC_IMPROVING_BASE => W::lmr_tactic_improving_base(), -4096, 4096;
                     LMR_TACTIC_IMPROVING_DIV  => W::lmr_tactic_improving_div(),  1, 4096;
 
+                    CUTNODE_LMR => W::cutnode_lmr(), 0, 4096;
+
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
@@ -461,25 +475,18 @@ impl Engine {
                     COMPLEXITY_TM_WIN   => W::complexity_tm_win(),   0.0, 5.0;
                     COMPLEXITY_TM_LOSS  => W::complexity_tm_loss(),  0.0, 5.0;
                 }
-            },
-            #[cfg(feature = "datagen")] UciCommand::DataGen {
-                count,
-                threads,
-                dfrc
-            } => {
+            }
+            #[cfg(feature = "datagen")]
+            UciCommand::DataGen { count, threads, dfrc } => {
                 self.sender.send(ThreadCommand::Quit).unwrap();
                 datagen(count, threads, dfrc);
                 return false;
-            },
-            UciCommand::Position(board, moves) => self.sender.send(ThreadCommand::Position(
-                Arc::clone(&self.searcher),
-                board,
-                moves
-            )).unwrap(),
-            UciCommand::Go(limits) => self.sender.send(ThreadCommand::Go(
-                Arc::clone(&self.searcher),
-                limits
-            )).unwrap(),
+            }
+            UciCommand::Position(board, moves) => self
+                .sender
+                .send(ThreadCommand::Position(Arc::clone(&self.searcher), board, moves))
+                .unwrap(),
+            UciCommand::Go(limits) => self.sender.send(ThreadCommand::Go(Arc::clone(&self.searcher), limits)).unwrap(),
             UciCommand::SetOption { name, value } => {
                 macro_rules! set_tunables {
                     ($($option:expr => $tunable:ident, $ty:ty;)*) => {
@@ -495,13 +502,13 @@ impl Engine {
                         }
                     }
                 }
-                
+
                 match name.as_str() {
                     "MoveOverhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
                     "UseSoftNodes" => self.time_man.set_soft_nodes(value.parse::<bool>().unwrap()),
                     "SyzygyPath" => set_syzygy_path(value.as_str()),
                     "UCI_Chess960" => self.chess960 = value.parse::<bool>().unwrap(),
-                    _ => { }
+                    _ => {}
                 }
 
                 set_tunables! {
@@ -613,6 +620,8 @@ impl Engine {
                     "LMR_TACTIC_IMPROVING_BASE" => LMR_TACTIC_IMPROVING_BASE, i32;
                     "LMR_TACTIC_IMPROVING_DIV"  => LMR_TACTIC_IMPROVING_DIV,  i32;
 
+                    "CUTNODE_LMR" => CUTNODE_LMR, i32;
+
                     "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i16;
                     "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i16;
 
@@ -632,19 +641,21 @@ impl Engine {
 
                 #[cfg(feature = "tune")]
                 match name.as_str() {
-                    "LMR_QUIET_BASE" | "LMR_QUIET_DIV" |
-                    "LMR_QUIET_IMPROVING_BASE" | "LMR_QUIET_IMPROVING_DIV" |
-                    "LMR_TACTIC_BASE" | "LMR_TACTIC_DIV" |
-                    "LMR_TACTIC_IMPROVING_BASE" | "LMR_TACTIC_IMRPOVING_DIV" => init_lmr(),
-                    _ => { }
+                    "LMR_QUIET_BASE"
+                    | "LMR_QUIET_DIV"
+                    | "LMR_QUIET_IMPROVING_BASE"
+                    | "LMR_QUIET_IMPROVING_DIV"
+                    | "LMR_TACTIC_BASE"
+                    | "LMR_TACTIC_DIV"
+                    | "LMR_TACTIC_IMPROVING_BASE"
+                    | "LMR_TACTIC_IMRPOVING_DIV" => init_lmr(),
+                    _ => {}
                 }
 
-                self.sender.send(ThreadCommand::SetOption(
-                    Arc::clone(&self.searcher),
-                    name,
-                    value
-                )).unwrap();
-            },
+                self.sender
+                    .send(ThreadCommand::SetOption(Arc::clone(&self.searcher), name, value))
+                    .unwrap();
+            }
             UciCommand::Bench { depth, threads, hash } => {
                 let mut searcher = self.searcher.lock().unwrap();
                 let searcher = &mut *searcher;
@@ -665,7 +676,7 @@ impl Engine {
                         best_move.display(&pos, false),
                         start_time.elapsed().as_millis().max(1) as u64,
                         score.0,
-                        nodes
+                        nodes,
                     ));
                 }
 
@@ -683,22 +694,17 @@ impl Engine {
                     );
                 }
                 println!("==================================================================");
-                let total_nodes = bench_data.iter()
-                    .fold(0u64, |acc, (_, _, _, nodes)| acc + nodes);
+                let total_nodes = bench_data.iter().fold(0u64, |acc, (_, _, _, nodes)| acc + nodes);
 
-                println!(
-                    "OVERALL: {:>30} nodes {:>8} nps",
-                    total_nodes,
-                    (total_nodes / total_time) * 1000
-                );
-            },
+                println!("OVERALL: {:>30} nodes {:>8} nps", total_nodes, (total_nodes / total_time) * 1000);
+            }
             UciCommand::Quit => {
                 self.time_man.stop();
                 self.sender.send(ThreadCommand::Quit).unwrap();
                 return false;
-            },
+            }
         }
-        
+
         true
     }
 }

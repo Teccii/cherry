@@ -1,4 +1,5 @@
 use ::core::arch::x86_64::_pext_u64;
+
 use crate::*;
 
 struct PextEntry {
@@ -27,7 +28,7 @@ const MAGICS: &PextMagics = {
         let sq = Square::index(i);
         let mask = rook_relevant_blockers(sq);
 
-        rook_magics[i] = PextEntry { offset, mask};
+        rook_magics[i] = PextEntry { offset, mask };
         offset += 1 << mask.popcnt();
         i += 1;
     }
@@ -38,7 +39,7 @@ const MAGICS: &PextMagics = {
         let sq = Square::index(i);
         let mask = bishop_relevant_blockers(sq);
 
-        bishop_magics[i] = PextEntry { offset, mask};
+        bishop_magics[i] = PextEntry { offset, mask };
         offset += 1 << mask.popcnt();
         i += 1;
     }
@@ -46,7 +47,7 @@ const MAGICS: &PextMagics = {
     &PextMagics {
         rook_magics,
         bishop_magics,
-        table_size: offset as usize
+        table_size: offset as usize,
     }
 };
 

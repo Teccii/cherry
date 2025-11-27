@@ -1,4 +1,5 @@
-use std::{fmt::Write, sync::Arc};
+use std::{fmt::Write, sync::Arc, time::Duration};
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -114,9 +115,9 @@ impl MoveData {
     pub fn new(board: &Board, mv: Move) -> MoveData {
         MoveData {
             piece: board.piece_on(mv.src()).unwrap(),
-            mv
+            mv,
         }
-    } 
+    }
 }
 
 /*----------------------------------------------------------------*/
@@ -134,13 +135,13 @@ impl Searcher {
     #[inline]
     pub fn new(board: Board, time_man: Arc<TimeManager>) -> Searcher {
         let nnue_weights = NetworkWeights::default();
-        
+
         Searcher {
             pos: Position::new(board, &nnue_weights),
             shared_data: SharedData {
                 ttable: Arc::new(TTable::new(16)),
                 time_man,
-                nnue_weights
+                nnue_weights,
             },
             thread_data: ThreadData::default(),
             threads: 1,
@@ -158,7 +159,7 @@ impl Searcher {
 
         let mut result = (None, None, Score::ZERO, 0u8, 0u64);
 
-        rayon::scope(|s| {
+        std::thread::scope(|s| {
             let frc = self.frc;
 
             for i in 1..self.threads {
@@ -166,14 +167,8 @@ impl Searcher {
                 let mut thread = self.thread_data.clone();
                 let shared = self.shared_data.clone();
 
-                s.spawn(move |_| {
-                    search_worker(
-                        pos,
-                        &mut thread,
-                        &shared,
-                        Info::new(frc),
-                        i
-                    );
+                s.spawn(move || {
+                    search_worker(pos, &mut thread, &shared, Info::new(frc), i);
                 });
             }
 
@@ -181,13 +176,7 @@ impl Searcher {
             let mut thread = self.thread_data.clone();
             let shared = self.shared_data.clone();
 
-            result = search_worker(
-                pos,
-                &mut thread,
-                &shared,
-                Info::new(frc),
-                0,
-            );
+            result = search_worker(pos, &mut thread, &shared, Info::new(frc), 0);
 
             self.thread_data = thread;
         });
@@ -204,6 +193,7 @@ impl Searcher {
     #[inline]
     pub fn resize_ttable(&mut self, mb: u64) {
         self.shared_data.ttable = Arc::new(TTable::new(mb));
+        self.shared_data.ttable.clear();
     }
 
     #[inline]
@@ -254,16 +244,7 @@ pub fn search_worker<Info: SearchInfo>(
             };
 
             thread.sel_depth = 0;
-            let new_score = search::<PV>(
-                &mut pos,
-                thread,
-                shared,
-                depth as i32 * DEPTH_SCALE,
-                0,
-                alpha,
-                beta,
-                false
-            );
+            let new_score = search::<PV>(&mut pos, thread, shared, depth as i32 * DEPTH_SCALE, 0, alpha, beta, false);
             thread.nodes.flush();
 
             if depth > 1 && thread.abort_now {
@@ -289,28 +270,14 @@ pub fn search_worker<Info: SearchInfo>(
             };
 
             if worker == 0 && shared.time_man.elapsed() >= 1000 {
-                info.update(
-                    pos.board(),
-                    &thread,
-                    &shared,
-                    bound,
-                    score,
-                    depth,
-                );
+                info.update(pos.board(), &thread, &shared, bound, score, depth);
             }
 
             window.expand();
         }
 
         if worker == 0 {
-            info.update(
-                pos.board(),
-                &thread,
-                &shared,
-                TTFlag::Exact,
-                score,
-                depth,
-            );
+            info.update(pos.board(), &thread, &shared, TTFlag::Exact, score, depth);
         }
 
         if depth >= MAX_DEPTH || shared.time_man.abort_id(depth, thread.nodes.global()) {
@@ -333,30 +300,13 @@ pub fn search_worker<Info: SearchInfo>(
         depth += 1;
     }
 
-    while shared.time_man.is_infinite()
-        && !(shared.time_man.use_max_depth() || shared.time_man.use_max_nodes())
-        && !shared.time_man.abort_now() {
-        if worker == 0 {
-            info.update(
-                pos.board(),
-                &thread,
-                &shared,
-                TTFlag::Exact,
-                score,
-                depth,
-            );
-        }
+    while shared.time_man.is_infinite() && !(shared.time_man.use_max_depth() || shared.time_man.use_max_nodes()) && !shared.time_man.abort_now()
+    {
+        std::thread::sleep(Duration::from_millis(10));
     }
 
     if worker == 0 {
-        info.update(
-            pos.board(),
-            &thread,
-            &shared,
-            TTFlag::Exact,
-            score,
-            depth,
-        );
+        info.update(pos.board(), &thread, &shared, TTFlag::Exact, score, depth);
     }
 
     (best_move, ponder_move, score, depth, thread.nodes.global())

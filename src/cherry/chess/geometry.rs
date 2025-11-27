@@ -47,6 +47,7 @@ fn compress_coords_512(coords: Vec512) -> (Vec512, Vec512Mask8) {
 
 #[inline]
 pub fn superpiece_rays(sq: Square) -> (Vec512, Vec512Mask8) {
+    #[rustfmt::skip]
     let offsets = Vec512::from([
         0x1F, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, // N
         0x21, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, // NE
@@ -74,6 +75,7 @@ pub fn superpiece_attacks(occ: u64, ray_valid: u64) -> u64 {
 
 #[inline]
 pub fn adjacents(sq: Square) -> (Vec128, Vec128Mask8) {
+    #[rustfmt::skip]
     let offsets = Vec128::from([
         0x10, 0x11, 0x01, 0xF1, 0xF0, 0xEF, 0xFF, 0x0F,
         0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88
@@ -92,6 +94,7 @@ fn slider_mask() -> Vec512 {
     const DIAG: u8 = 0b001 << 4;
     const ORTH: u8 = 0b010 << 4;
 
+    #[rustfmt::skip]
     Vec512::from([
         0, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
         0, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
@@ -141,6 +144,7 @@ const ATTACK_MASK_TABLE: [u64; 16] = {
     const WPDJ: u16 = BISHOP | QUEEN | KING | WHITE_PAWN;
     const BPDJ: u16 = BISHOP | QUEEN | KING | BLACK_PAWN;
 
+    #[rustfmt::skip]
     const BASE: [u16; 64] = [
         KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
         KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
@@ -196,10 +200,13 @@ pub fn attackers_from_rays(rays: Vec512) -> u64 {
     const WPDJ: u8 = BISHOP | QUEEN | KING | WHITE_PAWN;
     const BPDJ: u8 = BISHOP | QUEEN | KING | BLACK_PAWN;
 
+    #[rustfmt::skip]
     let piece_to_bits = Vec128::from([
         0, KING, BLACK_PAWN, KNIGHT, 0, BISHOP, ROOK, QUEEN,
         0, KING, WHITE_PAWN, KNIGHT, 0, BISHOP, ROOK, QUEEN,
     ]);
+
+    #[rustfmt::skip]
     let base = Vec512::from([
         KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
         KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
@@ -219,6 +226,8 @@ pub fn attackers_from_rays(rays: Vec512) -> u64 {
 
 const SUPERPIECE_INV_RAYS: [[u8; 64]; Square::COUNT] = {
     const NONE: u8 = 0xFF;
+
+    #[rustfmt::skip]
     const BASE: [u8; 256] = [
         NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE,
         NONE, 0x2F, NONE, NONE, NONE, NONE, NONE, NONE, 0x27, NONE, NONE, NONE, NONE, NONE, NONE, 0x1F,
@@ -237,6 +246,8 @@ const SUPERPIECE_INV_RAYS: [[u8; 64]; Square::COUNT] = {
         NONE, NONE, 0x3E, NONE, NONE, NONE, NONE, NONE, 0x06, NONE, NONE, NONE, NONE, NONE, 0x0E, NONE,
         NONE, 0x3F, NONE, NONE, NONE, NONE, NONE, NONE, 0x07, NONE, NONE, NONE, NONE, NONE, NONE, 0x0F,
     ];
+
+    #[rustfmt::skip]
     const OFFSETS: [u8; 64] = [
         0o210, 0o211, 0o212, 0o213, 0o214, 0o215, 0o216, 0o217,
         0o230, 0o231, 0o232, 0o233, 0o234, 0o235, 0o236, 0o237,
@@ -274,11 +285,7 @@ const SUPERPIECE_INV_RAYS_SWAPPED: [[u8; 64]; Square::COUNT] = {
         let mut i = 0;
         while i < 64 {
             let j = table[sq][i];
-            table[sq][i] = if j != NONE {
-                (j + 32) % 64
-            } else {
-                NONE
-            };
+            table[sq][i] = if j != NONE { (j + 32) % 64 } else { NONE };
 
             i += 1;
         }

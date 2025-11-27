@@ -62,7 +62,6 @@ pub const fn rook_moves_slow(sq: Square, blockers: Bitboard) -> Bitboard {
 
 /*----------------------------------------------------------------*/
 
-
 #[inline]
 pub const fn bishop_rays(sq: Square) -> Bitboard {
     #[inline]

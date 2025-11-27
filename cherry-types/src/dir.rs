@@ -4,11 +4,7 @@ pub trait Direction {
 }
 
 pub(crate) const fn horizontal_shift_mask(shift: i8) -> u64 {
-    0x101010101010101u64 * if shift > 0 {
-        0xFFu8 << shift
-    } else {
-        0xFFu8 >> -shift
-    } as u64
+    0x101010101010101u64 * if shift > 0 { 0xFFu8 << shift } else { 0xFFu8 >> -shift } as u64
 }
 
 /*----------------------------------------------------------------*/

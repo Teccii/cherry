@@ -5,9 +5,10 @@ mod print;
 mod see;
 mod startpos;
 
+use core::ops::{Deref, DerefMut};
+
 pub use move_gen::*;
 
-use core::ops::Deref;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -199,18 +200,18 @@ impl Board {
             let rook_id = dest_id.unwrap();
 
             board.update_slider(king_src);
-            board.board.set(king_src, Place::EMPTY);
+            board.set(king_src, Place::EMPTY);
             board.remove_attacks(stm, king_id);
 
             board.update_slider(rook_src);
-            board.board.set(rook_src, Place::EMPTY);
+            board.set(rook_src, Place::EMPTY);
             board.remove_attacks(stm, rook_id);
 
-            board.board.set(king_dest, Place::from_piece(Piece::King, stm, king_id));
+            board.set(king_dest, Place::from_piece(Piece::King, stm, king_id));
             board.update_slider(king_dest);
             board.add_attacks(king_dest, Piece::King, stm, king_id);
 
-            board.board.set(rook_dest, Place::from_piece(Piece::Rook, stm, rook_id));
+            board.set(rook_dest, Place::from_piece(Piece::Rook, stm, rook_id));
             board.update_slider(rook_dest);
             board.add_attacks(rook_dest, Piece::Rook, stm, rook_id);
 
@@ -256,14 +257,7 @@ impl Board {
         }
 
         #[inline]
-        fn promotion(
-            board: &mut Board,
-            src: Square,
-            dest: Square,
-            src_id: PieceIndex,
-            src_piece: Piece,
-            promotion: Piece,
-        ) {
+        fn promotion(board: &mut Board, src: Square, dest: Square, src_id: PieceIndex, src_piece: Piece, promotion: Piece) {
             let stm = board.stm;
 
             board.index_to_piece[stm][src_id] = Some(promotion);
@@ -307,13 +301,13 @@ impl Board {
                     Piece::King => {
                         self.set_castle_rights(stm, true, None);
                         self.set_castle_rights(stm, false, None);
-                    },
-                    _ => { }
+                    }
+                    _ => {}
                 }
 
                 self.xor_piece(src, src_piece, stm);
                 self.xor_piece(dest, src_piece, stm);
-            },
+            }
             MoveFlag::DoublePush => {
                 let stm = self.stm;
 
@@ -329,7 +323,7 @@ impl Board {
                 if !(their_attacks & their_pawns).is_empty() {
                     new_ep = Some(src.file());
                 }
-            },
+            }
             MoveFlag::Capture => {
                 let stm = self.stm;
                 let dest_id = dest_id.unwrap();
@@ -344,22 +338,22 @@ impl Board {
                 self.xor_piece(src, src_piece, stm);
                 self.xor_piece(dest, src_piece, stm);
                 self.xor_piece(dest, dest_piece.unwrap(), !stm);
-                
+
                 match src_piece {
                     Piece::Rook => check_castle_rights(self, stm, src),
                     Piece::King => {
                         self.set_castle_rights(stm, true, None);
                         self.set_castle_rights(stm, false, None);
-                    },
-                    _ => { }
+                    }
+                    _ => {}
                 }
 
                 check_castle_rights(self, !stm, dest);
-            },
+            }
             MoveFlag::EnPassant => {
                 let stm = self.stm;
                 let victim_sq = Square::new(dest.file(), src.rank());
-                let victim_id = self.board.get(victim_sq).index().unwrap();
+                let victim_id = self.get(victim_sq).index().unwrap();
 
                 self.move_piece::<true>(stm, src, dest, src_piece, src_id);
                 self.update_slider(victim_sq);
@@ -371,99 +365,19 @@ impl Board {
 
                 self.index_to_piece[!stm][victim_id] = None;
                 self.index_to_square[!stm][victim_id] = None;
-                self.board.set(victim_sq, Place::EMPTY);
+                self.set(victim_sq, Place::EMPTY);
                 self.remove_attacks(!stm, victim_id);
-            },
-            MoveFlag::ShortCastling => castling(
-                self,
-                src,
-                dest,
-                src_id,
-                dest_id,
-                File::G,
-                File::F
-            ),
-            MoveFlag::LongCastling => castling(
-                self,
-                src,
-                dest,
-                src_id,
-                dest_id,
-                File::C,
-                File::D
-            ),
-            MoveFlag::PromotionQueen => promotion(
-                self,
-                src,
-                dest,
-                src_id,
-                src_piece,
-                Piece::Queen
-            ),
-            MoveFlag::PromotionRook => promotion(
-                self,
-                src,
-                dest,
-                src_id,
-                src_piece,
-                Piece::Rook
-            ),
-            MoveFlag::PromotionBishop => promotion(
-                self,
-                src,
-                dest,
-                src_id,
-                src_piece,
-                Piece::Bishop
-            ),
-            MoveFlag::PromotionKnight => promotion(
-                self,
-                src,
-                dest,
-                src_id,
-                src_piece,
-                Piece::Knight
-            ),
-            MoveFlag::CapturePromotionQueen => capture_promotion(
-                self,
-                src,
-                dest,
-                src_id,
-                dest_id,
-                src_piece,
-                dest_piece,
-                Piece::Queen
-            ),
-            MoveFlag::CapturePromotionRook => capture_promotion(
-                self,
-                src,
-                dest,
-                src_id,
-                dest_id,
-                src_piece,
-                dest_piece,
-                Piece::Rook
-            ),
-            MoveFlag::CapturePromotionBishop => capture_promotion(
-                self,
-                src,
-                dest,
-                src_id,
-                dest_id,
-                src_piece,
-                dest_piece,
-                Piece::Bishop
-            ),
-            MoveFlag::CapturePromotionKnight => capture_promotion(
-                self,
-                src,
-                dest,
-                src_id,
-                dest_id,
-                src_piece,
-                dest_piece,
-                Piece::Knight
-            ),
+            }
+            MoveFlag::ShortCastling => castling(self, src, dest, src_id, dest_id, File::G, File::F),
+            MoveFlag::LongCastling => castling(self, src, dest, src_id, dest_id, File::C, File::D),
+            MoveFlag::PromotionQueen => promotion(self, src, dest, src_id, src_piece, Piece::Queen),
+            MoveFlag::PromotionRook => promotion(self, src, dest, src_id, src_piece, Piece::Rook),
+            MoveFlag::PromotionBishop => promotion(self, src, dest, src_id, src_piece, Piece::Bishop),
+            MoveFlag::PromotionKnight => promotion(self, src, dest, src_id, src_piece, Piece::Knight),
+            MoveFlag::CapturePromotionQueen => capture_promotion(self, src, dest, src_id, dest_id, src_piece, dest_piece, Piece::Queen),
+            MoveFlag::CapturePromotionRook => capture_promotion(self, src, dest, src_id, dest_id, src_piece, dest_piece, Piece::Rook),
+            MoveFlag::CapturePromotionBishop => capture_promotion(self, src, dest, src_id, dest_id, src_piece, dest_piece, Piece::Bishop),
+            MoveFlag::CapturePromotionKnight => capture_promotion(self, src, dest, src_id, dest_id, src_piece, dest_piece, Piece::Knight),
         }
 
         self.set_en_passant(new_ep);
@@ -500,7 +414,6 @@ impl Board {
         let mut major_hash = 0;
         let mut white_hash = 0;
         let mut black_hash = 0;
-
 
         let mailbox = self.as_mailbox();
         for &sq in &Square::ALL {
@@ -568,7 +481,7 @@ impl Board {
     #[inline]
     pub fn calc_attacks_to(&self, sq: Square) -> [PieceMask; Color::COUNT] {
         let (ray_coords, ray_valid) = geometry::superpiece_rays(sq);
-        let ray_places = Vec512::permute8(ray_coords, self.board.inner);
+        let ray_places = Vec512::permute8(ray_coords, self.inner);
 
         let color = ray_places.msb8();
         let blockers = ray_places.nonzero8();
@@ -599,7 +512,7 @@ impl Board {
         let (dest_ray_coords, dest_ray_valid) = geometry::superpiece_rays(dest);
         let new_place = Vec512::splat8(Place::from_piece(piece, color, index).into_inner());
 
-        let mut new_board = self.board.inner;
+        let mut new_board = self.inner;
         let src_ray_places = Vec512::permute8(src_ray_coords, new_board);
         new_board = Vec512::mask8(!src.bitboard().0, new_board);
         let dest_ray_places = Vec512::permute8(dest_ray_coords, new_board);
@@ -635,10 +548,26 @@ impl Board {
         let dest_masked_updates = dest_updates & update_mask;
 
         let ones = Vec512::splat16(1);
-        let src_bits0 = Vec512::shlv16_mz(src_valid_updates as Vec512Mask16, ones, src_masked_updates.into_vec256().zext8to16());
-        let src_bits1 = Vec512::shlv16_mz((src_valid_updates >> 32) as Vec512Mask16, ones, src_masked_updates.extract_vec256::<1>().zext8to16());
-        let dest_bits0 = Vec512::shlv16_mz(dest_valid_updates as Vec512Mask16, ones, dest_masked_updates.into_vec256().zext8to16());
-        let dest_bits1 = Vec512::shlv16_mz((dest_valid_updates >> 32) as Vec512Mask16, ones, dest_masked_updates.extract_vec256::<1>().zext8to16());
+        let src_bits0 = Vec512::shlv16_mz(
+            src_valid_updates as Vec512Mask16,
+            ones,
+            src_masked_updates.into_vec256().zext8to16(),
+        );
+        let src_bits1 = Vec512::shlv16_mz(
+            (src_valid_updates >> 32) as Vec512Mask16,
+            ones,
+            src_masked_updates.extract_vec256::<1>().zext8to16(),
+        );
+        let dest_bits0 = Vec512::shlv16_mz(
+            dest_valid_updates as Vec512Mask16,
+            ones,
+            dest_masked_updates.into_vec256().zext8to16(),
+        );
+        let dest_bits1 = Vec512::shlv16_mz(
+            (dest_valid_updates >> 32) as Vec512Mask16,
+            ones,
+            dest_masked_updates.extract_vec256::<1>().zext8to16(),
+        );
 
         let mut update00 = Vec512::mask16(!src_color as Vec512Mask16, src_bits0);
         let mut update01 = Vec512::mask16(!(src_color >> 32) as Vec512Mask16, src_bits1);
@@ -660,12 +589,17 @@ impl Board {
         let piece_mask = Vec512::splat16(index.into_mask().into_inner());
         let not_piece_mask = Vec512::splat16(!index.into_mask().into_inner());
         let attack_mask = dest_closest & geometry::attack_mask(piece, color);
-        let add_attack_mask = Vec512::mask_bitshuffle(!dest_swapped_perm.msb8(), Vec512::splat64(attack_mask.rotate_left(32)), dest_swapped_perm);
+        let add_attack_mask = Vec512::mask_bitshuffle(
+            !dest_swapped_perm.msb8(),
+            Vec512::splat64(attack_mask.rotate_left(32)),
+            dest_swapped_perm,
+        );
 
         self.attack_tables[color].inner[0] &= not_piece_mask;
         self.attack_tables[color].inner[1] &= not_piece_mask;
         self.attack_tables[color].inner[0] |= Vec512::mask16(add_attack_mask as Vec512Mask16, piece_mask);
-        self.attack_tables[color].inner[1] |= Vec512::mask16((add_attack_mask >> 32) as Vec512Mask16, piece_mask); }
+        self.attack_tables[color].inner[1] |= Vec512::mask16((add_attack_mask >> 32) as Vec512Mask16, piece_mask);
+    }
 
     #[inline]
     fn update_slider(&mut self, sq: Square) {
@@ -687,7 +621,11 @@ impl Board {
 
         let ones = Vec512::splat16(1);
         let bits0 = Vec512::shlv16_mz(valid_updates as Vec512Mask16, ones, masked_updates.into_vec256().zext8to16());
-        let bits1 = Vec512::shlv16_mz((valid_updates >> 32) as Vec512Mask16, ones, masked_updates.extract_vec256::<1>().zext8to16());
+        let bits1 = Vec512::shlv16_mz(
+            (valid_updates >> 32) as Vec512Mask16,
+            ones,
+            masked_updates.extract_vec256::<1>().zext8to16(),
+        );
 
         self.attack_tables[0].inner[0] ^= Vec512::mask16(!color as Vec512Mask16, bits0);
         self.attack_tables[0].inner[1] ^= Vec512::mask16(!(color >> 32) as Vec512Mask16, bits1);
@@ -778,12 +716,18 @@ impl Board {
     }
 }
 
-
 impl Deref for Board {
     type Target = Byteboard;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.board
+    }
+}
+
+impl DerefMut for Board {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.board
     }
 }

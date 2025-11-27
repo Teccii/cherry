@@ -39,7 +39,7 @@ impl Position {
     pub fn board(&self) -> &Board {
         &self.board
     }
-    
+
     #[inline]
     pub fn non_pawn_material(&self) -> bool {
         let pieces = self.board.colors(self.stm());
@@ -59,7 +59,7 @@ impl Position {
 
         false
     }
-    
+
     #[inline]
     pub fn stm(&self) -> Color {
         self.board.stm()
@@ -71,13 +71,14 @@ impl Position {
     }
 
     /*----------------------------------------------------------------*/
-    
+
     #[inline]
     pub fn make_move(&mut self, mv: Move, weights: &NetworkWeights) {
         self.board_history.push(self.board.clone());
         self.board.make_move(mv);
+        let prev_board = self.board_history.last().unwrap();
 
-        self.nnue.make_move(self.board_history.last().unwrap(), &self.board, weights, mv);
+        self.nnue.make_move(prev_board, &self.board, weights, mv);
     }
 
     #[inline]
@@ -96,21 +97,21 @@ impl Position {
         self.board = self.board_history.pop().unwrap();
         self.nnue.unmake_move();
     }
-    
+
     #[inline]
     pub fn unmake_null_move(&mut self) {
         self.board = self.board_history.pop().unwrap();
     }
 
     /*----------------------------------------------------------------*/
-    
+
     #[inline]
     pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
         self.nnue.apply_updates(&self.board, weights);
 
         let bucket = OUTPUT_BUCKETS[self.board.occupied().popcnt()];
         let mut eval = self.nnue.eval(weights, bucket, self.stm());
-        
+
         let material = W::pawn_mat_scale() * self.board.pieces(Piece::Pawn).popcnt() as i32
             + W::knight_mat_scale() * self.board.pieces(Piece::Knight).popcnt() as i32
             + W::bishop_mat_scale() * self.board.pieces(Piece::Bishop).popcnt() as i32
@@ -122,26 +123,29 @@ impl Position {
     }
 
     /*----------------------------------------------------------------*/
-    
+
     #[inline]
     pub fn is_draw(&self) -> bool {
         self.insufficient_material() || self.repetition() || self.board.status() == BoardStatus::Draw
     }
-    
+
     pub fn insufficient_material(&self) -> bool {
         match self.board.occupied().popcnt() {
             2 => true,
             3 => (self.board.pieces(Piece::Knight) | self.board.pieces(Piece::Bishop)).popcnt() > 0,
             4 => {
                 let bishops = self.board.pieces(Piece::Bishop);
-                
+
                 if bishops.popcnt() != 2 || self.board.colors(Color::White).popcnt() != 2 {
                     return false;
                 }
 
-                bishops.is_subset(Bitboard::DARK_SQUARES) || bishops.is_subset(Bitboard::LIGHT_SQUARES)
-            },
-            _ => false
+                let dark_bishops = bishops.is_subset(Bitboard::DARK_SQUARES);
+                let light_bishops = bishops.is_subset(Bitboard::LIGHT_SQUARES);
+
+                dark_bishops || light_bishops
+            }
+            _ => false,
         }
     }
 
@@ -153,7 +157,8 @@ impl Position {
             return false;
         }
 
-        self.board_history.iter()
+        self.board_history
+            .iter()
             .rev()
             .take(hm + 1) //idk if hm or hm + 1
             .skip(3)

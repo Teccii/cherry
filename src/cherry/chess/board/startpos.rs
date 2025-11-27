@@ -32,14 +32,14 @@ impl Board {
                 1 => File::D,
                 2 => File::F,
                 3 => File::H,
-                _ => unreachable!()
+                _ => unreachable!(),
             };
             let dark_bishop = match dark_bishop {
                 0 => File::A,
                 1 => File::C,
                 2 => File::E,
                 3 => File::G,
-                _ => unreachable!()
+                _ => unreachable!(),
             };
 
             let light_bishop = Square::new(light_bishop, backrank);
@@ -66,7 +66,7 @@ impl Board {
 
                 9 => (3, 4),
 
-                _ => unreachable!()
+                _ => unreachable!(),
             };
 
             let left_knight = free_squares.iter().nth(left_knight).unwrap();
@@ -96,7 +96,7 @@ impl Board {
             ];
 
             for &(sq, piece, index) in &pieces {
-                board.board.set(sq, Place::from_piece(piece, color, index));
+                board.set(sq, Place::from_piece(piece, color, index));
                 board.index_to_square[color][index] = Some(sq);
                 board.index_to_piece[color][index] = Some(piece);
             }
@@ -105,7 +105,7 @@ impl Board {
             for sq in Rank::Second.relative_to(color).bitboard() {
                 let piece_index = PieceIndex::new(index);
 
-                board.board.set(sq, Place::from_piece(Piece::Pawn, color, piece_index));
+                board.set(sq, Place::from_piece(Piece::Pawn, color, piece_index));
                 board.index_to_square[color][piece_index] = Some(sq);
                 board.index_to_piece[color][piece_index] = Some(Piece::Pawn);
 
@@ -116,7 +116,7 @@ impl Board {
             board.set_castle_rights(color, false, Some(left_rook.file()));
         }
 
-        let mut board = Board {  
+        let mut board = Board {
             board: Byteboard::default(),
             attack_tables: [Wordboard::default(); Color::COUNT],
             index_to_square: [IndexToSquare::default(); Color::COUNT],
@@ -138,7 +138,14 @@ impl Board {
         write_scharnagl(&mut board, Color::Black, black_scharnagl);
 
         board.attack_tables = board.calc_attacks();
-        (board.hash, board.pawn_hash, board.minor_hash, board.major_hash, board.white_hash, board.black_hash) = board.calc_hashes();
+        (
+            board.hash,
+            board.pawn_hash,
+            board.minor_hash,
+            board.major_hash,
+            board.white_hash,
+            board.black_hash,
+        ) = board.calc_hashes();
         board
     }
 }

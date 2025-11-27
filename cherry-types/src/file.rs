@@ -1,5 +1,9 @@
-use core::{fmt, str::FromStr};
-use core::ops::{Index, IndexMut};
+use core::{
+    fmt,
+    ops::{Index, IndexMut},
+    str::FromStr,
+};
+
 use crate::Bitboard;
 
 /*----------------------------------------------------------------*/
@@ -30,7 +34,7 @@ impl File {
         if i < File::COUNT {
             return Some(unsafe { core::mem::transmute::<u8, File>(i as u8) });
         }
-        
+
         None
     }
 
@@ -57,7 +61,7 @@ impl File {
 
         File::try_index(i as usize)
     }
-    
+
     #[inline]
     pub const fn flip(self) -> File {
         File::index(File::H as usize - self as usize)
@@ -69,48 +73,39 @@ impl File {
     pub const fn bitboard(self) -> Bitboard {
         Bitboard(0x101010101010101 << self as u8)
     }
-    
+
     #[inline]
     pub const fn adjacent(self) -> Bitboard {
         const TABLE: [Bitboard; File::COUNT] = {
             let mut table = [Bitboard::EMPTY; File::COUNT];
             let mut i = 0;
-            
+
             while i < File::COUNT {
                 let file = File::index(i);
                 let mut bb = Bitboard::EMPTY;
-                
+
                 if let Some(left) = file.try_offset(-1) {
                     bb = Bitboard(bb.0 | left.bitboard().0);
                 }
-                
+
                 if let Some(right) = file.try_offset(1) {
                     bb = Bitboard(bb.0 | right.bitboard().0);
                 }
-                
+
                 table[i] = bb;
                 i += 1;
             }
-            
+
             table
         };
-        
+
         TABLE[self as usize]
     }
 
     /*----------------------------------------------------------------*/
 
     pub const COUNT: usize = 8;
-    pub const ALL: [File; Self::COUNT] = [
-        File::A,
-        File::B,
-        File::C,
-        File::D,
-        File::E,
-        File::F,
-        File::G,
-        File::H
-    ];
+    pub const ALL: [File; Self::COUNT] = [File::A, File::B, File::C, File::D, File::E, File::F, File::G, File::H];
 }
 
 impl<T> Index<File> for [T; File::COUNT] {
@@ -154,7 +149,7 @@ impl From<File> for char {
             File::E => 'e',
             File::F => 'f',
             File::G => 'g',
-            File::H => 'h'
+            File::H => 'h',
         }
     }
 }
@@ -199,7 +194,7 @@ impl FromStr for File {
 #[test]
 fn validate_file() {
     let a = File::A;
-    
+
     assert_eq!(File::index(0), a);
     assert_eq!(File::try_index(0).unwrap(), a);
     assert_eq!(a.bitboard(), Bitboard(0x101010101010101));
@@ -215,7 +210,7 @@ fn validate_file() {
     assert_eq!(b.adjacent(), Bitboard(0x505050505050505));
     assert_eq!(b.try_offset(-1), Some(File::A));
     assert_eq!(b.try_offset(1), Some(File::C));
-    
+
     let g = File::G;
 
     assert_eq!(File::index(6), g);
@@ -224,7 +219,7 @@ fn validate_file() {
     assert_eq!(g.adjacent(), Bitboard(0xA0A0A0A0A0A0A0A0));
     assert_eq!(g.try_offset(-1), Some(File::F));
     assert_eq!(g.try_offset(1), Some(File::H));
-    
+
     let h = File::H;
 
     assert_eq!(File::index(7), h);

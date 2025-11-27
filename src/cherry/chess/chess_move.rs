@@ -1,4 +1,5 @@
 use core::{fmt, num::NonZeroU16};
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -10,22 +11,24 @@ bits 6-11: Target square
 bits 12-15: Move Flag
 */
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct Move { bits: NonZeroU16 }
+pub struct Move {
+    bits: NonZeroU16,
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MoveFlag {
     Normal = 0x0000,
     DoublePush = 0x1000,
-    LongCastling  = 0x2000,
+    LongCastling = 0x2000,
     ShortCastling = 0x3000,
-    PromotionQueen  = 0x4000,
-    PromotionRook   = 0x5000,
+    PromotionQueen = 0x4000,
+    PromotionRook = 0x5000,
     PromotionBishop = 0x6000,
     PromotionKnight = 0x7000,
     Capture = 0x8000,
     EnPassant = 0x9000,
-    CapturePromotionQueen  = 0xC000,
-    CapturePromotionRook   = 0xD000,
+    CapturePromotionQueen = 0xC000,
+    CapturePromotionRook = 0xD000,
     CapturePromotionBishop = 0xE000,
     CapturePromotionKnight = 0xF000,
 }
@@ -63,12 +66,16 @@ impl Move {
         bits |= (to as u16) << 6;
         bits |= flag as u16;
 
-        Move { bits: NonZeroU16::new(bits).unwrap() }
+        Move {
+            bits: NonZeroU16::new(bits).unwrap(),
+        }
     }
 
     #[inline]
     pub const fn from_bits(bits: u16) -> Move {
-        Move { bits: NonZeroU16::new(bits).unwrap() }
+        Move {
+            bits: NonZeroU16::new(bits).unwrap(),
+        }
     }
 
     /*----------------------------------------------------------------*/
@@ -167,37 +174,29 @@ impl Move {
 
     #[inline]
     pub fn parse(board: &Board, frc: bool, mv: &str) -> Option<Move> {
-        let from = mv.get(0..2)?.parse::<Square>().ok()?;
-        let mut to = mv.get(2..4)?.parse::<Square>().ok()?;
+        let src = mv.get(0..2)?.parse::<Square>().ok()?;
+        let mut dest = mv.get(2..4)?.parse::<Square>().ok()?;
         let promotion = if let Some(s) = mv.get(4..5) {
             let piece = s.parse::<Piece>().ok()?;
 
-            Some(piece).filter(|p|
-                matches!(p, Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen)
-            )
+            Some(piece).filter(|p| matches!(p, Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen))
         } else {
             None
         };
 
-        let is_capture = board.piece_on(to).is_some();
-        let flag = match board.piece_on(from)? {
-            Piece::Pawn => Move::parse_pawn_flag(board, from, to, is_capture, promotion)?,
-            Piece::King => Move::parse_king_flag(board, frc, from, &mut to, is_capture),
+        let is_capture = board.piece_on(dest).is_some();
+        let flag = match board.piece_on(src)? {
+            Piece::Pawn => Move::parse_pawn_flag(board, src, dest, is_capture, promotion)?,
+            Piece::King => Move::parse_king_flag(board, frc, src, &mut dest, is_capture),
             _ if is_capture => MoveFlag::Capture,
             _ => MoveFlag::Normal,
         };
 
-        Some(Move::new(from, to, flag))
+        Some(Move::new(src, dest, flag))
     }
 
     #[inline]
-    fn parse_pawn_flag(
-        board: &Board,
-        from: Square,
-        to: Square,
-        is_capture: bool,
-        promotion: Option<Piece>
-    ) -> Option<MoveFlag> {
+    fn parse_pawn_flag(board: &Board, src: Square, dest: Square, is_capture: bool, promotion: Option<Piece>) -> Option<MoveFlag> {
         if let Some(promotion) = promotion {
             if is_capture {
                 MoveFlag::capture_promotion(promotion)
@@ -206,10 +205,11 @@ impl Move {
             }
         } else if is_capture {
             Some(MoveFlag::Capture)
-        } else if let Some(ep) = board.ep_square() && to == ep {
+        } else if let Some(ep) = board.ep_square()
+            && dest == ep
+        {
             Some(MoveFlag::EnPassant)
-        } else if from.rank() == Rank::Second.relative_to(board.stm())
-            && to.rank() == Rank::Fourth.relative_to(board.stm()) {
+        } else if src.rank() == Rank::Second.relative_to(board.stm()) && dest.rank() == Rank::Fourth.relative_to(board.stm()) {
             Some(MoveFlag::DoublePush)
         } else {
             Some(MoveFlag::Normal)
@@ -217,25 +217,19 @@ impl Move {
     }
 
     #[inline]
-    fn parse_king_flag(
-        board: &Board,
-        chess960: bool,
-        from: Square,
-        to: &mut Square,
-        is_capture: bool,
-    ) -> MoveFlag {
+    fn parse_king_flag(board: &Board, chess960: bool, src: Square, dest: &mut Square, is_capture: bool) -> MoveFlag {
         let stm = board.stm();
         if chess960 && is_capture {
             let rights = board.castle_rights(stm);
             let our_backrank = Rank::First.relative_to(stm);
 
-            return if Some(*to) == rights.short.map(|f| Square::new(f, our_backrank)) {
+            return if Some(*dest) == rights.short.map(|f| Square::new(f, our_backrank)) {
                 MoveFlag::ShortCastling
-            } else if Some(*to) == rights.long.map(|f| Square::new(f, our_backrank)) {
+            } else if Some(*dest) == rights.long.map(|f| Square::new(f, our_backrank)) {
                 MoveFlag::LongCastling
             } else {
                 MoveFlag::Capture
-            }
+            };
         }
 
         if is_capture {
@@ -245,16 +239,20 @@ impl Move {
         let our_backrank = Rank::First.relative_to(stm);
         let castle_src = Square::new(File::E, our_backrank);
 
-        if from == castle_src {
+        if src == castle_src {
             let rights = board.castle_rights(stm);
             let castle_short = Square::new(File::G, our_backrank);
             let castle_long = Square::new(File::C, our_backrank);
 
-            if let Some(rook) = rights.short && *to == castle_short {
-                *to = Square::new(rook, our_backrank);
+            if let Some(rook) = rights.short
+                && *dest == castle_short
+            {
+                *dest = Square::new(rook, our_backrank);
                 return MoveFlag::ShortCastling;
-            } else if let Some(rook) = rights.long && *to == castle_long {
-                *to = Square::new(rook, our_backrank);
+            } else if let Some(rook) = rights.long
+                && *dest == castle_long
+            {
+                *dest = Square::new(rook, our_backrank);
                 return MoveFlag::LongCastling;
             }
         }

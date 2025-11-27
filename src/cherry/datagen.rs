@@ -1,29 +1,23 @@
 use std::{
+    fs,
     io::{BufWriter, Write},
     path::PathBuf,
-    time::Instant,
     sync::{Arc, atomic::*},
-    fs,
+    time::Instant,
 };
+
+use colored::Colorize;
+use rand::{Rng, rngs::ThreadRng};
 use viriformat::{
     chess::{
-        board::{
-            Board as ViriBoard,
-            GameOutcome,
-            DrawType,
-            WinType,
-        },
+        board::{Board as ViriBoard, DrawType, GameOutcome, WinType},
+        chessmove::{Move as ViriMove, MoveFlags as ViriMoveFlag},
         piece::PieceType as ViriPiece,
         types::Square as ViriSquare,
-        chessmove::{
-            Move as ViriMove,
-            MoveFlags as ViriMoveFlag,
-        },
     },
     dataformat::Game,
 };
-use rand::{Rng, rngs::ThreadRng};
-use colored::Colorize;
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -62,11 +56,7 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
 
     let options = DataGenOptions { count, threads, dfrc };
     let time_stamp = chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
-    let dir_name = if dfrc {
-        format!("DFRC_{}", time_stamp)
-    } else {
-        time_stamp
-    };
+    let dir_name = if dfrc { format!("DFRC_{}", time_stamp) } else { time_stamp };
 
     let data_dir = PathBuf::from("data").join(dir_name);
     fs::create_dir_all(&data_dir).unwrap();
@@ -108,15 +98,30 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
 
     println!("{}", "=== Data Generation Summary ===".bright_green());
     println!("Total Games: {}", games.to_string().bright_green());
-    println!("Total Positions: {}", fmt_big_num(pos_counter.load(Ordering::Relaxed)).bright_green());
-    println!("\nWhite Wins: {} ({}%)", white_wins.to_string().bright_green(), format!("{:.1}", white_percentage).bright_green());
-    println!("Black Wins: {} ({}%)", black_wins.to_string().bright_green(), format!("{:.1}", black_percentage).bright_green());
-    println!("Draws:      {} ({}%)", draws.to_string().bright_green(), format!("{:.1}", draw_percentage).bright_green());
+    println!(
+        "Total Positions: {}",
+        fmt_big_num(pos_counter.load(Ordering::Relaxed)).bright_green()
+    );
+    println!(
+        "\nWhite Wins: {} ({}%)",
+        white_wins.to_string().bright_green(),
+        format!("{:.1}", white_percentage).bright_green()
+    );
+    println!(
+        "Black Wins: {} ({}%)",
+        black_wins.to_string().bright_green(),
+        format!("{:.1}", black_percentage).bright_green()
+    );
+    println!(
+        "Draws:      {} ({}%)",
+        draws.to_string().bright_green(),
+        format!("{:.1}", draw_percentage).bright_green()
+    );
     println!(
         "\nTotal Time: {}h {}m {}s",
-         hours.to_string().bright_green(),
-         minutes.to_string().bright_green(),
-         seconds.to_string().bright_green()
+        hours.to_string().bright_green(),
+        minutes.to_string().bright_green(),
+        seconds.to_string().bright_green()
     );
     println!("{}", "===============================".bright_green());
 }
@@ -155,11 +160,14 @@ fn datagen_worker(
         }
 
         searcher.clean_ttable();
-        searcher.pos.set_board(if options.dfrc {
-            DfrcOpeningGenerator::gen_opening(&mut rng)
-        } else {
-            StdOpeningGenerator::gen_opening(&mut rng)
-        }, &searcher.shared_ctx.weights);
+        searcher.pos.set_board(
+            if options.dfrc {
+                DfrcOpeningGenerator::gen_opening(&mut rng)
+            } else {
+                StdOpeningGenerator::gen_opening(&mut rng)
+            },
+            &searcher.shared_ctx.weights,
+        );
 
         let eval = searcher.search::<NoInfo>(vec![SearchLimit::MaxDepth(10)]).2;
         if eval.abs() > 1000 {
@@ -167,7 +175,9 @@ fn datagen_worker(
         }
 
         let mut initial_board = ViriBoard::new();
-        initial_board.set_from_fen(format!("{}", searcher.pos.board().to_fen(options.dfrc)).as_str()).unwrap();
+        initial_board
+            .set_from_fen(format!("{}", searcher.pos.board().to_fen(options.dfrc)).as_str())
+            .unwrap();
 
         let mut game = Game::new(&initial_board);
         let mut game_len = match searcher.pos.stm() {
@@ -178,10 +188,7 @@ fn datagen_worker(
 
         'game: loop {
             let (mv, _, eval, _, _) = searcher.search::<NoInfo>(limits.clone());
-            let (src, dest) = (
-                ViriSquare::new(mv.src() as u8).unwrap(),
-                ViriSquare::new(mv.dest() as u8).unwrap()
-            );
+            let (src, dest) = (ViriSquare::new(mv.src() as u8).unwrap(), ViriSquare::new(mv.dest() as u8).unwrap());
 
             let viri_move = match mv.flag() {
                 MoveFlag::EnPassant => ViriMove::new_with_flags(src, dest, ViriMoveFlag::EnPassant),
@@ -224,7 +231,7 @@ fn datagen_worker(
             if status == BoardStatus::Checkmate {
                 result = match searcher.pos.stm() {
                     Color::White => GameOutcome::WhiteWin(WinType::Mate),
-                    Color::Black => GameOutcome::BlackWin(WinType::Mate)
+                    Color::Black => GameOutcome::BlackWin(WinType::Mate),
                 };
 
                 break 'game;
@@ -235,10 +242,16 @@ fn datagen_worker(
         game.serialise_into(&mut writer).unwrap();
 
         match result {
-            GameOutcome::WhiteWin(_) => { stats.white_wins.fetch_add(1, Ordering::Relaxed); },
-            GameOutcome::BlackWin(_) => { stats.black_wins.fetch_add(1, Ordering::Relaxed); },
-            GameOutcome::Draw(_) => { stats.draws.fetch_add(1, Ordering::Relaxed); },
-            _ => { }
+            GameOutcome::WhiteWin(_) => {
+                stats.white_wins.fetch_add(1, Ordering::Relaxed);
+            }
+            GameOutcome::BlackWin(_) => {
+                stats.black_wins.fetch_add(1, Ordering::Relaxed);
+            }
+            GameOutcome::Draw(_) => {
+                stats.draws.fetch_add(1, Ordering::Relaxed);
+            }
+            _ => {}
         }
 
         let curr = game_counter.fetch_add(1, Ordering::Relaxed);
@@ -263,10 +276,7 @@ fn datagen_worker(
                 "Positions Per Second: {}",
                 format!("{}", (curr_pos as f32 / elapsed) as usize).bright_green()
             );
-            println!(
-                "Games Per Second: {}",
-                format!("{:.3}", curr as f32 / elapsed).bright_green()
-            );
+            println!("Games Per Second: {}", format!("{:.3}", curr as f32 / elapsed).bright_green());
             println!(
                 "Estimated Time Remaining: {}h {}m {}s",
                 hours.to_string().bright_green(),
@@ -282,9 +292,21 @@ fn datagen_worker(
             let black_percentage = 100f32 * (black_wins as f32 / curr as f32);
             let draw_percentage = 100f32 * (draws as f32 / curr as f32);
 
-            println!("White Wins: {} ({}%)", white_wins.to_string().bright_green(), format!("{:.1}", white_percentage).bright_green());
-            println!("Black Wins: {} ({}%)", black_wins.to_string().bright_green(), format!("{:.1}", black_percentage).bright_green());
-            println!("Draws:      {} ({}%)", draws.to_string().bright_green(), format!("{:.1}", draw_percentage).bright_green());
+            println!(
+                "White Wins: {} ({}%)",
+                white_wins.to_string().bright_green(),
+                format!("{:.1}", white_percentage).bright_green()
+            );
+            println!(
+                "Black Wins: {} ({}%)",
+                black_wins.to_string().bright_green(),
+                format!("{:.1}", black_percentage).bright_green()
+            );
+            println!(
+                "Draws:      {} ({}%)",
+                draws.to_string().bright_green(),
+                format!("{:.1}", draw_percentage).bright_green()
+            );
             println!("\x1B[9F");
 
             io::stdout().flush().unwrap();
@@ -330,15 +352,11 @@ impl OpeningGenerator for StdOpeningGenerator {
     }
 }
 
-
 /*----------------------------------------------------------------*/
 
 impl OpeningGenerator for DfrcOpeningGenerator {
     fn gen_opening(rng: &mut ThreadRng) -> Board {
-        let mut board = Board::dfrc_startpos(
-            rng.random_range(0..960),
-            rng.random_range(0..960),
-        );
+        let mut board = Board::dfrc_startpos(rng.random_range(0..960), rng.random_range(0..960));
         let moves = 8 + rng.random_bool(0.5) as usize;
 
         for _ in 0..moves {

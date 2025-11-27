@@ -1,4 +1,5 @@
 use core::{cmp::Ordering, fmt, ops::*};
+
 use crate::MAX_PLY;
 
 /*----------------------------------------------------------------*/
@@ -33,7 +34,7 @@ impl Score {
     }
 
     /*----------------------------------------------------------------*/
-    
+
     #[inline]
     pub fn is_mate(self) -> bool {
         let abs_score = self.abs();
@@ -62,14 +63,14 @@ impl Score {
 
         None
     }
-    
+
     #[inline]
     pub fn is_tb(self) -> bool {
         let abs_score = self.abs();
-        
+
         abs_score >= Score::MAX_TB_WIN && abs_score <= Score::MIN_TB_WIN
     }
-    
+
     #[inline]
     pub fn tb_in(self) -> Option<i16> {
         if self.is_tb() {
@@ -81,7 +82,7 @@ impl Score {
 
         None
     }
-    
+
     #[inline]
     pub fn is_decisive(self) -> bool {
         self.is_mate() || self.is_tb()
@@ -92,14 +93,14 @@ impl Score {
         if !self.is_decisive() {
             return None;
         }
-        
+
         self.mate_in().or_else(|| self.tb_in())
     }
-    
+
     #[inline]
     pub fn is_infinite(self) -> bool {
         let abs_score = self.abs();
-        
+
         abs_score >= Score::INFINITE
     }
 
@@ -109,7 +110,7 @@ impl Score {
     pub const fn abs(self) -> Score {
         Score(self.0.abs())
     }
-    
+
     #[inline]
     pub const fn sign(self) -> i16 {
         self.0.signum()
@@ -121,7 +122,7 @@ impl Score {
     pub const MAX_MATE: Score = Score(i16::MAX - (2 * MAX_PLY) as i16);
     pub const MIN_TB_WIN: Score = Score(i16::MAX - (2 * MAX_PLY + 1) as i16);
     pub const MAX_TB_WIN: Score = Score(i16::MAX - (3 * MAX_PLY + 1) as i16);
-    
+
     pub const ZERO: Score = Score(0);
     pub const NONE: Score = Score(i16::MIN);
     pub const INFINITE: Score = Score(i16::MAX - (MAX_PLY as i16 - 1));
@@ -131,11 +132,7 @@ impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if f.alternate() {
             if self.is_infinite() {
-                if self.0 > 0 {
-                    write!(f, "+INF")
-                } else {
-                    write!(f, "-INF")
-                }
+                if self.0 > 0 { write!(f, "+INF") } else { write!(f, "-INF") }
             } else if let Some(ply) = self.decisive_in() {
                 write!(f, "#{}", (ply + ply.signum()) / 2)
             } else {
@@ -293,7 +290,7 @@ fn test_score() {
     for i in 0..MAX_PLY {
         let mate_score = Score::new_mate(i);
         let mated_score = Score::new_mated(i);
-        
+
         assert!(mate_score.is_mate());
         assert!(mated_score.is_mate());
         assert!(mate_score.is_win());

@@ -1,5 +1,10 @@
-use std::{sync::{atomic::*, Mutex}, time::*};
+use std::{
+    sync::{Mutex, atomic::*},
+    time::*,
+};
+
 use atomic_time::AtomicInstant;
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -73,42 +78,42 @@ impl TimeManager {
 
         for limit in limits {
             match limit {
-                SearchLimit::SearchMoves(_) => { },
+                SearchLimit::SearchMoves(_) => {}
                 SearchLimit::WhiteTime(time) => {
                     w_time = time.as_millis() as u64;
                     infinite = false;
-                },
+                }
                 SearchLimit::BlackTime(time) => {
                     b_time = time.as_millis() as u64;
                     infinite = false;
-                },
+                }
                 SearchLimit::WhiteInc(inc) => {
                     w_inc = inc.as_millis() as u64;
                     infinite = false;
-                },
+                }
                 SearchLimit::BlackInc(inc) => {
                     b_inc = inc.as_millis() as u64;
                     infinite = false;
-                },
+                }
                 SearchLimit::MoveTime(time) => {
                     move_time = Some(time.as_millis() as u64);
                     infinite = false;
-                },
+                }
                 SearchLimit::MovesToGo(moves) => {
                     moves_to_go = Some(*moves);
-                },
-                SearchLimit::MaxDepth(depth ) => {
+                }
+                SearchLimit::MaxDepth(depth) => {
                     max_depth = Some(*depth);
-                },
-                SearchLimit::MaxNodes(nodes ) => {
+                }
+                SearchLimit::MaxNodes(nodes) => {
                     max_nodes = Some(*nodes);
-                },
+                }
                 SearchLimit::Infinite => {
                     infinite = true;
-                },
+                }
                 SearchLimit::Ponder => {
                     pondering = true;
-                },
+                }
             }
         }
 
@@ -136,7 +141,7 @@ impl TimeManager {
         } else if use_soft_nodes && let Some(nodes) = max_nodes {
             self.base_time.store(nodes, Ordering::Relaxed);
             self.soft_time.store(nodes, Ordering::Relaxed);
-            self.hard_time.store(2000*nodes, Ordering::Relaxed);
+            self.hard_time.store(2000 * nodes, Ordering::Relaxed);
         } else if let Some(moves_to_go) = moves_to_go {
             let (time, inc) = match stm {
                 Color::White => (w_time, w_inc),
@@ -165,16 +170,8 @@ impl TimeManager {
 
         self.start.store(Instant::now(), Ordering::Relaxed);
     }
-    
-    pub fn deepen(
-        &self,
-        depth: u8,
-        score: Score,
-        static_eval: Score,
-        best_move: Move,
-        move_nodes: u64,
-        nodes: u64,
-    ) {
+
+    pub fn deepen(&self, depth: u8, score: Score, static_eval: Score, best_move: Move, move_nodes: u64, nodes: u64) {
         if depth < 4 || self.no_manage.load(Ordering::Relaxed) {
             return;
         }
@@ -195,13 +192,14 @@ impl TimeManager {
         let stability_factor = W::stability_tm_base() - W::stability_tm_scale() * move_stability as f32;
         let subtree_factor = W::subtree_tm_base() - W::subtree_tm_scale() * move_nodes as f32 / nodes as f32;
         let complexity_factor = if !score.is_decisive() {
-            (W::complexity_tm_base() + W::complexity_tm_scale() * complexity * (depth as f32).ln()).clamp(W::complexity_tm_min(), W::complexity_tm_max())
+            (W::complexity_tm_base() + W::complexity_tm_scale() * complexity * (depth as f32).ln())
+                .clamp(W::complexity_tm_min(), W::complexity_tm_max())
         } else if score.is_win() {
             W::complexity_tm_win()
         } else {
             W::complexity_tm_loss()
         };
-        
+
         let base_time = self.base_time.load(Ordering::Relaxed);
         let hard_time = self.hard_time.load(Ordering::Relaxed);
         let new_target = (base_time as f32 * stability_factor * subtree_factor * complexity_factor) as u64;
@@ -213,7 +211,7 @@ impl TimeManager {
     pub fn stop(&self) {
         self.abort_now.store(true, Ordering::Relaxed);
     }
-    
+
     #[inline]
     pub fn ponderhit(&self) {
         self.pondering.store(false, Ordering::Relaxed);
@@ -230,7 +228,7 @@ impl TimeManager {
     pub fn set_soft_nodes(&self, value: bool) {
         self.use_soft_nodes.store(value, Ordering::Relaxed);
     }
-    
+
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -240,13 +238,15 @@ impl TimeManager {
 
     #[inline]
     pub fn abort_search(&self, nodes: u64) -> bool {
-        self.abort_now() || self.timeout_search(nodes)
+        self.abort_now()
+            || self.timeout_search(nodes)
             || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)
     }
 
     #[inline]
     pub fn abort_id(&self, depth: u8, nodes: u64) -> bool {
-        self.abort_now() || self.timeout_id(nodes)
+        self.abort_now()
+            || self.timeout_id(nodes)
             || (self.use_max_depth() && self.max_depth.load(Ordering::Relaxed) <= depth)
             || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)
     }
@@ -275,11 +275,9 @@ impl TimeManager {
 
     #[inline]
     pub fn elapsed(&self) -> u64 {
-        self.start.load(Ordering::Relaxed)
-            .elapsed()
-            .as_millis() as u64
+        self.start.load(Ordering::Relaxed).elapsed().as_millis() as u64
     }
-    
+
     #[inline]
     pub fn use_max_depth(&self) -> bool {
         self.use_max_depth.load(Ordering::Relaxed)

@@ -1,4 +1,7 @@
 use std::sync::atomic::*;
+
+use rayon::prelude::*;
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -50,16 +53,16 @@ pub struct TTData {
 
 impl TTData {
     #[inline]
-    pub fn new(
-        depth: u8,
-        eval: Score,
-        score: Score,
-        mv: Option<Move>,
-        flag: TTFlag,
-        pv: bool,
-        age: u8,
-    ) -> TTData {
-        TTData { depth, eval, score, mv, flag, pv, age }
+    pub fn new(depth: u8, eval: Score, score: Score, mv: Option<Move>, flag: TTFlag, pv: bool, age: u8) -> TTData {
+        TTData {
+            depth,
+            eval,
+            score,
+            mv,
+            flag,
+            pv,
+            age,
+        }
     }
 
     #[inline]
@@ -80,7 +83,7 @@ pub struct TTPackedData {
     eval: Score,
     score: Score,
     mv: Option<Move>,
-    other: u8
+    other: u8,
 }
 
 impl TTPackedData {
@@ -91,7 +94,7 @@ impl TTPackedData {
             self.eval,
             self.score,
             self.mv,
-            unsafe { core::mem::transmute(self.other & 0x3)},
+            unsafe { core::mem::transmute(self.other & 0x3) },
             (self.other & 0x4) != 0,
             self.other >> 3,
         )
@@ -175,7 +178,7 @@ impl TTable {
 
         if entry.hash() == hash {
             let mut data = entry.data();
-            
+
             return if data.flag != TTFlag::None {
                 data.score = score_from_tt(data.score, ply);
                 Some(data)
@@ -188,17 +191,7 @@ impl TTable {
     }
 
     #[inline]
-    pub fn store(
-        &self,
-        board: &Board,
-        depth: u8,
-        ply: u16,
-        eval: Score,
-        score: Score,
-        mv: Option<Move>,
-        flag: TTFlag,
-        pv: bool
-    ) {
+    pub fn store(&self, board: &Board, depth: u8, ply: u16, eval: Score, score: Score, mv: Option<Move>, flag: TTFlag, pv: bool) {
         let old_data = self.fetch(board, ply);
         let new_data = TTData::new(
             depth,
@@ -207,7 +200,7 @@ impl TTable {
             mv.or_else(|| old_data.and_then(|d| d.mv)),
             flag,
             pv,
-            self.age.load(Ordering::Relaxed)
+            self.age.load(Ordering::Relaxed),
         );
 
         let hash = board.hash();
@@ -218,7 +211,7 @@ impl TTable {
 
     #[inline]
     pub fn clear(&self) {
-        self.entries.iter().for_each(|e| e.reset());
+        self.entries.par_iter().for_each(|e| e.reset());
         self.age.store(0, Ordering::Relaxed);
     }
 

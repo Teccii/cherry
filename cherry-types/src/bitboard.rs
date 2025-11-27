@@ -1,4 +1,5 @@
 use core::{fmt, ops::*};
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -24,7 +25,7 @@ impl Bitboard {
             (self.0 >> -shift) & mask
         })
     }
-    
+
     #[inline]
     pub const fn smear<D: Direction>(self) -> Bitboard {
         let mut result = self;
@@ -35,7 +36,7 @@ impl Bitboard {
 
         result
     }
-    
+
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -61,7 +62,7 @@ impl Bitboard {
     pub const fn relative_to(self, color: Color) -> Bitboard {
         match color {
             Color::White => self,
-            Color::Black => self.flip_ranks()
+            Color::Black => self.flip_ranks(),
         }
     }
 
@@ -71,7 +72,7 @@ impl Bitboard {
     pub const fn next_square(self) -> Square {
         Square::index(self.0.trailing_zeros() as usize)
     }
-    
+
     #[inline]
     pub const fn try_next_square(self) -> Option<Square> {
         Square::try_index(self.0.trailing_zeros() as usize)
@@ -90,24 +91,24 @@ impl Bitboard {
 
         Square::try_index(63 - self.0.leading_zeros() as usize)
     }
-    
+
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub const fn is_superset(self, rhs: Bitboard) -> bool {
         rhs.is_subset(self)
     }
-    
+
     #[inline]
     pub const fn is_subset(self, rhs: Bitboard) -> bool {
         self.0 & rhs.0 == self.0
     }
-    
+
     #[inline]
     pub const fn is_disjoint(self, rhs: Bitboard) -> bool {
         self.0 & rhs.0 == 0
     }
-    
+
     #[inline]
     pub const fn invert(self) -> Bitboard {
         Bitboard(!self.0)
@@ -124,7 +125,7 @@ impl Bitboard {
     }
 
     /*----------------------------------------------------------------*/
-    
+
     #[inline]
     pub const fn has(self, sq: Square) -> bool {
         !self.is_disjoint(sq.bitboard())
@@ -134,7 +135,7 @@ impl Bitboard {
     pub const fn popcnt(self) -> usize {
         self.0.count_ones() as usize
     }
-    
+
     #[inline]
     pub const fn is_empty(self) -> bool {
         self.0 == 0
@@ -155,7 +156,7 @@ impl Bitboard {
             finished: false,
         }
     }
-    
+
     /*----------------------------------------------------------------*/
 
     pub const EMPTY: Bitboard = Bitboard(0);
@@ -215,8 +216,8 @@ impl fmt::Display for Bitboard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for &rank in Rank::ALL.iter().rev() {
             write!(f, "\n")?;
-            
-            for &file in &File::ALL{
+
+            for &file in &File::ALL {
                 if self.has(Square::new(file, rank)) {
                     write!(f, "\tx")?;
                 } else {
@@ -224,7 +225,7 @@ impl fmt::Display for Bitboard {
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -246,25 +247,25 @@ macro_rules! impl_bb_ops {
     ($($trait:ident, $fn:ident;)*) => {$(
         impl $trait<Bitboard> for Bitboard {
             type Output = Bitboard;
-            
+
             #[inline]
             fn $fn(self, rhs: Bitboard) -> Self::Output {
                 Bitboard(self.0.$fn(rhs.0))
             }
         }
-    
+
         impl $trait<u64> for Bitboard {
             type Output = Bitboard;
-            
+
             #[inline]
             fn $fn(self, rhs: u64) -> Self::Output {
                 Bitboard(self.0.$fn(rhs))
             }
         }
-    
+
         impl $trait<Bitboard> for u64 {
             type Output = Bitboard;
-            
+
             #[inline]
             fn $fn(self, rhs: Bitboard) -> Self::Output {
                 Bitboard(self.$fn(rhs.0))
@@ -290,7 +291,7 @@ macro_rules! impl_bb_assign_ops {
                 self.0.$fn(rhs.0);
             }
         }
-    
+
         impl $trait<u64> for Bitboard {
             #[inline]
             fn $fn(&mut self, rhs: u64) {
@@ -348,7 +349,7 @@ macro_rules! impl_bb_shift_ops {
 impl_bb_ops! {
     BitAnd, bitand;
     BitOr, bitor;
-    BitXor, bitxor; 
+    BitXor, bitxor;
 }
 
 impl_bb_assign_ops! {
@@ -372,11 +373,11 @@ impl Iterator for BitboardIter {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let sq = self.0.try_next_square();
-        
+
         if let Some(sq) = sq {
             self.0 ^= sq.bitboard();
         }
-        
+
         sq
     }
 }
@@ -384,11 +385,11 @@ impl Iterator for BitboardIter {
 impl DoubleEndedIterator for BitboardIter {
     fn next_back(&mut self) -> Option<Self::Item> {
         let sq = self.0.try_next_square_back();
-        
+
         if let Some(sq) = sq {
             self.0 ^= sq.bitboard();
         }
-        
+
         sq
     }
 }
@@ -398,7 +399,7 @@ impl DoubleEndedIterator for BitboardIter {
 pub struct BitboardSubsetIter {
     set: Bitboard,
     subset: Bitboard,
-    finished: bool
+    finished: bool,
 }
 
 impl Iterator for BitboardSubsetIter {

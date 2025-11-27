@@ -12,7 +12,7 @@ impl Color {
         match i {
             0 => Color::White,
             1 => Color::Black,
-            _ => panic!("Color::index(): Index out of bounds")
+            _ => panic!("Color::index(): Index out of bounds"),
         }
     }
 
@@ -21,7 +21,7 @@ impl Color {
         match i {
             0 => Some(Color::White),
             1 => Some(Color::Black),
-            _ => None
+            _ => None,
         }
     }
 
@@ -105,12 +105,12 @@ impl TryFrom<char> for Color {
 
 impl FromStr for Color {
     type Err = ColorParseError;
-    
+
     #[inline]
     fn from_str(s: &str) -> Result<Color, ColorParseError> {
         let mut chars = s.chars();
         let c = chars.next().ok_or(ColorParseError)?;
-        
+
         if chars.next().is_none() {
             c.try_into()
         } else {

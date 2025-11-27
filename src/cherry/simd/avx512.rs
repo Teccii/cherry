@@ -1,4 +1,5 @@
 use core::{arch::x86_64::*, ops::*};
+
 use super::common::*;
 
 /*----------------------------------------------------------------*/
@@ -101,7 +102,7 @@ impl Vec256 {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Vec512 {
-    pub raw: __m512i
+    pub raw: __m512i,
 }
 
 impl Vec512 {
@@ -112,7 +113,9 @@ impl Vec512 {
 
     #[inline]
     pub unsafe fn store<T>(dst: *mut T, src: Vec512) {
-        unsafe { _mm512_storeu_si512(dst.cast(), src.raw); }
+        unsafe {
+            _mm512_storeu_si512(dst.cast(), src.raw);
+        }
     }
 
     /*----------------------------------------------------------------*/
@@ -126,7 +129,7 @@ impl Vec512 {
     pub fn into_vec256(self) -> Vec256 {
         unsafe { _mm512_castsi512_si256(self.raw).into() }
     }
-    
+
     #[inline]
     pub fn extract_vec256<const INDEX: i32>(self) -> Vec256 {
         unsafe { _mm512_extracti64x4_epi64::<INDEX>(self.raw).into() }
@@ -245,7 +248,7 @@ impl Vec512 {
     pub fn compress8(mask: Vec512Mask8, vec: Vec512) -> Vec512 {
         unsafe { _mm512_maskz_compress_epi8(mask, vec.raw).into() }
     }
-    
+
     #[inline]
     pub fn compress_store16<T>(dest: *mut T, mask: Vec512Mask16, vec: Vec512) {
         unsafe { _mm512_mask_compressstoreu_epi16(dest.cast(), mask, vec.raw) }
@@ -388,7 +391,7 @@ impl From<[u8; 64]> for Vec512 {
 impl From<[u16; 32]> for Vec512 {
     #[inline]
     fn from(arr: [u16; 32]) -> Self {
-        unsafe { Vec512::load(arr.as_ptr())  }
+        unsafe { Vec512::load(arr.as_ptr()) }
     }
 }
 
@@ -402,7 +405,7 @@ impl From<[u32; 16]> for Vec512 {
 impl From<[u64; 8]> for Vec512 {
     #[inline]
     fn from(arr: [u64; 8]) -> Self {
-        unsafe { Vec512::load(arr.as_ptr())  }
+        unsafe { Vec512::load(arr.as_ptr()) }
     }
 }
 

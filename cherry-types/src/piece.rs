@@ -1,4 +1,4 @@
-use core::{fmt, str::FromStr, ops::*};
+use core::{fmt, ops::*, str::FromStr};
 
 /*----------------------------------------------------------------*/
 
@@ -9,7 +9,7 @@ pub enum Piece {
     Bishop,
     Rook,
     Queen,
-    King
+    King,
 }
 
 impl Piece {
@@ -18,7 +18,7 @@ impl Piece {
         if i < Piece::COUNT {
             return unsafe { core::mem::transmute::<u8, Piece>(i as u8) };
         }
-        
+
         panic!("Piece::index(): Index out of bounds");
     }
 
@@ -27,7 +27,7 @@ impl Piece {
         if i < Piece::COUNT {
             return Some(unsafe { core::mem::transmute::<u8, Piece>(i as u8) });
         }
-        
+
         None
     }
 
@@ -66,14 +66,7 @@ impl Piece {
     /*----------------------------------------------------------------*/
 
     pub const COUNT: usize = 6;
-    pub const ALL: [Piece; Self::COUNT] = [
-        Piece::Pawn,
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen,
-        Piece::King,
-    ];
+    pub const ALL: [Piece; Self::COUNT] = [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
 }
 
 impl<T> Index<Piece> for [T; Piece::COUNT] {
@@ -123,7 +116,7 @@ impl From<Piece> for char {
             Piece::Bishop => 'b',
             Piece::Rook => 'r',
             Piece::Queen => 'q',
-            Piece::King => 'k'
+            Piece::King => 'k',
         }
     }
 }
