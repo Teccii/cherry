@@ -173,15 +173,17 @@ weights! {
     see_tactic_improving_base  | SEE_TACTIC_IMPROVING_BASE:  i32 => 0,
     see_tactic_improving_scale | SEE_TACTIC_IMPROVING_SCALE: i32 => -62,
 
-    singular_depth             | SINGULAR_DEPTH:             i32 => 6144,
-    singular_tt_depth          | SINGULAR_TT_DEPTH:          i32 => 3072,
-    singular_beta_margin       | SINGULAR_BETA_MARGIN:       i32 => 196,
-    singular_search_depth      | SINGULAR_SEARCH_DEPTH:      i32 => 512,
-    singular_dext_margin       | SINGULAR_DEXT_MARGIN:       i16 => 30,
-    singular_ext               | SINGULAR_EXT:               i32 => 1024,
-    singular_dext              | SINGULAR_DEXT:              i32 => 1024,
-    singular_neg_ext           | SINGULAR_NEG_EXT:           i32 => -1024,
-    tt_depth_bias              | TT_DEPTH_BIAS:              i32 => 0,
+    singular_depth        | SINGULAR_DEPTH:             i32 => 6144,
+    singular_tt_depth     | SINGULAR_TT_DEPTH:          i32 => 3072,
+    singular_beta_margin  | SINGULAR_BETA_MARGIN:       i32 => 196,
+    singular_search_depth | SINGULAR_SEARCH_DEPTH:      i32 => 512,
+    singular_dext_margin  | SINGULAR_DEXT_MARGIN:       i16 => 30,
+    singular_ext          | SINGULAR_EXT:               i32 => 1024,
+    singular_dext         | SINGULAR_DEXT:              i32 => 2048,
+    singular_tt_ext       | SINGULAR_TT_EXT:           i32 => -1024,
+
+    tt_depth_bias    | TT_DEPTH_BIAS:    i32 => 0,
+    tt_depth_pv_bias | TT_DEPTH_PV_BIAS: i32 => 0,
 
     lmr_quiet_base            | LMR_QUIET_BASE:              i32 => 579,
     lmr_quiet_div             | LMR_QUIET_DIV:               i32 => 1626,
@@ -202,9 +204,11 @@ weights! {
     stability_tm_base   | STABILITY_TM_BASE:   f32 => 1.8,
     stability_tm_scale  | STABILITY_TM_SCALE:  f32 => 0.1,
     complexity_tm_base  | COMPLEXITY_TM_BASE:  f32 => 0.8,
-    complexity_tm_scale | COMPLEXITY_TM_SCALE: f32 => 0.8,
-    complexity_tm_max   | COMPLEXITY_TM_MAX:   f32 => 200.0,
-    complexity_tm_div   | COMPLEXITY_TM_DIV:   f32 => 400.0,
+    complexity_tm_scale | COMPLEXITY_TM_SCALE: f32 => 0.02,
+    complexity_tm_min   | COMPLEXITY_TM_MIN:   f32 => 1.0,
+    complexity_tm_max   | COMPLEXITY_TM_MAX:   f32 => 1.5,
+    complexity_tm_win   | COMPLEXITY_TM_WIN:   f32 => 1.0,
+    complexity_tm_loss  | COMPLEXITY_TM_LOSS:  f32 => 1.0,
 }
 
 impl W {

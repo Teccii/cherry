@@ -190,15 +190,17 @@ impl TimeManager {
         *prev_move = Some(best_move);
         self.move_stability.store(move_stability, Ordering::Relaxed);
 
-        let complexity = if !score.is_decisive() {
-            W::complexity_tm_scale() * ((static_eval - score).abs().0 as f32) * (depth as f32).ln()
-        } else {
-            1.0
-        };
+        let complexity = (static_eval - score).abs().0 as f32;
 
         let stability_factor = W::stability_tm_base() - W::stability_tm_scale() * move_stability as f32;
         let subtree_factor = W::subtree_tm_base() - W::subtree_tm_scale() * move_nodes as f32 / nodes as f32;
-        let complexity_factor = (W::complexity_tm_base() + complexity.clamp(0.0, W::complexity_tm_max()) / W::complexity_tm_div()).max(1.0);
+        let complexity_factor = if !score.is_decisive() {
+            (W::complexity_tm_base() + W::complexity_tm_scale() * complexity * (depth as f32).ln()).clamp(W::complexity_tm_min(), W::complexity_tm_max())
+        } else if score.is_win() {
+            W::complexity_tm_win()
+        } else {
+            W::complexity_tm_loss()
+        };
         
         let base_time = self.base_time.load(Ordering::Relaxed);
         let hard_time = self.hard_time.load(Ordering::Relaxed);

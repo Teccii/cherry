@@ -289,10 +289,18 @@ impl Engine {
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_FRAC   => W::soft_time_frac(),     0, 16384;
-                    HARD_TIME_FRAC   => W::hard_time_frac(),     0, 16384;
+                    SOFT_TIME_FRAC => W::soft_time_frac(), 0, 16384;
+                    HARD_TIME_FRAC => W::hard_time_frac(), 0, 16384;
                     SUBTREE_TM_BASE  => W::subtree_tm_base(),  0.0, 5.0;
                     SUBTREE_TM_SCALE => W::subtree_tm_scale(), 0.0, 5.0;
+                    STABILITY_TM_BASE  => W::stability_tm_base(),  0.0, 8.0;
+                    STABILITY_TM_SCALE => W::stability_tm_scale(), 0.0, 1.0;
+                    COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0.0, 5.0;
+                    COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0.0, 5.0;
+                    COMPLEXITY_TM_MIN   => W::complexity_tm_min(),   0.0, 5.0;
+                    COMPLEXITY_TM_MAX   => W::complexity_tm_max(),   0.0, 5.0;
+                    COMPLEXITY_TM_WIN   => W::complexity_tm_win(),   0.0, 5.0;
+                    COMPLEXITY_TM_LOSS  => W::complexity_tm_loss(),  0.0, 5.0;
                 }
                 println!("uciok");
 
@@ -440,10 +448,18 @@ impl Engine {
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_FRAC   => W::soft_time_frac(),     0, 16384;
-                    HARD_TIME_FRAC   => W::hard_time_frac(),     0, 16384;
+                    SOFT_TIME_FRAC => W::soft_time_frac(), 0, 16384;
+                    HARD_TIME_FRAC => W::hard_time_frac(), 0, 16384;
                     SUBTREE_TM_BASE  => W::subtree_tm_base(),  0.0, 5.0;
                     SUBTREE_TM_SCALE => W::subtree_tm_scale(), 0.0, 5.0;
+                    STABILITY_TM_BASE  => W::stability_tm_base(),  0.0, 8.0;
+                    STABILITY_TM_SCALE => W::stability_tm_scale(), 0.0, 1.0;
+                    COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0.0, 5.0;
+                    COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0.0, 5.0;
+                    COMPLEXITY_TM_MIN   => W::complexity_tm_min(),   0.0, 5.0;
+                    COMPLEXITY_TM_MAX   => W::complexity_tm_max(),   0.0, 5.0;
+                    COMPLEXITY_TM_WIN   => W::complexity_tm_win(),   0.0, 5.0;
+                    COMPLEXITY_TM_LOSS  => W::complexity_tm_loss(),  0.0, 5.0;
                 }
             },
             #[cfg(feature = "datagen")] UciCommand::DataGen {
@@ -600,10 +616,18 @@ impl Engine {
                     "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i16;
                     "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i16;
 
-                    "SOFT_TIME_FRAC"   => SOFT_TIME_FRAC,   u64;
-                    "HARD_TIME_FRAC"   => HARD_TIME_FRAC,   u64;
+                    "SOFT_TIME_FRAC" => SOFT_TIME_FRAC, u64;
+                    "HARD_TIME_FRAC" => HARD_TIME_FRAC, u64;
                     "SUBTREE_TM_BASE"  => SUBTREE_TM_BASE,  f32;
                     "SUBTREE_TM_SCALE" => SUBTREE_TM_SCALE, f32;
+                    "STABILITY_TM_BASE"  => STABILITY_TM_BASE,  f32;
+                    "STABILITY_TM_SCALE" => STABILITY_TM_SCALE, f32;
+                    "COMPLEXITY_TM_BASE"  => COMPLEXITY_TM_BASE,  f32;
+                    "COMPLEXITY_TM_SCALE" => COMPLEXITY_TM_SCALE, f32;
+                    "COMPLEXITY_TM_MIN"   => COMPLEXITY_TM_MIN,   f32;
+                    "COMPLEXITY_TM_MAX"   => COMPLEXITY_TM_MAX,   f32;
+                    "COMPLEXITY_TM_WIN"   => COMPLEXITY_TM_WIN,   f32;
+                    "COMPLEXITY_TM_LOSS"  => COMPLEXITY_TM_LOSS,  f32;
                 }
 
                 #[cfg(feature = "tune")]

@@ -234,15 +234,15 @@ pub fn search<Node: NodeType>(
             thread.search_stack[ply as usize].skip_move = None;
 
             if s_score < s_beta {
-                ext += W::singular_ext();
+                ext = W::singular_ext();
 
                 if !Node::PV && s_score + W::singular_dext_margin() < s_beta {
-                    ext += W::singular_dext();
+                    ext = W::singular_dext();
                 }
             } else if s_beta >= beta {
                 return s_beta;
             } else if entry.score >= beta {
-                ext = W::singular_neg_ext();
+                ext = W::singular_tt_ext();
             }
         }
 
@@ -318,9 +318,15 @@ pub fn search<Node: NodeType>(
 
     let best_score = best_score.unwrap();
     if skip_move.is_none() {
+        let depth_bias = if Node::PV {
+            W::tt_depth_pv_bias()
+        } else {
+            W::tt_depth_bias()
+        };
+
         shared.ttable.store(
             pos.board(),
-            ((depth + W::tt_depth_bias()) / DEPTH_SCALE) as u8,
+            ((depth + depth_bias) / DEPTH_SCALE) as u8,
             ply,
             raw_eval,
             best_score,
