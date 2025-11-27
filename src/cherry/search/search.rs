@@ -163,7 +163,7 @@ pub fn search<Node: NodeType>(
 
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
-        let lmr = get_lmr(is_tactic, improving, (depth / DEPTH_SCALE) as u8, moves_seen);
+        let mut lmr = get_lmr(is_tactic, improving, (depth / DEPTH_SCALE) as u8, moves_seen);
         let mut score;
 
         if !Node::PV && best_score.map_or(false, |s: Score| !s.is_loss()) {
@@ -254,7 +254,15 @@ pub fn search<Node: NodeType>(
         if moves_seen == 0 {
             score = -search::<Node>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha, !Node::PV && !cut_node);
         } else {
-            score = -search::<NonPV>(pos, thread, shared, new_depth - lmr, ply + 1, -alpha - 1, -alpha, true);
+            if depth >= 2 {
+                lmr += W::cutnode_lmr() * cut_node as i32;
+            } else {
+                lmr = 0;
+            }
+
+            let lmr_depth = (new_depth - lmr).max(1 * DEPTH_SCALE).min(new_depth);
+
+            score = -search::<NonPV>(pos, thread, shared, lmr_depth, ply + 1, -alpha - 1, -alpha, true);
 
             if lmr > 0 && score > alpha {
                 score = -search::<NonPV>(pos, thread, shared, new_depth, ply + 1, -alpha - 1, -alpha, !cut_node);

@@ -193,6 +193,8 @@ weights! {
     lmr_tactic_div            | LMR_TACTIC_DIV:            i32 => 3688,
     lmr_tactic_improving_base | LMR_TACTIC_IMPROVING_BASE: i32 => 450,
     lmr_tactic_improving_div  | LMR_TACTIC_IMPROVING_DIV:  i32 => 3688,
+    
+    cutnode_lmr | CUTNODE_LMR: i32 => 1024,
 
     asp_window_initial | ASP_WINDOW_INITIAL: i16 => 20,
     asp_window_expand  | ASP_WINDOW_EXPAND:  i16 => 48,
