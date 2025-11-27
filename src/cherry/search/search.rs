@@ -28,6 +28,7 @@ pub fn search<Node: NodeType>(
     ply: u16,
     mut alpha: Score,
     beta: Score,
+    cut_node: bool,
 ) -> Score {
     if ply != 0 && (thread.abort_now || (thread.nodes.local() % 1024 == 0 && shared.time_man.abort_search(thread.nodes.global()))) {
         thread.abort_now = true;
@@ -134,7 +135,7 @@ pub fn search<Node: NodeType>(
             let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / DEPTH_SCALE as i64) as i32;
 
             thread.search_stack[ply as usize].move_played = None;
-            let score = -search::<Node>(pos, thread, shared, depth - nmp_reduction, ply + 1, -beta, -beta + 1);
+            let score = -search::<Node>(pos, thread, shared, depth - nmp_reduction, ply + 1, -beta, -beta + 1, !cut_node);
             pos.unmake_null_move();
 
             if thread.abort_now {
@@ -230,7 +231,7 @@ pub fn search<Node: NodeType>(
             let s_depth = depth * W::singular_search_depth() / DEPTH_SCALE;
 
             thread.search_stack[ply as usize].skip_move = Some(mv);
-            let s_score = search::<NonPV>(pos, thread, shared, s_depth, ply, s_beta - 1, s_beta);
+            let s_score = search::<NonPV>(pos, thread, shared, s_depth, ply, s_beta - 1, s_beta, cut_node);
             thread.search_stack[ply as usize].skip_move = None;
 
             if s_score < s_beta {
@@ -251,16 +252,16 @@ pub fn search<Node: NodeType>(
 
         let new_depth = depth + ext - 1 * DEPTH_SCALE;
         if moves_seen == 0 {
-            score = -search::<Node>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha);
+            score = -search::<Node>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha, !Node::PV && !cut_node);
         } else {
-            score = -search::<NonPV>(pos, thread, shared, new_depth - lmr, ply + 1, -alpha - 1, -alpha);
+            score = -search::<NonPV>(pos, thread, shared, new_depth - lmr, ply + 1, -alpha - 1, -alpha, true);
 
             if lmr > 0 && score > alpha {
-                score = -search::<NonPV>(pos, thread, shared, new_depth, ply + 1, -alpha - 1, -alpha);
+                score = -search::<NonPV>(pos, thread, shared, new_depth, ply + 1, -alpha - 1, -alpha, !cut_node);
             }
 
             if Node::PV && score > alpha {
-                score = -search::<PV>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha);
+                score = -search::<PV>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha, false);
             }
         }
         pos.unmake_move();

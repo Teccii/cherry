@@ -277,14 +277,14 @@ impl Engine {
                     SINGULAR_NEG_EXT      => W::singular_neg_ext(),  -4096, 0;
                     TT_DEPTH_BIAS         => W::tt_depth_bias(), -1024, 1024;
 
-                    LMR_QUIET_BASE => W::lmr_quiet_base(), 0, 2048;
-                    LMR_QUIET_DIV  => W::lmr_quiet_div(),  0, 8192;
-                    LMR_QUIET_IMPROVING_BASE => W::lmr_quiet_improving_base(), 0, 2048;
-                    LMR_QUIET_IMPROVING_DIV  => W::lmr_quiet_improving_div(),  0, 8192;
-                    LMR_TACTIC_BASE => W::lmr_tactic_base(), 0, 2048;
-                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),  0, 8192;
-                    LMR_TACTIC_IMPROVING_BASE => W::lmr_tactic_improving_base(), 0, 2048;
-                    LMR_TACTIC_IMPROVING_DIV  => W::lmr_tactic_improving_div(),  0, 8192;
+                    LMR_QUIET_BASE => W::lmr_quiet_base(), -4096, 4096;
+                    LMR_QUIET_DIV  => W::lmr_quiet_div(),  1, 8192;
+                    LMR_QUIET_IMPROVING_BASE => W::lmr_quiet_improving_base(), -4096, 4096;
+                    LMR_QUIET_IMPROVING_DIV  => W::lmr_quiet_improving_div(),  1, 8192;
+                    LMR_TACTIC_BASE => W::lmr_tactic_base(), -4096, 4096;
+                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),  1, 8192;
+                    LMR_TACTIC_IMPROVING_BASE => W::lmr_tactic_improving_base(), -4096, 4096;
+                    LMR_TACTIC_IMPROVING_DIV  => W::lmr_tactic_improving_div(),  1, 4096;
 
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
@@ -436,14 +436,14 @@ impl Engine {
                     SINGULAR_NEG_EXT      => W::singular_neg_ext(),  -4096, 0;
                     TT_DEPTH_BIAS         => W::tt_depth_bias(), -1024, 1024;
 
-                    LMR_QUIET_BASE => W::lmr_quiet_base(), 0, 2048;
-                    LMR_QUIET_DIV  => W::lmr_quiet_div(),  0, 8192;
-                    LMR_QUIET_IMPROVING_BASE => W::lmr_quiet_improving_base(), 0, 2048;
-                    LMR_QUIET_IMPROVING_DIV  => W::lmr_quiet_improving_div(),  0, 8192;
-                    LMR_TACTIC_BASE => W::lmr_tactic_base(), 0, 2048;
-                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),  0, 8192;
-                    LMR_TACTIC_IMPROVING_BASE => W::lmr_tactic_improving_base(), 0, 2048;
-                    LMR_TACTIC_IMPROVING_DIV  => W::lmr_tactic_improving_div(),  0, 8192;
+                    LMR_QUIET_BASE => W::lmr_quiet_base(), -4096, 4096;
+                    LMR_QUIET_DIV  => W::lmr_quiet_div(),  1, 8192;
+                    LMR_QUIET_IMPROVING_BASE => W::lmr_quiet_improving_base(), -4096, 4096;
+                    LMR_QUIET_IMPROVING_DIV  => W::lmr_quiet_improving_div(),  1, 8192;
+                    LMR_TACTIC_BASE => W::lmr_tactic_base(), -4096, 4096;
+                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),  1, 8192;
+                    LMR_TACTIC_IMPROVING_BASE => W::lmr_tactic_improving_base(), -4096, 4096;
+                    LMR_TACTIC_IMPROVING_DIV  => W::lmr_tactic_improving_div(),  1, 4096;
 
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
