@@ -258,12 +258,12 @@ impl Engine {
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
 
                     RFP_DEPTH     => W::rfp_depth(),        0, 16384;
-                    RFP_BASE      => W::rfp_base(),      -512, 512;
-                    RFP_SCALE     => W::rfp_scale(),     -512, 512;
+                    RFP_BASE      => W::rfp_base(),      -256, 256;
+                    RFP_SCALE     => W::rfp_scale(),     -256, 256;
                     RFP_LERP      => W::rfp_lerp(),         0, 1024;
                     RFP_IMP_DEPTH => W::rfp_imp_depth(),    0, 16384;
-                    RFP_IMP_BASE  => W::rfp_imp_base(),  -512, 512;
-                    RFP_IMP_SCALE => W::rfp_imp_scale(), -512, 512;
+                    RFP_IMP_BASE  => W::rfp_imp_base(),  -256, 256;
+                    RFP_IMP_SCALE => W::rfp_imp_scale(), -256, 256;
                     RFP_IMP_LERP  => W::rfp_imp_lerp(),     0, 1024;
 
                     NMP_DEPTH     => W::nmp_depth(),     0, 16384;
@@ -273,31 +273,31 @@ impl Engine {
                     NMP_IMP_BASE  => W::nmp_imp_base(),  0, 16384;
                     NMP_IMP_SCALE => W::nmp_imp_scale(), 0, 1024;
 
-                    LMP_BASE      => W::lmp_base(),      0, 4096;
+                    LMP_BASE      => W::lmp_base(),      0, 8192;
                     LMP_SCALE     => W::lmp_scale(),     0, 2048;
-                    LMP_IMP_BASE  => W::lmp_imp_base(),  0, 4096;
+                    LMP_IMP_BASE  => W::lmp_imp_base(),  0, 8192;
                     LMP_IMP_SCALE => W::lmp_imp_scale(), 0, 2048;
 
                     FP_DEPTH     => W::fp_depth(),        0, 16384;
-                    FP_BASE      => W::fp_base(),      -512, 512;
-                    FP_SCALE     => W::fp_scale(),     -512, 512;
+                    FP_BASE      => W::fp_base(),      -256, 256;
+                    FP_SCALE     => W::fp_scale(),     -256, 256;
                     FP_IMP_DEPTH => W::fp_imp_depth(),    0, 16384;
-                    FP_IMP_BASE  => W::fp_imp_base(),  -512, 512;
-                    FP_IMP_SCALE => W::fp_imp_scale(), -512, 512;
+                    FP_IMP_BASE  => W::fp_imp_base(),  -256, 256;
+                    FP_IMP_SCALE => W::fp_imp_scale(), -256, 256;
 
                     SEE_QUIET_DEPTH     => W::see_quiet_depth(),        0, 16384;
-                    SEE_QUIET_BASE      => W::see_quiet_base(),      -512, 512;
-                    SEE_QUIET_SCALE     => W::see_quiet_scale(),     -512, 512;
+                    SEE_QUIET_BASE      => W::see_quiet_base(),      -256, 256;
+                    SEE_QUIET_SCALE     => W::see_quiet_scale(),     -256, 256;
                     SEE_QUIET_IMP_DEPTH => W::see_quiet_imp_depth(),    0, 16384;
-                    SEE_QUIET_IMP_BASE  => W::see_quiet_imp_base(),  -512, 512;
-                    SEE_QUIET_IMP_SCALE => W::see_quiet_imp_scale(), -512, 512;
+                    SEE_QUIET_IMP_BASE  => W::see_quiet_imp_base(),  -256, 256;
+                    SEE_QUIET_IMP_SCALE => W::see_quiet_imp_scale(), -256, 256;
 
                     SEE_TACTIC_DEPTH     => W::see_tactic_depth(),        0, 16384;
-                    SEE_TACTIC_BASE      => W::see_tactic_base(),      -512, 512;
-                    SEE_TACTIC_SCALE     => W::see_tactic_scale(),     -512, 512;
+                    SEE_TACTIC_BASE      => W::see_tactic_base(),      -256, 256;
+                    SEE_TACTIC_SCALE     => W::see_tactic_scale(),     -256, 256;
                     SEE_TACTIC_IMP_DEPTH => W::see_tactic_imp_depth(),    0, 16384;
-                    SEE_TACTIC_IMP_BASE  => W::see_tactic_imp_base(),  -512, 512;
-                    SEE_TACTIC_IMP_SCALE => W::see_tactic_imp_scale(), -512, 512;
+                    SEE_TACTIC_IMP_BASE  => W::see_tactic_imp_base(),  -256, 256;
+                    SEE_TACTIC_IMP_SCALE => W::see_tactic_imp_scale(), -256, 256;
 
                     SINGULAR_DEPTH        => W::singular_depth(),        0, 16384;
                     SINGULAR_TT_DEPTH     => W::singular_tt_depth(),     0, 16384;
@@ -327,20 +327,19 @@ impl Engine {
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_FRAC      => W::soft_time_frac(),      0.0, 1.0;
-                    HARD_TIME_FRAC      => W::hard_time_frac(),      0.0, 1.0;
-                    SUBTREE_TM_BASE     => W::subtree_tm_base(),     0.0, 5.0;
-                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(),    0.0, 5.0;
-                    SUBTREE_TM_MIN      => W::subtree_tm_min(),      0.0, 2.0;
-                    STABILITY_TM_BASE   => W::stability_tm_base(),   0.0, 8.0;
-                    STABILITY_TM_SCALE  => W::stability_tm_scale(),  0.0, 1.0;
-                    STABILITY_TM_MIN    => W::stability_tm_scale(),  0.0, 2.0;
-                    COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0.0, 5.0;
-                    COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0.0, 5.0;
-                    COMPLEXITY_TM_MIN   => W::complexity_tm_min(),   0.0, 5.0;
-                    COMPLEXITY_TM_MAX   => W::complexity_tm_max(),   0.0, 5.0;
-                    COMPLEXITY_TM_WIN   => W::complexity_tm_win(),   0.0, 5.0;
-                    COMPLEXITY_TM_LOSS  => W::complexity_tm_loss(),  0.0, 5.0;
+                    SOFT_TIME_FRAC      => W::soft_time_frac(),      0, 4096;
+                    HARD_TIME_FRAC      => W::hard_time_frac(),      0, 4096;
+                    SUBTREE_TM_BASE     => W::subtree_tm_base(),     0, 20480;
+                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(),    0, 20480;
+                    SUBTREE_TM_MIN      => W::subtree_tm_min(),      0, 8192;
+                    STABILITY_TM_BASE   => W::stability_tm_base(),   0, 32768;
+                    STABILITY_TM_SCALE  => W::stability_tm_scale(),  0, 4096;
+                    STABILITY_TM_MIN    => W::stability_tm_min(),    0, 8192;
+                    COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0, 20480;
+                    COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0, 20480;
+                    COMPLEXITY_TM_MAX   => W::complexity_tm_max(),   0, 20480;
+                    COMPLEXITY_TM_WIN   => W::complexity_tm_win(),   0, 20480;
+                    COMPLEXITY_TM_LOSS  => W::complexity_tm_loss(),  0, 20480;
                 }
                 println!("uciok");
 
@@ -378,7 +377,7 @@ impl Engine {
                             $default as f64,
                             $min as f64,
                             $max as f64,
-                            ($max as f64 - $min as f64).abs() / 20.0,
+                            ($default as f64).abs() / 10.0,
                         );
                     )*}
                 }
@@ -433,12 +432,12 @@ impl Engine {
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
 
                     RFP_DEPTH     => W::rfp_depth(),        0, 16384;
-                    RFP_BASE      => W::rfp_base(),      -512, 512;
-                    RFP_SCALE     => W::rfp_scale(),     -512, 512;
+                    RFP_BASE      => W::rfp_base(),      -256, 256;
+                    RFP_SCALE     => W::rfp_scale(),     -256, 256;
                     RFP_LERP      => W::rfp_lerp(),         0, 1024;
                     RFP_IMP_DEPTH => W::rfp_imp_depth(),    0, 16384;
-                    RFP_IMP_BASE  => W::rfp_imp_base(),  -512, 512;
-                    RFP_IMP_SCALE => W::rfp_imp_scale(), -512, 512;
+                    RFP_IMP_BASE  => W::rfp_imp_base(),  -256, 256;
+                    RFP_IMP_SCALE => W::rfp_imp_scale(), -256, 256;
                     RFP_IMP_LERP  => W::rfp_imp_lerp(),     0, 1024;
 
                     NMP_DEPTH     => W::nmp_depth(),     0, 16384;
@@ -448,31 +447,31 @@ impl Engine {
                     NMP_IMP_BASE  => W::nmp_imp_base(),  0, 16384;
                     NMP_IMP_SCALE => W::nmp_imp_scale(), 0, 1024;
 
-                    LMP_BASE      => W::lmp_base(),      0, 4096;
+                    LMP_BASE      => W::lmp_base(),      0, 8192;
                     LMP_SCALE     => W::lmp_scale(),     0, 2048;
-                    LMP_IMP_BASE  => W::lmp_imp_base(),  0, 4096;
+                    LMP_IMP_BASE  => W::lmp_imp_base(),  0, 8192;
                     LMP_IMP_SCALE => W::lmp_imp_scale(), 0, 2048;
 
                     FP_DEPTH     => W::fp_depth(),        0, 16384;
-                    FP_BASE      => W::fp_base(),      -512, 512;
-                    FP_SCALE     => W::fp_scale(),     -512, 512;
+                    FP_BASE      => W::fp_base(),      -256, 256;
+                    FP_SCALE     => W::fp_scale(),     -256, 256;
                     FP_IMP_DEPTH => W::fp_imp_depth(),    0, 16384;
-                    FP_IMP_BASE  => W::fp_imp_base(),  -512, 512;
-                    FP_IMP_SCALE => W::fp_imp_scale(), -512, 512;
+                    FP_IMP_BASE  => W::fp_imp_base(),  -256, 256;
+                    FP_IMP_SCALE => W::fp_imp_scale(), -256, 256;
 
                     SEE_QUIET_DEPTH     => W::see_quiet_depth(),        0, 16384;
-                    SEE_QUIET_BASE      => W::see_quiet_base(),      -512, 512;
-                    SEE_QUIET_SCALE     => W::see_quiet_scale(),     -512, 512;
+                    SEE_QUIET_BASE      => W::see_quiet_base(),      -256, 256;
+                    SEE_QUIET_SCALE     => W::see_quiet_scale(),     -256, 256;
                     SEE_QUIET_IMP_DEPTH => W::see_quiet_imp_depth(),    0, 16384;
-                    SEE_QUIET_IMP_BASE  => W::see_quiet_imp_base(),  -512, 512;
-                    SEE_QUIET_IMP_SCALE => W::see_quiet_imp_scale(), -512, 512;
+                    SEE_QUIET_IMP_BASE  => W::see_quiet_imp_base(),  -256, 256;
+                    SEE_QUIET_IMP_SCALE => W::see_quiet_imp_scale(), -256, 256;
 
                     SEE_TACTIC_DEPTH     => W::see_tactic_depth(),        0, 16384;
-                    SEE_TACTIC_BASE      => W::see_tactic_base(),      -512, 512;
-                    SEE_TACTIC_SCALE     => W::see_tactic_scale(),     -512, 512;
+                    SEE_TACTIC_BASE      => W::see_tactic_base(),      -256, 256;
+                    SEE_TACTIC_SCALE     => W::see_tactic_scale(),     -256, 256;
                     SEE_TACTIC_IMP_DEPTH => W::see_tactic_imp_depth(),    0, 16384;
-                    SEE_TACTIC_IMP_BASE  => W::see_tactic_imp_base(),  -512, 512;
-                    SEE_TACTIC_IMP_SCALE => W::see_tactic_imp_scale(), -512, 512;
+                    SEE_TACTIC_IMP_BASE  => W::see_tactic_imp_base(),  -256, 256;
+                    SEE_TACTIC_IMP_SCALE => W::see_tactic_imp_scale(), -256, 256;
 
                     SINGULAR_DEPTH        => W::singular_depth(),        0, 16384;
                     SINGULAR_TT_DEPTH     => W::singular_tt_depth(),     0, 16384;
@@ -502,20 +501,19 @@ impl Engine {
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_FRAC      => W::soft_time_frac(),      0.0, 1.0;
-                    HARD_TIME_FRAC      => W::hard_time_frac(),      0.0, 1.0;
-                    SUBTREE_TM_BASE     => W::subtree_tm_base(),     0.0, 5.0;
-                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(),    0.0, 5.0;
-                    SUBTREE_TM_MIN      => W::subtree_tm_min(),      0.0, 2.0;
-                    STABILITY_TM_BASE   => W::stability_tm_base(),   0.0, 8.0;
-                    STABILITY_TM_SCALE  => W::stability_tm_scale(),  0.0, 1.0;
-                    STABILITY_TM_MIN    => W::stability_tm_scale(),  0.0, 2.0;
-                    COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0.0, 5.0;
-                    COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0.0, 5.0;
-                    COMPLEXITY_TM_MIN   => W::complexity_tm_min(),   0.0, 5.0;
-                    COMPLEXITY_TM_MAX   => W::complexity_tm_max(),   0.0, 5.0;
-                    COMPLEXITY_TM_WIN   => W::complexity_tm_win(),   0.0, 5.0;
-                    COMPLEXITY_TM_LOSS  => W::complexity_tm_loss(),  0.0, 5.0;
+                    SOFT_TIME_FRAC      => W::soft_time_frac(),      0, 4096;
+                    HARD_TIME_FRAC      => W::hard_time_frac(),      0, 4096;
+                    SUBTREE_TM_BASE     => W::subtree_tm_base(),     0, 20480;
+                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(),    0, 20480;
+                    SUBTREE_TM_MIN      => W::subtree_tm_min(),      0, 8192;
+                    STABILITY_TM_BASE   => W::stability_tm_base(),   0, 32768;
+                    STABILITY_TM_SCALE  => W::stability_tm_scale(),  0, 4096;
+                    STABILITY_TM_MIN    => W::stability_tm_min(),    0, 8192;
+                    COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0, 20480;
+                    COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0, 20480;
+                    COMPLEXITY_TM_MAX   => W::complexity_tm_max(),   0, 20480;
+                    COMPLEXITY_TM_WIN   => W::complexity_tm_win(),   0, 20480;
+                    COMPLEXITY_TM_LOSS  => W::complexity_tm_loss(),  0, 20480;
                 }
             }
             #[cfg(feature = "datagen")]
@@ -683,20 +681,19 @@ impl Engine {
                     "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i16;
                     "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i16;
 
-                    "SOFT_TIME_FRAC"      => SOFT_TIME_FRAC,      f64;
-                    "HARD_TIME_FRAC"      => HARD_TIME_FRAC,      f64;
-                    "SUBTREE_TM_BASE"     => SUBTREE_TM_BASE,     f64;
-                    "SUBTREE_TM_SCALE"    => SUBTREE_TM_SCALE,    f64;
-                    "SUBTREE_TM_MIN"      => SUBTREE_TM_MIN,      f64;
-                    "STABILITY_TM_BASE"   => STABILITY_TM_BASE,   f64;
-                    "STABILITY_TM_SCALE"  => STABILITY_TM_SCALE,  f64;
-                    "STABILITY_TM_MIN"    => STABILITY_TM_MIN,    f64;
-                    "COMPLEXITY_TM_BASE"  => COMPLEXITY_TM_BASE,  f64;
-                    "COMPLEXITY_TM_SCALE" => COMPLEXITY_TM_SCALE, f64;
-                    "COMPLEXITY_TM_MIN"   => COMPLEXITY_TM_MIN,   f64;
-                    "COMPLEXITY_TM_MAX"   => COMPLEXITY_TM_MAX,   f64;
-                    "COMPLEXITY_TM_WIN"   => COMPLEXITY_TM_WIN,   f64;
-                    "COMPLEXITY_TM_LOSS"  => COMPLEXITY_TM_LOSS,  f64;
+                    "SOFT_TIME_FRAC"      => SOFT_TIME_FRAC,      u64;
+                    "HARD_TIME_FRAC"      => HARD_TIME_FRAC,      u64;
+                    "SUBTREE_TM_BASE"     => SUBTREE_TM_BASE,     u64;
+                    "SUBTREE_TM_SCALE"    => SUBTREE_TM_SCALE,    u64;
+                    "SUBTREE_TM_MIN"      => SUBTREE_TM_MIN,      u64;
+                    "STABILITY_TM_BASE"   => STABILITY_TM_BASE,   u64;
+                    "STABILITY_TM_SCALE"  => STABILITY_TM_SCALE,  u64;
+                    "STABILITY_TM_MIN"    => STABILITY_TM_MIN,    u64;
+                    "COMPLEXITY_TM_BASE"  => COMPLEXITY_TM_BASE,  u64;
+                    "COMPLEXITY_TM_SCALE" => COMPLEXITY_TM_SCALE, u64;
+                    "COMPLEXITY_TM_MAX"   => COMPLEXITY_TM_MAX,   u64;
+                    "COMPLEXITY_TM_WIN"   => COMPLEXITY_TM_WIN,   u64;
+                    "COMPLEXITY_TM_LOSS"  => COMPLEXITY_TM_LOSS,  u64;
                 }
 
                 #[cfg(feature = "tune")]
