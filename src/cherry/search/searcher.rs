@@ -296,7 +296,12 @@ pub fn search_worker<Info: SearchInfo>(
     worker: u16,
 ) -> (Option<Move>, Option<Move>, Score, u8, u64) {
     let legal_moves = pos.board().gen_moves().len();
-    let multipv = shared.multipv.load(Ordering::Relaxed).min(legal_moves).min(thread.root_moves.len());
+    let mut multipv = shared.multipv.load(Ordering::Relaxed).min(legal_moves);
+
+    if !thread.root_moves.is_empty() {
+        multipv = multipv.min(thread.root_moves.len());
+    }
+
     thread.windows.extend((0..multipv).map(|_| Window::new(W::asp_window_initial())));
 
     let static_eval = pos.eval(&shared.nnue_weights);

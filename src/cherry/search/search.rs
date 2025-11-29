@@ -255,14 +255,14 @@ pub fn search<Node: NodeType>(
                 }
 
                 let lmr_depth = (depth - lmr).max(0);
-                let (futile_depth, futile_base, futile_scale) = if improving {
-                    (W::futile_improving_depth(), W::futile_improving_base(), W::futile_improving_scale())
+                let (fp_depth, fp_base, fp_scale) = if improving {
+                    (W::fp_improving_depth(), W::fp_improving_base(), W::fp_improving_scale())
                 } else {
-                    (W::futile_depth(), W::futile_base(), W::futile_scale())
+                    (W::fp_depth(), W::fp_base(), W::fp_scale())
                 };
 
-                let futile_margin = (futile_base + futile_scale * lmr_depth / DEPTH_SCALE) as i16;
-                if lmr_depth <= futile_depth && !in_check && static_eval + futile_margin <= alpha {
+                let fp_margin = (fp_base + fp_scale * lmr_depth / DEPTH_SCALE) as i16;
+                if lmr_depth <= fp_depth && !in_check && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }
 

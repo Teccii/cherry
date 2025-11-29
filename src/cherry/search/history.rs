@@ -10,11 +10,6 @@ pub const MINOR_CORR_SIZE: usize = 16384;
 pub const MAJOR_CORR_SIZE: usize = 16384;
 pub const NONPAWN_CORR_SIZE: usize = 16384;
 
-#[inline]
-fn delta(depth: i32, base: i32, mul: i32, max: i32) -> i32 {
-    i32::min(base + mul * depth / DEPTH_SCALE, max)
-}
-
 /*----------------------------------------------------------------*/
 
 #[derive(Clone)]
@@ -153,61 +148,46 @@ impl History {
 
     pub fn update(&mut self, board: &Board, indices: &ContIndices, depth: i32, best_move: Move, tactics: &[Move], quiets: &[Move]) {
         if best_move.is_tactic() {
-            History::update_value(
-                self.get_tactic_mut(board, best_move),
-                delta(depth, W::tactic_bonus_base(), W::tactic_bonus_mul(), W::tactic_bonus_max()),
-            );
+            let tactic_bonus = (W::tactic_bonus_base() + W::tactic_bonus_scale() * depth / DEPTH_SCALE).min(W::tactic_bonus_max());
+
+            History::update_value(self.get_tactic_mut(board, best_move), tactic_bonus);
         } else {
-            History::update_value(
-                self.get_quiet_mut(board, best_move),
-                delta(depth, W::quiet_bonus_base(), W::quiet_bonus_mul(), W::quiet_bonus_max()),
-            );
+            let quiet_bonus = (W::quiet_bonus_base() + W::quiet_bonus_scale() * depth / DEPTH_SCALE).min(W::quiet_bonus_max());
+            let quiet_malus = -(W::quiet_malus_base() + W::quiet_malus_scale() * depth / DEPTH_SCALE).min(W::quiet_malus_max());
+            History::update_value(self.get_quiet_mut(board, best_move), quiet_bonus);
 
             for &mv in quiets {
-                History::update_value(
-                    self.get_quiet_mut(board, mv),
-                    -delta(depth, W::quiet_malus_base(), W::quiet_malus_mul(), W::quiet_malus_max()),
-                );
+                History::update_value(self.get_quiet_mut(board, mv), quiet_malus);
             }
 
             /*----------------------------------------------------------------*/
 
             if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move) {
-                History::update_value(
-                    value,
-                    delta(depth, W::cont1_bonus_base(), W::cont1_bonus_mul(), W::cont1_bonus_max()),
-                );
+                let bonus = (W::cont1_bonus_base() + W::cont1_bonus_scale() * depth / DEPTH_SCALE).min(W::cont1_bonus_max());
+                let malus = -(W::cont1_malus_base() + W::cont1_malus_scale() * depth / DEPTH_SCALE).min(W::cont1_malus_max());
 
+                History::update_value(value, bonus);
                 for &mv in quiets {
-                    History::update_value(
-                        self.get_counter_move_mut(board, mv, indices.counter_move).unwrap(),
-                        -delta(depth, W::cont1_malus_base(), W::cont1_malus_mul(), W::cont1_malus_max()),
-                    );
+                    History::update_value(self.get_counter_move_mut(board, mv, indices.counter_move).unwrap(), malus);
                 }
             }
 
             /*----------------------------------------------------------------*/
 
             if let Some(value) = self.get_follow_up_mut(board, best_move, indices.follow_up) {
-                History::update_value(
-                    value,
-                    delta(depth, W::cont2_bonus_base(), W::cont2_bonus_mul(), W::cont2_bonus_max()),
-                );
+                let bonus = (W::cont2_bonus_base() + W::cont2_bonus_scale() * depth / DEPTH_SCALE).min(W::cont2_bonus_max());
+                let malus = -(W::cont2_malus_base() + W::cont2_malus_scale() * depth / DEPTH_SCALE).min(W::cont2_malus_max());
 
+                History::update_value(value, bonus);
                 for &mv in quiets {
-                    History::update_value(
-                        self.get_follow_up_mut(board, mv, indices.follow_up).unwrap(),
-                        -delta(depth, W::cont2_malus_base(), W::cont2_malus_mul(), W::cont2_malus_max()),
-                    );
+                    History::update_value(self.get_follow_up_mut(board, mv, indices.follow_up).unwrap(), malus);
                 }
             }
         }
 
+        let tactic_malus = -(W::tactic_malus_base() + W::tactic_malus_scale() * depth / DEPTH_SCALE).min(W::tactic_malus_max());
         for &mv in tactics {
-            History::update_value(
-                self.get_tactic_mut(board, mv),
-                -delta(depth, W::tactic_malus_base(), W::tactic_malus_mul(), W::tactic_malus_max()),
-            );
+            History::update_value(self.get_tactic_mut(board, mv), tactic_malus);
         }
     }
 
@@ -215,7 +195,7 @@ impl History {
     pub fn update_corr(&mut self, board: &Board, depth: i32, score: Score, static_eval: Score) {
         let stm = board.stm();
         let diff = score.0 as i64 - static_eval.0 as i64;
-        let amount = (diff * depth as i64 / DEPTH_SCALE as i64 / 8) as i32;
+        let amount = (diff * depth as i64 * W::corr_bonus_scale() / (DEPTH_SCALE as i64 * 1024)) as i32;
         let pawn_corr = &mut self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize];
         let minor_corr = &mut self.minor_corr[stm][(board.minor_hash() % MINOR_CORR_SIZE as u64) as usize];
         let major_corr = &mut self.major_corr[stm][(board.major_hash() % MAJOR_CORR_SIZE as u64) as usize];
