@@ -2,7 +2,7 @@ use std::{
     fmt::Write,
     fs,
     io::Write as _,
-    sync::{Arc, Mutex, mpsc::*},
+    sync::{Arc, Mutex, atomic::Ordering, mpsc::*},
     time::Instant,
 };
 
@@ -128,7 +128,14 @@ impl Engine {
                                         searcher.shared_data.nnue_weights = NetworkWeights::new(&fs::read(value).unwrap());
                                     },
                                 "Hash" => searcher.resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
-                                //"SyzygyProbeDepth" => searcher.shared_data.syzygy_depth = value.parse::<u8>().unwrap(),
+                                "MultiPV" => searcher
+                                    .shared_data
+                                    .multipv
+                                    .store(value.parse::<usize>().unwrap(), Ordering::Relaxed),
+                                "SyzygyProbeDepth" => searcher
+                                    .shared_data
+                                    .syzygy_depth
+                                    .store(value.parse::<u8>().unwrap(), Ordering::Relaxed),
                                 "Ponder" => searcher.ponder = value.parse::<bool>().unwrap(),
                                 "UCI_Chess960" => searcher.frc = value.parse::<bool>().unwrap(),
                                 _ => {}
@@ -180,6 +187,7 @@ impl Engine {
                 println!("option name Threads type spin default 1 min 1 max 65535");
                 println!("option name Hash type spin default 16 min 1 max {}", MAX_TT_SIZE);
                 println!("option name EvalFile type string default <default>");
+                println!("option name MultiPV type spin default 1 min 1 max 218");
                 println!("option name SyzygyPath type string default <empty>");
                 println!("option name SyzygyProbeDepth type spin default 1 min 0 max 128");
                 println!("option name MoveOverhead type spin default 100 min 0 max 5000");

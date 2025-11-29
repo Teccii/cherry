@@ -44,12 +44,12 @@ impl Score {
 
     #[inline]
     pub fn is_win(self) -> bool {
-        self >= Score::MAX_MATE
+        self >= Score::MAX_TB_WIN
     }
 
     #[inline]
     pub fn is_loss(self) -> bool {
-        self <= -Score::MAX_MATE
+        self <= -Score::MAX_TB_WIN
     }
 
     #[inline]

@@ -5,7 +5,18 @@ use crate::*;
 pub trait SearchInfo {
     fn new(frc: bool) -> Self;
 
-    fn update(&mut self, board: &Board, thread: &ThreadData, shared: &SharedData, bound: TTFlag, score: Score, depth: u8);
+    fn update(
+        &mut self,
+        board: &Board,
+        thread: &ThreadData,
+        shared: &SharedData,
+        multipv: usize,
+        pv_index: usize,
+        pv: &PrincipalVariation,
+        bound: TTFlag,
+        score: Score,
+        depth: u8,
+    );
 }
 
 /*----------------------------------------------------------------*/
@@ -23,14 +34,30 @@ impl SearchInfo for UciInfo {
         Self { frc }
     }
 
-    fn update(&mut self, board: &Board, thread: &ThreadData, shared: &SharedData, bound: TTFlag, score: Score, depth: u8) {
+    fn update(
+        &mut self,
+        board: &Board,
+        thread: &ThreadData,
+        shared: &SharedData,
+        multipv: usize,
+        pv_index: usize,
+        pv: &PrincipalVariation,
+        bound: TTFlag,
+        score: Score,
+        depth: u8,
+    ) {
         let nodes = thread.nodes.global();
         let time = shared.time_man.elapsed();
 
         println!(
-            "info depth {} seldepth {} score {} {}time {} nodes {} nps {} pv {}",
+            "info depth {} seldepth {} {}score {} {}time {} nodes {} nps {} pv {}",
             depth,
             thread.sel_depth,
+            if multipv > 1 {
+                format!("multipv {} ", pv_index + 1)
+            } else {
+                String::new()
+            },
             score,
             match bound {
                 TTFlag::Exact => "",
@@ -41,7 +68,7 @@ impl SearchInfo for UciInfo {
             time,
             nodes,
             nodes / time.max(1) * 1000,
-            thread.root_pv.display(board, self.frc)
+            pv.display(board, self.frc)
         );
     }
 }
@@ -54,5 +81,5 @@ impl SearchInfo for NoInfo {
         Self
     }
 
-    fn update(&mut self, _: &Board, _: &ThreadData, _: &SharedData, _: TTFlag, _: Score, _: u8) {}
+    fn update(&mut self, _: &Board, _: &ThreadData, _: &SharedData, _: usize, _: usize, _: &PrincipalVariation, _: TTFlag, _: Score, _: u8) {}
 }

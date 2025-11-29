@@ -1,3 +1,6 @@
+use std::sync::atomic::Ordering;
+
+use pyrrhic_rs::WdlProbeResult;
 use smallvec::SmallVec;
 
 use crate::*;
@@ -58,6 +61,7 @@ pub fn search<Node: NodeType>(
         Some(_) => None,
         None => shared.ttable.fetch(pos.board(), ply),
     };
+    let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
     if let Some(entry) = tt_entry {
         best_move = entry.mv;
@@ -106,6 +110,53 @@ pub fn search<Node: NodeType>(
     };
 
     thread.search_stack[ply as usize].static_eval = static_eval;
+
+    let (mut syzygy_min, mut syzygy_max) = (-Score::MIN_MATE, Score::MIN_MATE);
+
+    if ply != 0
+        && skip_move.is_none()
+        && is_syzygy_enabled()
+        && depth >= shared.syzygy_depth.load(Ordering::Relaxed) as i32 * DEPTH_SCALE
+        && pos.board().halfmove_clock() == 0
+        && pos.board().castle_rights(Color::White) == CastleRights::default()
+        && pos.board().castle_rights(Color::Black) == CastleRights::default()
+        && let Some(wdl) = probe_wdl(pos.board())
+    {
+        let (score, flag) = match wdl {
+            WdlProbeResult::Win => (Score::new_tb_win(ply), TTFlag::LowerBound),
+            WdlProbeResult::Loss => (Score::new_tb_loss(ply), TTFlag::UpperBound),
+            _ => (Score::ZERO, TTFlag::Exact),
+        };
+
+        if flag == TTFlag::Exact || (flag == TTFlag::LowerBound && score <= alpha) || (flag == TTFlag::UpperBound && score >= beta) {
+            let depth_bias = if Node::PV { W::tt_depth_pv_bias() } else { W::tt_depth_bias() };
+
+            shared.ttable.store(
+                pos.board(),
+                ((depth + depth_bias) / DEPTH_SCALE) as u8,
+                ply,
+                raw_eval,
+                score,
+                None,
+                flag,
+                tt_pv,
+            );
+
+            return score;
+        }
+
+        if Node::PV {
+            if flag == TTFlag::UpperBound {
+                syzygy_max = score;
+            } else {
+                if score > alpha {
+                    alpha = score;
+                }
+
+                syzygy_min = score;
+            }
+        }
+    }
 
     if !Node::PV && !in_check && skip_move.is_none() {
         let (rfp_depth, rfp_base, rfp_scale, rfp_lerp) = if improving {
@@ -163,6 +214,10 @@ pub fn search<Node: NodeType>(
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         if skip_move == Some(mv) {
+            continue;
+        }
+
+        if ply == 0 && ((!thread.root_moves.is_empty() && !thread.root_moves.contains(&mv)) || thread.exclude_moves.contains(&mv)) {
             continue;
         }
 
@@ -335,7 +390,7 @@ pub fn search<Node: NodeType>(
         };
     }
 
-    let best_score = best_score.unwrap();
+    let best_score = best_score.unwrap().clamp(syzygy_min, syzygy_max);
     if skip_move.is_none() {
         let depth_bias = if Node::PV { W::tt_depth_pv_bias() } else { W::tt_depth_bias() };
 
@@ -347,7 +402,7 @@ pub fn search<Node: NodeType>(
             best_score,
             best_move,
             flag,
-            Node::PV || tt_entry.is_some_and(|e| e.pv),
+            tt_pv,
         );
 
         if !in_check

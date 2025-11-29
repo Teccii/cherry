@@ -1,4 +1,13 @@
-use std::{fmt::Write, sync::Arc, time::Duration};
+use std::{
+    fmt::Write,
+    sync::{
+        Arc,
+        atomic::{AtomicU8, AtomicUsize, Ordering},
+    },
+    time::Duration,
+};
+
+use pyrrhic_rs::DtzProbeValue;
 
 use crate::*;
 
@@ -9,12 +18,17 @@ pub struct SharedData {
     pub ttable: Arc<TTable>,
     pub time_man: Arc<TimeManager>,
     pub nnue_weights: Arc<NetworkWeights>,
+    pub syzygy_depth: Arc<AtomicU8>,
+    pub multipv: Arc<AtomicUsize>,
 }
 
 #[derive(Clone)]
 pub struct ThreadData {
     pub nodes: BatchedAtomicCounter,
     pub search_stack: Vec<SearchStack>,
+    pub windows: Vec<Window>,
+    pub root_moves: Vec<Move>,
+    pub exclude_moves: Vec<Move>,
     pub root_nodes: Box<SquareTo<SquareTo<u64>>>,
     pub root_pv: PrincipalVariation,
     pub history: History,
@@ -27,7 +41,11 @@ impl ThreadData {
     pub fn reset(&mut self) {
         self.nodes.reset();
         self.search_stack = vec![SearchStack::default(); MAX_PLY as usize + 1];
+        self.windows.clear();
+        self.root_moves.clear();
+        self.exclude_moves.clear();
         self.root_nodes = new_zeroed();
+        self.root_pv = PrincipalVariation::default();
         self.history.reset();
         self.sel_depth = 0;
         self.abort_now = false;
@@ -40,6 +58,9 @@ impl Default for ThreadData {
         ThreadData {
             nodes: BatchedAtomicCounter::default(),
             search_stack: vec![SearchStack::default(); MAX_PLY as usize + 1],
+            windows: Vec::new(),
+            root_moves: Vec::new(),
+            exclude_moves: Vec::new(),
             root_nodes: new_zeroed(),
             root_pv: PrincipalVariation::default(),
             history: History::default(),
@@ -142,6 +163,8 @@ impl Searcher {
                 ttable: Arc::new(TTable::new(16)),
                 time_man,
                 nnue_weights,
+                syzygy_depth: Arc::new(AtomicU8::new(0)),
+                multipv: Arc::new(AtomicUsize::new(1)),
             },
             thread_data: ThreadData::default(),
             threads: 1,
@@ -156,6 +179,52 @@ impl Searcher {
         self.thread_data.reset();
         self.shared_data.time_man.init(self.pos.stm(), &limits);
         self.reset_nnue();
+
+        let mut focused = false;
+        for limit in &limits {
+            if let SearchLimit::SearchMoves(root_moves) = limit {
+                let board = self.pos.board();
+                let parsed_moves = root_moves.iter().map(|s| Move::parse(board, self.frc, s).unwrap());
+                focused = true;
+
+                self.thread_data.root_moves.extend(parsed_moves);
+            }
+        }
+
+        if !focused
+            && is_syzygy_enabled()
+            && let Some(dtz) = probe_dtz(self.pos.board())
+        {
+            let mut scored_moves: Vec<(Move, u8)> = Vec::new();
+
+            for value in &dtz.moves[..dtz.num_moves] {
+                if let DtzProbeValue::DtzResult(result) = value {
+                    let board = self.pos.board();
+                    let src = Square::index(result.from_square as usize);
+                    let dest = Square::index(result.to_square as usize);
+                    let is_capture = board.piece_on(dest).is_some();
+                    let promotion = match Piece::index(result.promotion as usize) {
+                        Piece::Pawn => None,
+                        piece => Some(piece),
+                    };
+
+                    //no way king can castle
+                    let flag = match board.piece_on(src).unwrap() {
+                        Piece::Pawn => Move::parse_pawn_flag(board, src, dest, is_capture, promotion).unwrap(),
+                        _ if is_capture => MoveFlag::Capture,
+                        _ => MoveFlag::Normal,
+                    };
+
+                    //WdlProbeResult does not impl PartialOrd + Ord
+                    scored_moves.push((Move::new(src, dest, flag), result.wdl as u8));
+                }
+            }
+
+            let best_score = scored_moves.iter().map(|e| e.1).max().unwrap();
+            scored_moves.retain(|e| e.1 == best_score);
+
+            self.thread_data.root_moves.extend(scored_moves.iter().map(|e| e.0));
+        }
 
         let mut result = (None, None, Score::ZERO, 0u8, 0u64);
 
@@ -226,7 +295,10 @@ pub fn search_worker<Info: SearchInfo>(
     mut info: Info,
     worker: u16,
 ) -> (Option<Move>, Option<Move>, Score, u8, u64) {
-    let mut window = Window::new(W::asp_window_initial());
+    let legal_moves = pos.board().gen_moves().len();
+    let multipv = shared.multipv.load(Ordering::Relaxed).min(legal_moves).min(thread.root_moves.len());
+    thread.windows.extend((0..multipv).map(|_| Window::new(W::asp_window_initial())));
+
     let static_eval = pos.eval(&shared.nnue_weights);
     let mut best_move: Option<Move> = None;
     let mut ponder_move: Option<Move> = None;
@@ -234,50 +306,78 @@ pub fn search_worker<Info: SearchInfo>(
     let mut depth = 1;
 
     'id: loop {
-        window.reset();
+        thread.exclude_moves.clear();
 
-        'asp: loop {
-            let (alpha, beta) = if depth >= 3 {
-                window.get()
-            } else {
-                (-Score::INFINITE, Score::INFINITE)
-            };
+        for pv_index in 0..multipv {
+            thread.windows[pv_index].reset();
 
-            thread.sel_depth = 0;
-            let new_score = search::<PV>(&mut pos, thread, shared, depth as i32 * DEPTH_SCALE, 0, alpha, beta, false);
-            thread.nodes.flush();
+            'asp: loop {
+                let (alpha, beta) = if depth >= 3 {
+                    thread.windows[pv_index].get()
+                } else {
+                    (-Score::INFINITE, Score::INFINITE)
+                };
 
-            if depth > 1 && thread.abort_now {
-                break 'id;
+                thread.sel_depth = 0;
+                let new_score = search::<PV>(&mut pos, thread, shared, depth as i32 * DEPTH_SCALE, 0, alpha, beta, false);
+                thread.nodes.flush();
+
+                if depth > 1 && thread.abort_now {
+                    break 'id;
+                }
+
+                thread.windows[pv_index].set_center(new_score);
+                if new_score > alpha && new_score < beta {
+                    thread.exclude_moves.push(thread.search_stack[0].pv.moves[0].unwrap());
+
+                    if pv_index == 0 {
+                        thread.root_pv = thread.search_stack[0].pv.clone();
+                        best_move = thread.root_pv.moves[0];
+                        ponder_move = thread.root_pv.moves[1];
+                        score = new_score;
+                    }
+
+                    if worker == 0 {
+                        info.update(
+                            pos.board(),
+                            &thread,
+                            &shared,
+                            multipv,
+                            pv_index,
+                            &thread.search_stack[0].pv,
+                            TTFlag::Exact,
+                            new_score,
+                            depth,
+                        );
+                    }
+
+                    break 'asp;
+                }
+
+                let (score, bound) = if new_score <= alpha {
+                    thread.windows[pv_index].fail_low();
+                    (alpha, TTFlag::UpperBound)
+                } else {
+                    thread.windows[pv_index].fail_high();
+                    (beta, TTFlag::LowerBound)
+                };
+
+                if worker == 0 && shared.time_man.elapsed() >= 1000 {
+                    info.update(
+                        pos.board(),
+                        &thread,
+                        &shared,
+                        multipv,
+                        pv_index,
+                        &thread.search_stack[0].pv,
+                        bound,
+                        score,
+                        depth,
+                    );
+                }
+
+                thread.windows[pv_index].expand();
             }
-
-            window.set_center(new_score);
-            if new_score > alpha && new_score < beta {
-                thread.root_pv = thread.search_stack[0].pv.clone();
-                best_move = thread.root_pv.moves[0];
-                ponder_move = thread.root_pv.moves[1];
-                score = new_score;
-
-                break 'asp;
-            }
-
-            let (score, bound) = if new_score <= alpha {
-                window.fail_low();
-                (alpha, TTFlag::UpperBound)
-            } else {
-                window.fail_high();
-                (beta, TTFlag::LowerBound)
-            };
-
-            if worker == 0 && shared.time_man.elapsed() >= 1000 {
-                info.update(pos.board(), &thread, &shared, bound, score, depth);
-            }
-
-            window.expand();
-        }
-
-        if worker == 0 {
-            info.update(pos.board(), &thread, &shared, TTFlag::Exact, score, depth);
         }
 
         if depth >= MAX_DEPTH || shared.time_man.abort_id(depth, thread.nodes.global()) {
@@ -306,7 +406,17 @@ pub fn search_worker<Info: SearchInfo>(
     }
 
     if worker == 0 {
-        info.update(pos.board(), &thread, &shared, TTFlag::Exact, score, depth);
+        info.update(
+            pos.board(),
+            &thread,
+            &shared,
+            multipv,
+            0,
+            &thread.root_pv,
+            TTFlag::Exact,
+            score,
+            depth,
+        );
     }
 
     (best_move, ponder_move, score, depth, thread.nodes.global())

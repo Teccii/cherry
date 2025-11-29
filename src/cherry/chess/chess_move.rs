@@ -59,11 +59,11 @@ impl MoveFlag {
 
 impl Move {
     #[inline]
-    pub const fn new(from: Square, to: Square, flag: MoveFlag) -> Move {
+    pub const fn new(src: Square, dest: Square, flag: MoveFlag) -> Move {
         let mut bits = 0;
 
-        bits |= from as u16;
-        bits |= (to as u16) << 6;
+        bits |= src as u16;
+        bits |= (dest as u16) << 6;
         bits |= flag as u16;
 
         Move {
@@ -196,7 +196,7 @@ impl Move {
     }
 
     #[inline]
-    fn parse_pawn_flag(board: &Board, src: Square, dest: Square, is_capture: bool, promotion: Option<Piece>) -> Option<MoveFlag> {
+    pub fn parse_pawn_flag(board: &Board, src: Square, dest: Square, is_capture: bool, promotion: Option<Piece>) -> Option<MoveFlag> {
         if let Some(promotion) = promotion {
             if is_capture {
                 MoveFlag::capture_promotion(promotion)
