@@ -22,7 +22,13 @@ impl<T> std::ops::DerefMut for Align64<T> {
 
 /*----------------------------------------------------------------*/
 
-pub fn feed_forward(stm: &[i16; HL], ntm: &[i16; HL], bucket: usize, weights: &NetworkWeights, output: &mut i32) {
+pub fn feed_forward(
+    stm: &[i16; HL],
+    ntm: &[i16; HL],
+    bucket: usize,
+    weights: &NetworkWeights,
+    output: &mut i32,
+) {
     let bucket_offset = bucket * L1;
     let out_weights = &weights.out_weights;
     let (zero, qa) = (NativeVec::zero(), NativeVec::splat16(QA as u16));
@@ -37,8 +43,14 @@ pub fn feed_forward(stm: &[i16; HL], ntm: &[i16; HL], bucket: usize, weights: &N
             let stm_weight = NativeVec::load(out_weights.as_ptr().add(bucket_offset + offset));
             let ntm_weight = NativeVec::load(out_weights.as_ptr().add(bucket_offset + HL + offset));
 
-            sum = NativeVec::add32(sum, NativeVec::madd16(NativeVec::mullo16(stm_weight, stm), stm));
-            sum = NativeVec::add32(sum, NativeVec::madd16(NativeVec::mullo16(ntm_weight, ntm), ntm));
+            sum = NativeVec::add32(
+                sum,
+                NativeVec::madd16(NativeVec::mullo16(stm_weight, stm), stm),
+            );
+            sum = NativeVec::add32(
+                sum,
+                NativeVec::madd16(NativeVec::mullo16(ntm_weight, ntm), ntm),
+            );
         }
     }
 

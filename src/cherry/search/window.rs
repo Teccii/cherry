@@ -30,8 +30,16 @@ impl Window {
 
     #[inline]
     pub fn reset(&mut self) {
-        self.alpha = self.center.0.checked_sub(self.window).map_or(-Score::INFINITE, Score::new);
-        self.beta = self.center.0.checked_add(self.window).map_or(Score::INFINITE, Score::new);
+        self.alpha = self
+            .center
+            .0
+            .checked_sub(self.window)
+            .map_or(-Score::INFINITE, Score::new);
+        self.beta = self
+            .center
+            .0
+            .checked_add(self.window)
+            .map_or(Score::INFINITE, Score::new);
     }
 
     #[inline]
@@ -41,13 +49,21 @@ impl Window {
 
     #[inline]
     pub fn fail_high(&mut self) {
-        self.beta = self.center.0.checked_add(self.window).map_or(Score::INFINITE, Score::new);
+        self.beta = self
+            .center
+            .0
+            .checked_add(self.window)
+            .map_or(Score::INFINITE, Score::new);
     }
 
     #[inline]
     pub fn fail_low(&mut self) {
         self.beta = (self.alpha + self.beta) / 2;
-        self.alpha = self.center.0.checked_sub(self.window).map_or(-Score::INFINITE, Score::new);
+        self.alpha = self
+            .center
+            .0
+            .checked_sub(self.window)
+            .map_or(-Score::INFINITE, Score::new);
     }
 
     /*----------------------------------------------------------------*/

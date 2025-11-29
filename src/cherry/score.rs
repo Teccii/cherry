@@ -132,7 +132,11 @@ impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if f.alternate() {
             if self.is_infinite() {
-                if self.0 > 0 { write!(f, "+INF") } else { write!(f, "-INF") }
+                if self.0 > 0 {
+                    write!(f, "+INF")
+                } else {
+                    write!(f, "-INF")
+                }
             } else if let Some(ply) = self.decisive_in() {
                 write!(f, "#{}", (ply + ply.signum()) / 2)
             } else {

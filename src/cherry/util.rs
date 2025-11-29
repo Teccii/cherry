@@ -112,7 +112,11 @@ pub fn new_zeroed<T>() -> Box<T> {
 
 #[allow(dead_code)]
 pub fn progress_bar(progress: usize, max: usize) -> String {
-    format!("[{}{}]", "#".repeat(progress).bright_green(), ".".repeat(max - progress))
+    format!(
+        "[{}{}]",
+        "#".repeat(progress).bright_green(),
+        ".".repeat(max - progress)
+    )
 }
 
 pub fn fmt_big_num(num: u64) -> String {

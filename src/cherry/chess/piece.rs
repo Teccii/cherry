@@ -192,7 +192,10 @@ impl IndexToSquare {
 
     #[inline]
     pub fn mask_eq(&self, sq: Square) -> PieceMask {
-        PieceMask::new(Vec128::eq8(unsafe { Vec128::load(self.inner.as_ptr()) }, Vec128::splat8(sq as u8)))
+        PieceMask::new(Vec128::eq8(
+            unsafe { Vec128::load(self.inner.as_ptr()) },
+            Vec128::splat8(sq as u8),
+        ))
     }
 
     const INVALID_SQUARE: u8 = unsafe { ::core::mem::transmute::<Option<Square>, u8>(None) };

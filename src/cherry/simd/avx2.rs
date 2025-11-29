@@ -46,7 +46,11 @@ impl Vec128 {
         }
 
         unsafe {
-            ptr::copy_nonoverlapping(temp.as_ptr().cast::<i8>(), dest.cast(), cursor * size_of::<u16>());
+            ptr::copy_nonoverlapping(
+                temp.as_ptr().cast::<i8>(),
+                dest.cast(),
+                cursor * size_of::<u16>(),
+            );
         }
     }
 
@@ -231,7 +235,11 @@ impl Vec256 {
         }
 
         unsafe {
-            ptr::copy_nonoverlapping(temp.as_ptr().cast::<i8>(), dest.cast(), cursor * size_of::<u16>());
+            ptr::copy_nonoverlapping(
+                temp.as_ptr().cast::<i8>(),
+                dest.cast(),
+                cursor * size_of::<u16>(),
+            );
         }
     }
 
@@ -254,7 +262,11 @@ impl Vec256 {
         let lo = unsafe { _mm256_permute2x128_si256::<0x00>(vec.raw, vec.raw).into() };
         let hi = unsafe { _mm256_permute2x128_si256::<0x11>(vec.raw, vec.raw).into() };
 
-        Vec256::blend8(mask, Vec256::shuffle8(lo, index), Vec256::shuffle8(hi, index))
+        Vec256::blend8(
+            mask,
+            Vec256::shuffle8(lo, index),
+            Vec256::shuffle8(hi, index),
+        )
     }
 
     #[inline]
@@ -262,9 +274,12 @@ impl Vec256 {
         #[inline]
         fn shlv8_overflowing(vec: __m256i, shift: __m256i) -> __m256i {
             unsafe {
-                let vec = _mm256_blendv_epi8(vec, _mm256_slli_epi16(vec, 4), _mm256_slli_epi16(shift, 5));
-                let vec = _mm256_blendv_epi8(vec, _mm256_slli_epi16(vec, 2), _mm256_slli_epi16(shift, 6));
-                let vec = _mm256_blendv_epi8(vec, _mm256_slli_epi16(vec, 1), _mm256_slli_epi16(shift, 7));
+                let vec =
+                    _mm256_blendv_epi8(vec, _mm256_slli_epi16(vec, 4), _mm256_slli_epi16(shift, 5));
+                let vec =
+                    _mm256_blendv_epi8(vec, _mm256_slli_epi16(vec, 2), _mm256_slli_epi16(shift, 6));
+                let vec =
+                    _mm256_blendv_epi8(vec, _mm256_slli_epi16(vec, 1), _mm256_slli_epi16(shift, 7));
 
                 vec
             }
@@ -273,7 +288,12 @@ impl Vec256 {
         unsafe {
             let byte_idx = _mm256_add_epi8(
                 _mm256_and_si256(_mm256_srli_epi16(b.raw, 3), _mm256_set1_epi8(7)),
-                _mm256_setr_epi64x(0x0000000000000000, 0x0808080808080808, 0x0000000000000000, 0x0808080808080808),
+                _mm256_setr_epi64x(
+                    0x0000000000000000,
+                    0x0808080808080808,
+                    0x0000000000000000,
+                    0x0808080808080808,
+                ),
             );
             let shuffled = _mm256_shuffle_epi8(a.raw, byte_idx);
             let shift = _mm256_andnot_si256(b.raw, _mm256_set1_epi8(7));
@@ -298,8 +318,12 @@ impl Vec256 {
         }
 
         unsafe {
-            let idx1 = _mm256_broadcastsi128_si256(_mm_loadu_si128(const { xor_indices(1) }.as_ptr().cast()));
-            let idx2 = _mm256_broadcastsi128_si256(_mm_loadu_si128(const { xor_indices(2) }.as_ptr().cast()));
+            let idx1 = _mm256_broadcastsi128_si256(_mm_loadu_si128(
+                const { xor_indices(1) }.as_ptr().cast(),
+            ));
+            let idx2 = _mm256_broadcastsi128_si256(_mm_loadu_si128(
+                const { xor_indices(2) }.as_ptr().cast(),
+            ));
 
             let vec = _mm256_xor_si256(vec.raw, _mm256_shuffle_epi8(vec.raw, idx1));
             let vec = _mm256_xor_si256(vec, _mm256_shuffle_epi8(vec, idx2));
@@ -380,7 +404,9 @@ pub struct Vec512 {
 impl Vec512 {
     #[inline]
     pub unsafe fn load<T>(src: *const T) -> Vec512 {
-        Vec512::from([unsafe { Vec256::load(src) }, unsafe { Vec256::load(src.byte_add(32)) }])
+        Vec512::from([unsafe { Vec256::load(src) }, unsafe {
+            Vec256::load(src.byte_add(32))
+        }])
     }
 
     #[inline]
@@ -463,61 +489,94 @@ impl Vec512 {
 
     #[inline]
     pub fn add8(a: Vec512, b: Vec512) -> Vec512 {
-        Vec512::from([Vec256::add8(a.raw[0], b.raw[0]), Vec256::add8(a.raw[1], b.raw[1])])
+        Vec512::from([
+            Vec256::add8(a.raw[0], b.raw[0]),
+            Vec256::add8(a.raw[1], b.raw[1]),
+        ])
     }
 
     #[inline]
     pub fn add16(a: Vec512, b: Vec512) -> Vec512 {
-        Vec512::from([Vec256::add16(a.raw[0], b.raw[0]), Vec256::add16(a.raw[1], b.raw[1])])
+        Vec512::from([
+            Vec256::add16(a.raw[0], b.raw[0]),
+            Vec256::add16(a.raw[1], b.raw[1]),
+        ])
     }
 
     #[inline]
     pub fn add32(a: Vec512, b: Vec512) -> Vec512 {
-        Vec512::from([Vec256::add32(a.raw[0], b.raw[0]), Vec256::add32(a.raw[1], b.raw[1])])
+        Vec512::from([
+            Vec256::add32(a.raw[0], b.raw[0]),
+            Vec256::add32(a.raw[1], b.raw[1]),
+        ])
     }
 
     #[inline]
     pub fn add64(a: Vec512, b: Vec512) -> Vec512 {
-        Vec512::from([Vec256::add64(a.raw[0], b.raw[0]), Vec256::add64(a.raw[1], b.raw[1])])
+        Vec512::from([
+            Vec256::add64(a.raw[0], b.raw[0]),
+            Vec256::add64(a.raw[1], b.raw[1]),
+        ])
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn sub8(a: Vec512, b: Vec512) -> Vec512 {
-        Vec512::from([Vec256::sub8(a.raw[0], b.raw[0]), Vec256::sub8(a.raw[1], b.raw[1])])
+        Vec512::from([
+            Vec256::sub8(a.raw[0], b.raw[0]),
+            Vec256::sub8(a.raw[1], b.raw[1]),
+        ])
     }
 
     #[inline]
     pub fn sub16(a: Vec512, b: Vec512) -> Vec512 {
-        Vec512::from([Vec256::sub16(a.raw[0], b.raw[0]), Vec256::sub16(a.raw[1], b.raw[1])])
+        Vec512::from([
+            Vec256::sub16(a.raw[0], b.raw[0]),
+            Vec256::sub16(a.raw[1], b.raw[1]),
+        ])
     }
 
     #[inline]
     pub fn sub32(a: Vec512, b: Vec512) -> Vec512 {
-        Vec512::from([Vec256::sub32(a.raw[0], b.raw[0]), Vec256::sub32(a.raw[1], b.raw[1])])
+        Vec512::from([
+            Vec256::sub32(a.raw[0], b.raw[0]),
+            Vec256::sub32(a.raw[1], b.raw[1]),
+        ])
     }
 
     #[inline]
     pub fn sub64(a: Vec512, b: Vec512) -> Vec512 {
-        Vec512::from([Vec256::sub64(a.raw[0], b.raw[0]), Vec256::sub64(a.raw[1], b.raw[1])])
+        Vec512::from([
+            Vec256::sub64(a.raw[0], b.raw[0]),
+            Vec256::sub64(a.raw[1], b.raw[1]),
+        ])
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn shl16<const SHIFT: i32>(vec: Vec512) -> Vec512 {
-        Vec512::from([Vec256::shl16::<SHIFT>(vec.raw[0]), Vec256::shl16::<SHIFT>(vec.raw[1])])
+        Vec512::from([
+            Vec256::shl16::<SHIFT>(vec.raw[0]),
+            Vec256::shl16::<SHIFT>(vec.raw[1]),
+        ])
     }
 
     #[inline]
     pub fn shr16<const SHIFT: i32>(vec: Vec512) -> Vec512 {
-        Vec512::from([Vec256::shr16::<SHIFT>(vec.raw[0]), Vec256::shr16::<SHIFT>(vec.raw[1])])
+        Vec512::from([
+            Vec256::shr16::<SHIFT>(vec.raw[0]),
+            Vec256::shr16::<SHIFT>(vec.raw[1]),
+        ])
     }
 
     #[inline]
     pub fn shlv16(vec: Vec512, shift: Vec512) -> Vec512 {
-        Vec512::from([Vec256::shlv16(vec.raw[0], shift.raw[0]), Vec256::shlv16(vec.raw[1], shift.raw[1])])
+        Vec512::from([
+            Vec256::shlv16(vec.raw[0], shift.raw[0]),
+            Vec256::shlv16(vec.raw[1], shift.raw[1]),
+        ])
     }
 
     #[inline]
@@ -527,12 +586,18 @@ impl Vec512 {
 
     #[inline]
     pub fn shl64<const SHIFT: i32>(vec: Vec512) -> Vec512 {
-        Vec512::from([Vec256::shl64::<SHIFT>(vec.raw[0]), Vec256::shl64::<SHIFT>(vec.raw[1])])
+        Vec512::from([
+            Vec256::shl64::<SHIFT>(vec.raw[0]),
+            Vec256::shl64::<SHIFT>(vec.raw[1]),
+        ])
     }
 
     #[inline]
     pub fn shr64<const SHIFT: i32>(vec: Vec512) -> Vec512 {
-        Vec512::from([Vec256::shr64::<SHIFT>(vec.raw[0]), Vec256::shr64::<SHIFT>(vec.raw[1])])
+        Vec512::from([
+            Vec256::shr64::<SHIFT>(vec.raw[0]),
+            Vec256::shr64::<SHIFT>(vec.raw[1]),
+        ])
     }
 
     /*----------------------------------------------------------------*/
@@ -573,7 +638,11 @@ impl Vec512 {
         }
 
         unsafe {
-            ptr::copy_nonoverlapping(temp.as_ptr().cast::<i8>(), dest.cast(), cursor * size_of::<u16>());
+            ptr::copy_nonoverlapping(
+                temp.as_ptr().cast::<i8>(),
+                dest.cast(),
+                cursor * size_of::<u16>(),
+            );
         }
     }
 
@@ -594,7 +663,11 @@ impl Vec512 {
         }
 
         unsafe {
-            ptr::copy_nonoverlapping(temp.as_ptr().cast::<i8>(), dest.cast(), cursor * size_of::<u64>());
+            ptr::copy_nonoverlapping(
+                temp.as_ptr().cast::<i8>(),
+                dest.cast(),
+                cursor * size_of::<u64>(),
+            );
         }
     }
 
@@ -647,7 +720,8 @@ impl Vec512 {
 
     #[inline]
     pub fn bitshuffle(a: Vec512, b: Vec512) -> Vec512Mask8 {
-        ((Vec256::bitshuffle(a.raw[1], b.raw[1]) as Vec512Mask8) << 32) | Vec256::bitshuffle(a.raw[0], b.raw[0]) as Vec512Mask8
+        ((Vec256::bitshuffle(a.raw[1], b.raw[1]) as Vec512Mask8) << 32)
+            | Vec256::bitshuffle(a.raw[0], b.raw[0]) as Vec512Mask8
     }
 
     #[inline]
@@ -659,7 +733,10 @@ impl Vec512 {
 
     #[inline]
     pub fn lane_splat8to64(vec: Vec512) -> Vec512 {
-        Vec512::from([Vec256::lane_splat8to64(vec.raw[0]), Vec256::lane_splat8to64(vec.raw[1])])
+        Vec512::from([
+            Vec256::lane_splat8to64(vec.raw[0]),
+            Vec256::lane_splat8to64(vec.raw[1]),
+        ])
     }
 
     /*----------------------------------------------------------------*/
@@ -696,14 +773,21 @@ impl Vec512 {
 
     #[inline]
     pub fn eq8(a: Vec512, b: Vec512) -> Vec512Mask8 {
-        interleave64(Vec256::eq8(a.raw[0], b.raw[0]), Vec256::eq8(a.raw[1], b.raw[1]))
+        interleave64(
+            Vec256::eq8(a.raw[0], b.raw[0]),
+            Vec256::eq8(a.raw[1], b.raw[1]),
+        )
     }
 
     #[inline]
     pub fn eq16(a: Vec512, b: Vec512) -> Vec512Mask16 {
         let x = interleave64(
-            unsafe { _mm256_movemask_epi8(_mm256_cmpeq_epi16(a.raw[0].raw, b.raw[0].raw)) as Vec256Mask8 },
-            unsafe { _mm256_movemask_epi8(_mm256_cmpeq_epi16(a.raw[1].raw, b.raw[1].raw)) as Vec256Mask8 },
+            unsafe {
+                _mm256_movemask_epi8(_mm256_cmpeq_epi16(a.raw[0].raw, b.raw[0].raw)) as Vec256Mask8
+            },
+            unsafe {
+                _mm256_movemask_epi8(_mm256_cmpeq_epi16(a.raw[1].raw, b.raw[1].raw)) as Vec256Mask8
+            },
         );
 
         unsafe { _pext_u64(x, 0xAAAAAAAAAAAAAAAA) as Vec512Mask16 }
@@ -713,14 +797,21 @@ impl Vec512 {
 
     #[inline]
     pub fn neq8(a: Vec512, b: Vec512) -> Vec512Mask8 {
-        interleave64(Vec256::neq8(a.raw[0], b.raw[0]), Vec256::neq8(a.raw[1], b.raw[1]))
+        interleave64(
+            Vec256::neq8(a.raw[0], b.raw[0]),
+            Vec256::neq8(a.raw[1], b.raw[1]),
+        )
     }
 
     #[inline]
     pub fn neq16(a: Vec512, b: Vec512) -> Vec512Mask16 {
         let x = interleave64(
-            unsafe { _mm256_movemask_epi8(_mm256_cmpeq_epi16(a.raw[0].raw, b.raw[0].raw)) as Vec256Mask8 },
-            unsafe { _mm256_movemask_epi8(_mm256_cmpeq_epi16(a.raw[1].raw, b.raw[1].raw)) as Vec256Mask8 },
+            unsafe {
+                _mm256_movemask_epi8(_mm256_cmpeq_epi16(a.raw[0].raw, b.raw[0].raw)) as Vec256Mask8
+            },
+            unsafe {
+                _mm256_movemask_epi8(_mm256_cmpeq_epi16(a.raw[1].raw, b.raw[1].raw)) as Vec256Mask8
+            },
         );
 
         unsafe { _pext_u64(!x, 0xAAAAAAAAAAAAAAAA) as Vec512Mask16 }
@@ -729,8 +820,12 @@ impl Vec512 {
     #[inline]
     pub fn neq64(a: Vec512, b: Vec512) -> Vec512Mask64 {
         let x = interleave64(
-            unsafe { _mm256_movemask_epi8(_mm256_cmpeq_epi64(a.raw[0].raw, b.raw[0].raw)) as Vec256Mask8 },
-            unsafe { _mm256_movemask_epi8(_mm256_cmpeq_epi64(a.raw[1].raw, b.raw[1].raw)) as Vec256Mask8 },
+            unsafe {
+                _mm256_movemask_epi8(_mm256_cmpeq_epi64(a.raw[0].raw, b.raw[0].raw)) as Vec256Mask8
+            },
+            unsafe {
+                _mm256_movemask_epi8(_mm256_cmpeq_epi64(a.raw[1].raw, b.raw[1].raw)) as Vec256Mask8
+            },
         );
 
         unsafe { _pext_u64(!x, 0x8080808080808080) as Vec512Mask64 }
@@ -753,10 +848,22 @@ impl Vec512 {
     #[inline]
     pub fn expand_mask8(mask: Vec512Mask8) -> Vec512 {
         let shuffled0 = Vec256::shuffle8(Vec256::splat32(mask as u32), unsafe {
-            _mm256_setr_epi64x(0x0000000000000000, 0x0101010101010101, 0x0202020202020202, 0x0303030303030303).into()
+            _mm256_setr_epi64x(
+                0x0000000000000000,
+                0x0101010101010101,
+                0x0202020202020202,
+                0x0303030303030303,
+            )
+            .into()
         });
         let shuffled1 = Vec256::shuffle8(Vec256::splat32((mask >> 32) as u32), unsafe {
-            _mm256_setr_epi64x(0x0000000000000000, 0x0101010101010101, 0x0202020202020202, 0x0303030303030303).into()
+            _mm256_setr_epi64x(
+                0x0000000000000000,
+                0x0101010101010101,
+                0x0202020202020202,
+                0x0303030303030303,
+            )
+            .into()
         });
 
         let and_mask = Vec256::splat64(0x8040201008040201);

@@ -66,7 +66,14 @@ impl Piece {
     /*----------------------------------------------------------------*/
 
     pub const COUNT: usize = 6;
-    pub const ALL: [Piece; Self::COUNT] = [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
+    pub const ALL: [Piece; Self::COUNT] = [
+        Piece::Pawn,
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen,
+        Piece::King,
+    ];
 }
 
 impl<T> Index<Piece> for [T; Piece::COUNT] {

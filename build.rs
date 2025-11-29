@@ -31,15 +31,30 @@ fn write_slider_magics() {
     println!("cargo:rerun-if-changed=build.rs");
 
     let mut table = [Bitboard::EMPTY; SLIDER_TABLE_SIZE];
-    write_moves(&mut table, bishop_relevant_blockers, bishop_moves_slow, bishop_magic_index);
-    write_moves(&mut table, rook_relevant_blockers, rook_moves_slow, rook_magic_index);
+    write_moves(
+        &mut table,
+        bishop_relevant_blockers,
+        bishop_moves_slow,
+        bishop_magic_index,
+    );
+    write_moves(
+        &mut table,
+        rook_relevant_blockers,
+        rook_moves_slow,
+        rook_magic_index,
+    );
 
     let mut out_file: PathBuf = env::var_os("OUT_DIR").unwrap().into();
     out_file.push("slider_moves.rs");
 
     let mut out_file = BufWriter::new(fs::File::create(out_file).unwrap());
 
-    writeln!(out_file, "const SLIDER_MOVES: &[Bitboard; {}] = &[", SLIDER_TABLE_SIZE).unwrap();
+    writeln!(
+        out_file,
+        "const SLIDER_MOVES: &[Bitboard; {}] = &[",
+        SLIDER_TABLE_SIZE
+    )
+    .unwrap();
     for &bb in table.iter() {
         writeln!(out_file, "{:?},", bb).unwrap();
     }

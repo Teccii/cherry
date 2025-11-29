@@ -206,7 +206,9 @@ impl Byteboard {
 impl Default for Byteboard {
     #[inline]
     fn default() -> Self {
-        Byteboard { inner: Vec512::zero() }
+        Byteboard {
+            inner: Vec512::zero(),
+        }
     }
 }
 
@@ -236,7 +238,10 @@ impl Wordboard {
 
     #[inline]
     pub fn all(&self) -> Bitboard {
-        Bitboard(interleave64(self.inner[0].nonzero16() as u32, self.inner[1].nonzero16() as u32))
+        Bitboard(interleave64(
+            self.inner[0].nonzero16() as u32,
+            self.inner[1].nonzero16() as u32,
+        ))
     }
 
     #[inline]

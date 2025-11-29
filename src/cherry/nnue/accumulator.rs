@@ -56,7 +56,13 @@ pub fn vec_add(acc: &mut Align64<[i16; HL]>, weights: &NetworkWeights, adds: &[u
     }
 }
 
-pub fn vec_add_sub(input: &Align64<[i16; HL]>, output: &mut Align64<[i16; HL]>, weights: &NetworkWeights, add: usize, sub: usize) {
+pub fn vec_add_sub(
+    input: &Align64<[i16; HL]>,
+    output: &mut Align64<[i16; HL]>,
+    weights: &NetworkWeights,
+    add: usize,
+    sub: usize,
+) {
     for i in 0..(HL / NativeVec::CHUNKS_16) {
         let offset = i * NativeVec::CHUNKS_16;
 

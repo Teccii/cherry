@@ -19,7 +19,8 @@ pub const fn bishop_relevant_blockers(sq: Square) -> Bitboard {
 
 pub const fn rook_relevant_blockers(sq: Square) -> Bitboard {
     let rank_moves = sq.rank().bitboard().0 & !(File::A.bitboard().0 | File::H.bitboard().0);
-    let file_moves = sq.file().bitboard().0 & !(Rank::First.bitboard().0 | Rank::Eighth.bitboard().0);
+    let file_moves =
+        sq.file().bitboard().0 & !(Rank::First.bitboard().0 | Rank::Eighth.bitboard().0);
 
     Bitboard((rank_moves | file_moves) & !sq.bitboard().0)
 }

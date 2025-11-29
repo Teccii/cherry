@@ -77,15 +77,33 @@ impl UciCommand {
             #[cfg(feature = "tune")]
             "spsa" => Ok(UciCommand::PrintSpsa),
             "bench" => Ok(UciCommand::Bench {
-                depth: reader.next().and_then(|s| s.parse::<u8>().ok()).unwrap_or(13),
-                threads: reader.next().and_then(|s| s.parse::<u16>().ok()).unwrap_or(1),
-                hash: reader.next().and_then(|s| s.parse::<u64>().ok()).unwrap_or(16),
+                depth: reader
+                    .next()
+                    .and_then(|s| s.parse::<u8>().ok())
+                    .unwrap_or(13),
+                threads: reader
+                    .next()
+                    .and_then(|s| s.parse::<u16>().ok())
+                    .unwrap_or(1),
+                hash: reader
+                    .next()
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .unwrap_or(16),
             }),
             #[cfg(feature = "datagen")]
             "datagen" => Ok(UciCommand::DataGen {
-                count: reader.next().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100_000),
-                threads: reader.next().and_then(|s| s.parse::<usize>().ok()).unwrap_or(1),
-                dfrc: reader.next().and_then(|s| s.parse::<bool>().ok()).unwrap_or(false),
+                count: reader
+                    .next()
+                    .and_then(|s| s.parse::<usize>().ok())
+                    .unwrap_or(100_000),
+                threads: reader
+                    .next()
+                    .and_then(|s| s.parse::<usize>().ok())
+                    .unwrap_or(1),
+                dfrc: reader
+                    .next()
+                    .and_then(|s| s.parse::<bool>().ok())
+                    .unwrap_or(false),
             }),
             "position" => {
                 let board_kind = reader.next().ok_or(UciParseError::InvalidArguments)?;
@@ -121,7 +139,8 @@ impl UciCommand {
                     let mut board_copy = board.clone();
 
                     while let Some(mv_token) = reader.next() {
-                        let mv = Move::parse(&board_copy, chess960, mv_token.trim()).ok_or(UciParseError::InvalidArguments)?;
+                        let mv = Move::parse(&board_copy, chess960, mv_token.trim())
+                            .ok_or(UciParseError::InvalidArguments)?;
                         board_copy.make_move(mv);
                         moves.push(mv);
                     }
@@ -228,7 +247,10 @@ impl UciCommand {
                 Ok(UciCommand::Go(limits))
             }
             "setoption" => {
-                reader.next().filter(|&s| s == "name").ok_or(UciParseError::InvalidArguments)?;
+                reader
+                    .next()
+                    .filter(|&s| s == "name")
+                    .ok_or(UciParseError::InvalidArguments)?;
 
                 let mut name = String::new();
                 while let Some(token) = reader.next() {
@@ -239,7 +261,10 @@ impl UciCommand {
                     name += token;
                 }
 
-                let value = reader.remainder().map(str::to_owned).unwrap_or(String::from("<empty>"));
+                let value = reader
+                    .remainder()
+                    .map(str::to_owned)
+                    .unwrap_or(String::from("<empty>"));
 
                 Ok(UciCommand::SetOption { name, value })
             }

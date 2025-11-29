@@ -3,4 +3,3 @@ imports_granularity="Crate"
 imports_layout="HorizontalVertical"
 group_imports="StdExternalCrate"
 match_arm_blocks=false
-max_width=144

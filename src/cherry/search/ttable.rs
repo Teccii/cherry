@@ -53,7 +53,15 @@ pub struct TTData {
 
 impl TTData {
     #[inline]
-    pub fn new(depth: u8, eval: Score, score: Score, mv: Option<Move>, flag: TTFlag, pv: bool, age: u8) -> TTData {
+    pub fn new(
+        depth: u8,
+        eval: Score,
+        score: Score,
+        mv: Option<Move>,
+        flag: TTFlag,
+        pv: bool,
+        age: u8,
+    ) -> TTData {
         TTData {
             depth,
             eval,
@@ -191,7 +199,17 @@ impl TTable {
     }
 
     #[inline]
-    pub fn store(&self, board: &Board, depth: u8, ply: u16, eval: Score, score: Score, mv: Option<Move>, flag: TTFlag, pv: bool) {
+    pub fn store(
+        &self,
+        board: &Board,
+        depth: u8,
+        ply: u16,
+        eval: Score,
+        score: Score,
+        mv: Option<Move>,
+        flag: TTFlag,
+        pv: bool,
+    ) {
         let old_data = self.fetch(board, ply);
         let new_data = TTData::new(
             depth,

@@ -126,7 +126,9 @@ impl Position {
 
     #[inline]
     pub fn is_draw(&self) -> bool {
-        self.insufficient_material() || self.repetition() || self.board.status() == BoardStatus::Draw
+        self.insufficient_material()
+            || self.repetition()
+            || self.board.status() == BoardStatus::Draw
     }
 
     pub fn insufficient_material(&self) -> bool {

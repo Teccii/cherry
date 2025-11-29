@@ -4,7 +4,11 @@ use crate::*;
 
 #[inline]
 fn select_next(moves: &[ScoredMove]) -> Option<usize> {
-    moves.iter().enumerate().max_by_key(|(_, mv)| mv.1).map(|(i, _)| i)
+    moves
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, mv)| mv.1)
+        .map(|(i, _)| i)
 }
 
 /*----------------------------------------------------------------*/
@@ -62,7 +66,12 @@ impl MovePicker {
         self.skip_bad_tactics = true;
     }
 
-    pub fn next(&mut self, pos: &mut Position, history: &History, indices: &ContIndices) -> Option<ScoredMove> {
+    pub fn next(
+        &mut self,
+        pos: &mut Position,
+        history: &History,
+        indices: &ContIndices,
+    ) -> Option<ScoredMove> {
         if self.stage == Stage::TTMove {
             self.stage = Stage::GenMoves;
 
@@ -94,9 +103,13 @@ impl MovePicker {
                 }
 
                 if mv.is_tactic() {
-                    self.good_tactics.push(ScoredMove(mv, history.get_tactic(pos.board(), mv) as i32));
+                    self.good_tactics
+                        .push(ScoredMove(mv, history.get_tactic(pos.board(), mv) as i32));
                 } else if !self.skip_quiets {
-                    self.quiets.push(ScoredMove(mv, history.get_quiet_total(pos.board(), indices, mv)));
+                    self.quiets.push(ScoredMove(
+                        mv,
+                        history.get_quiet_total(pos.board(), indices, mv),
+                    ));
                 }
             }
         }

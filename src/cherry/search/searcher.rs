@@ -175,7 +175,10 @@ impl Searcher {
 
     /*----------------------------------------------------------------*/
 
-    pub fn search<Info: SearchInfo>(&mut self, limits: Vec<SearchLimit>) -> (Move, Option<Move>, Score, u8, u64) {
+    pub fn search<Info: SearchInfo>(
+        &mut self,
+        limits: Vec<SearchLimit>,
+    ) -> (Move, Option<Move>, Score, u8, u64) {
         self.thread_data.reset();
         self.shared_data.time_man.init(self.pos.stm(), &limits);
         self.reset_nnue();
@@ -184,7 +187,9 @@ impl Searcher {
         for limit in &limits {
             if let SearchLimit::SearchMoves(root_moves) = limit {
                 let board = self.pos.board();
-                let parsed_moves = root_moves.iter().map(|s| Move::parse(board, self.frc, s).unwrap());
+                let parsed_moves = root_moves
+                    .iter()
+                    .map(|s| Move::parse(board, self.frc, s).unwrap());
                 focused = true;
 
                 self.thread_data.root_moves.extend(parsed_moves);
@@ -210,7 +215,8 @@ impl Searcher {
 
                     //no way king can castle
                     let flag = match board.piece_on(src).unwrap() {
-                        Piece::Pawn => Move::parse_pawn_flag(board, src, dest, is_capture, promotion).unwrap(),
+                        Piece::Pawn =>
+                            Move::parse_pawn_flag(board, src, dest, is_capture, promotion).unwrap(),
                         _ if is_capture => MoveFlag::Capture,
                         _ => MoveFlag::Normal,
                     };
@@ -223,7 +229,9 @@ impl Searcher {
             let best_score = scored_moves.iter().map(|e| e.1).max().unwrap();
             scored_moves.retain(|e| e.1 == best_score);
 
-            self.thread_data.root_moves.extend(scored_moves.iter().map(|e| e.0));
+            self.thread_data
+                .root_moves
+                .extend(scored_moves.iter().map(|e| e.0));
         }
 
         let mut result = (None, None, Score::ZERO, 0u8, 0u64);
@@ -254,7 +262,13 @@ impl Searcher {
 
         let (best_move, ponder_move, score, depth, nodes) = result;
 
-        (best_move.unwrap(), ponder_move.filter(|_| self.ponder), score, depth, nodes)
+        (
+            best_move.unwrap(),
+            ponder_move.filter(|_| self.ponder),
+            score,
+            depth,
+            nodes,
+        )
     }
 
     /*----------------------------------------------------------------*/
@@ -302,7 +316,9 @@ pub fn search_worker<Info: SearchInfo>(
         multipv = multipv.min(thread.root_moves.len());
     }
 
-    thread.windows.extend((0..multipv).map(|_| Window::new(W::asp_window_initial())));
+    thread
+        .windows
+        .extend((0..multipv).map(|_| Window::new(W::asp_window_initial())));
 
     let static_eval = pos.eval(&shared.nnue_weights);
     let mut best_move: Option<Move> = None;
@@ -324,7 +340,16 @@ pub fn search_worker<Info: SearchInfo>(
                 };
 
                 thread.sel_depth = 0;
-                let new_score = search::<PV>(&mut pos, thread, shared, depth as i32 * DEPTH_SCALE, 0, alpha, beta, false);
+                let new_score = search::<PV>(
+                    &mut pos,
+                    thread,
+                    shared,
+                    depth as i32 * DEPTH_SCALE,
+                    0,
+                    alpha,
+                    beta,
+                    false,
+                );
                 thread.nodes.flush();
 
                 if depth > 1 && thread.abort_now {
@@ -333,7 +358,9 @@ pub fn search_worker<Info: SearchInfo>(
 
                 thread.windows[pv_index].set_center(new_score);
                 if new_score > alpha && new_score < beta {
-                    thread.exclude_moves.push(thread.search_stack[0].pv.moves[0].unwrap());
+                    thread
+                        .exclude_moves
+                        .push(thread.search_stack[0].pv.moves[0].unwrap());
 
                     if pv_index == 0 {
                         thread.root_pv = thread.search_stack[0].pv.clone();
@@ -405,7 +432,9 @@ pub fn search_worker<Info: SearchInfo>(
         depth += 1;
     }
 
-    while shared.time_man.is_infinite() && !(shared.time_man.use_max_depth() || shared.time_man.use_max_nodes()) && !shared.time_man.abort_now()
+    while shared.time_man.is_infinite()
+        && !(shared.time_man.use_max_depth() || shared.time_man.use_max_nodes())
+        && !shared.time_man.abort_now()
     {
         std::thread::sleep(Duration::from_millis(10));
     }

@@ -179,7 +179,12 @@ impl Move {
         let promotion = if let Some(s) = mv.get(4..5) {
             let piece = s.parse::<Piece>().ok()?;
 
-            Some(piece).filter(|p| matches!(p, Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen))
+            Some(piece).filter(|p| {
+                matches!(
+                    p,
+                    Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen
+                )
+            })
         } else {
             None
         };
@@ -196,7 +201,13 @@ impl Move {
     }
 
     #[inline]
-    pub fn parse_pawn_flag(board: &Board, src: Square, dest: Square, is_capture: bool, promotion: Option<Piece>) -> Option<MoveFlag> {
+    pub fn parse_pawn_flag(
+        board: &Board,
+        src: Square,
+        dest: Square,
+        is_capture: bool,
+        promotion: Option<Piece>,
+    ) -> Option<MoveFlag> {
         if let Some(promotion) = promotion {
             if is_capture {
                 MoveFlag::capture_promotion(promotion)
@@ -209,7 +220,9 @@ impl Move {
             && dest == ep
         {
             Some(MoveFlag::EnPassant)
-        } else if src.rank() == Rank::Second.relative_to(board.stm()) && dest.rank() == Rank::Fourth.relative_to(board.stm()) {
+        } else if src.rank() == Rank::Second.relative_to(board.stm())
+            && dest.rank() == Rank::Fourth.relative_to(board.stm())
+        {
             Some(MoveFlag::DoublePush)
         } else {
             Some(MoveFlag::Normal)
@@ -217,7 +230,13 @@ impl Move {
     }
 
     #[inline]
-    fn parse_king_flag(board: &Board, chess960: bool, src: Square, dest: &mut Square, is_capture: bool) -> MoveFlag {
+    fn parse_king_flag(
+        board: &Board,
+        chess960: bool,
+        src: Square,
+        dest: &mut Square,
+        is_capture: bool,
+    ) -> MoveFlag {
         let stm = board.stm();
         if chess960 && is_capture {
             let rights = board.castle_rights(stm);

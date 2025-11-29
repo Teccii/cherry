@@ -9,14 +9,28 @@ impl Board {
         let mut result = String::new();
         let mut features = Vec::new();
 
-        features.push(format!("{}: {}", String::from("FEN").bright_green(), self.to_fen(chess960)));
-        features.push(format!("{}: {:#016X}", String::from("Zobrist Key").bright_green(), self.hash));
+        features.push(format!(
+            "{}: {}",
+            String::from("FEN").bright_green(),
+            self.to_fen(chess960)
+        ));
+        features.push(format!(
+            "{}: {:#016X}",
+            String::from("Zobrist Key").bright_green(),
+            self.hash
+        ));
 
         if let Some(sq) = self.ep_square() {
-            features.push(format!("{}: {}", String::from("En Passant").bright_green(), sq));
+            features.push(format!(
+                "{}: {}",
+                String::from("En Passant").bright_green(),
+                sq
+            ));
         }
 
-        if self.castle_rights[0] != CastleRights::default() || self.castle_rights[1] != CastleRights::default() {
+        if self.castle_rights[0] != CastleRights::default()
+            || self.castle_rights[1] != CastleRights::default()
+        {
             let mut rights = String::new();
             for &color in &Color::ALL {
                 let mut write_rights = |file: Option<File>, right_char: char| {
@@ -35,7 +49,11 @@ impl Board {
                 write_rights(self.castle_rights[color as usize].long, 'q');
             }
 
-            features.push(format!("{}: {}", String::from("Castle Rights").bright_green(), rights));
+            features.push(format!(
+                "{}: {}",
+                String::from("Castle Rights").bright_green(),
+                rights
+            ));
         }
 
         features.push(format!(
@@ -48,7 +66,11 @@ impl Board {
             String::from("Fullmove Count").bright_green(),
             self.fullmove_count
         ));
-        features.push(format!("{}: {:?}", String::from("Side To Move").bright_green(), self.stm));
+        features.push(format!(
+            "{}: {:?}",
+            String::from("Side To Move").bright_green(),
+            self.stm
+        ));
 
         writeln!(&mut result, "╔═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╗").unwrap();
 
@@ -61,7 +83,12 @@ impl Board {
                 if let Some(piece) = self.piece_on(sq) {
                     let piece: char = piece.into();
                     if self.color_on(sq).unwrap() == Color::White {
-                        write!(&mut result, " {}", String::from(piece.to_ascii_uppercase()).bright_green()).unwrap();
+                        write!(
+                            &mut result,
+                            " {}",
+                            String::from(piece.to_ascii_uppercase()).bright_green()
+                        )
+                        .unwrap();
                     } else {
                         write!(&mut result, " {}", String::from(piece).bright_blue()).unwrap();
                     }

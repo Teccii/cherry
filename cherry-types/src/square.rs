@@ -131,7 +131,10 @@ impl Square {
             return None;
         }
 
-        Some(Square::new(File::index(i as usize), Rank::index(j as usize)))
+        Some(Square::new(
+            File::index(i as usize),
+            Rank::index(j as usize),
+        ))
     }
 
     /*----------------------------------------------------------------*/
@@ -158,14 +161,16 @@ impl Square {
 
     #[inline]
     pub const fn dist(self, other: Square) -> u8 {
-        ((other.rank() as i8 - self.rank() as i8).abs() + (other.file() as i8 - self.file() as i8).abs()) as u8
+        ((other.rank() as i8 - self.rank() as i8).abs()
+            + (other.file() as i8 - self.file() as i8).abs()) as u8
     }
 
     #[inline]
     pub const fn center_dist(self) -> u8 {
         const TABLE: [u8; Square::COUNT] = [
-            6, 5, 4, 3, 3, 4, 5, 6, 5, 4, 3, 2, 2, 3, 4, 5, 4, 3, 2, 1, 1, 2, 3, 4, 3, 2, 1, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3, 4, 3, 2, 1,
-            1, 2, 3, 4, 5, 4, 3, 2, 2, 3, 4, 5, 6, 5, 4, 3, 3, 4, 5, 6,
+            6, 5, 4, 3, 3, 4, 5, 6, 5, 4, 3, 2, 2, 3, 4, 5, 4, 3, 2, 1, 1, 2, 3, 4, 3, 2, 1, 0, 0,
+            1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3, 4, 3, 2, 1, 1, 2, 3, 4, 5, 4, 3, 2, 2, 3, 4, 5, 6, 5,
+            4, 3, 3, 4, 5, 6,
         ];
 
         TABLE[self as usize]

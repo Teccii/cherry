@@ -80,7 +80,16 @@ pub const fn pawn_attacks(sq: Square, color: Color) -> Bitboard {
 pub const fn knight_moves(sq: Square) -> Bitboard {
     #[inline]
     const fn calc_moves(sq: Square) -> Bitboard {
-        const DELTAS: [(i8, i8); 8] = [(1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1), (-1, 2)];
+        const DELTAS: [(i8, i8); 8] = [
+            (1, 2),
+            (2, 1),
+            (2, -1),
+            (1, -2),
+            (-1, -2),
+            (-2, -1),
+            (-2, 1),
+            (-1, 2),
+        ];
 
         let mut bb = Bitboard::EMPTY;
         let mut i = 0;
@@ -118,7 +127,16 @@ pub const fn knight_moves(sq: Square) -> Bitboard {
 pub const fn king_moves(sq: Square) -> Bitboard {
     #[inline]
     const fn calc_moves(sq: Square) -> Bitboard {
-        const DELTAS: [(i8, i8); 8] = [(0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1)];
+        const DELTAS: [(i8, i8); 8] = [
+            (0, 1),
+            (1, 1),
+            (1, 0),
+            (1, -1),
+            (0, -1),
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+        ];
 
         let mut bb = Bitboard::EMPTY;
         let mut i = 0;

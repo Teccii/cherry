@@ -13,7 +13,9 @@ pub struct MoveList {
 impl MoveList {
     #[inline]
     pub fn empty() -> MoveList {
-        MoveList { inner: ArrayVec::new() }
+        MoveList {
+            inner: ArrayVec::new(),
+        }
     }
 
     #[inline]
@@ -129,7 +131,13 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn gen_moves_to<const KING_MOVES: bool>(&self, moves: &mut MoveList, our_king: Square, valid_dest: Bitboard, checker: Option<Piece>) {
+    fn gen_moves_to<const KING_MOVES: bool>(
+        &self,
+        moves: &mut MoveList,
+        our_king: Square,
+        valid_dest: Bitboard,
+        checker: Option<Piece>,
+    ) {
         let stm = self.stm;
         let our_attack_table = self.attack_table(stm);
 
@@ -147,7 +155,8 @@ impl Board {
         let non_pawn_dest = our_attack_table.for_mask(non_pawn_mask) & valid_dest;
         let king_dest = our_attack_table.for_mask(PieceMask::KING) & valid_dest;
 
-        let src = unsafe { Vec128::load(self.index_to_square[stm].into_inner().as_ptr()) }.zext8to16();
+        let src =
+            unsafe { Vec128::load(self.index_to_square[stm].into_inner().as_ptr()) }.zext8to16();
         let pawn_info = pawns::pawn_info(stm);
 
         self.gen_capture_promotions_for(
@@ -180,7 +189,8 @@ impl Board {
                         if !(place.is_empty() || sq == victim || sq == our_piece) {
                             let (color, piece) = (place.color().unwrap(), place.piece().unwrap());
 
-                            result = color == stm || (piece != Piece::Rook && piece != Piece::Queen);
+                            result =
+                                color == stm || (piece != Piece::Rook && piece != Piece::Queen);
                             break;
                         }
 
@@ -204,7 +214,13 @@ impl Board {
             src,
             pawn_dest & their_pieces & pawn_info.non_promo_dest,
         );
-        self.gen_captures_for(moves, &masked_attack_table, non_pawn_mask, src, non_pawn_dest & their_pieces);
+        self.gen_captures_for(
+            moves,
+            &masked_attack_table,
+            non_pawn_mask,
+            src,
+            non_pawn_dest & their_pieces,
+        );
 
         if KING_MOVES {
             self.gen_captures_for(
@@ -237,7 +253,10 @@ impl Board {
                         let must_be_empty = must_be_safe | king_to_rook | rook_dest;
                         let blockers = $blockers ^ $king_src ^ rook_src;
 
-                        if !pinned.has(rook_src) && blockers.is_disjoint(must_be_empty) && their_attacks.is_disjoint(must_be_safe) {
+                        if !pinned.has(rook_src)
+                            && blockers.is_disjoint(must_be_empty)
+                            && their_attacks.is_disjoint(must_be_safe)
+                        {
                             moves.push(Move::new($king_src, rook_src, $flag));
                         }
                     }
@@ -264,7 +283,13 @@ impl Board {
             );
         }
 
-        self.gen_quiets_for(moves, &masked_attack_table, non_pawn_mask, src, non_pawn_dest & empty);
+        self.gen_quiets_for(
+            moves,
+            &masked_attack_table,
+            non_pawn_mask,
+            src,
+            non_pawn_dest & empty,
+        );
 
         let pinned_pawns = pinned & !our_king.file().bitboard();
         let bb = self.color_pieces(Piece::Pawn, stm) & !pinned_pawns;
@@ -287,7 +312,12 @@ impl Board {
     }
 
     #[inline]
-    fn gen_king_moves_in_check<const CHECKERS: usize>(&self, moves: &mut MoveList, our_king: Square, mut checkers: PieceMask) {
+    fn gen_king_moves_in_check<const CHECKERS: usize>(
+        &self,
+        moves: &mut MoveList,
+        our_king: Square,
+        mut checkers: PieceMask,
+    ) {
         let stm = self.stm;
         let attack_table = self.attack_table(!stm);
 
@@ -323,7 +353,8 @@ impl Board {
                     .rotate_left(32)
                     .trailing_zeros()
                     / 8;
-                additional_checks |= (1u8 << dir) & VALID_MASK[checker_piece.bits() as usize - Piece::Bishop.bits() as usize];
+                additional_checks |= (1u8 << dir)
+                    & VALID_MASK[checker_piece.bits() as usize - Piece::Bishop.bits() as usize];
             }
 
             checkers &= PieceMask::new(checkers.into_inner() - 1);
@@ -338,7 +369,14 @@ impl Board {
     }
 
     #[inline]
-    fn gen_quiets_for(&self, moves: &mut MoveList, attack_table: &[PieceMask; Square::COUNT], mask: PieceMask, src: Vec256, dest: Bitboard) {
+    fn gen_quiets_for(
+        &self,
+        moves: &mut MoveList,
+        attack_table: &[PieceMask; Square::COUNT],
+        mask: PieceMask,
+        src: Vec256,
+        dest: Bitboard,
+    ) {
         for sq in dest {
             let mask = mask & attack_table[sq];
 
@@ -351,7 +389,14 @@ impl Board {
     }
 
     #[inline]
-    fn gen_captures_for(&self, moves: &mut MoveList, attack_table: &[PieceMask; Square::COUNT], mask: PieceMask, src: Vec256, dest: Bitboard) {
+    fn gen_captures_for(
+        &self,
+        moves: &mut MoveList,
+        attack_table: &[PieceMask; Square::COUNT],
+        mask: PieceMask,
+        src: Vec256,
+        dest: Bitboard,
+    ) {
         for sq in dest {
             let mask = mask & attack_table[sq];
 
@@ -364,14 +409,25 @@ impl Board {
     }
 
     #[inline]
-    fn gen_capture_promotions_for(&self, moves: &mut MoveList, attack_table: &[PieceMask; Square::COUNT], mask: PieceMask, dest: Bitboard) {
+    fn gen_capture_promotions_for(
+        &self,
+        moves: &mut MoveList,
+        attack_table: &[PieceMask; Square::COUNT],
+        mask: PieceMask,
+        dest: Bitboard,
+    ) {
         let stm = self.stm;
 
         for sq in dest {
             let mask = mask & attack_table[sq];
 
             for index in mask {
-                let src = self.index_to_square[stm][index].expect(&format!("{} | {} | {:?}", self.to_fen(true), index.into_inner(), self));
+                let src = self.index_to_square[stm][index].expect(&format!(
+                    "{} | {} | {:?}",
+                    self.to_fen(true),
+                    index.into_inner(),
+                    self
+                ));
                 let base_move = ((sq as u16) << 6) | src as u16;
                 let promos = MoveFlag::CapturePromotionQueen as u64
                     | ((MoveFlag::CapturePromotionRook as u64) << 16)
@@ -400,14 +456,19 @@ impl Board {
         let blockers = ray_places.nonzero8() & geometry::NON_HORSE_ATTACK_MASK;
         let sliders = geometry::sliders_from_rays(ray_places);
         let closest = geometry::superpiece_attacks(blockers, ray_valid) & blockers;
-        let pin_raymask = geometry::superpiece_attacks(blockers & !closest, ray_valid) & geometry::NON_HORSE_ATTACK_MASK;
+        let pin_raymask = geometry::superpiece_attacks(blockers & !closest, ray_valid)
+            & geometry::NON_HORSE_ATTACK_MASK;
         let second_closest = pin_raymask & blockers & !closest;
 
         let their_pieces = blockers & color;
         let pinners = their_pieces & sliders & second_closest;
-        let pinned = !their_pieces & Vec128::mask8(Vec128::from(pinners.0).nonzero8(), Vec128::from(closest)).into_u64();
+        let pinned = !their_pieces
+            & Vec128::mask8(Vec128::from(pinners.0).nonzero8(), Vec128::from(closest)).into_u64();
 
-        let pinned_ids = Vec512::mask8(pin_raymask, Vec512::lane_splat8to64(Vec512::mask8(pinned.0, ray_places)));
+        let pinned_ids = Vec512::mask8(
+            pin_raymask,
+            Vec512::lane_splat8to64(Vec512::mask8(pinned.0, ray_places)),
+        );
         let pinned_ids = Vec512::permute8_mz(!inv_perm.msb8(), inv_perm, pinned_ids);
 
         let pinned_count = pinned.popcnt();
@@ -418,7 +479,11 @@ impl Board {
         let ones = Vec512::splat16(1);
         let valid_ids = pinned_ids.nonzero8();
         let masked_ids = pinned_ids & Vec512::splat8(Place::INDEX_MASK);
-        let bits0 = Vec512::shlv16_mz(valid_ids as Vec512Mask16, ones, masked_ids.into_vec256().zext8to16());
+        let bits0 = Vec512::shlv16_mz(
+            valid_ids as Vec512Mask16,
+            ones,
+            masked_ids.into_vec256().zext8to16(),
+        );
         let bits1 = Vec512::shlv16_mz(
             (valid_ids >> 32) as Vec512Mask16,
             ones,
@@ -427,7 +492,10 @@ impl Board {
         let table_mask0 = Vec512::splat16(!piece_mask) | bits0;
         let table_mask1 = Vec512::splat16(!piece_mask) | bits1;
 
-        (Wordboard::new(table_mask0, table_mask1), Bitboard(pinned_ids.nonzero8()))
+        (
+            Wordboard::new(table_mask0, table_mask1),
+            Bitboard(pinned_ids.nonzero8()),
+        )
     }
 }
 
@@ -443,8 +511,14 @@ mod pawns {
         let valid_empty = empty & valid_dest;
 
         match stm {
-            Color::White => (valid_empty.shift::<Down>(1), empty.shift::<Down>(1) & valid_empty.shift::<Down>(2)),
-            Color::Black => (valid_empty.shift::<Up>(1), empty.shift::<Up>(1) & valid_empty.shift::<Up>(2)),
+            Color::White => (
+                valid_empty.shift::<Down>(1),
+                empty.shift::<Down>(1) & valid_empty.shift::<Down>(2),
+            ),
+            Color::Black => (
+                valid_empty.shift::<Up>(1),
+                empty.shift::<Up>(1) & valid_empty.shift::<Up>(2),
+            ),
         }
     }
 

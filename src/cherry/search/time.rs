@@ -128,11 +128,16 @@ impl TimeManager {
 
         self.pondering.store(pondering, Ordering::Relaxed);
         self.infinite.store(infinite, Ordering::Relaxed);
-        self.use_max_depth.store(max_depth.is_some(), Ordering::Relaxed);
-        self.use_max_nodes.store(max_nodes.is_some(), Ordering::Relaxed);
-        self.max_depth.store(max_depth.unwrap_or(MAX_DEPTH), Ordering::Relaxed);
-        self.max_nodes.store(max_nodes.unwrap_or(u64::MAX), Ordering::Relaxed);
-        self.no_manage.store(infinite || move_time.is_some(), Ordering::Relaxed);
+        self.use_max_depth
+            .store(max_depth.is_some(), Ordering::Relaxed);
+        self.use_max_nodes
+            .store(max_nodes.is_some(), Ordering::Relaxed);
+        self.max_depth
+            .store(max_depth.unwrap_or(MAX_DEPTH), Ordering::Relaxed);
+        self.max_nodes
+            .store(max_nodes.unwrap_or(u64::MAX), Ordering::Relaxed);
+        self.no_manage
+            .store(infinite || move_time.is_some(), Ordering::Relaxed);
 
         if let Some(time) = move_time {
             self.base_time.store(time, Ordering::Relaxed);
@@ -148,8 +153,11 @@ impl TimeManager {
                 Color::Black => (b_time, b_inc),
             };
             let move_overhead = self.move_overhead.load(Ordering::Relaxed);
-            let hard_time = (time * W::hard_time_frac() / 16384).min(time.saturating_sub(move_overhead));
-            let soft_time = ((time / moves_to_go as u64).saturating_sub(move_overhead) + inc).min(hard_time);
+            let hard_time = ((time as f64 * W::hard_time_frac()) as u64)
+                .min(time.saturating_sub(move_overhead));
+            let soft_time = (time / moves_to_go as u64 + inc)
+                .saturating_sub(move_overhead)
+                .min(hard_time);
 
             self.base_time.store(soft_time, Ordering::Relaxed);
             self.soft_time.store(soft_time, Ordering::Relaxed);
@@ -160,8 +168,11 @@ impl TimeManager {
                 Color::Black => (b_time, b_inc),
             };
             let move_overhead = self.move_overhead.load(Ordering::Relaxed);
-            let hard_time = (time * W::hard_time_frac() / 16384).min(time.saturating_sub(move_overhead));
-            let soft_time = ((time * W::soft_time_frac() / 16384).saturating_sub(move_overhead) + inc).min(hard_time);
+            let hard_time = ((time as f64 * W::hard_time_frac()) as u64)
+                .min(time.saturating_sub(move_overhead));
+            let soft_time = ((time as f64 * W::soft_time_frac()) as u64 + inc)
+                .saturating_sub(move_overhead)
+                .min(hard_time);
 
             self.base_time.store(soft_time, Ordering::Relaxed);
             self.soft_time.store(soft_time, Ordering::Relaxed);
@@ -171,7 +182,15 @@ impl TimeManager {
         self.start.store(Instant::now(), Ordering::Relaxed);
     }
 
-    pub fn deepen(&self, depth: u8, score: Score, static_eval: Score, best_move: Move, move_nodes: u64, nodes: u64) {
+    pub fn deepen(
+        &self,
+        depth: u8,
+        score: Score,
+        static_eval: Score,
+        best_move: Move,
+        move_nodes: u64,
+        nodes: u64,
+    ) {
         if depth < 4 || self.no_manage.load(Ordering::Relaxed) {
             return;
         }
@@ -187,12 +206,16 @@ impl TimeManager {
         *prev_move = Some(best_move);
         self.move_stability.store(move_stability, Ordering::Relaxed);
 
-        let complexity = (static_eval - score).abs().0 as f32;
+        let complexity = (static_eval - score).abs().0 as f64;
 
-        let stability_factor = W::stability_tm_base() - W::stability_tm_scale() * move_stability as f32;
-        let subtree_factor = W::subtree_tm_base() - W::subtree_tm_scale() * move_nodes as f32 / nodes as f32;
+        let stability_factor = (W::stability_tm_base()
+            - W::stability_tm_scale() * move_stability as f64)
+            .max(W::stability_tm_min());
+        let subtree_factor = (W::subtree_tm_base()
+            - W::subtree_tm_scale() * move_nodes as f64 / nodes as f64)
+            .max(W::subtree_tm_min());
         let complexity_factor = if !score.is_decisive() {
-            (W::complexity_tm_base() + W::complexity_tm_scale() * complexity * (depth as f32).ln())
+            (W::complexity_tm_base() + W::complexity_tm_scale() * complexity * (depth as f64).ln())
                 .clamp(W::complexity_tm_min(), W::complexity_tm_max())
         } else if score.is_win() {
             W::complexity_tm_win()
@@ -202,9 +225,11 @@ impl TimeManager {
 
         let base_time = self.base_time.load(Ordering::Relaxed);
         let hard_time = self.hard_time.load(Ordering::Relaxed);
-        let new_target = (base_time as f32 * stability_factor * subtree_factor * complexity_factor) as u64;
+        let new_target =
+            (base_time as f64 * stability_factor * subtree_factor * complexity_factor) as u64;
 
-        self.soft_time.store(new_target.min(hard_time), Ordering::Relaxed);
+        self.soft_time
+            .store(new_target.min(hard_time), Ordering::Relaxed);
     }
 
     #[inline]
@@ -240,7 +265,9 @@ impl TimeManager {
     pub fn abort_search(&self, nodes: u64) -> bool {
         self.abort_now()
             || self.timeout_search(nodes)
-            || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)
+            || (!self.use_soft_nodes()
+                && self.use_max_nodes()
+                && self.max_nodes.load(Ordering::Relaxed) <= nodes)
     }
 
     #[inline]
@@ -248,7 +275,9 @@ impl TimeManager {
         self.abort_now()
             || self.timeout_id(nodes)
             || (self.use_max_depth() && self.max_depth.load(Ordering::Relaxed) <= depth)
-            || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)
+            || (!self.use_soft_nodes()
+                && self.use_max_nodes()
+                && self.max_nodes.load(Ordering::Relaxed) <= nodes)
     }
 
     #[inline]

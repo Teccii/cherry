@@ -28,7 +28,11 @@ macro_rules! magics {
             let not_mask = Bitboard(!$blockers(Square::index(i)).0);
             let (magic, offset) = raw_magics[i];
 
-            magics[i] = BlackMagic { not_mask, magic, offset };
+            magics[i] = BlackMagic {
+                not_mask,
+                magic,
+                offset,
+            };
             i += 1;
         }
 
@@ -184,7 +188,12 @@ const ROOK_MAGICS: &[BlackMagic; Square::COUNT] = &magics!(
 
 /*----------------------------------------------------------------*/
 
-const fn magic_index(magics: &[BlackMagic; Square::COUNT], bits: usize, sq: Square, blockers: Bitboard) -> usize {
+const fn magic_index(
+    magics: &[BlackMagic; Square::COUNT],
+    bits: usize,
+    sq: Square,
+    blockers: Bitboard,
+) -> usize {
     let magic = &magics[sq as usize];
     let blockers = blockers.0 | magic.not_mask.0;
     let hash = blockers.wrapping_mul(magic.magic);

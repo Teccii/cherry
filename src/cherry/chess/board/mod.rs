@@ -69,7 +69,8 @@ impl Board {
 
     #[inline]
     pub fn ep_square(&self) -> Option<Square> {
-        self.en_passant.map(|f| Square::new(f, Rank::Sixth.relative_to(self.stm)))
+        self.en_passant
+            .map(|f| Square::new(f, Rank::Sixth.relative_to(self.stm)))
     }
 
     #[inline]
@@ -257,7 +258,14 @@ impl Board {
         }
 
         #[inline]
-        fn promotion(board: &mut Board, src: Square, dest: Square, src_id: PieceIndex, src_piece: Piece, promotion: Piece) {
+        fn promotion(
+            board: &mut Board,
+            src: Square,
+            dest: Square,
+            src_id: PieceIndex,
+            src_piece: Piece,
+            promotion: Piece,
+        ) {
             let stm = board.stm;
 
             board.index_to_piece[stm][src_id] = Some(promotion);
@@ -372,12 +380,50 @@ impl Board {
             MoveFlag::LongCastling => castling(self, src, dest, src_id, dest_id, File::C, File::D),
             MoveFlag::PromotionQueen => promotion(self, src, dest, src_id, src_piece, Piece::Queen),
             MoveFlag::PromotionRook => promotion(self, src, dest, src_id, src_piece, Piece::Rook),
-            MoveFlag::PromotionBishop => promotion(self, src, dest, src_id, src_piece, Piece::Bishop),
-            MoveFlag::PromotionKnight => promotion(self, src, dest, src_id, src_piece, Piece::Knight),
-            MoveFlag::CapturePromotionQueen => capture_promotion(self, src, dest, src_id, dest_id, src_piece, dest_piece, Piece::Queen),
-            MoveFlag::CapturePromotionRook => capture_promotion(self, src, dest, src_id, dest_id, src_piece, dest_piece, Piece::Rook),
-            MoveFlag::CapturePromotionBishop => capture_promotion(self, src, dest, src_id, dest_id, src_piece, dest_piece, Piece::Bishop),
-            MoveFlag::CapturePromotionKnight => capture_promotion(self, src, dest, src_id, dest_id, src_piece, dest_piece, Piece::Knight),
+            MoveFlag::PromotionBishop =>
+                promotion(self, src, dest, src_id, src_piece, Piece::Bishop),
+            MoveFlag::PromotionKnight =>
+                promotion(self, src, dest, src_id, src_piece, Piece::Knight),
+            MoveFlag::CapturePromotionQueen => capture_promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                src_piece,
+                dest_piece,
+                Piece::Queen,
+            ),
+            MoveFlag::CapturePromotionRook => capture_promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                src_piece,
+                dest_piece,
+                Piece::Rook,
+            ),
+            MoveFlag::CapturePromotionBishop => capture_promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                src_piece,
+                dest_piece,
+                Piece::Bishop,
+            ),
+            MoveFlag::CapturePromotionKnight => capture_promotion(
+                self,
+                src,
+                dest,
+                src_id,
+                dest_id,
+                src_piece,
+                dest_piece,
+                Piece::Knight,
+            ),
         }
 
         self.set_en_passant(new_ep);
@@ -463,7 +509,9 @@ impl Board {
             hash ^= ZOBRIST.stm;
         }
 
-        (hash, pawn_hash, minor_hash, major_hash, white_hash, black_hash)
+        (
+            hash, pawn_hash, minor_hash, major_hash, white_hash, black_hash,
+        )
     }
 
     #[inline]
@@ -487,8 +535,10 @@ impl Board {
         let blockers = ray_places.nonzero8();
         let attackers = geometry::attackers_from_rays(ray_places);
         let closest = geometry::superpiece_attacks(blockers, ray_valid) & blockers;
-        let white_sq_idx = unsafe { Vec128::load(self.index_to_square[Color::White].into_inner().as_ptr()) };
-        let black_sq_idx = unsafe { Vec128::load(self.index_to_square[Color::Black].into_inner().as_ptr()) };
+        let white_sq_idx =
+            unsafe { Vec128::load(self.index_to_square[Color::White].into_inner().as_ptr()) };
+        let black_sq_idx =
+            unsafe { Vec128::load(self.index_to_square[Color::Black].into_inner().as_ptr()) };
 
         let white = !color & closest & attackers;
         let black = color & closest & attackers;
@@ -505,7 +555,14 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn move_piece<const UPDATE_DEST_SLIDERS: bool>(&mut self, color: Color, src: Square, dest: Square, piece: Piece, index: PieceIndex) {
+    fn move_piece<const UPDATE_DEST_SLIDERS: bool>(
+        &mut self,
+        color: Color,
+        src: Square,
+        dest: Square,
+        piece: Piece,
+        index: PieceIndex,
+    ) {
         self.index_to_square[color][index] = Some(dest);
 
         let (src_ray_coords, src_ray_valid) = geometry::superpiece_rays(src);
@@ -531,13 +588,25 @@ impl Board {
 
         let src_visible = src_sliders & src_closest;
         let dest_visible = dest_sliders & dest_closest;
-        let src_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(src_visible, Vec512::permute8(src_ray_coords, new_board)));
-        let dest_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(dest_visible, dest_ray_places));
-        let src_updates = Vec512::mask8((src_closest & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32), src_visible_ids);
-        let dest_updates = Vec512::mask8((dest_closest & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32), dest_visible_ids);
+        let src_visible_ids = Vec512::lane_splat8to64(Vec512::mask8(
+            src_visible,
+            Vec512::permute8(src_ray_coords, new_board),
+        ));
+        let dest_visible_ids =
+            Vec512::lane_splat8to64(Vec512::mask8(dest_visible, dest_ray_places));
+        let src_updates = Vec512::mask8(
+            (src_closest & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32),
+            src_visible_ids,
+        );
+        let dest_updates = Vec512::mask8(
+            (dest_closest & geometry::NON_HORSE_ATTACK_MASK).rotate_left(32),
+            dest_visible_ids,
+        );
 
-        let src_updates = Vec512::permute8_mz(!src_swapped_perm.msb8(), src_swapped_perm, src_updates);
-        let dest_updates = Vec512::permute8_mz(!dest_swapped_perm.msb8(), dest_swapped_perm, dest_updates);
+        let src_updates =
+            Vec512::permute8_mz(!src_swapped_perm.msb8(), src_swapped_perm, src_updates);
+        let dest_updates =
+            Vec512::permute8_mz(!dest_swapped_perm.msb8(), dest_swapped_perm, dest_updates);
         let src_valid_updates = src_updates.nonzero8();
         let dest_valid_updates = dest_updates.nonzero8();
         let src_color = src_updates.msb8();
@@ -597,8 +666,10 @@ impl Board {
 
         self.attack_tables[color].inner[0] &= not_piece_mask;
         self.attack_tables[color].inner[1] &= not_piece_mask;
-        self.attack_tables[color].inner[0] |= Vec512::mask16(add_attack_mask as Vec512Mask16, piece_mask);
-        self.attack_tables[color].inner[1] |= Vec512::mask16((add_attack_mask >> 32) as Vec512Mask16, piece_mask);
+        self.attack_tables[color].inner[0] |=
+            Vec512::mask16(add_attack_mask as Vec512Mask16, piece_mask);
+        self.attack_tables[color].inner[1] |=
+            Vec512::mask16((add_attack_mask >> 32) as Vec512Mask16, piece_mask);
     }
 
     #[inline]
@@ -609,7 +680,8 @@ impl Board {
 
         let blockers = ray_places.nonzero8();
         let sliders = geometry::sliders_from_rays(ray_places);
-        let closest = geometry::superpiece_attacks(blockers, ray_valid) & geometry::NON_HORSE_ATTACK_MASK;
+        let closest =
+            geometry::superpiece_attacks(blockers, ray_valid) & geometry::NON_HORSE_ATTACK_MASK;
 
         let visible = closest & sliders;
         let visible_ids = Vec512::lane_splat8to64(Vec512::mask8(visible, ray_places));
@@ -620,7 +692,11 @@ impl Board {
         let color = updates.msb8();
 
         let ones = Vec512::splat16(1);
-        let bits0 = Vec512::shlv16_mz(valid_updates as Vec512Mask16, ones, masked_updates.into_vec256().zext8to16());
+        let bits0 = Vec512::shlv16_mz(
+            valid_updates as Vec512Mask16,
+            ones,
+            masked_updates.into_vec256().zext8to16(),
+        );
         let bits1 = Vec512::shlv16_mz(
             (valid_updates >> 32) as Vec512Mask16,
             ones,
@@ -643,10 +719,12 @@ impl Board {
         let blockers = ray_places.nonzero8();
         let closest = geometry::superpiece_attacks(blockers, ray_valid);
         let attacker_mask = closest & geometry::attack_mask(piece, color);
-        let add_mask = Vec512::mask_bitshuffle(!inv_perm.msb8(), Vec512::splat64(attacker_mask), inv_perm);
+        let add_mask =
+            Vec512::mask_bitshuffle(!inv_perm.msb8(), Vec512::splat64(attacker_mask), inv_perm);
 
         self.attack_tables[color].inner[0] |= Vec512::mask16(add_mask as Vec512Mask16, piece_mask);
-        self.attack_tables[color].inner[1] |= Vec512::mask16((add_mask >> 32) as Vec512Mask16, piece_mask);
+        self.attack_tables[color].inner[1] |=
+            Vec512::mask16((add_mask >> 32) as Vec512Mask16, piece_mask);
     }
 
     #[inline]

@@ -20,6 +20,8 @@ impl FeatureUpdate {
             sq = sq.flip_file();
         }
 
-        color as usize * Square::COUNT * Piece::COUNT + self.piece as usize * Square::COUNT + sq as usize
+        color as usize * Square::COUNT * Piece::COUNT
+            + self.piece as usize * Square::COUNT
+            + sq as usize
     }
 }

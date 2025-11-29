@@ -81,5 +81,17 @@ impl SearchInfo for NoInfo {
         Self
     }
 
-    fn update(&mut self, _: &Board, _: &ThreadData, _: &SharedData, _: usize, _: usize, _: &PrincipalVariation, _: TTFlag, _: Score, _: u8) {}
+    fn update(
+        &mut self,
+        _: &Board,
+        _: &ThreadData,
+        _: &SharedData,
+        _: usize,
+        _: usize,
+        _: &PrincipalVariation,
+        _: TTFlag,
+        _: Score,
+        _: u8,
+    ) {
+    }
 }

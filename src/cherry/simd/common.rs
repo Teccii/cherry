@@ -131,7 +131,14 @@ impl Vec128 {
 
     #[inline]
     pub fn findset8(haystack: Vec128, haystack_len: i32, needles: Vec128) -> u16 {
-        unsafe { _mm_extract_epi16::<0>(_mm_cmpestrm::<0>(haystack.raw, haystack_len, needles.raw, 16)) as u16 }
+        unsafe {
+            _mm_extract_epi16::<0>(_mm_cmpestrm::<0>(
+                haystack.raw,
+                haystack_len,
+                needles.raw,
+                16,
+            )) as u16
+        }
     }
 
     /*----------------------------------------------------------------*/

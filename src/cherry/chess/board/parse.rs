@@ -78,7 +78,8 @@ impl Board {
             }
         }
 
-        if board.index_to_piece[Color::White][PieceIndex::new(0)].is_none() || board.index_to_piece[Color::Black][PieceIndex::new(0)].is_none()
+        if board.index_to_piece[Color::White][PieceIndex::new(0)].is_none()
+            || board.index_to_piece[Color::Black][PieceIndex::new(0)].is_none()
         {
             return None;
         }
@@ -198,10 +199,18 @@ impl Board {
             castle_rights.push(if chess960 { file.into() } else { 'Q' });
         }
         if let Some(file) = self.castle_rights[Color::Black].short {
-            castle_rights.push(if chess960 { char::from(file).to_ascii_lowercase() } else { 'k' });
+            castle_rights.push(if chess960 {
+                char::from(file).to_ascii_lowercase()
+            } else {
+                'k'
+            });
         }
         if let Some(file) = self.castle_rights[Color::Black].long {
-            castle_rights.push(if chess960 { char::from(file).to_ascii_lowercase() } else { 'q' });
+            castle_rights.push(if chess960 {
+                char::from(file).to_ascii_lowercase()
+            } else {
+                'q'
+            });
         }
 
         if castle_rights.is_empty() {

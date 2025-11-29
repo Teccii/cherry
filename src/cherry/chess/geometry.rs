@@ -218,7 +218,10 @@ pub fn attackers_from_rays(rays: Vec512) -> u64 {
         KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
     ]);
 
-    let bit_rays = Vec512::permute8_128(Vec512::shr16::<4>(rays) & Vec512::splat8(0x0F), piece_to_bits);
+    let bit_rays = Vec512::permute8_128(
+        Vec512::shr16::<4>(rays) & Vec512::splat8(0x0F),
+        piece_to_bits,
+    );
     (bit_rays & base).nonzero8()
 }
 

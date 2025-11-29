@@ -34,7 +34,11 @@ pub fn search<Node: NodeType>(
     beta: Score,
     cut_node: bool,
 ) -> Score {
-    if ply != 0 && (thread.abort_now || (thread.nodes.local() % 1024 == 0 && shared.time_man.abort_search(thread.nodes.global()))) {
+    if ply != 0
+        && (thread.abort_now
+            || (thread.nodes.local() % 1024 == 0
+                && shared.time_man.abort_search(thread.nodes.global())))
+    {
         thread.abort_now = true;
 
         return Score::ZERO;
@@ -86,9 +90,15 @@ pub fn search<Node: NodeType>(
 
     let in_check = pos.board().in_check();
     let (raw_eval, static_eval, _corr) = if !in_check && skip_move.is_none() {
-        let raw_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
+        let raw_eval = tt_entry
+            .map(|e| e.eval)
+            .unwrap_or_else(|| pos.eval(&shared.nnue_weights));
         let corr = thread.history.get_corr(pos.board());
-        let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
+        let static_eval = Score::clamp(
+            raw_eval + corr as i16,
+            -Score::MIN_TB_WIN,
+            Score::MIN_TB_WIN,
+        );
 
         (raw_eval, static_eval, corr)
     } else {
@@ -128,8 +138,15 @@ pub fn search<Node: NodeType>(
             _ => (Score::ZERO, TTFlag::Exact),
         };
 
-        if flag == TTFlag::Exact || (flag == TTFlag::LowerBound && score <= alpha) || (flag == TTFlag::UpperBound && score >= beta) {
-            let depth_bias = if Node::PV { W::tt_depth_pv_bias() } else { W::tt_depth_bias() };
+        if flag == TTFlag::Exact
+            || (flag == TTFlag::LowerBound && score <= alpha)
+            || (flag == TTFlag::UpperBound && score >= beta)
+        {
+            let depth_bias = if Node::PV {
+                W::tt_depth_pv_bias()
+            } else {
+                W::tt_depth_bias()
+            };
 
             shared.ttable.store(
                 pos.board(),
@@ -161,10 +178,10 @@ pub fn search<Node: NodeType>(
     if !Node::PV && !in_check && skip_move.is_none() {
         let (rfp_depth, rfp_base, rfp_scale, rfp_lerp) = if improving {
             (
-                W::rfp_improving_depth(),
-                W::rfp_improving_base(),
-                W::rfp_improving_scale(),
-                W::rfp_improving_lerp(),
+                W::rfp_imp_depth(),
+                W::rfp_imp_base(),
+                W::rfp_imp_scale(),
+                W::rfp_imp_lerp(),
             )
         } else {
             (W::rfp_depth(), W::rfp_base(), W::rfp_scale(), W::rfp_lerp())
@@ -182,16 +199,29 @@ pub fn search<Node: NodeType>(
         }
 
         let (nmp_depth, nmp_base, nmp_scale) = if improving {
-            (W::nmp_improving_depth(), W::nmp_improving_base(), W::nmp_improving_scale())
+            (W::nmp_imp_depth(), W::nmp_imp_base(), W::nmp_imp_scale())
         } else {
             (W::nmp_depth(), W::nmp_base(), W::nmp_scale())
         };
 
-        if depth >= nmp_depth && thread.search_stack[ply as usize - 1].move_played.is_some() && static_eval >= beta && pos.null_move() {
+        if depth >= nmp_depth
+            && thread.search_stack[ply as usize - 1].move_played.is_some()
+            && static_eval >= beta
+            && pos.null_move()
+        {
             let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / DEPTH_SCALE as i64) as i32;
 
             thread.search_stack[ply as usize].move_played = None;
-            let score = -search::<Node>(pos, thread, shared, depth - nmp_reduction, ply + 1, -beta, -beta + 1, !cut_node);
+            let score = -search::<Node>(
+                pos,
+                thread,
+                shared,
+                depth - nmp_reduction,
+                ply + 1,
+                -beta,
+                -beta + 1,
+                !cut_node,
+            );
             pos.unmake_null_move();
 
             if thread.abort_now {
@@ -212,51 +242,70 @@ pub fn search<Node: NodeType>(
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
     let cont_indices = ContIndices::new(&thread.search_stack, ply);
 
+    let lmr_depth_bias = if Node::PV {
+        W::lmr_depth_pv_bias()
+    } else {
+        W::lmr_depth_bias()
+    };
+    let lmr_lookup_depth = ((depth + lmr_depth_bias) / DEPTH_SCALE) as u8;
+
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         if skip_move == Some(mv) {
             continue;
         }
 
-        if ply == 0 && ((!thread.root_moves.is_empty() && !thread.root_moves.contains(&mv)) || thread.exclude_moves.contains(&mv)) {
+        if ply == 0
+            && ((!thread.root_moves.is_empty() && !thread.root_moves.contains(&mv))
+                || thread.exclude_moves.contains(&mv))
+        {
             continue;
         }
 
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
-        let mut lmr = get_lmr(is_tactic, (depth / DEPTH_SCALE) as u8, moves_seen);
+        let mut lmr = get_lmr(is_tactic, improving, lmr_lookup_depth, moves_seen);
         let mut score;
 
         if !Node::PV && best_score.map_or(false, |s: Score| !s.is_loss()) {
             if is_tactic {
                 let (see_depth, see_base, see_scale) = if improving {
                     (
-                        W::see_tactic_improving_depth(),
-                        W::see_tactic_improving_base(),
-                        W::see_tactic_improving_scale(),
+                        W::see_tactic_imp_depth(),
+                        W::see_tactic_imp_base(),
+                        W::see_tactic_imp_scale(),
                     )
                 } else {
-                    (W::see_tactic_depth(), W::see_tactic_base(), W::see_tactic_scale())
+                    (
+                        W::see_tactic_depth(),
+                        W::see_tactic_base(),
+                        W::see_tactic_scale(),
+                    )
                 };
 
                 let see_margin = (see_base + see_scale * depth / DEPTH_SCALE) as i16;
-                if depth <= see_depth && move_picker.stage() > Stage::YieldGoodTactics && !pos.board().cmp_see(mv, see_margin) {
+                if depth <= see_depth
+                    && move_picker.stage() > Stage::YieldGoodTactics
+                    && !pos.board().cmp_see(mv, see_margin)
+                {
                     continue;
                 }
             } else {
                 let (lmp_base, lmp_scale) = if improving {
-                    (W::lmp_improving_base(), W::lmp_improving_scale())
+                    (W::lmp_imp_base(), W::lmp_imp_scale())
                 } else {
                     (W::lmp_base(), W::lmp_scale())
                 };
 
-                let lmp_margin = lmp_base + lmp_scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64);
+                let lmp_margin = lmp_base
+                    + lmp_scale * depth as i64 * depth as i64
+                        / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
 
                 let lmr_depth = (depth - lmr).max(0);
                 let (fp_depth, fp_base, fp_scale) = if improving {
-                    (W::fp_improving_depth(), W::fp_improving_base(), W::fp_improving_scale())
+                    (W::fp_imp_depth(), W::fp_imp_base(), W::fp_imp_scale())
                 } else {
                     (W::fp_depth(), W::fp_base(), W::fp_scale())
                 };
@@ -268,16 +317,23 @@ pub fn search<Node: NodeType>(
 
                 let (see_depth, see_base, see_scale) = if improving {
                     (
-                        W::see_quiet_improving_depth(),
-                        W::see_quiet_improving_base(),
-                        W::see_quiet_improving_scale(),
+                        W::see_quiet_imp_depth(),
+                        W::see_quiet_imp_base(),
+                        W::see_quiet_imp_scale(),
                     )
                 } else {
-                    (W::see_quiet_depth(), W::see_quiet_base(), W::see_quiet_scale())
+                    (
+                        W::see_quiet_depth(),
+                        W::see_quiet_base(),
+                        W::see_quiet_scale(),
+                    )
                 };
 
                 let see_margin = (see_base + see_scale * lmr_depth / DEPTH_SCALE) as i16;
-                if lmr_depth <= see_depth && move_picker.stage() > Stage::YieldGoodTactics && !pos.board().cmp_see(mv, see_margin) {
+                if lmr_depth <= see_depth
+                    && move_picker.stage() > Stage::YieldGoodTactics
+                    && !pos.board().cmp_see(mv, see_margin)
+                {
                     continue;
                 }
             }
@@ -292,11 +348,21 @@ pub fn search<Node: NodeType>(
             && entry.depth as i32 * DEPTH_SCALE + W::singular_tt_depth() >= depth
             && entry.flag != TTFlag::UpperBound
         {
-            let s_beta = entry.score - (depth * W::singular_beta_margin() / (DEPTH_SCALE * 64)) as i16;
+            let s_beta =
+                entry.score - (depth * W::singular_beta_margin() / (DEPTH_SCALE * 64)) as i16;
             let s_depth = depth * W::singular_search_depth() / DEPTH_SCALE;
 
             thread.search_stack[ply as usize].skip_move = Some(mv);
-            let s_score = search::<NonPV>(pos, thread, shared, s_depth, ply, s_beta - 1, s_beta, cut_node);
+            let s_score = search::<NonPV>(
+                pos,
+                thread,
+                shared,
+                s_depth,
+                ply,
+                s_beta - 1,
+                s_beta,
+                cut_node,
+            );
             thread.search_stack[ply as usize].skip_move = None;
 
             if s_score < s_beta {
@@ -317,7 +383,16 @@ pub fn search<Node: NodeType>(
 
         let new_depth = depth + ext - 1 * DEPTH_SCALE;
         if moves_seen == 0 {
-            score = -search::<Node>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha, !Node::PV && !cut_node);
+            score = -search::<Node>(
+                pos,
+                thread,
+                shared,
+                new_depth,
+                ply + 1,
+                -beta,
+                -alpha,
+                !Node::PV && !cut_node,
+            );
         } else {
             if depth >= 2 {
                 lmr += W::cutnode_lmr() * cut_node as i32;
@@ -327,14 +402,41 @@ pub fn search<Node: NodeType>(
 
             let lmr_depth = (new_depth - lmr).max(1 * DEPTH_SCALE).min(new_depth);
 
-            score = -search::<NonPV>(pos, thread, shared, lmr_depth, ply + 1, -alpha - 1, -alpha, true);
+            score = -search::<NonPV>(
+                pos,
+                thread,
+                shared,
+                lmr_depth,
+                ply + 1,
+                -alpha - 1,
+                -alpha,
+                true,
+            );
 
             if lmr > 0 && score > alpha {
-                score = -search::<NonPV>(pos, thread, shared, new_depth, ply + 1, -alpha - 1, -alpha, !cut_node);
+                score = -search::<NonPV>(
+                    pos,
+                    thread,
+                    shared,
+                    new_depth,
+                    ply + 1,
+                    -alpha - 1,
+                    -alpha,
+                    !cut_node,
+                );
             }
 
             if Node::PV && score > alpha {
-                score = -search::<PV>(pos, thread, shared, new_depth, ply + 1, -beta, -alpha, false);
+                score = -search::<PV>(
+                    pos,
+                    thread,
+                    shared,
+                    new_depth,
+                    ply + 1,
+                    -beta,
+                    -alpha,
+                    false,
+                );
             }
         }
         pos.unmake_move();
@@ -367,7 +469,9 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             flag = TTFlag::LowerBound;
-            thread.history.update(pos.board(), &cont_indices, depth, mv, &tactics, &quiets);
+            thread
+                .history
+                .update(pos.board(), &cont_indices, depth, mv, &tactics, &quiets);
             break;
         }
 
@@ -392,11 +496,15 @@ pub fn search<Node: NodeType>(
 
     let best_score = best_score.unwrap().clamp(syzygy_min, syzygy_max);
     if skip_move.is_none() {
-        let depth_bias = if Node::PV { W::tt_depth_pv_bias() } else { W::tt_depth_bias() };
+        let tt_depth_bias = if Node::PV {
+            W::tt_depth_pv_bias()
+        } else {
+            W::tt_depth_bias()
+        };
 
         shared.ttable.store(
             pos.board(),
-            ((depth + depth_bias) / DEPTH_SCALE) as u8,
+            ((depth + tt_depth_bias) / DEPTH_SCALE) as u8,
             ply,
             raw_eval,
             best_score,
@@ -414,7 +522,9 @@ pub fn search<Node: NodeType>(
                 TTFlag::None => unreachable!(),
             }
         {
-            thread.history.update_corr(pos.board(), depth, best_score, static_eval);
+            thread
+                .history
+                .update_corr(pos.board(), depth, best_score, static_eval);
         }
     }
 
@@ -431,7 +541,9 @@ fn q_search<Node: NodeType>(
     mut alpha: Score,
     beta: Score,
 ) -> Score {
-    if thread.abort_now || (thread.nodes.local() % 1024 == 0 && shared.time_man.abort_search(thread.nodes.global())) {
+    if thread.abort_now
+        || (thread.nodes.local() % 1024 == 0 && shared.time_man.abort_search(thread.nodes.global()))
+    {
         thread.abort_now = true;
 
         return Score::ZERO;
@@ -472,9 +584,15 @@ fn q_search<Node: NodeType>(
 
     let in_check = pos.board().in_check();
     if !in_check {
-        let raw_eval = tt_entry.map(|e| e.eval).unwrap_or_else(|| pos.eval(&shared.nnue_weights));
+        let raw_eval = tt_entry
+            .map(|e| e.eval)
+            .unwrap_or_else(|| pos.eval(&shared.nnue_weights));
         let corr = thread.history.get_corr(pos.board());
-        let static_eval = Score::clamp(raw_eval + corr as i16, -Score::MIN_TB_WIN, Score::MIN_TB_WIN);
+        let static_eval = Score::clamp(
+            raw_eval + corr as i16,
+            -Score::MIN_TB_WIN,
+            Score::MIN_TB_WIN,
+        );
 
         if static_eval >= beta {
             return static_eval;

@@ -49,20 +49,37 @@ impl GameStats {
 /*----------------------------------------------------------------*/
 
 pub fn datagen(count: usize, threads: usize, dfrc: bool) {
-    println!("\n{}", "============ Data Generation Options ============".bright_green());
+    println!(
+        "\n{}",
+        "============ Data Generation Options ============".bright_green()
+    );
     println!("Count: {}", count.to_string().bright_green());
     println!("Threads: {}", threads.to_string().bright_green());
     println!("DFRC: {}", dfrc.to_string().bright_green());
 
-    let options = DataGenOptions { count, threads, dfrc };
+    let options = DataGenOptions {
+        count,
+        threads,
+        dfrc,
+    };
     let time_stamp = chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
-    let dir_name = if dfrc { format!("DFRC_{}", time_stamp) } else { time_stamp };
+    let dir_name = if dfrc {
+        format!("DFRC_{}", time_stamp)
+    } else {
+        time_stamp
+    };
 
     let data_dir = PathBuf::from("data").join(dir_name);
     fs::create_dir_all(&data_dir).unwrap();
 
-    println!("Output Directory: {}", data_dir.display().to_string().bright_green());
-    println!("{}\n", "=================================================".bright_green());
+    println!(
+        "Output Directory: {}",
+        data_dir.display().to_string().bright_green()
+    );
+    println!(
+        "{}\n",
+        "=================================================".bright_green()
+    );
 
     let stats = Arc::new(GameStats::new());
     let pos_counter = Arc::new(AtomicU64::new(0));
@@ -81,7 +98,17 @@ pub fn datagen(count: usize, threads: usize, dfrc: bool) {
             let game_counter = Arc::clone(&game_counter);
             let abort = Arc::clone(&abort);
 
-            s.spawn(move || datagen_worker(thread, options, data_dir, stats, pos_counter, game_counter, abort));
+            s.spawn(move || {
+                datagen_worker(
+                    thread,
+                    options,
+                    data_dir,
+                    stats,
+                    pos_counter,
+                    game_counter,
+                    abort,
+                )
+            });
         }
     });
 
@@ -188,12 +215,20 @@ fn datagen_worker(
 
         'game: loop {
             let (mv, _, eval, _, _) = searcher.search::<NoInfo>(limits.clone());
-            let (src, dest) = (ViriSquare::new(mv.src() as u8).unwrap(), ViriSquare::new(mv.dest() as u8).unwrap());
+            let (src, dest) = (
+                ViriSquare::new(mv.src() as u8).unwrap(),
+                ViriSquare::new(mv.dest() as u8).unwrap(),
+            );
 
             let viri_move = match mv.flag() {
                 MoveFlag::EnPassant => ViriMove::new_with_flags(src, dest, ViriMoveFlag::EnPassant),
-                MoveFlag::ShortCastling | MoveFlag::LongCastling => ViriMove::new_with_flags(src, dest, ViriMoveFlag::Castle),
-                _ if mv.is_promotion() => ViriMove::new_with_promo(src, dest, ViriPiece::new(mv.promotion().unwrap() as u8).unwrap()),
+                MoveFlag::ShortCastling | MoveFlag::LongCastling =>
+                    ViriMove::new_with_flags(src, dest, ViriMoveFlag::Castle),
+                _ if mv.is_promotion() => ViriMove::new_with_promo(
+                    src,
+                    dest,
+                    ViriPiece::new(mv.promotion().unwrap() as u8).unwrap(),
+                ),
                 _ => ViriMove::new(src, dest),
             };
             let eval = eval * searcher.pos.stm().sign();
@@ -214,7 +249,11 @@ fn datagen_worker(
             searcher.reset_nnue();
 
             let status = searcher.pos.board().status();
-            if status == BoardStatus::Draw || searcher.pos.insufficient_material() || searcher.pos.repetition() || game_len >= 300 {
+            if status == BoardStatus::Draw
+                || searcher.pos.insufficient_material()
+                || searcher.pos.repetition()
+                || game_len >= 300
+            {
                 result = if searcher.pos.insufficient_material() {
                     GameOutcome::Draw(DrawType::InsufficientMaterial)
                 } else if searcher.pos.repetition() {
@@ -271,12 +310,18 @@ fn datagen_worker(
                 progress_bar(progress, 50),
                 format!("{:.1}", percentage).bright_green()
             );
-            println!("Number of Positions: {}", fmt_big_num(curr_pos).bright_green());
+            println!(
+                "Number of Positions: {}",
+                fmt_big_num(curr_pos).bright_green()
+            );
             println!(
                 "Positions Per Second: {}",
                 format!("{}", (curr_pos as f32 / elapsed) as usize).bright_green()
             );
-            println!("Games Per Second: {}", format!("{:.3}", curr as f32 / elapsed).bright_green());
+            println!(
+                "Games Per Second: {}",
+                format!("{:.3}", curr as f32 / elapsed).bright_green()
+            );
             println!(
                 "Estimated Time Remaining: {}h {}m {}s",
                 hours.to_string().bright_green(),

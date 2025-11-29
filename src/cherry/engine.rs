@@ -85,7 +85,10 @@ pub struct Engine {
 impl Engine {
     pub fn new() -> Engine {
         let time_man = Arc::new(TimeManager::new());
-        let searcher = Arc::new(Mutex::new(Searcher::new(Board::default(), Arc::clone(&time_man))));
+        let searcher = Arc::new(Mutex::new(Searcher::new(
+            Board::default(),
+            Arc::clone(&time_man),
+        )));
 
         let (tx, rx): (Sender<ThreadCommand>, Receiver<ThreadCommand>) = channel();
         std::thread::spawn(move || {
@@ -97,7 +100,12 @@ impl Engine {
                             let mut output = String::new();
 
                             let (mv, ponder, _, _, _) = searcher.search::<UciInfo>(limits);
-                            write!(output, "bestmove {}", mv.display(&searcher.pos.board(), searcher.frc)).unwrap();
+                            write!(
+                                output,
+                                "bestmove {}",
+                                mv.display(&searcher.pos.board(), searcher.frc)
+                            )
+                            .unwrap();
 
                             if let Some(ponder) = ponder {
                                 write!(output, " ponder {}", ponder).unwrap();
@@ -123,11 +131,14 @@ impl Engine {
                                 "Threads" => searcher.threads = value.parse::<u16>().unwrap(),
                                 "EvalFile" =>
                                     if value == "<default>" {
-                                        searcher.shared_data.nnue_weights = NetworkWeights::default();
+                                        searcher.shared_data.nnue_weights =
+                                            NetworkWeights::default();
                                     } else {
-                                        searcher.shared_data.nnue_weights = NetworkWeights::new(&fs::read(value).unwrap());
+                                        searcher.shared_data.nnue_weights =
+                                            NetworkWeights::new(&fs::read(value).unwrap());
                                     },
-                                "Hash" => searcher.resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
+                                "Hash" => searcher
+                                    .resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
                                 "MultiPV" => searcher
                                     .shared_data
                                     .multipv
@@ -185,7 +196,10 @@ impl Engine {
                 println!("id name Cherry v{}", ENGINE_VERSION);
                 println!("id author Tecci");
                 println!("option name Threads type spin default 1 min 1 max 65535");
-                println!("option name Hash type spin default 16 min 1 max {}", MAX_TT_SIZE);
+                println!(
+                    "option name Hash type spin default 16 min 1 max {}",
+                    MAX_TT_SIZE
+                );
                 println!("option name EvalFile type string default <default>");
                 println!("option name MultiPV type spin default 1 min 1 max 218");
                 println!("option name SyzygyPath type string default <empty>");
@@ -243,47 +257,47 @@ impl Engine {
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
 
-                    RFP_DEPTH           => W::rfp_depth(),              0, 16384;
-                    RFP_BASE            => W::rfp_base(),            -512, 512;
-                    RFP_SCALE           => W::rfp_scale(),           -512, 512;
-                    RFP_LERP            => W::rfp_lerp(),               0, 1024;
-                    RFP_IMPROVING_DEPTH => W::rfp_improving_depth(),    0, 16384;
-                    RFP_IMPROVING_BASE  => W::rfp_improving_base(),  -512, 512;
-                    RFP_IMPROVING_SCALE => W::rfp_improving_scale(), -512, 512;
-                    RFP_IMPROVING_LERP  => W::rfp_improving_lerp(),     0, 1024;
+                    RFP_DEPTH     => W::rfp_depth(),        0, 16384;
+                    RFP_BASE      => W::rfp_base(),      -512, 512;
+                    RFP_SCALE     => W::rfp_scale(),     -512, 512;
+                    RFP_LERP      => W::rfp_lerp(),         0, 1024;
+                    RFP_IMP_DEPTH => W::rfp_imp_depth(),    0, 16384;
+                    RFP_IMP_BASE  => W::rfp_imp_base(),  -512, 512;
+                    RFP_IMP_SCALE => W::rfp_imp_scale(), -512, 512;
+                    RFP_IMP_LERP  => W::rfp_imp_lerp(),     0, 1024;
 
-                    NMP_DEPTH           => W::nmp_depth(),           0, 16384;
-                    NMP_BASE            => W::nmp_base(),            0, 16384;
-                    NMP_SCALE           => W::nmp_scale(),           0, 1024;
-                    NMP_IMPROVING_DEPTH => W::nmp_improving_depth(), 0, 16384;
-                    NMP_IMPROVING_BASE  => W::nmp_improving_base(),  0, 16384;
-                    NMP_IMPROVING_SCALE => W::nmp_improving_scale(), 0, 1024;
+                    NMP_DEPTH     => W::nmp_depth(),     0, 16384;
+                    NMP_BASE      => W::nmp_base(),      0, 16384;
+                    NMP_SCALE     => W::nmp_scale(),     0, 1024;
+                    NMP_IMP_DEPTH => W::nmp_imp_depth(), 0, 16384;
+                    NMP_IMP_BASE  => W::nmp_imp_base(),  0, 16384;
+                    NMP_IMP_SCALE => W::nmp_imp_scale(), 0, 1024;
 
-                    LMP_BASE            => W::lmp_base(),            0, 4096;
-                    LMP_SCALE           => W::lmp_scale(),           0, 2048;
-                    LMP_IMPROVING_BASE  => W::lmp_improving_base(),  0, 4096;
-                    LMP_IMPROVING_SCALE => W::lmp_improving_scale(), 0, 2048;
+                    LMP_BASE      => W::lmp_base(),      0, 4096;
+                    LMP_SCALE     => W::lmp_scale(),     0, 2048;
+                    LMP_IMP_BASE  => W::lmp_imp_base(),  0, 4096;
+                    LMP_IMP_SCALE => W::lmp_imp_scale(), 0, 2048;
 
-                    FP_DEPTH           => W::fp_depth(),              0, 16384;
-                    FP_BASE            => W::fp_base(),            -512, 512;
-                    FP_SCALE           => W::fp_scale(),           -512, 512;
-                    FP_IMPROVING_DEPTH => W::fp_improving_depth(),    0, 16384;
-                    FP_IMPROVING_BASE  => W::fp_improving_base(),  -512, 512;
-                    FP_IMPROVING_SCALE => W::fp_improving_scale(), -512, 512;
+                    FP_DEPTH     => W::fp_depth(),        0, 16384;
+                    FP_BASE      => W::fp_base(),      -512, 512;
+                    FP_SCALE     => W::fp_scale(),     -512, 512;
+                    FP_IMP_DEPTH => W::fp_imp_depth(),    0, 16384;
+                    FP_IMP_BASE  => W::fp_imp_base(),  -512, 512;
+                    FP_IMP_SCALE => W::fp_imp_scale(), -512, 512;
 
-                    SEE_QUIET_DEPTH           => W::see_quiet_depth(),              0, 16384;
-                    SEE_QUIET_BASE            => W::see_quiet_base(),            -512, 512;
-                    SEE_QUIET_SCALE           => W::see_quiet_scale(),           -512, 512;
-                    SEE_QUIET_IMPROVING_DEPTH => W::see_quiet_improving_depth(),    0, 16384;
-                    SEE_QUIET_IMPROVING_BASE  => W::see_quiet_improving_base(),  -512, 512;
-                    SEE_QUIET_IMPROVING_SCALE => W::see_quiet_improving_scale(), -512, 512;
+                    SEE_QUIET_DEPTH     => W::see_quiet_depth(),        0, 16384;
+                    SEE_QUIET_BASE      => W::see_quiet_base(),      -512, 512;
+                    SEE_QUIET_SCALE     => W::see_quiet_scale(),     -512, 512;
+                    SEE_QUIET_IMP_DEPTH => W::see_quiet_imp_depth(),    0, 16384;
+                    SEE_QUIET_IMP_BASE  => W::see_quiet_imp_base(),  -512, 512;
+                    SEE_QUIET_IMP_SCALE => W::see_quiet_imp_scale(), -512, 512;
 
-                    SEE_TACTIC_DEPTH           => W::see_tactic_depth(),              0, 16384;
-                    SEE_TACTIC_BASE            => W::see_tactic_base(),            -512, 512;
-                    SEE_TACTIC_SCALE           => W::see_tactic_scale(),           -512, 512;
-                    SEE_TACTIC_IMPROVING_DEPTH => W::see_tactic_improving_depth(),    0, 16384;
-                    SEE_TACTIC_IMPROVING_BASE  => W::see_tactic_improving_base(),  -512, 512;
-                    SEE_TACTIC_IMPROVING_SCALE => W::see_tactic_improving_scale(), -512, 512;
+                    SEE_TACTIC_DEPTH     => W::see_tactic_depth(),        0, 16384;
+                    SEE_TACTIC_BASE      => W::see_tactic_base(),      -512, 512;
+                    SEE_TACTIC_SCALE     => W::see_tactic_scale(),     -512, 512;
+                    SEE_TACTIC_IMP_DEPTH => W::see_tactic_imp_depth(),    0, 16384;
+                    SEE_TACTIC_IMP_BASE  => W::see_tactic_imp_base(),  -512, 512;
+                    SEE_TACTIC_IMP_SCALE => W::see_tactic_imp_scale(), -512, 512;
 
                     SINGULAR_DEPTH        => W::singular_depth(),        0, 16384;
                     SINGULAR_TT_DEPTH     => W::singular_tt_depth(),     0, 16384;
@@ -292,27 +306,35 @@ impl Engine {
                     SINGULAR_DEXT_MARGIN  => W::singular_dext_margin(),  0, 64;
                     SINGULAR_EXT          => W::singular_ext(),          0, 4096;
                     SINGULAR_DEXT         => W::singular_dext(),         0, 4096;
-                    SINGULAR_NEG_EXT      => W::singular_neg_ext(),  -4096, 0;
+                    SINGULAR_TT_EXT       => W::singular_tt_ext(),  -4096, 0;
 
-                    TT_DEPTH_BIAS    => W::tt_depth_bias(),    -1024, 1024;
-                    TT_DEPTH_PV_BIAS => W::tt_depth_pv_bias(), -1024, 1024;
+                    TT_DEPTH_BIAS     => W::tt_depth_bias(),     -1024, 1024;
+                    TT_DEPTH_PV_BIAS  => W::tt_depth_pv_bias(),  -1024, 1024;
+                    LMR_DEPTH_BIAS    => W::lmr_depth_bias(),    -1024, 1024;
+                    LMR_DEPTH_PV_BIAS => W::lmr_depth_pv_bias(), -1024, 1024;
 
-                    LMR_QUIET_BASE  => W::lmr_quiet_base(),  -4096, 4096;
-                    LMR_QUIET_DIV   => W::lmr_quiet_div(),       1, 8192;
-                    LMR_TACTIC_BASE => W::lmr_tactic_base(), -4096, 4096;
-                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),      1, 8192;
+                    LMR_QUIET_BASE      => W::lmr_quiet_base(),      -4096, 4096;
+                    LMR_QUIET_IMP_BASE  => W::lmr_quiet_imp_base(),  -4096, 4096;
+                    LMR_QUIET_DIV       => W::lmr_quiet_div(),           1, 8192;
+                    LMR_QUIET_IMP_DIV   => W::lmr_quiet_imp_div(),       1, 8192;
+                    LMR_TACTIC_BASE     => W::lmr_tactic_base(),     -4096, 4096;
+                    LMR_TACTIC_IMP_BASE => W::lmr_tactic_imp_base(), -4096, 4096;
+                    LMR_TACTIC_DIV      => W::lmr_tactic_div(),          1, 8192;
+                    LMR_TACTIC_IMP_DIV  => W::lmr_tactic_imp_div(),      1, 8192;
 
                     CUTNODE_LMR => W::cutnode_lmr(), 0, 4096;
 
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_FRAC      => W::soft_time_frac(), 0, 16384;
-                    HARD_TIME_FRAC      => W::hard_time_frac(), 0, 16384;
-                    SUBTREE_TM_BASE     => W::subtree_tm_base(),  0.0, 5.0;
-                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(), 0.0, 5.0;
-                    STABILITY_TM_BASE   => W::stability_tm_base(),  0.0, 8.0;
-                    STABILITY_TM_SCALE  => W::stability_tm_scale(), 0.0, 1.0;
+                    SOFT_TIME_FRAC      => W::soft_time_frac(),      0.0, 1.0;
+                    HARD_TIME_FRAC      => W::hard_time_frac(),      0.0, 1.0;
+                    SUBTREE_TM_BASE     => W::subtree_tm_base(),     0.0, 5.0;
+                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(),    0.0, 5.0;
+                    SUBTREE_TM_MIN      => W::subtree_tm_min(),      0.0, 2.0;
+                    STABILITY_TM_BASE   => W::stability_tm_base(),   0.0, 8.0;
+                    STABILITY_TM_SCALE  => W::stability_tm_scale(),  0.0, 1.0;
+                    STABILITY_TM_MIN    => W::stability_tm_scale(),  0.0, 2.0;
                     COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0.0, 5.0;
                     COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0.0, 5.0;
                     COMPLEXITY_TM_MIN   => W::complexity_tm_min(),   0.0, 5.0;
@@ -327,7 +349,10 @@ impl Engine {
             UciCommand::IsReady => println!("readyok"),
             UciCommand::PonderHit => self.time_man.ponderhit(),
             UciCommand::Stop => self.time_man.stop(),
-            UciCommand::NewGame => self.sender.send(ThreadCommand::NewGame(Arc::clone(&self.searcher))).unwrap(),
+            UciCommand::NewGame => self
+                .sender
+                .send(ThreadCommand::NewGame(Arc::clone(&self.searcher)))
+                .unwrap(),
             UciCommand::Display => {
                 let searcher = self.searcher.lock().unwrap();
                 let board = searcher.pos.board();
@@ -338,7 +363,10 @@ impl Engine {
                 let mut searcher = self.searcher.lock().unwrap();
                 let searcher = &mut *searcher;
 
-                println!("Eval: {:#}", searcher.pos.eval(&searcher.shared_data.nnue_weights));
+                println!(
+                    "Eval: {:#}",
+                    searcher.pos.eval(&searcher.shared_data.nnue_weights)
+                );
             }
             #[cfg(feature = "tune")]
             UciCommand::PrintSpsa => {
@@ -347,10 +375,10 @@ impl Engine {
                         println!(
                             "{}, int, {:.1}, {:.1}, {:.1}, {:.2}, 0.002",
                             stringify!($name),
-                            $default as f32,
-                            $min as f32,
-                            $max as f32,
-                            ($max as f32 - $min as f32).abs() / 20.0,
+                            $default as f64,
+                            $min as f64,
+                            $max as f64,
+                            ($max as f64 - $min as f64).abs() / 20.0,
                         );
                     )*}
                 }
@@ -404,47 +432,47 @@ impl Engine {
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
 
-                    RFP_DEPTH           => W::rfp_depth(),              0, 16384;
-                    RFP_BASE            => W::rfp_base(),            -512, 512;
-                    RFP_SCALE           => W::rfp_scale(),           -512, 512;
-                    RFP_LERP            => W::rfp_lerp(),               0, 1024;
-                    RFP_IMPROVING_DEPTH => W::rfp_improving_depth(),    0, 16384;
-                    RFP_IMPROVING_BASE  => W::rfp_improving_base(),  -512, 512;
-                    RFP_IMPROVING_SCALE => W::rfp_improving_scale(), -512, 512;
-                    RFP_IMPROVING_LERP  => W::rfp_improving_lerp(),     0, 1024;
+                    RFP_DEPTH     => W::rfp_depth(),        0, 16384;
+                    RFP_BASE      => W::rfp_base(),      -512, 512;
+                    RFP_SCALE     => W::rfp_scale(),     -512, 512;
+                    RFP_LERP      => W::rfp_lerp(),         0, 1024;
+                    RFP_IMP_DEPTH => W::rfp_imp_depth(),    0, 16384;
+                    RFP_IMP_BASE  => W::rfp_imp_base(),  -512, 512;
+                    RFP_IMP_SCALE => W::rfp_imp_scale(), -512, 512;
+                    RFP_IMP_LERP  => W::rfp_imp_lerp(),     0, 1024;
 
-                    NMP_DEPTH           => W::nmp_depth(),           0, 16384;
-                    NMP_BASE            => W::nmp_base(),            0, 16384;
-                    NMP_SCALE           => W::nmp_scale(),           0, 1024;
-                    NMP_IMPROVING_DEPTH => W::nmp_improving_depth(), 0, 16384;
-                    NMP_IMPROVING_BASE  => W::nmp_improving_base(),  0, 16384;
-                    NMP_IMPROVING_SCALE => W::nmp_improving_scale(), 0, 1024;
+                    NMP_DEPTH     => W::nmp_depth(),     0, 16384;
+                    NMP_BASE      => W::nmp_base(),      0, 16384;
+                    NMP_SCALE     => W::nmp_scale(),     0, 1024;
+                    NMP_IMP_DEPTH => W::nmp_imp_depth(), 0, 16384;
+                    NMP_IMP_BASE  => W::nmp_imp_base(),  0, 16384;
+                    NMP_IMP_SCALE => W::nmp_imp_scale(), 0, 1024;
 
-                    LMP_BASE            => W::lmp_base(),            0, 4096;
-                    LMP_SCALE           => W::lmp_scale(),           0, 2048;
-                    LMP_IMPROVING_BASE  => W::lmp_improving_base(),  0, 4096;
-                    LMP_IMPROVING_SCALE => W::lmp_improving_scale(), 0, 2048;
+                    LMP_BASE      => W::lmp_base(),      0, 4096;
+                    LMP_SCALE     => W::lmp_scale(),     0, 2048;
+                    LMP_IMP_BASE  => W::lmp_imp_base(),  0, 4096;
+                    LMP_IMP_SCALE => W::lmp_imp_scale(), 0, 2048;
 
-                    FP_DEPTH           => W::fp_depth(),              0, 16384;
-                    FP_BASE            => W::fp_base(),            -512, 512;
-                    FP_SCALE           => W::fp_scale(),           -512, 512;
-                    FP_IMPROVING_DEPTH => W::fp_improving_depth(),    0, 16384;
-                    FP_IMPROVING_BASE  => W::fp_improving_base(),  -512, 512;
-                    FP_IMPROVING_SCALE => W::fp_improving_scale(), -512, 512;
+                    FP_DEPTH     => W::fp_depth(),        0, 16384;
+                    FP_BASE      => W::fp_base(),      -512, 512;
+                    FP_SCALE     => W::fp_scale(),     -512, 512;
+                    FP_IMP_DEPTH => W::fp_imp_depth(),    0, 16384;
+                    FP_IMP_BASE  => W::fp_imp_base(),  -512, 512;
+                    FP_IMP_SCALE => W::fp_imp_scale(), -512, 512;
 
-                    SEE_QUIET_DEPTH           => W::see_quiet_depth(),              0, 16384;
-                    SEE_QUIET_BASE            => W::see_quiet_base(),            -512, 512;
-                    SEE_QUIET_SCALE           => W::see_quiet_scale(),           -512, 512;
-                    SEE_QUIET_IMPROVING_DEPTH => W::see_quiet_improving_depth(),    0, 16384;
-                    SEE_QUIET_IMPROVING_BASE  => W::see_quiet_improving_base(),  -512, 512;
-                    SEE_QUIET_IMPROVING_SCALE => W::see_quiet_improving_scale(), -512, 512;
+                    SEE_QUIET_DEPTH     => W::see_quiet_depth(),        0, 16384;
+                    SEE_QUIET_BASE      => W::see_quiet_base(),      -512, 512;
+                    SEE_QUIET_SCALE     => W::see_quiet_scale(),     -512, 512;
+                    SEE_QUIET_IMP_DEPTH => W::see_quiet_imp_depth(),    0, 16384;
+                    SEE_QUIET_IMP_BASE  => W::see_quiet_imp_base(),  -512, 512;
+                    SEE_QUIET_IMP_SCALE => W::see_quiet_imp_scale(), -512, 512;
 
-                    SEE_TACTIC_DEPTH           => W::see_tactic_depth(),              0, 16384;
-                    SEE_TACTIC_BASE            => W::see_tactic_base(),            -512, 512;
-                    SEE_TACTIC_SCALE           => W::see_tactic_scale(),           -512, 512;
-                    SEE_TACTIC_IMPROVING_DEPTH => W::see_tactic_improving_depth(),    0, 16384;
-                    SEE_TACTIC_IMPROVING_BASE  => W::see_tactic_improving_base(),  -512, 512;
-                    SEE_TACTIC_IMPROVING_SCALE => W::see_tactic_improving_scale(), -512, 512;
+                    SEE_TACTIC_DEPTH     => W::see_tactic_depth(),        0, 16384;
+                    SEE_TACTIC_BASE      => W::see_tactic_base(),      -512, 512;
+                    SEE_TACTIC_SCALE     => W::see_tactic_scale(),     -512, 512;
+                    SEE_TACTIC_IMP_DEPTH => W::see_tactic_imp_depth(),    0, 16384;
+                    SEE_TACTIC_IMP_BASE  => W::see_tactic_imp_base(),  -512, 512;
+                    SEE_TACTIC_IMP_SCALE => W::see_tactic_imp_scale(), -512, 512;
 
                     SINGULAR_DEPTH        => W::singular_depth(),        0, 16384;
                     SINGULAR_TT_DEPTH     => W::singular_tt_depth(),     0, 16384;
@@ -453,27 +481,35 @@ impl Engine {
                     SINGULAR_DEXT_MARGIN  => W::singular_dext_margin(),  0, 64;
                     SINGULAR_EXT          => W::singular_ext(),          0, 4096;
                     SINGULAR_DEXT         => W::singular_dext(),         0, 4096;
-                    SINGULAR_NEG_EXT      => W::singular_neg_ext(),  -4096, 0;
+                    SINGULAR_TT_EXT       => W::singular_tt_ext(),  -4096, 0;
 
-                    TT_DEPTH_BIAS    => W::tt_depth_bias(),    -1024, 1024;
-                    TT_DEPTH_PV_BIAS => W::tt_depth_pv_bias(), -1024, 1024;
+                    TT_DEPTH_BIAS     => W::tt_depth_bias(),     -1024, 1024;
+                    TT_DEPTH_PV_BIAS  => W::tt_depth_pv_bias(),  -1024, 1024;
+                    LMR_DEPTH_BIAS    => W::lmr_depth_bias(),    -1024, 1024;
+                    LMR_DEPTH_PV_BIAS => W::lmr_depth_pv_bias(), -1024, 1024;
 
-                    LMR_QUIET_BASE  => W::lmr_quiet_base(),  -4096, 4096;
-                    LMR_QUIET_DIV   => W::lmr_quiet_div(),       1, 8192;
-                    LMR_TACTIC_BASE => W::lmr_tactic_base(), -4096, 4096;
-                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),      1, 8192;
+                    LMR_QUIET_BASE      => W::lmr_quiet_base(),      -4096, 4096;
+                    LMR_QUIET_IMP_BASE  => W::lmr_quiet_imp_base(),  -4096, 4096;
+                    LMR_QUIET_DIV       => W::lmr_quiet_div(),           1, 8192;
+                    LMR_QUIET_IMP_DIV   => W::lmr_quiet_imp_div(),       1, 8192;
+                    LMR_TACTIC_BASE     => W::lmr_tactic_base(),     -4096, 4096;
+                    LMR_TACTIC_IMP_BASE => W::lmr_tactic_imp_base(), -4096, 4096;
+                    LMR_TACTIC_DIV      => W::lmr_tactic_div(),          1, 8192;
+                    LMR_TACTIC_IMP_DIV  => W::lmr_tactic_imp_div(),      1, 8192;
 
                     CUTNODE_LMR => W::cutnode_lmr(), 0, 4096;
 
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_FRAC      => W::soft_time_frac(), 0, 16384;
-                    HARD_TIME_FRAC      => W::hard_time_frac(), 0, 16384;
-                    SUBTREE_TM_BASE     => W::subtree_tm_base(),  0.0, 5.0;
-                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(), 0.0, 5.0;
-                    STABILITY_TM_BASE   => W::stability_tm_base(),  0.0, 8.0;
-                    STABILITY_TM_SCALE  => W::stability_tm_scale(), 0.0, 1.0;
+                    SOFT_TIME_FRAC      => W::soft_time_frac(),      0.0, 1.0;
+                    HARD_TIME_FRAC      => W::hard_time_frac(),      0.0, 1.0;
+                    SUBTREE_TM_BASE     => W::subtree_tm_base(),     0.0, 5.0;
+                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(),    0.0, 5.0;
+                    SUBTREE_TM_MIN      => W::subtree_tm_min(),      0.0, 2.0;
+                    STABILITY_TM_BASE   => W::stability_tm_base(),   0.0, 8.0;
+                    STABILITY_TM_SCALE  => W::stability_tm_scale(),  0.0, 1.0;
+                    STABILITY_TM_MIN    => W::stability_tm_scale(),  0.0, 2.0;
                     COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0.0, 5.0;
                     COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0.0, 5.0;
                     COMPLEXITY_TM_MIN   => W::complexity_tm_min(),   0.0, 5.0;
@@ -483,16 +519,27 @@ impl Engine {
                 }
             }
             #[cfg(feature = "datagen")]
-            UciCommand::DataGen { count, threads, dfrc } => {
+            UciCommand::DataGen {
+                count,
+                threads,
+                dfrc,
+            } => {
                 self.sender.send(ThreadCommand::Quit).unwrap();
                 datagen(count, threads, dfrc);
                 return false;
             }
             UciCommand::Position(board, moves) => self
                 .sender
-                .send(ThreadCommand::Position(Arc::clone(&self.searcher), board, moves))
+                .send(ThreadCommand::Position(
+                    Arc::clone(&self.searcher),
+                    board,
+                    moves,
+                ))
                 .unwrap(),
-            UciCommand::Go(limits) => self.sender.send(ThreadCommand::Go(Arc::clone(&self.searcher), limits)).unwrap(),
+            UciCommand::Go(limits) => self
+                .sender
+                .send(ThreadCommand::Go(Arc::clone(&self.searcher), limits))
+                .unwrap(),
             UciCommand::SetOption { name, value } => {
                 macro_rules! set_tunables {
                     ($($option:expr => $tunable:ident, $ty:ty;)*) => {
@@ -566,47 +613,47 @@ impl Engine {
                     "QUEEN_MAT_SCALE"  => QUEEN_MAT_SCALE,  i32;
                     "MAT_SCALE_BASE"   => MAT_SCALE_BASE,   i32;
 
-                    "RFP_DEPTH"           => RFP_DEPTH,           i32;
-                    "RFP_BASE"            => RFP_BASE,            i32;
-                    "RFP_SCALE"           => RFP_SCALE,           i32;
-                    "RFP_LERP"            => RFP_LERP,            i32;
-                    "RFP_IMPROVING_DEPTH" => RFP_IMPROVING_DEPTH, i32;
-                    "RFP_IMPROVING_BASE"  => RFP_IMPROVING_BASE,  i32;
-                    "RFP_IMPROVING_SCALE" => RFP_IMPROVING_SCALE, i32;
-                    "RFP_IMPROVING_LERP"  => RFP_IMPROVING_LERP,  i32;
+                    "RFP_DEPTH"     => RFP_DEPTH,     i32;
+                    "RFP_BASE"      => RFP_BASE,      i32;
+                    "RFP_SCALE"     => RFP_SCALE,     i32;
+                    "RFP_LERP"      => RFP_LERP,      i32;
+                    "RFP_IMP_DEPTH" => RFP_IMP_DEPTH, i32;
+                    "RFP_IMP_BASE"  => RFP_IMP_BASE,  i32;
+                    "RFP_IMP_SCALE" => RFP_IMP_SCALE, i32;
+                    "RFP_IMP_LERP"  => RFP_IMP_LERP,  i32;
 
-                    "NMP_DEPTH"           => NMP_DEPTH,           i32;
-                    "NMP_BASE"            => NMP_BASE,            i64;
-                    "NMP_SCALE"           => NMP_SCALE,           i64;
-                    "NMP_IMPROVING_DEPTH" => NMP_IMPROVING_DEPTH, i32;
-                    "NMP_IMPROVING_BASE"  => NMP_IMPROVING_BASE,  i64;
-                    "NMP_IMPROVING_SCALE" => NMP_IMPROVING_SCALE, i64;
+                    "NMP_DEPTH"     => NMP_DEPTH,     i32;
+                    "NMP_BASE"      => NMP_BASE,      i64;
+                    "NMP_SCALE"     => NMP_SCALE,     i64;
+                    "NMP_IMP_DEPTH" => NMP_IMP_DEPTH, i32;
+                    "NMP_IMP_BASE"  => NMP_IMP_BASE,  i64;
+                    "NMP_IMP_SCALE" => NMP_IMP_SCALE, i64;
 
-                    "LMP_BASE"            => LMP_BASE,            i64;
-                    "LMP_SCALE"           => LMP_SCALE,           i64;
-                    "LMP_IMPROVING_BASE"  => LMP_IMPROVING_BASE,  i64;
-                    "LMP_IMPROVING_SCALE" => LMP_IMPROVING_SCALE, i64;
+                    "LMP_BASE"      => LMP_BASE,      i64;
+                    "LMP_SCALE"     => LMP_SCALE,     i64;
+                    "LMP_IMP_BASE"  => LMP_IMP_BASE,  i64;
+                    "LMP_IMP_SCALE" => LMP_IMP_SCALE, i64;
 
-                    "FP_DEPTH"           => FP_DEPTH,           i32;
-                    "FP_BASE"            => FP_BASE,            i32;
-                    "FP_SCALE"           => FP_SCALE,           i32;
-                    "FP_IMPROVING_DEPTH" => FP_IMPROVING_DEPTH, i32;
-                    "FP_IMPROVING_BASE"  => FP_IMPROVING_BASE,  i32;
-                    "FP_IMPROVING_SCALE" => FP_IMPROVING_SCALE, i32;
+                    "FP_DEPTH"     => FP_DEPTH,     i32;
+                    "FP_BASE"      => FP_BASE,      i32;
+                    "FP_SCALE"     => FP_SCALE,     i32;
+                    "FP_IMP_DEPTH" => FP_IMP_DEPTH, i32;
+                    "FP_IMP_BASE"  => FP_IMP_BASE,  i32;
+                    "FP_IMP_SCALE" => FP_IMP_SCALE, i32;
 
-                    "SEE_QUIET_DEPTH"           => SEE_QUIET_DEPTH,           i32;
-                    "SEE_QUIET_BASE"            => SEE_QUIET_BASE,            i32;
-                    "SEE_QUIET_SCALE"           => SEE_QUIET_SCALE,           i32;
-                    "SEE_QUIET_IMPROVING_DEPTH" => SEE_QUIET_IMPROVING_DEPTH, i32;
-                    "SEE_QUIET_IMPROVING_BASE"  => SEE_QUIET_IMPROVING_BASE,  i32;
-                    "SEE_QUIET_IMPROVING_SCALE" => SEE_QUIET_IMPROVING_SCALE, i32;
+                    "SEE_QUIET_DEPTH"     => SEE_QUIET_DEPTH,     i32;
+                    "SEE_QUIET_BASE"      => SEE_QUIET_BASE,      i32;
+                    "SEE_QUIET_SCALE"     => SEE_QUIET_SCALE,     i32;
+                    "SEE_QUIET_IMP_DEPTH" => SEE_QUIET_IMP_DEPTH, i32;
+                    "SEE_QUIET_IMP_BASE"  => SEE_QUIET_IMP_BASE,  i32;
+                    "SEE_QUIET_IMP_SCALE" => SEE_QUIET_IMP_SCALE, i32;
 
-                    "SEE_TACTIC_DEPTH"           => SEE_TACTIC_DEPTH,           i32;
-                    "SEE_TACTIC_BASE"            => SEE_TACTIC_BASE,            i32;
-                    "SEE_TACTIC_SCALE"           => SEE_TACTIC_SCALE,           i32;
-                    "SEE_TACTIC_IMPROVING_DEPTH" => SEE_TACTIC_IMPROVING_DEPTH, i32;
-                    "SEE_TACTIC_IMPROVING_BASE"  => SEE_TACTIC_IMPROVING_BASE,  i32;
-                    "SEE_TACTIC_IMPROVING_SCALE" => SEE_TACTIC_IMPROVING_SCALE, i32;
+                    "SEE_TACTIC_DEPTH"     => SEE_TACTIC_DEPTH,     i32;
+                    "SEE_TACTIC_BASE"      => SEE_TACTIC_BASE,      i32;
+                    "SEE_TACTIC_SCALE"     => SEE_TACTIC_SCALE,     i32;
+                    "SEE_TACTIC_IMP_DEPTH" => SEE_TACTIC_IMP_DEPTH, i32;
+                    "SEE_TACTIC_IMP_BASE"  => SEE_TACTIC_IMP_BASE,  i32;
+                    "SEE_TACTIC_IMP_SCALE" => SEE_TACTIC_IMP_SCALE, i32;
 
                     "SINGULAR_DEPTH"        => SINGULAR_DEPTH,        i32;
                     "SINGULAR_TT_DEPTH"     => SINGULAR_TT_DEPTH,     i32;
@@ -615,46 +662,63 @@ impl Engine {
                     "SINGULAR_DEXT_MARGIN"  => SINGULAR_DEXT_MARGIN,  i16;
                     "SINGULAR_EXT"          => SINGULAR_EXT,          i32;
                     "SINGULAR_DEXT"         => SINGULAR_DEXT,         i32;
-                    "SINGULAR_NEG_EXT"      => SINGULAR_NEG_EXT,      i32;
+                    "SINGULAR_TT_EXT"       => SINGULAR_TT_EXT,      i32;
 
-                    "LMR_QUIET_BASE"  => LMR_QUIET_BASE,  i32;
-                    "LMR_QUIET_DIV"   => LMR_QUIET_DIV,   i32;
-                    "LMR_TACTIC_BASE" => LMR_TACTIC_BASE, i32;
-                    "LMR_TACTIC_DIV"  => LMR_TACTIC_DIV,  i32;
+                    "TT_DEPTH_BIAS"     => TT_DEPTH_BIAS,     i32;
+                    "TT_DEPTH_PV_BIAS"  => TT_DEPTH_PV_BIAS,  i32;
+                    "LMR_DEPTH_BIAS"    => LMR_DEPTH_BIAS,    i32;
+                    "LMR_DEPTH_PV_BIAS" => LMR_DEPTH_PV_BIAS, i32;
+
+                    "LMR_QUIET_BASE"      => LMR_QUIET_BASE,      i32;
+                    "LMR_QUIET_IMP_BASE"  => LMR_QUIET_IMP_BASE,  i32;
+                    "LMR_QUIET_DIV"       => LMR_QUIET_DIV,       i32;
+                    "LMR_QUIET_IMP_DIV"   => LMR_QUIET_IMP_DIV,   i32;
+                    "LMR_TACTIC_BASE"     => LMR_TACTIC_BASE,     i32;
+                    "LMR_TACTIC_IMP_BASE" => LMR_TACTIC_IMP_BASE, i32;
+                    "LMR_TACTIC_DIV"      => LMR_TACTIC_DIV,      i32;
+                    "LMR_TACTIC_IMP_DIV"  => LMR_TACTIC_IMP_DIV,  i32;
 
                     "CUTNODE_LMR" => CUTNODE_LMR, i32;
-
-                    "TT_DEPTH_BIAS"    => TT_DEPTH_BIAS,    i32;
-                    "TT_DEPTH_PV_BIAS" => TT_DEPTH_PV_BIAS, i32;
 
                     "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i16;
                     "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i16;
 
-                    "SOFT_TIME_FRAC"      => SOFT_TIME_FRAC,      u64;
-                    "HARD_TIME_FRAC"      => HARD_TIME_FRAC,      u64;
-                    "SUBTREE_TM_BASE"     => SUBTREE_TM_BASE,     f32;
-                    "SUBTREE_TM_SCALE"    => SUBTREE_TM_SCALE,    f32;
-                    "STABILITY_TM_BASE"   => STABILITY_TM_BASE,   f32;
-                    "STABILITY_TM_SCALE"  => STABILITY_TM_SCALE,  f32;
-                    "COMPLEXITY_TM_BASE"  => COMPLEXITY_TM_BASE,  f32;
-                    "COMPLEXITY_TM_SCALE" => COMPLEXITY_TM_SCALE, f32;
-                    "COMPLEXITY_TM_MIN"   => COMPLEXITY_TM_MIN,   f32;
-                    "COMPLEXITY_TM_MAX"   => COMPLEXITY_TM_MAX,   f32;
-                    "COMPLEXITY_TM_WIN"   => COMPLEXITY_TM_WIN,   f32;
-                    "COMPLEXITY_TM_LOSS"  => COMPLEXITY_TM_LOSS,  f32;
+                    "SOFT_TIME_FRAC"      => SOFT_TIME_FRAC,      f64;
+                    "HARD_TIME_FRAC"      => HARD_TIME_FRAC,      f64;
+                    "SUBTREE_TM_BASE"     => SUBTREE_TM_BASE,     f64;
+                    "SUBTREE_TM_SCALE"    => SUBTREE_TM_SCALE,    f64;
+                    "SUBTREE_TM_MIN"      => SUBTREE_TM_MIN,      f64;
+                    "STABILITY_TM_BASE"   => STABILITY_TM_BASE,   f64;
+                    "STABILITY_TM_SCALE"  => STABILITY_TM_SCALE,  f64;
+                    "STABILITY_TM_MIN"    => STABILITY_TM_MIN,    f64;
+                    "COMPLEXITY_TM_BASE"  => COMPLEXITY_TM_BASE,  f64;
+                    "COMPLEXITY_TM_SCALE" => COMPLEXITY_TM_SCALE, f64;
+                    "COMPLEXITY_TM_MIN"   => COMPLEXITY_TM_MIN,   f64;
+                    "COMPLEXITY_TM_MAX"   => COMPLEXITY_TM_MAX,   f64;
+                    "COMPLEXITY_TM_WIN"   => COMPLEXITY_TM_WIN,   f64;
+                    "COMPLEXITY_TM_LOSS"  => COMPLEXITY_TM_LOSS,  f64;
                 }
 
                 #[cfg(feature = "tune")]
                 match name.as_str() {
-                    "LMR_QUIET_BASE" | "LMR_QUIET_DIV" | "LMR_TACTIC_BASE" | "LMR_TACTIC_DIV" => init_lmr(),
+                    "LMR_QUIET_BASE" | "LMR_QUIET_DIV" | "LMR_TACTIC_BASE" | "LMR_TACTIC_DIV" =>
+                        init_lmr(),
                     _ => {}
                 }
 
                 self.sender
-                    .send(ThreadCommand::SetOption(Arc::clone(&self.searcher), name, value))
+                    .send(ThreadCommand::SetOption(
+                        Arc::clone(&self.searcher),
+                        name,
+                        value,
+                    ))
                     .unwrap();
             }
-            UciCommand::Bench { depth, threads, hash } => {
+            UciCommand::Bench {
+                depth,
+                threads,
+                hash,
+            } => {
                 let mut searcher = self.searcher.lock().unwrap();
                 let searcher = &mut *searcher;
                 let mut bench_data = Vec::new();
@@ -664,8 +728,13 @@ impl Engine {
                 searcher.threads = threads;
 
                 let start_time = Instant::now();
-                for pos in BENCH_POSITIONS.iter().map(|&fen| Board::from_fen(fen).unwrap()) {
-                    searcher.pos.set_board(pos.clone(), &searcher.shared_data.nnue_weights);
+                for pos in BENCH_POSITIONS
+                    .iter()
+                    .map(|&fen| Board::from_fen(fen).unwrap())
+                {
+                    searcher
+                        .pos
+                        .set_board(pos.clone(), &searcher.shared_data.nnue_weights);
                     searcher.clear_ttable();
 
                     let start_time = Instant::now();
@@ -692,9 +761,15 @@ impl Engine {
                     );
                 }
                 println!("==================================================================");
-                let total_nodes = bench_data.iter().fold(0u64, |acc, (_, _, _, nodes)| acc + nodes);
+                let total_nodes = bench_data
+                    .iter()
+                    .fold(0u64, |acc, (_, _, _, nodes)| acc + nodes);
 
-                println!("OVERALL: {:>30} nodes {:>8} nps", total_nodes, (total_nodes / total_time) * 1000);
+                println!(
+                    "OVERALL: {:>30} nodes {:>8} nps",
+                    total_nodes,
+                    (total_nodes / total_time) * 1000
+                );
             }
             UciCommand::Quit => {
                 self.time_man.stop();

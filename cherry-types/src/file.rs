@@ -105,7 +105,16 @@ impl File {
     /*----------------------------------------------------------------*/
 
     pub const COUNT: usize = 8;
-    pub const ALL: [File; Self::COUNT] = [File::A, File::B, File::C, File::D, File::E, File::F, File::G, File::H];
+    pub const ALL: [File; Self::COUNT] = [
+        File::A,
+        File::B,
+        File::C,
+        File::D,
+        File::E,
+        File::F,
+        File::G,
+        File::H,
+    ];
 }
 
 impl<T> Index<File> for [T; File::COUNT] {

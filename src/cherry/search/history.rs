@@ -22,8 +22,12 @@ impl ContIndices {
     #[inline]
     pub fn new(search_stack: &[SearchStack], ply: u16) -> ContIndices {
         ContIndices {
-            counter_move: (ply >= 1).then(|| search_stack[ply as usize - 1].move_played).flatten(),
-            follow_up: (ply >= 2).then(|| search_stack[ply as usize - 2].move_played).flatten(),
+            counter_move: (ply >= 1)
+                .then(|| search_stack[ply as usize - 1].move_played)
+                .flatten(),
+            follow_up: (ply >= 2)
+                .then(|| search_stack[ply as usize - 2].move_played)
+                .flatten(),
         }
     }
 }
@@ -36,11 +40,11 @@ pub struct History {
     tactics: Box<ColorTo<PieceTo<SquareTo<i16>>>>,                 //Indexing: [stm][piece][dest]
     counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
     follow_up: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
-    pawn_corr: Box<ColorTo<[i16; PAWN_CORR_SIZE]>>,                //Indexing: [stm][pawn hash % size]
-    minor_corr: Box<ColorTo<[i16; MINOR_CORR_SIZE]>>,              //Indexing: [stm][minor hash % size]
-    major_corr: Box<ColorTo<[i16; MAJOR_CORR_SIZE]>>,              //Indexing: [stm][major hash % size]
-    white_corr: Box<ColorTo<[i16; NONPAWN_CORR_SIZE]>>,            //Indexing: [stm][white hash % size]
-    black_corr: Box<ColorTo<[i16; NONPAWN_CORR_SIZE]>>,            //Indexing: [stm][black hash % size]
+    pawn_corr: Box<ColorTo<[i16; PAWN_CORR_SIZE]>>, //Indexing: [stm][pawn hash % size]
+    minor_corr: Box<ColorTo<[i16; MINOR_CORR_SIZE]>>, //Indexing: [stm][minor hash % size]
+    major_corr: Box<ColorTo<[i16; MAJOR_CORR_SIZE]>>, //Indexing: [stm][major hash % size]
+    white_corr: Box<ColorTo<[i16; NONPAWN_CORR_SIZE]>>, //Indexing: [stm][white hash % size]
+    black_corr: Box<ColorTo<[i16; NONPAWN_CORR_SIZE]>>, //Indexing: [stm][black hash % size]
 }
 
 impl History {
@@ -86,17 +90,33 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_counter_move(&self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<i16> {
+    pub fn get_counter_move(
+        &self,
+        board: &Board,
+        mv: Move,
+        prev_mv: Option<MoveData>,
+    ) -> Option<i16> {
         let prev_mv = prev_mv?;
 
-        Some(self.counter_move[board.stm()][prev_mv.piece][prev_mv.mv.dest()][board.piece_on(mv.src()).unwrap()][mv.dest()])
+        Some(
+            self.counter_move[board.stm()][prev_mv.piece][prev_mv.mv.dest()]
+                [board.piece_on(mv.src()).unwrap()][mv.dest()],
+        )
     }
 
     #[inline]
-    fn get_counter_move_mut(&mut self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<&mut i16> {
+    fn get_counter_move_mut(
+        &mut self,
+        board: &Board,
+        mv: Move,
+        prev_mv: Option<MoveData>,
+    ) -> Option<&mut i16> {
         let prev_mv = prev_mv?;
 
-        Some(&mut self.counter_move[board.stm()][prev_mv.piece][prev_mv.mv.dest()][board.piece_on(mv.src()).unwrap()][mv.dest()])
+        Some(
+            &mut self.counter_move[board.stm()][prev_mv.piece][prev_mv.mv.dest()]
+                [board.piece_on(mv.src()).unwrap()][mv.dest()],
+        )
     }
 
     /*----------------------------------------------------------------*/
@@ -105,14 +125,25 @@ impl History {
     pub fn get_follow_up(&self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<i16> {
         let prev_mv = prev_mv?;
 
-        Some(self.follow_up[board.stm()][prev_mv.piece][prev_mv.mv.dest()][board.piece_on(mv.src()).unwrap()][mv.dest()])
+        Some(
+            self.follow_up[board.stm()][prev_mv.piece][prev_mv.mv.dest()]
+                [board.piece_on(mv.src()).unwrap()][mv.dest()],
+        )
     }
 
     #[inline]
-    fn get_follow_up_mut(&mut self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<&mut i16> {
+    fn get_follow_up_mut(
+        &mut self,
+        board: &Board,
+        mv: Move,
+        prev_mv: Option<MoveData>,
+    ) -> Option<&mut i16> {
         let prev_mv = prev_mv?;
 
-        Some(&mut self.follow_up[board.stm()][prev_mv.piece][prev_mv.mv.dest()][board.piece_on(mv.src()).unwrap()][mv.dest()])
+        Some(
+            &mut self.follow_up[board.stm()][prev_mv.piece][prev_mv.mv.dest()]
+                [board.piece_on(mv.src()).unwrap()][mv.dest()],
+        )
     }
 
     /*----------------------------------------------------------------*/
@@ -120,8 +151,12 @@ impl History {
     #[inline]
     pub fn get_quiet_total(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
         self.get_quiet(board, mv) as i32
-            + self.get_counter_move(board, mv, indices.counter_move).unwrap_or_default() as i32
-            + self.get_follow_up(board, mv, indices.follow_up).unwrap_or_default() as i32
+            + self
+                .get_counter_move(board, mv, indices.counter_move)
+                .unwrap_or_default() as i32
+            + self
+                .get_follow_up(board, mv, indices.follow_up)
+                .unwrap_or_default() as i32
     }
 
     #[inline]
@@ -129,11 +164,16 @@ impl History {
         let stm = board.stm();
         let mut corr = 0;
 
-        let pawn_corr = self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize] as i32;
-        let minor_corr = self.minor_corr[stm][(board.minor_hash() % MINOR_CORR_SIZE as u64) as usize] as i32;
-        let major_corr = self.major_corr[stm][(board.major_hash() % MAJOR_CORR_SIZE as u64) as usize] as i32;
-        let white_corr = self.white_corr[stm][(board.white_hash() % NONPAWN_CORR_SIZE as u64) as usize] as i32;
-        let black_corr = self.black_corr[stm][(board.black_hash() % NONPAWN_CORR_SIZE as u64) as usize] as i32;
+        let pawn_corr =
+            self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize] as i32;
+        let minor_corr =
+            self.minor_corr[stm][(board.minor_hash() % MINOR_CORR_SIZE as u64) as usize] as i32;
+        let major_corr =
+            self.major_corr[stm][(board.major_hash() % MAJOR_CORR_SIZE as u64) as usize] as i32;
+        let white_corr =
+            self.white_corr[stm][(board.white_hash() % NONPAWN_CORR_SIZE as u64) as usize] as i32;
+        let black_corr =
+            self.black_corr[stm][(board.black_hash() % NONPAWN_CORR_SIZE as u64) as usize] as i32;
 
         corr += W::pawn_corr_frac() * pawn_corr;
         corr += W::minor_corr_frac() * minor_corr;
@@ -146,14 +186,28 @@ impl History {
 
     /*----------------------------------------------------------------*/
 
-    pub fn update(&mut self, board: &Board, indices: &ContIndices, depth: i32, best_move: Move, tactics: &[Move], quiets: &[Move]) {
+    pub fn update(
+        &mut self,
+        board: &Board,
+        indices: &ContIndices,
+        depth: i32,
+        best_move: Move,
+        tactics: &[Move],
+        quiets: &[Move],
+    ) {
         if best_move.is_tactic() {
-            let tactic_bonus = (W::tactic_bonus_base() + W::tactic_bonus_scale() * depth / DEPTH_SCALE).min(W::tactic_bonus_max());
+            let tactic_bonus = (W::tactic_bonus_base()
+                + W::tactic_bonus_scale() * depth / DEPTH_SCALE)
+                .min(W::tactic_bonus_max());
 
             History::update_value(self.get_tactic_mut(board, best_move), tactic_bonus);
         } else {
-            let quiet_bonus = (W::quiet_bonus_base() + W::quiet_bonus_scale() * depth / DEPTH_SCALE).min(W::quiet_bonus_max());
-            let quiet_malus = -(W::quiet_malus_base() + W::quiet_malus_scale() * depth / DEPTH_SCALE).min(W::quiet_malus_max());
+            let quiet_bonus = (W::quiet_bonus_base()
+                + W::quiet_bonus_scale() * depth / DEPTH_SCALE)
+                .min(W::quiet_bonus_max());
+            let quiet_malus = -(W::quiet_malus_base()
+                + W::quiet_malus_scale() * depth / DEPTH_SCALE)
+                .min(W::quiet_malus_max());
             History::update_value(self.get_quiet_mut(board, best_move), quiet_bonus);
 
             for &mv in quiets {
@@ -163,29 +217,43 @@ impl History {
             /*----------------------------------------------------------------*/
 
             if let Some(value) = self.get_counter_move_mut(board, best_move, indices.counter_move) {
-                let bonus = (W::cont1_bonus_base() + W::cont1_bonus_scale() * depth / DEPTH_SCALE).min(W::cont1_bonus_max());
-                let malus = -(W::cont1_malus_base() + W::cont1_malus_scale() * depth / DEPTH_SCALE).min(W::cont1_malus_max());
+                let bonus = (W::cont1_bonus_base() + W::cont1_bonus_scale() * depth / DEPTH_SCALE)
+                    .min(W::cont1_bonus_max());
+                let malus = -(W::cont1_malus_base() + W::cont1_malus_scale() * depth / DEPTH_SCALE)
+                    .min(W::cont1_malus_max());
 
                 History::update_value(value, bonus);
                 for &mv in quiets {
-                    History::update_value(self.get_counter_move_mut(board, mv, indices.counter_move).unwrap(), malus);
+                    History::update_value(
+                        self.get_counter_move_mut(board, mv, indices.counter_move)
+                            .unwrap(),
+                        malus,
+                    );
                 }
             }
 
             /*----------------------------------------------------------------*/
 
             if let Some(value) = self.get_follow_up_mut(board, best_move, indices.follow_up) {
-                let bonus = (W::cont2_bonus_base() + W::cont2_bonus_scale() * depth / DEPTH_SCALE).min(W::cont2_bonus_max());
-                let malus = -(W::cont2_malus_base() + W::cont2_malus_scale() * depth / DEPTH_SCALE).min(W::cont2_malus_max());
+                let bonus = (W::cont2_bonus_base() + W::cont2_bonus_scale() * depth / DEPTH_SCALE)
+                    .min(W::cont2_bonus_max());
+                let malus = -(W::cont2_malus_base() + W::cont2_malus_scale() * depth / DEPTH_SCALE)
+                    .min(W::cont2_malus_max());
 
                 History::update_value(value, bonus);
                 for &mv in quiets {
-                    History::update_value(self.get_follow_up_mut(board, mv, indices.follow_up).unwrap(), malus);
+                    History::update_value(
+                        self.get_follow_up_mut(board, mv, indices.follow_up)
+                            .unwrap(),
+                        malus,
+                    );
                 }
             }
         }
 
-        let tactic_malus = -(W::tactic_malus_base() + W::tactic_malus_scale() * depth / DEPTH_SCALE).min(W::tactic_malus_max());
+        let tactic_malus = -(W::tactic_malus_base()
+            + W::tactic_malus_scale() * depth / DEPTH_SCALE)
+            .min(W::tactic_malus_max());
         for &mv in tactics {
             History::update_value(self.get_tactic_mut(board, mv), tactic_malus);
         }
@@ -195,12 +263,18 @@ impl History {
     pub fn update_corr(&mut self, board: &Board, depth: i32, score: Score, static_eval: Score) {
         let stm = board.stm();
         let diff = score.0 as i64 - static_eval.0 as i64;
-        let amount = (diff * depth as i64 * W::corr_bonus_scale() / (DEPTH_SCALE as i64 * 1024)) as i32;
-        let pawn_corr = &mut self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize];
-        let minor_corr = &mut self.minor_corr[stm][(board.minor_hash() % MINOR_CORR_SIZE as u64) as usize];
-        let major_corr = &mut self.major_corr[stm][(board.major_hash() % MAJOR_CORR_SIZE as u64) as usize];
-        let white_corr = &mut self.white_corr[stm][(board.white_hash() % NONPAWN_CORR_SIZE as u64) as usize];
-        let black_corr = &mut self.black_corr[stm][(board.black_hash() % NONPAWN_CORR_SIZE as u64) as usize];
+        let amount =
+            (diff * depth as i64 * W::corr_bonus_scale() / (DEPTH_SCALE as i64 * 1024)) as i32;
+        let pawn_corr =
+            &mut self.pawn_corr[stm][(board.pawn_hash() % PAWN_CORR_SIZE as u64) as usize];
+        let minor_corr =
+            &mut self.minor_corr[stm][(board.minor_hash() % MINOR_CORR_SIZE as u64) as usize];
+        let major_corr =
+            &mut self.major_corr[stm][(board.major_hash() % MAJOR_CORR_SIZE as u64) as usize];
+        let white_corr =
+            &mut self.white_corr[stm][(board.white_hash() % NONPAWN_CORR_SIZE as u64) as usize];
+        let black_corr =
+            &mut self.black_corr[stm][(board.black_hash() % NONPAWN_CORR_SIZE as u64) as usize];
 
         History::update_corr_value(pawn_corr, amount);
         History::update_corr_value(minor_corr, amount);
