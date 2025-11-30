@@ -679,7 +679,7 @@ impl Engine {
                     "CUTNODE_LMR" => CUTNODE_LMR, i32;
 
                     "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i16;
-                    "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i16;
+                    "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i32;
 
                     "SOFT_TIME_FRAC"      => SOFT_TIME_FRAC,      u64;
                     "HARD_TIME_FRAC"      => HARD_TIME_FRAC,      u64;

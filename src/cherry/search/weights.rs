@@ -218,7 +218,7 @@ weights! {
     tt_depth_pv_bias  | TT_DEPTH_PV_BIAS:  i32 => 0,
 
     asp_window_initial | ASP_WINDOW_INITIAL: i16 => 20,
-    asp_window_expand  | ASP_WINDOW_EXPAND:  i16 => 48,
+    asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 48,
 
     soft_time_frac      | SOFT_TIME_FRAC:      u64 => 64,
     hard_time_frac      | HARD_TIME_FRAC:      u64 => 2458,

@@ -44,7 +44,9 @@ impl Window {
 
     #[inline]
     pub fn expand(&mut self) {
-        self.window += self.window * W::asp_window_expand() / 64;
+        self.window = (self.window as i32)
+            .checked_add(self.window as i32 * W::asp_window_expand() / 64)
+            .unwrap_or(Score::INFINITE.0 as i32) as i16;
     }
 
     #[inline]
