@@ -6,9 +6,9 @@ use crate::*;
 
 /*
 Bit Layout:
-bits 0-5: Source square
-bits 6-11: Target square
-bits 12-15: Move Flag
+- Bits 0-5: Source square
+- Bits 6-11: Target square
+- Bits 12-15: Move Flag
 */
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Move {

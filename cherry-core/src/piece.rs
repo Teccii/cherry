@@ -57,10 +57,13 @@ impl Piece {
             Piece::King => 0b001,
         }
     }
-
+    
     #[inline]
-    pub const fn is_slider(self) -> bool {
-        (self.bits() & 0b100) != 0
+    pub const fn is_slider(self) -> bool  {
+        match self {
+            Piece::Bishop | Piece::Rook | Piece::Queen => true,
+            _ => false
+        }
     }
 
     /*----------------------------------------------------------------*/
@@ -147,5 +150,140 @@ impl FromStr for Piece {
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", char::from(*self))
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct PieceIndex(pub u8);
+
+impl PieceIndex {
+    #[inline]
+    pub const fn into_mask(self) -> PieceMask {
+        PieceMask(1 << self.0)
+    }
+
+    pub const COUNT: usize = 16;
+    pub const KING: PieceIndex = PieceIndex(0);
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct PieceMask(pub u16);
+
+impl PieceMask {
+    #[inline]
+    pub const fn has(self, index: PieceIndex) -> bool {
+        (self.0 & index.into_mask().0) != 0
+    }
+
+    #[inline]
+    pub const fn popcnt(self) -> usize {
+        self.0.count_ones() as usize
+    }
+
+    #[inline]
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    #[inline]
+    pub const fn next(self) -> Option<PieceIndex> {
+        if self.is_empty() {
+            return None;
+        }
+
+        Some(PieceIndex(self.0.trailing_zeros() as u8))
+    }
+
+    pub const EMPTY: PieceMask = PieceMask(0);
+    pub const KING: PieceMask = PieceMask(1);
+}
+
+impl IntoIterator for PieceMask {
+    type Item = PieceIndex;
+    type IntoIter = PieceMaskIter;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        PieceMaskIter(self)
+    }
+}
+
+impl Not for PieceMask {
+    type Output = Self;
+
+    #[inline]
+    fn not(self) -> Self::Output {
+        PieceMask(!self.0)
+    }
+}
+
+macro_rules! impl_piece_mask_ops {
+    ($($trait:ident, $fn:ident;)*) => {
+        $(
+            impl $trait for PieceMask {
+                type Output = Self;
+
+                #[inline]
+                fn $fn(self, rhs: Self) -> Self::Output {
+                    PieceMask(self.0.$fn(rhs.0))
+                }
+            }
+        )*
+    }
+}
+
+macro_rules! impl_piece_mask_assign_ops {
+    ($($trait:ident, $fn:ident;)*) => {
+        $(
+            impl $trait for PieceMask {
+                #[inline]
+                fn $fn(&mut self, rhs: Self) {
+                    self.0.$fn(rhs.0);
+                }
+            }
+        )*
+    }
+}
+
+impl_piece_mask_ops! {
+    BitAnd, bitand;
+    BitOr, bitor;
+    BitXor, bitxor;
+}
+
+impl_piece_mask_assign_ops! {
+    BitAndAssign, bitand_assign;
+    BitOrAssign, bitor_assign;
+    BitXorAssign, bitxor_assign;
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone)]
+pub struct PieceMaskIter(PieceMask);
+
+impl Iterator for PieceMaskIter {
+    type Item = PieceIndex;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.0.next()?;
+        self.0 &= PieceMask(self.0.0.wrapping_sub(1));
+
+        Some(index)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.0.popcnt(), Some(self.0.popcnt()))
+    }
+}
+
+impl ExactSizeIterator for PieceMaskIter {
+    #[inline]
+    fn len(&self) -> usize {
+        self.0.popcnt()
     }
 }

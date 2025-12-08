@@ -1,5 +1,4 @@
 use core::fmt::Write;
-
 use crate::*;
 
 impl Board {
@@ -18,8 +17,8 @@ impl Board {
         }
 
         let mut board = Board {
-            board: Byteboard::default(),
-            attack_tables: [Wordboard::default(); Color::COUNT],
+            inner: Byteboard(u8x64::splat(0)),
+            attack_table: [Wordboard(u16x64::splat(0)); Color::COUNT],
             index_to_square: [IndexToSquare::default(); Color::COUNT],
             index_to_piece: [IndexToPiece::default(); Color::COUNT],
             castle_rights: [CastleRights::default(); Color::COUNT],
@@ -50,7 +49,7 @@ impl Board {
                     let color = Color::index(p.is_ascii_lowercase() as usize);
                     let sq = Square::new(File::try_index(file)?, rank);
                     let index = if piece == Piece::King {
-                        PieceIndex::new(0)
+                        PieceIndex(0)
                     } else {
                         let index = match color {
                             Color::White => &mut white_index,
@@ -62,10 +61,10 @@ impl Board {
                             return None;
                         }
 
-                        PieceIndex::new(*index as u8)
+                        PieceIndex(*index as u8)
                     };
 
-                    board.board.set(sq, Place::from_piece(piece, color, index));
+                    board.set(sq, Place::from_piece(piece, color, index));
                     board.index_to_square[color][index] = Some(sq);
                     board.index_to_piece[color][index] = Some(piece);
 
@@ -78,8 +77,8 @@ impl Board {
             }
         }
 
-        if board.index_to_piece[Color::White][PieceIndex::new(0)].is_none()
-            || board.index_to_piece[Color::Black][PieceIndex::new(0)].is_none()
+        if board.index_to_piece[Color::White][PieceIndex(0)].is_none()
+            || board.index_to_piece[Color::Black][PieceIndex(0)].is_none()
         {
             return None;
         }
@@ -111,14 +110,14 @@ impl Board {
                     'k' => {
                         let corner_rook = Square::new(File::H, our_backrank);
                         let rook_mask = between(our_king, corner_rook) | corner_rook;
-                        let valid_rooks = board.color_pieces(Piece::Rook, color) & rook_mask;
+                        let valid_rooks = board.color_pieces(color, Piece::Rook) & rook_mask;
 
                         valid_rooks.try_next_square_back().map(Square::file)?
                     }
                     'q' => {
                         let corner_rook = Square::new(File::A, our_backrank);
                         let rook_mask = between(our_king, corner_rook) | corner_rook;
-                        let valid_rooks = board.color_pieces(Piece::Rook, color) & rook_mask;
+                        let valid_rooks = board.color_pieces(color, Piece::Rook) & rook_mask;
 
                         valid_rooks.try_next_square().map(Square::file)?
                     }
@@ -130,25 +129,61 @@ impl Board {
         }
 
         if en_passant != "-" {
-            let sq = en_passant.parse::<Square>().ok()?;
-            if sq.rank() != Rank::Sixth.relative_to(board.stm) {
+            let ep_dest = en_passant.parse::<Square>().ok()?;
+            if ep_dest.rank() != Rank::Sixth.relative_to(board.stm) {
                 return None;
             }
+            let ep_file = ep_dest.file();
+            let ep_victim = Square::new(ep_file, Rank::Fifth.relative_to(board.stm));
 
-            board.set_en_passant(Some(sq.file()));
+            let our_pawns = board.index_to_piece[board.stm].mask_eq(Piece::Pawn);
+            let our_attacks = board.attack_table(board.stm).get(ep_dest);
+            let mut left = false;
+            let mut right = false;
+
+            let king = board.king(board.stm);
+            let (ray_coords, ray_valid) = ray_perm(king);
+
+            for index in our_pawns & our_attacks {
+                let ep_src = board.index_to_square[board.stm][index].unwrap();
+                let pawn_place = board.inner.get(ep_src);
+                let mut ep_board = board.inner.clone();
+                ep_board.set(ep_src, Place::EMPTY);
+                ep_board.set(ep_victim, Place::EMPTY);
+                ep_board.set(ep_dest, pawn_place);
+
+                let ray_places = ep_board.permute(ray_coords);
+                let their_color = match board.stm {
+                    Color::White => ray_places.msb(),
+                    Color::Black => !ray_places.msb(),
+                };
+                let blockers = ray_places.nonzero().to_bitmask();
+                let attackers = ray_attackers(ray_places);
+                let closest = extend_bitrays(blockers, ray_valid) & blockers;
+
+                let their_attackers = their_color & attackers & closest;
+                if their_attackers.to_bitmask() != 0 {
+                    if ep_src.file() < ep_file {
+                        left = true;
+                    } else {
+                        right = true;
+                    }
+                }
+            }
+
+            let ep = if left || right {
+                Some(EnPassant::new(ep_file, left, right))
+            } else {
+                None
+            };
+
+            board.set_en_passant(ep);
         }
 
-        board.attack_tables = board.calc_attacks();
         board.halfmove_clock = halfmove_clock.parse::<u8>().ok()?.min(100);
         board.fullmove_count = fullmove_count.parse::<u16>().ok()?.max(1);
-        (
-            board.hash,
-            board.pawn_hash,
-            board.minor_hash,
-            board.major_hash,
-            board.white_hash,
-            board.black_hash,
-        ) = board.calc_hashes();
+        board.calc_hashes();
+        board.calc_attacks();
 
         Some(board)
     }

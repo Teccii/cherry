@@ -109,31 +109,16 @@ impl Bitboard {
         self.0 & rhs.0 == 0
     }
 
-    #[inline]
-    pub const fn invert(self) -> Bitboard {
-        Bitboard(!self.0)
-    }
-
-    #[inline]
-    pub const fn intersect(self, rhs: Bitboard) -> Bitboard {
-        Bitboard(self.0 & rhs.0)
-    }
-
-    #[inline]
-    pub const fn union(self, rhs: Bitboard) -> Bitboard {
-        Bitboard(self.0 | rhs.0)
-    }
-
     /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub const fn has(self, sq: Square) -> bool {
-        !self.is_disjoint(sq.bitboard())
-    }
 
     #[inline]
     pub const fn popcnt(self) -> usize {
         self.0.count_ones() as usize
+    }
+
+    #[inline]
+    pub const fn has(self, sq: Square) -> bool {
+        !self.is_disjoint(sq.bitboard())
     }
 
     #[inline]

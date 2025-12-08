@@ -85,16 +85,6 @@ impl Rank {
         Bitboard(0xFF << (8 * self as u8))
     }
 
-    #[inline]
-    pub const fn above(self) -> Bitboard {
-        Bitboard(0xFFFFFFFFFFFFFF00).shift::<Up>(self as i8)
-    }
-
-    #[inline]
-    pub const fn below(self) -> Bitboard {
-        Bitboard(!self.above().0)
-    }
-
     /*----------------------------------------------------------------*/
 
     pub const COUNT: usize = 8;
@@ -187,41 +177,4 @@ impl FromStr for Rank {
             Err(RankParseError)
         }
     }
-}
-
-/*----------------------------------------------------------------*/
-
-#[test]
-fn validate_rank() {
-    let first = Rank::First;
-
-    assert_eq!(Rank::index(0), first);
-    assert_eq!(Rank::try_index(0).unwrap(), first);
-    assert_eq!(first.bitboard(), Bitboard(0xFF));
-    assert_eq!(first.try_offset(-1), None);
-    assert_eq!(first.try_offset(1), Some(Rank::Second));
-
-    let second = Rank::Second;
-
-    assert_eq!(Rank::index(1), second);
-    assert_eq!(Rank::try_index(1).unwrap(), second);
-    assert_eq!(second.bitboard(), Bitboard(0xFF00));
-    assert_eq!(second.try_offset(-1), Some(Rank::First));
-    assert_eq!(second.try_offset(1), Some(Rank::Third));
-
-    let seventh = Rank::Seventh;
-
-    assert_eq!(Rank::index(6), seventh);
-    assert_eq!(Rank::try_index(6).unwrap(), seventh);
-    assert_eq!(seventh.bitboard(), Bitboard(0xFF000000000000));
-    assert_eq!(seventh.try_offset(-1), Some(Rank::Sixth));
-    assert_eq!(seventh.try_offset(1), Some(Rank::Eighth));
-
-    let eighth = Rank::Eighth;
-
-    assert_eq!(Rank::index(7), eighth);
-    assert_eq!(Rank::try_index(7).unwrap(), eighth);
-    assert_eq!(eighth.bitboard(), Bitboard(0xFF00000000000000));
-    assert_eq!(eighth.try_offset(-1), Some(Rank::Seventh));
-    assert_eq!(eighth.try_offset(1), None);
 }

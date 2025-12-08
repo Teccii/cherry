@@ -85,14 +85,14 @@ impl Board {
             free_squares ^= right_rook;
 
             let pieces: [(Square, Piece, PieceIndex); File::COUNT] = [
-                (king, Piece::King, PieceIndex::new(0)),
-                (left_knight, Piece::Knight, PieceIndex::new(1)),
-                (right_knight, Piece::Knight, PieceIndex::new(2)),
-                (light_bishop, Piece::Bishop, PieceIndex::new(3)),
-                (dark_bishop, Piece::Bishop, PieceIndex::new(4)),
-                (left_rook, Piece::Rook, PieceIndex::new(5)),
-                (right_rook, Piece::Rook, PieceIndex::new(6)),
-                (queen, Piece::Queen, PieceIndex::new(7)),
+                (king, Piece::King, PieceIndex(0)),
+                (left_knight, Piece::Knight, PieceIndex(1)),
+                (right_knight, Piece::Knight, PieceIndex(2)),
+                (light_bishop, Piece::Bishop, PieceIndex(3)),
+                (dark_bishop, Piece::Bishop, PieceIndex(4)),
+                (left_rook, Piece::Rook, PieceIndex(5)),
+                (right_rook, Piece::Rook, PieceIndex(6)),
+                (queen, Piece::Queen, PieceIndex(7)),
             ];
 
             for &(sq, piece, index) in &pieces {
@@ -103,7 +103,7 @@ impl Board {
 
             let mut index = 8;
             for sq in Rank::Second.relative_to(color).bitboard() {
-                let piece_index = PieceIndex::new(index);
+                let piece_index = PieceIndex(index);
 
                 board.set(sq, Place::from_piece(Piece::Pawn, color, piece_index));
                 board.index_to_square[color][piece_index] = Some(sq);
@@ -117,8 +117,8 @@ impl Board {
         }
 
         let mut board = Board {
-            board: Byteboard::default(),
-            attack_tables: [Wordboard::default(); Color::COUNT],
+            inner: Byteboard(u8x64::splat(0)),
+            attack_table: [Wordboard(u16x64::splat(0)); Color::COUNT],
             index_to_square: [IndexToSquare::default(); Color::COUNT],
             index_to_piece: [IndexToPiece::default(); Color::COUNT],
             castle_rights: [CastleRights::default(); Color::COUNT],
@@ -136,23 +136,8 @@ impl Board {
 
         write_scharnagl(&mut board, Color::White, white_scharnagl);
         write_scharnagl(&mut board, Color::Black, black_scharnagl);
-
-        board.attack_tables = board.calc_attacks();
-        (
-            board.hash,
-            board.pawn_hash,
-            board.minor_hash,
-            board.major_hash,
-            board.white_hash,
-            board.black_hash,
-        ) = board.calc_hashes();
+        board.calc_hashes();
+        board.calc_attacks();
         board
-    }
-}
-
-impl Default for Board {
-    #[inline]
-    fn default() -> Board {
-        Board::startpos()
     }
 }

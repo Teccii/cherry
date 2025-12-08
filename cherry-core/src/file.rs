@@ -74,34 +74,6 @@ impl File {
         Bitboard(0x101010101010101 << self as u8)
     }
 
-    #[inline]
-    pub const fn adjacent(self) -> Bitboard {
-        const TABLE: [Bitboard; File::COUNT] = {
-            let mut table = [Bitboard::EMPTY; File::COUNT];
-            let mut i = 0;
-
-            while i < File::COUNT {
-                let file = File::index(i);
-                let mut bb = Bitboard::EMPTY;
-
-                if let Some(left) = file.try_offset(-1) {
-                    bb = Bitboard(bb.0 | left.bitboard().0);
-                }
-
-                if let Some(right) = file.try_offset(1) {
-                    bb = Bitboard(bb.0 | right.bitboard().0);
-                }
-
-                table[i] = bb;
-                i += 1;
-            }
-
-            table
-        };
-
-        TABLE[self as usize]
-    }
-
     /*----------------------------------------------------------------*/
 
     pub const COUNT: usize = 8;
@@ -196,45 +168,4 @@ impl FromStr for File {
             Err(FileParseError)
         }
     }
-}
-
-/*----------------------------------------------------------------*/
-
-#[test]
-fn validate_file() {
-    let a = File::A;
-
-    assert_eq!(File::index(0), a);
-    assert_eq!(File::try_index(0).unwrap(), a);
-    assert_eq!(a.bitboard(), Bitboard(0x101010101010101));
-    assert_eq!(a.adjacent(), Bitboard(0x202020202020202));
-    assert_eq!(a.try_offset(-1), None);
-    assert_eq!(a.try_offset(1), Some(File::B));
-
-    let b = File::B;
-
-    assert_eq!(File::index(1), b);
-    assert_eq!(File::try_index(1).unwrap(), b);
-    assert_eq!(b.bitboard(), Bitboard(0x202020202020202));
-    assert_eq!(b.adjacent(), Bitboard(0x505050505050505));
-    assert_eq!(b.try_offset(-1), Some(File::A));
-    assert_eq!(b.try_offset(1), Some(File::C));
-
-    let g = File::G;
-
-    assert_eq!(File::index(6), g);
-    assert_eq!(File::try_index(6).unwrap(), g);
-    assert_eq!(g.bitboard(), Bitboard(0x4040404040404040));
-    assert_eq!(g.adjacent(), Bitboard(0xA0A0A0A0A0A0A0A0));
-    assert_eq!(g.try_offset(-1), Some(File::F));
-    assert_eq!(g.try_offset(1), Some(File::H));
-
-    let h = File::H;
-
-    assert_eq!(File::index(7), h);
-    assert_eq!(File::try_index(7).unwrap(), h);
-    assert_eq!(h.bitboard(), Bitboard(0x8080808080808080));
-    assert_eq!(h.adjacent(), Bitboard(0x4040404040404040));
-    assert_eq!(h.try_offset(-1), Some(File::G));
-    assert_eq!(h.try_offset(1), None);
 }

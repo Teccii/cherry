@@ -33,14 +33,6 @@ impl Color {
         }
     }
 
-    #[inline]
-    pub const fn msb(self) -> u8 {
-        match self {
-            Color::White => 0,
-            Color::Black => 0x80,
-        }
-    }
-
     /*----------------------------------------------------------------*/
 
     pub const COUNT: usize = 2;
