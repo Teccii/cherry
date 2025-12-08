@@ -259,7 +259,6 @@ impl Searcher {
         });
 
         self.shared_data.ttable.age();
-
         let (best_move, ponder_move, score, depth, nodes) = result;
 
         (

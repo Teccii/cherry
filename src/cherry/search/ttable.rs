@@ -42,6 +42,7 @@ pub enum TTFlag {
 
 #[derive(Debug, Copy, Clone)]
 pub struct TTData {
+    pub key: u16,
     pub depth: u8,
     pub eval: Score,
     pub score: Score,
@@ -54,6 +55,7 @@ pub struct TTData {
 impl TTData {
     #[inline]
     pub fn new(
+        key: u16,
         depth: u8,
         eval: Score,
         score: Score,
@@ -63,6 +65,7 @@ impl TTData {
         age: u8,
     ) -> TTData {
         TTData {
+            key,
             depth,
             eval,
             score,
@@ -96,8 +99,9 @@ pub struct TTPackedData {
 
 impl TTPackedData {
     #[inline]
-    pub fn unpack(self) -> TTData {
+    pub fn unpack(self, key: u16) -> TTData {
         TTData::new(
+            key,
             self.depth,
             self.eval,
             self.score,
@@ -111,66 +115,65 @@ impl TTPackedData {
 
 /*----------------------------------------------------------------*/
 
-#[derive(Debug)]
-pub struct TTEntry {
-    pub key: AtomicU64,
-    pub data: AtomicU64,
+const CLUSTER_SIZE: usize = 3;
+const AGE_BITS: usize = 5;
+const AGE_CYCLE: u8 = 1u8 << AGE_BITS;
+const AGE_MASK: u8 = AGE_CYCLE - 1;
+
+pub struct TTCluster {
+    data: [AtomicU64; CLUSTER_SIZE],
+    key: [AtomicU16; CLUSTER_SIZE],
 }
 
-impl TTEntry {
+impl TTCluster {
     #[inline]
-    pub fn empty() -> TTEntry {
-        TTEntry {
-            key: AtomicU64::new(0),
-            data: AtomicU64::new(0),
+    pub fn empty() -> TTCluster {
+        TTCluster {
+            data: core::array::from_fn(|_| AtomicU64::new(0)),
+            key: core::array::from_fn(|_| AtomicU16::new(0)),
         }
     }
 
-    /*----------------------------------------------------------------*/
-
     #[inline]
-    pub fn store(&self, hash: u64, data: TTData) {
-        let data: u64 = unsafe { core::mem::transmute(data.pack()) };
+    pub fn load(&self, index: usize) -> TTData {
+        let packed_data: TTPackedData =
+            unsafe { core::mem::transmute(self.data[index].load(Ordering::Relaxed)) };
 
-        self.key.store(hash ^ data, Ordering::Relaxed);
-        self.data.store(data, Ordering::Relaxed);
+        packed_data.unpack(self.key[index].load(Ordering::Relaxed))
     }
 
     #[inline]
-    pub fn reset(&self) {
-        self.key.store(0, Ordering::Relaxed);
-        self.data.store(0, Ordering::Relaxed);
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn hash(&self) -> u64 {
-        self.key.load(Ordering::Relaxed) ^ self.data.load(Ordering::Relaxed)
+    pub fn store(&self, index: usize, data: TTData) {
+        self.data[index].store(
+            unsafe { core::mem::transmute(data.pack()) },
+            Ordering::Relaxed,
+        );
+        self.key[index].store(data.key, Ordering::Relaxed);
     }
 
     #[inline]
-    pub fn data(&self) -> TTData {
-        let data: TTPackedData = unsafe { core::mem::transmute(self.data.load(Ordering::Relaxed)) };
-
-        data.unpack()
+    pub fn clear(&self) {
+        for i in 0..CLUSTER_SIZE {
+            self.data[i].store(0, Ordering::Relaxed);
+            self.key[i].store(0, Ordering::Relaxed);
+        }
     }
 }
 
 /*----------------------------------------------------------------*/
 
 pub struct TTable {
-    entries: Box<[TTEntry]>,
+    clusters: Box<[TTCluster]>,
     age: AtomicU8,
 }
 
 impl TTable {
     #[inline]
     pub fn new(mb: u64) -> TTable {
-        let size = (mb * 1024 * 1024 / size_of::<TTEntry>() as u64) as usize;
+        let size = (mb * 1024 * 1024 / size_of::<TTCluster>() as u64) as usize;
 
         TTable {
-            entries: (0..size).map(|_| TTEntry::empty()).collect(),
+            clusters: (0..size).map(|_| TTCluster::empty()).collect(),
             age: AtomicU8::new(0),
         }
     }
@@ -180,19 +183,19 @@ impl TTable {
     #[inline]
     pub fn fetch(&self, board: &Board, ply: u16) -> Option<TTData> {
         let hash = board.hash();
-        let index = self.index(hash);
+        let partial_key = hash as u16;
+        let cluster = &self.clusters[self.index(hash)];
 
-        let entry = &self.entries[index];
-
-        if entry.hash() == hash {
-            let mut data = entry.data();
-
-            return if data.flag != TTFlag::None {
-                data.score = score_from_tt(data.score, ply);
-                Some(data)
-            } else {
-                None
-            };
+        for i in 0..CLUSTER_SIZE {
+            let mut entry = cluster.load(i);
+            if entry.key == partial_key {
+                return if entry.flag != TTFlag::None {
+                    entry.score = score_from_tt(entry.score, ply);
+                    Some(entry)
+                } else {
+                    None
+                };
+            }
         }
 
         None
@@ -210,26 +213,49 @@ impl TTable {
         flag: TTFlag,
         pv: bool,
     ) {
-        let old_data = self.fetch(board, ply);
-        let new_data = TTData::new(
-            depth,
-            eval,
-            score_to_tt(score, ply),
-            mv.or_else(|| old_data.and_then(|d| d.mv)),
-            flag,
-            pv,
-            self.age.load(Ordering::Relaxed),
-        );
-
         let hash = board.hash();
-        let index = self.index(hash);
+        let partial_key = hash as u16;
+        let cluster = &self.clusters[self.index(hash)];
+        let age = self.age.load(Ordering::Relaxed);
 
-        self.entries[index].store(hash, new_data);
+        let mut index = 0;
+        let mut min_value = i32::MAX;
+
+        for i in 0..CLUSTER_SIZE {
+            let entry = cluster.load(i);
+
+            if entry.key == partial_key || entry.flag == TTFlag::None {
+                index = i;
+                break;
+            }
+
+            let relative_age = (AGE_CYCLE + entry.age - age) & AGE_MASK;
+            let entry_value = entry.depth as i32 - 2 * relative_age as i32;
+
+            if entry_value < min_value {
+                index = i;
+                min_value = entry_value;
+            }
+        }
+
+        cluster.store(
+            index,
+            TTData::new(
+                partial_key,
+                depth,
+                eval,
+                score_to_tt(score, ply),
+                mv.or_else(|| cluster.load(index).mv),
+                flag,
+                pv,
+                age,
+            ),
+        );
     }
 
     #[inline]
     pub fn clear(&self) {
-        self.entries.par_iter().for_each(|e| e.reset());
+        self.clusters.par_iter().for_each(|c| c.clear());
         self.age.store(0, Ordering::Relaxed);
     }
 
@@ -243,6 +269,6 @@ impl TTable {
 
     #[inline]
     fn index(&self, hash: u64) -> usize {
-        ((u128::from(hash) * self.entries.len() as u128) >> 64) as usize
+        ((u128::from(hash) * self.clusters.len() as u128) >> 64) as usize
     }
 }

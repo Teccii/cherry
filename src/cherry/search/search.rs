@@ -59,7 +59,6 @@ pub fn search<Node: NodeType>(
     thread.sel_depth = thread.sel_depth.max(ply);
     thread.nodes.inc();
 
-    let mut best_move = None;
     let skip_move = thread.search_stack[ply as usize].skip_move;
     let tt_entry = match skip_move {
         Some(_) => None,
@@ -68,8 +67,6 @@ pub fn search<Node: NodeType>(
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
     if let Some(entry) = tt_entry {
-        best_move = entry.mv;
-
         if !Node::PV && entry.depth as i32 >= depth / DEPTH_SCALE {
             let score = entry.score;
 
@@ -234,10 +231,11 @@ pub fn search<Node: NodeType>(
         }
     }
 
+    let mut best_move = None;
     let mut best_score = None;
     let mut moves_seen = 0;
     let mut flag = TTFlag::UpperBound;
-    let mut move_picker = MovePicker::new(best_move);
+    let mut move_picker = MovePicker::new(tt_entry.and_then(|e| e.mv));
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
     let cont_indices = ContIndices::new(&thread.search_stack, ply);
