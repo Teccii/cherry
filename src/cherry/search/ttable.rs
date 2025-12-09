@@ -86,6 +86,11 @@ impl TTData {
             other: self.flag as u8 | ((self.pv as u8) << 2) | (self.age << 3),
         }
     }
+
+    #[inline]
+    fn should_replace(&self, key: u16, flag: TTFlag, depth: u8, age: u8) -> bool {
+        key != self.key || age != self.age || flag == TTFlag::Exact || depth + 4 > self.depth
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -238,6 +243,11 @@ impl TTable {
             }
         }
 
+        let old_entry = cluster.load(index);
+        if !old_entry.should_replace(partial_key, flag, depth, age) {
+            return;
+        }
+
         cluster.store(
             index,
             TTData::new(
@@ -245,7 +255,7 @@ impl TTable {
                 depth,
                 eval,
                 score_to_tt(score, ply),
-                mv.or_else(|| cluster.load(index).mv),
+                mv.or(old_entry.mv),
                 flag,
                 pv,
                 age,
