@@ -29,7 +29,7 @@ pub struct ThreadData {
     pub windows: Vec<Window>,
     pub root_moves: Vec<Move>,
     pub exclude_moves: Vec<Move>,
-    pub root_nodes: Box<SquareTo<SquareTo<u64>>>,
+    pub root_nodes: Box<MoveTo<u64>>,
     pub root_pv: PrincipalVariation,
     pub history: History,
     pub sel_depth: u16,

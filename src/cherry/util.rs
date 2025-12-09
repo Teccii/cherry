@@ -13,10 +13,9 @@ pub const DEPTH_SCALE: i32 = 1024;
 
 /*----------------------------------------------------------------*/
 
-pub type BoolTo<T> = [T; 2];
 pub type ColorTo<T> = [T; Color::COUNT];
-pub type PieceTo<T> = [T; Piece::COUNT];
-pub type SquareTo<T> = [T; Square::COUNT];
+pub type PieceTo<T> = [[T; Square::COUNT]; Piece::COUNT];
+pub type MoveTo<T> = [[T; Square::COUNT]; Square::COUNT];
 
 /*----------------------------------------------------------------*/
 

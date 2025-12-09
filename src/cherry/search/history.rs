@@ -32,14 +32,32 @@ impl ContIndices {
     }
 }
 
+#[inline]
+fn threat_bucket(board: &Board, mv: Move) -> usize {
+    let stm = board.stm();
+    let src_threatened = !board.attack_table(!stm).get(mv.src()).is_empty();
+    let dest_threatened = !board.attack_table(!stm).get(mv.dest()).is_empty();
+
+    src_threatened as usize + 2 * dest_threatened as usize
+}
+
 /*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone)]
+pub struct QuietEntry {
+    factorizer: i16,
+    buckets: [i16; 4],
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct TacticEntry(pub i16);
 
 #[derive(Clone)]
 pub struct History {
-    quiets: Box<ColorTo<BoolTo<SquareTo<BoolTo<SquareTo<i16>>>>>>, //Indexing: [stm][src threatened][src][dest threatened][dest]
-    tactics: Box<ColorTo<PieceTo<SquareTo<i16>>>>,                 //Indexing: [stm][piece][dest]
-    counter_move: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
-    follow_up: Box<ColorTo<PieceTo<SquareTo<PieceTo<SquareTo<i16>>>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
+    quiets: Box<ColorTo<MoveTo<QuietEntry>>>,    //Indexing: [stm][src][dest][threat bucket]
+    tactics: Box<ColorTo<PieceTo<TacticEntry>>>, //Indexing: [stm][piece][dest]
+    counter_move: Box<ColorTo<PieceTo<PieceTo<i16>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
+    follow_up: Box<ColorTo<PieceTo<PieceTo<i16>>>>, //Indexing: [stm][prev piece][prev dest][piece][dest]
     pawn_corr: Box<ColorTo<[i16; PAWN_CORR_SIZE]>>, //Indexing: [stm][pawn hash % size]
     minor_corr: Box<ColorTo<[i16; MINOR_CORR_SIZE]>>, //Indexing: [stm][minor hash % size]
     major_corr: Box<ColorTo<[i16; MAJOR_CORR_SIZE]>>, //Indexing: [stm][major hash % size]
@@ -56,34 +74,25 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_quiet(&self, board: &Board, mv: Move) -> i16 {
-        let stm = board.stm();
-        let (src, dest) = (mv.src(), mv.dest());
-        let src_threatened = !board.attack_table(!stm).get(src).is_empty();
-        let dest_threatened = !board.attack_table(!stm).get(dest).is_empty();
-
-        self.quiets[stm][src_threatened as usize][mv.src()][dest_threatened as usize][dest]
+    pub fn get_quiet(&self, board: &Board, mv: Move) -> i32 {
+        let entry = self.quiets[board.stm()][mv.src()][mv.dest()];
+        entry.factorizer as i32 + entry.buckets[threat_bucket(board, mv)] as i32
     }
 
     #[inline]
-    pub fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
-        let stm = board.stm();
-        let (src, dest) = (mv.src(), mv.dest());
-        let src_threatened = !board.attack_table(!stm).get(src).is_empty();
-        let dest_threatened = !board.attack_table(!stm).get(dest).is_empty();
-
-        &mut self.quiets[stm][src_threatened as usize][mv.src()][dest_threatened as usize][dest]
+    fn get_quiet_mut(&mut self, board: &Board, mv: Move) -> &mut QuietEntry {
+        &mut self.quiets[board.stm()][mv.src()][mv.dest()]
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn get_tactic(&self, board: &Board, mv: Move) -> i16 {
-        self.tactics[board.stm()][board.piece_on(mv.src()).unwrap()][mv.dest()]
+    pub fn get_tactic(&self, board: &Board, mv: Move) -> i32 {
+        self.tactics[board.stm()][board.piece_on(mv.src()).unwrap()][mv.dest()].0 as i32
     }
 
     #[inline]
-    pub fn get_tactic_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
+    fn get_tactic_mut(&mut self, board: &Board, mv: Move) -> &mut TacticEntry {
         &mut self.tactics[board.stm()][board.piece_on(mv.src()).unwrap()][mv.dest()]
     }
 
@@ -200,7 +209,7 @@ impl History {
                 + W::tactic_bonus_scale() * depth / DEPTH_SCALE)
                 .min(W::tactic_bonus_max());
 
-            History::update_value(self.get_tactic_mut(board, best_move), tactic_bonus);
+            self.update_tactic(board, best_move, tactic_bonus);
         } else {
             let quiet_bonus = (W::quiet_bonus_base()
                 + W::quiet_bonus_scale() * depth / DEPTH_SCALE)
@@ -208,10 +217,10 @@ impl History {
             let quiet_malus = -(W::quiet_malus_base()
                 + W::quiet_malus_scale() * depth / DEPTH_SCALE)
                 .min(W::quiet_malus_max());
-            History::update_value(self.get_quiet_mut(board, best_move), quiet_bonus);
 
+            self.update_quiet(board, best_move, quiet_bonus);
             for &mv in quiets {
-                History::update_value(self.get_quiet_mut(board, mv), quiet_malus);
+                self.update_quiet(board, mv, quiet_malus);
             }
 
             /*----------------------------------------------------------------*/
@@ -255,7 +264,7 @@ impl History {
             + W::tactic_malus_scale() * depth / DEPTH_SCALE)
             .min(W::tactic_malus_max());
         for &mv in tactics {
-            History::update_value(self.get_tactic_mut(board, mv), tactic_malus);
+            self.update_tactic(board, mv, tactic_malus);
         }
     }
 
@@ -281,6 +290,18 @@ impl History {
         History::update_corr_value(major_corr, amount);
         History::update_corr_value(white_corr, amount);
         History::update_corr_value(black_corr, amount);
+    }
+
+    #[inline]
+    fn update_quiet(&mut self, board: &Board, mv: Move, amount: i32) {
+        let entry = self.get_quiet_mut(board, mv);
+        History::update_value(&mut entry.buckets[threat_bucket(board, mv)], amount);
+        History::update_value(&mut entry.factorizer, amount);
+    }
+
+    #[inline]
+    fn update_tactic(&mut self, board: &Board, mv: Move, amount: i32) {
+        History::update_value(&mut self.get_tactic_mut(board, mv).0, amount);
     }
 
     #[inline]
