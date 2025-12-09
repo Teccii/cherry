@@ -8,8 +8,9 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 pub const MAX_DEPTH: u8 = 128;
+pub const MAX_FRACTIONAL_DEPTH: u16 = u16::MAX;
 pub const MAX_PLY: u16 = 256;
-pub const DEPTH_SCALE: i32 = 1024;
+pub const DEPTH_SCALE: i32 = 512;
 
 /*----------------------------------------------------------------*/
 

@@ -67,7 +67,7 @@ pub fn search<Node: NodeType>(
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
     if let Some(entry) = tt_entry {
-        if !Node::PV && entry.depth as i32 >= depth / DEPTH_SCALE {
+        if !Node::PV && entry.depth as i32 >= depth {
             let score = entry.score;
 
             match entry.flag {
@@ -139,15 +139,9 @@ pub fn search<Node: NodeType>(
             || (flag == TTFlag::LowerBound && score <= alpha)
             || (flag == TTFlag::UpperBound && score >= beta)
         {
-            let depth_bias = if Node::PV {
-                W::tt_depth_pv_bias()
-            } else {
-                W::tt_depth_bias()
-            };
-
             shared.ttable.store(
                 pos.board(),
-                ((depth + depth_bias) / DEPTH_SCALE) as u8,
+                depth.min(MAX_FRACTIONAL_DEPTH as i32) as u16,
                 ply,
                 raw_eval,
                 score,
@@ -343,7 +337,7 @@ pub fn search<Node: NodeType>(
             && skip_move.is_none()
             && let Some(entry) = tt_entry
             && entry.mv == Some(mv)
-            && entry.depth as i32 * DEPTH_SCALE + W::singular_tt_depth() >= depth
+            && entry.depth as i32 + W::singular_tt_depth() >= depth
             && entry.flag != TTFlag::UpperBound
         {
             let s_beta =
@@ -372,7 +366,7 @@ pub fn search<Node: NodeType>(
             } else if s_beta >= beta {
                 return s_beta;
             } else if entry.score >= beta {
-                ext = W::singular_tt_ext();
+                ext = -W::singular_tt_ext();
             }
         }
 
@@ -494,15 +488,9 @@ pub fn search<Node: NodeType>(
 
     let best_score = best_score.unwrap().clamp(syzygy_min, syzygy_max);
     if skip_move.is_none() {
-        let tt_depth_bias = if Node::PV {
-            W::tt_depth_pv_bias()
-        } else {
-            W::tt_depth_bias()
-        };
-
         shared.ttable.store(
             pos.board(),
-            ((depth + tt_depth_bias) / DEPTH_SCALE) as u8,
+            depth.min(MAX_FRACTIONAL_DEPTH as i32) as u16,
             ply,
             raw_eval,
             best_score,

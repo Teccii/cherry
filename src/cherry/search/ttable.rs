@@ -43,7 +43,7 @@ pub enum TTFlag {
 #[derive(Debug, Copy, Clone)]
 pub struct TTData {
     pub key: u16,
-    pub depth: u8,
+    pub depth: u16,
     pub eval: Score,
     pub score: Score,
     pub mv: Option<Move>,
@@ -56,7 +56,7 @@ impl TTData {
     #[inline]
     pub fn new(
         key: u16,
-        depth: u8,
+        depth: u16,
         eval: Score,
         score: Score,
         mv: Option<Move>,
@@ -79,49 +79,47 @@ impl TTData {
     #[inline]
     pub fn pack(self) -> TTPackedData {
         TTPackedData {
-            depth: self.depth,
             eval: self.eval,
             score: self.score,
             mv: self.mv,
-            other: self.flag as u8 | ((self.pv as u8) << 2) | (self.age << 3),
+            other: self.flag as u8 | ((self.pv as u8) << 2),
+            age: self.age,
         }
     }
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct TTPackedData {
-    depth: u8,
     eval: Score,
     score: Score,
     mv: Option<Move>,
     other: u8,
+    age: u8,
 }
 
 impl TTPackedData {
     #[inline]
-    pub fn unpack(self, key: u16) -> TTData {
+    pub fn unpack(self, key: u16, depth: u16) -> TTData {
         TTData::new(
             key,
-            self.depth,
+            depth,
             self.eval,
             self.score,
             self.mv,
             unsafe { core::mem::transmute(self.other & 0x3) },
             (self.other & 0x4) != 0,
-            self.other >> 3,
+            self.age,
         )
     }
 }
 
 /*----------------------------------------------------------------*/
 
-const CLUSTER_SIZE: usize = 3;
-const AGE_BITS: usize = 5;
-const AGE_CYCLE: u8 = 1u8 << AGE_BITS;
-const AGE_MASK: u8 = AGE_CYCLE - 1;
+const CLUSTER_SIZE: usize = 5;
 
 pub struct TTCluster {
     data: [AtomicU64; CLUSTER_SIZE],
+    depth: [AtomicU16; CLUSTER_SIZE],
     key: [AtomicU16; CLUSTER_SIZE],
 }
 
@@ -130,6 +128,7 @@ impl TTCluster {
     pub fn empty() -> TTCluster {
         TTCluster {
             data: core::array::from_fn(|_| AtomicU64::new(0)),
+            depth: core::array::from_fn(|_| AtomicU16::new(0)),
             key: core::array::from_fn(|_| AtomicU16::new(0)),
         }
     }
@@ -139,7 +138,10 @@ impl TTCluster {
         let packed_data: TTPackedData =
             unsafe { core::mem::transmute(self.data[index].load(Ordering::Relaxed)) };
 
-        packed_data.unpack(self.key[index].load(Ordering::Relaxed))
+        packed_data.unpack(
+            self.key[index].load(Ordering::Relaxed),
+            self.depth[index].load(Ordering::Relaxed)
+        )
     }
 
     #[inline]
@@ -148,6 +150,7 @@ impl TTCluster {
             unsafe { core::mem::transmute(data.pack()) },
             Ordering::Relaxed,
         );
+        self.depth[index].store(data.depth, Ordering::Relaxed);
         self.key[index].store(data.key, Ordering::Relaxed);
     }
 
@@ -155,6 +158,7 @@ impl TTCluster {
     pub fn clear(&self) {
         for i in 0..CLUSTER_SIZE {
             self.data[i].store(0, Ordering::Relaxed);
+            self.depth[i].store(0, Ordering::Relaxed);
             self.key[i].store(0, Ordering::Relaxed);
         }
     }
@@ -205,7 +209,7 @@ impl TTable {
     pub fn store(
         &self,
         board: &Board,
-        depth: u8,
+        depth: u16,
         ply: u16,
         eval: Score,
         score: Score,
@@ -229,8 +233,8 @@ impl TTable {
                 break;
             }
 
-            let relative_age = (AGE_CYCLE + entry.age - age) & AGE_MASK;
-            let entry_value = entry.depth as i32 - 2 * relative_age as i32;
+            let relative_age = entry.age.wrapping_sub(age);
+            let entry_value = entry.depth as i32 - W::tt_relative_age() * relative_age as i32;
 
             if entry_value < min_value {
                 index = i;
@@ -262,7 +266,6 @@ impl TTable {
     #[inline]
     pub fn age(&self) {
         self.age.fetch_add(1, Ordering::Relaxed);
-        self.age.fetch_and(0b11111, Ordering::Relaxed);
     }
 
     /*----------------------------------------------------------------*/

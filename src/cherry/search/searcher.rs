@@ -343,7 +343,7 @@ pub fn search_worker<Info: SearchInfo>(
                     &mut pos,
                     thread,
                     shared,
-                    depth as i32 * DEPTH_SCALE,
+                    (depth as i32 * DEPTH_SCALE).min(MAX_FRACTIONAL_DEPTH as i32),
                     0,
                     alpha,
                     beta,
