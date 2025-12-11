@@ -150,6 +150,11 @@ weights! {
     queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973,
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 25100,
 
+    iir_depth         | IIR_DEPTH:         i32 => 6144,
+    iir_reduction     | IIR_REDUCTION:     i32 => 1024,
+    iir_imp_depth     | IIR_IMP_DEPTH:     i32 => 6144,
+    iir_imp_reduction | IIR_IMP_REDUCTION: i32 => 1024,
+
     rfp_depth     | RFP_DEPTH:     i32 => 6144,
     rfp_base      | RFP_BASE:      i32 => 0,
     rfp_scale     | RFP_SCALE:     i32 => 80,

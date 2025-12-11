@@ -257,6 +257,11 @@ impl Engine {
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
 
+                    IIR_DEPTH         => W::iir_depth(),         0, 16384;
+                    IIR_REDUCTION     => W::iir_reduction(),     0, 4096;
+                    IIR_IMP_DEPTH     => W::iir_imp_depth(),     0, 16384;
+                    IIR_IMP_REDUCTION => W::iir_imp_reduction(), 0, 4096;
+
                     RFP_DEPTH     => W::rfp_depth(),        0, 16384;
                     RFP_BASE      => W::rfp_base(),      -256, 256;
                     RFP_SCALE     => W::rfp_scale(),     -256, 256;
@@ -430,6 +435,11 @@ impl Engine {
                     ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
+
+                    IIR_DEPTH         => W::iir_depth(),         0, 16384;
+                    IIR_REDUCTION     => W::iir_reduction(),     0, 4096;
+                    IIR_IMP_DEPTH     => W::iir_imp_depth(),     0, 16384;
+                    IIR_IMP_REDUCTION => W::iir_imp_reduction(), 0, 4096;
 
                     RFP_DEPTH     => W::rfp_depth(),        0, 16384;
                     RFP_BASE      => W::rfp_base(),      -256, 256;
@@ -611,6 +621,11 @@ impl Engine {
                     "QUEEN_MAT_SCALE"  => QUEEN_MAT_SCALE,  i32;
                     "MAT_SCALE_BASE"   => MAT_SCALE_BASE,   i32;
 
+                    "IIR_DEPTH"         => IIR_DEPTH,         i32;
+                    "IIR_REDUCTION"     => IIR_REDUCTION,     i32;
+                    "IIR_IMP_DEPTH"     => IIR_IMP_DEPTH,     i32;
+                    "IIR_IMP_REDUCTION" => IIR_IMP_REDUCTION, i32;
+
                     "RFP_DEPTH"     => RFP_DEPTH,     i32;
                     "RFP_BASE"      => RFP_BASE,      i32;
                     "RFP_SCALE"     => RFP_SCALE,     i32;
@@ -698,7 +713,14 @@ impl Engine {
 
                 #[cfg(feature = "tune")]
                 match name.as_str() {
-                    "LMR_QUIET_BASE" | "LMR_QUIET_DIV" | "LMR_TACTIC_BASE" | "LMR_TACTIC_DIV" =>
+                    "LMR_QUIET_BASE" |
+                    "LMR_QUIET_DIV" |
+                    "LMR_QUIET_IMP_BASE" |
+                    "LMR_QUIET_IMP_DIV" |
+                    "LMR_TACTIC_BASE" |
+                    "LMR_TACTIC_DIV" |
+                    "LMR_TACTIC_IMP_BASE" |
+                    "LMR_TACTIC_IMP_DIV" =>
                         init_lmr(),
                     _ => {}
                 }

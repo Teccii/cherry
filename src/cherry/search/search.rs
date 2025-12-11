@@ -28,7 +28,7 @@ pub fn search<Node: NodeType>(
     pos: &mut Position,
     thread: &mut ThreadData,
     shared: &SharedData,
-    depth: i32,
+    mut depth: i32,
     ply: u16,
     mut alpha: Score,
     beta: Score,
@@ -170,6 +170,19 @@ pub fn search<Node: NodeType>(
                 syzygy_min = score;
             }
         }
+    }
+
+    let (iir_depth, iir_reduction) = if improving {
+        (W::iir_imp_depth(), W::iir_imp_reduction())
+    } else {
+        (W::iir_depth(), W::iir_reduction())
+    };
+
+    if (Node::PV || cut_node)
+        && depth >= iir_depth
+        && skip_move.is_none()
+        && tt_entry.is_some_and(|e| e.mv.is_none()) {
+        depth -= iir_reduction;
     }
 
     if !Node::PV && !in_check && skip_move.is_none() {
