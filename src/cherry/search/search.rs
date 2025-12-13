@@ -202,13 +202,11 @@ pub fn search<Node: NodeType>(
         };
 
         if depth >= nmp_depth
-            && thread.search_stack[ply as usize - 1].move_played.is_some()
+            && pos.prev_move(1).is_some()
             && static_eval >= beta
             && pos.null_move()
         {
             let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / DEPTH_SCALE as i64) as i32;
-
-            thread.search_stack[ply as usize].move_played = None;
             let score = -search::<Node>(
                 pos,
                 thread,
@@ -238,7 +236,7 @@ pub fn search<Node: NodeType>(
     let mut move_picker = MovePicker::new(tt_entry.and_then(|e| e.mv));
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
-    let cont_indices = ContIndices::new(&thread.search_stack, ply);
+    let cont_indices = ContIndices::new(&pos);
 
     let lmr_depth_bias = if Node::PV {
         W::lmr_depth_pv_bias()
@@ -376,9 +374,7 @@ pub fn search<Node: NodeType>(
             }
         }
 
-        thread.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv, &shared.nnue_weights);
-
         let new_depth = depth + ext - 1 * DEPTH_SCALE;
         if moves_seen == 0 {
             score = -search::<Node>(
@@ -604,7 +600,7 @@ fn q_search<Node: NodeType>(
     let mut best_score = None;
     let mut moves_seen = 0;
     let mut move_picker = MovePicker::new(None);
-    let cont_indices = ContIndices::new(&thread.search_stack, ply);
+    let cont_indices = ContIndices::new(&pos);
 
     if !in_check {
         move_picker.skip_bad_tactics();
@@ -612,7 +608,6 @@ fn q_search<Node: NodeType>(
     }
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
-        thread.search_stack[ply as usize].move_played = Some(MoveData::new(pos.board(), mv));
         pos.make_move(mv, &shared.nnue_weights);
         let score = -q_search::<Node>(pos, thread, shared, ply + 1, -beta, -alpha);
         pos.unmake_move();

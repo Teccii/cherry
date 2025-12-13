@@ -20,14 +20,10 @@ pub struct ContIndices {
 
 impl ContIndices {
     #[inline]
-    pub fn new(search_stack: &[SearchStack], ply: u16) -> ContIndices {
+    pub fn new(pos: &Position) -> ContIndices {
         ContIndices {
-            counter_move: (ply >= 1)
-                .then(|| search_stack[ply as usize - 1].move_played)
-                .flatten(),
-            follow_up: (ply >= 2)
-                .then(|| search_stack[ply as usize - 2].move_played)
-                .flatten(),
+            counter_move: pos.prev_move(1),
+            follow_up: pos.prev_move(2),
         }
     }
 }

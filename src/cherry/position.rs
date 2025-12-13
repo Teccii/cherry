@@ -2,10 +2,11 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Position {
-    board: Board,
-    board_history: Vec<Board>,
+    current: Board,
+    boards: Vec<Board>,
+    moves: Vec<Option<MoveData>>,
     nnue: Nnue,
 }
 
@@ -15,8 +16,9 @@ impl Position {
         let nnue = Nnue::new(&board, weights);
 
         Position {
-            board,
-            board_history: Vec::with_capacity(MAX_PLY as usize),
+            current: board,
+            boards: Vec::with_capacity(MAX_PLY as usize),
+            moves: Vec::with_capacity(MAX_PLY as usize),
             nnue,
         }
     }
@@ -24,99 +26,101 @@ impl Position {
     #[inline]
     pub fn set_board(&mut self, board: Board, weights: &NetworkWeights) {
         self.nnue.full_reset(&board, weights);
-        self.board_history.clear();
-        self.board = board;
+        self.boards.clear();
+        self.moves.clear();
+        self.current = board;
     }
 
     #[inline]
     pub fn reset(&mut self, weights: &NetworkWeights) {
-        self.nnue.full_reset(&self.board, weights);
+        self.nnue.full_reset(&self.current, weights);
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn board(&self) -> &Board {
-        &self.board
+        &self.current
     }
 
     #[inline]
-    pub fn non_pawn_material(&self) -> bool {
-        let pieces = self.board.colors(self.stm());
-
-        pieces != pieces & (self.board.pieces(Piece::Pawn) | self.board.pieces(Piece::King))
-    }
-
-    #[inline]
-    pub fn can_castle(&self) -> bool {
-        for &color in &Color::ALL {
-            let rights = self.board.castle_rights(color);
-
-            if rights.short.is_some() || rights.long.is_some() {
-                return true;
-            }
+    pub fn prev_move(&self, ply: usize) -> Option<MoveData> {
+        if self.moves.is_empty() {
+            return None;
         }
 
-        false
+        let ply = ply as isize - 1; //countermove is last
+        let last_index = self.moves.len() as isize - 1;
+        let index = last_index - ply;
+
+        (index >= 0)
+            .then(|| self.moves.get(index as usize).and_then(|&m| m))
+            .flatten()
     }
 
     #[inline]
     pub fn stm(&self) -> Color {
-        self.board.stm()
+        self.current.stm()
     }
 
     #[inline]
     pub fn hash(&self) -> u64 {
-        self.board.hash()
+        self.current.hash()
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn make_move(&mut self, mv: Move, weights: &NetworkWeights) {
-        self.board_history.push(self.board.clone());
-        self.board.make_move(mv);
-        let prev_board = self.board_history.last().unwrap();
+        self.boards.push(self.current.clone());
+        self.moves.push(Some(MoveData::new(&self.current, mv)));
+        self.current.make_move(mv);
 
-        self.nnue.make_move(prev_board, &self.board, weights, mv);
+        let prev_board = self.boards.last().unwrap();
+        self.nnue.make_move(prev_board, &self.current, weights, mv);
     }
 
     #[inline]
     pub fn null_move(&mut self) -> bool {
-        self.board_history.push(self.board.clone());
-        if self.board.null_move() {
+        self.boards.push(self.current.clone());
+        self.moves.push(None);
+
+        if self.current.null_move() {
             return true;
         }
 
-        self.board_history.pop().unwrap();
+        self.boards.pop().unwrap();
+        self.moves.pop().unwrap();
         false
     }
 
     #[inline]
     pub fn unmake_move(&mut self) {
-        self.board = self.board_history.pop().unwrap();
+        self.current = self.boards.pop().unwrap();
+        self.moves.pop().unwrap();
         self.nnue.unmake_move();
     }
 
     #[inline]
     pub fn unmake_null_move(&mut self) {
-        self.board = self.board_history.pop().unwrap();
+        self.current = self.boards.pop().unwrap();
+        self.moves.pop().unwrap();
     }
 
     /*----------------------------------------------------------------*/
 
     #[inline]
     pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
-        self.nnue.apply_updates(&self.board, weights);
+        self.nnue.apply_updates(&self.current, weights);
 
-        let bucket = OUTPUT_BUCKETS[self.board.occupied().popcnt()];
+        let bucket = OUTPUT_BUCKETS[self.current.occupied().popcnt()];
         let mut eval = self.nnue.eval(weights, bucket, self.stm());
 
-        let material = W::pawn_mat_scale() * self.board.pieces(Piece::Pawn).popcnt() as i32
-            + W::knight_mat_scale() * self.board.pieces(Piece::Knight).popcnt() as i32
-            + W::bishop_mat_scale() * self.board.pieces(Piece::Bishop).popcnt() as i32
-            + W::rook_mat_scale() * self.board.pieces(Piece::Rook).popcnt() as i32
-            + W::queen_mat_scale() * self.board.pieces(Piece::Queen).popcnt() as i32;
+        let material = W::pawn_mat_scale() * self.current.pieces(Piece::Pawn).popcnt() as i32
+            + W::knight_mat_scale() * self.current.pieces(Piece::Knight).popcnt() as i32
+            + W::bishop_mat_scale() * self.current.pieces(Piece::Bishop).popcnt() as i32
+            + W::rook_mat_scale() * self.current.pieces(Piece::Rook).popcnt() as i32
+            + W::queen_mat_scale() * self.current.pieces(Piece::Queen).popcnt() as i32;
         eval = (i32::from(eval) * (W::mat_scale_base() + material) / 32768) as i16;
 
         Score::new(eval.clamp(-Score::MIN_TB_WIN.0 + 1, Score::MIN_TB_WIN.0 - 1))
@@ -128,17 +132,19 @@ impl Position {
     pub fn is_draw(&self) -> bool {
         self.insufficient_material()
             || self.repetition()
-            || self.board.status() == BoardStatus::Draw
+            || self.current.status() == BoardStatus::Draw
     }
 
     pub fn insufficient_material(&self) -> bool {
-        match self.board.occupied().popcnt() {
+        match self.current.occupied().popcnt() {
             2 => true,
-            3 => (self.board.pieces(Piece::Knight) | self.board.pieces(Piece::Bishop)).popcnt() > 0,
+            3 =>
+                (self.current.pieces(Piece::Knight) | self.current.pieces(Piece::Bishop)).popcnt()
+                    > 0,
             4 => {
-                let bishops = self.board.pieces(Piece::Bishop);
+                let bishops = self.current.pieces(Piece::Bishop);
 
-                if bishops.popcnt() != 2 || self.board.colors(Color::White).popcnt() != 2 {
+                if bishops.popcnt() != 2 || self.current.colors(Color::White).popcnt() != 2 {
                     return false;
                 }
 
@@ -153,13 +159,13 @@ impl Position {
 
     pub fn repetition(&self) -> bool {
         let hash = self.hash();
-        let hm = self.board.halfmove_clock() as usize;
+        let hm = self.current.halfmove_clock() as usize;
 
         if hm < 4 {
             return false;
         }
 
-        self.board_history
+        self.boards
             .iter()
             .rev()
             .take(hm + 1) //idk if hm or hm + 1
