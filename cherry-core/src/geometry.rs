@@ -198,6 +198,32 @@ const INV_PERMS: [[u8; Square::COUNT]; Square::COUNT] = {
     table
 };
 
+const INV_VALID: [u64; Square::COUNT] = {
+    #[inline]
+    const fn calc_valid(sq: Square) -> u64 {
+        let ray_perm = INV_PERMS[sq as usize];
+        let mut valid = 0;
+        let mut sq = 0;
+        while sq < Square::COUNT {
+            if ray_perm[sq] != 0x88 {
+                valid |= 1u64 << sq;
+            }
+            sq += 1;
+        }
+
+        valid
+    }
+
+    let mut table = [0; Square::COUNT];
+    let mut sq = 0;
+    while sq < Square::COUNT {
+        table[sq] = calc_valid(Square::index(sq));
+        sq += 1;
+    }
+
+    table
+};
+
 const ATTACK_MASKS: [[u64; Piece::COUNT]; Color::COUNT] = {
     const KING: u8 = 1 << 0;
     const WHITE_PAWN: u8 = 1 << 1;
@@ -213,11 +239,15 @@ const ATTACK_MASKS: [[u64; Piece::COUNT]; Color::COUNT] = {
     const WPDJ: u8 = BISHOP | QUEEN | KING | WHITE_PAWN;
     const BPDJ: u8 = BISHOP | QUEEN | KING | BLACK_PAWN;
 
+    #[rustfmt::skipo]
     const BASE: [u8; 64] = [
-        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG,
-        DIAG, DIAG, KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, KNIGHT, BPDJ, DIAG, DIAG,
-        DIAG, DIAG, DIAG, DIAG, KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, KNIGHT, BPDJ,
-        DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        KNIGHT, BPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        KNIGHT, BPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
         KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
     ];
 
@@ -280,8 +310,8 @@ pub fn ray_perm(sq: Square) -> (u8x64, u64) {
 }
 
 #[inline]
-pub fn inv_perm(sq: Square) -> u8x64 {
-    u8x64::from(INV_PERMS[sq as usize])
+pub fn inv_perm(sq: Square) -> (u8x64, u64) {
+    (u8x64::from(INV_PERMS[sq as usize]), INV_VALID[sq as usize])
 }
 
 #[inline]
@@ -313,25 +343,29 @@ pub fn ray_attackers(rays: u8x64) -> Mask64 {
     const WPDJ: u8 = BISHOP | QUEEN | KING | WHITE_PAWN;
     const BPDJ: u8 = BISHOP | QUEEN | KING | BLACK_PAWN;
 
+    #[rustfmt::skip]
     let bits_to_piece = u8x16::from([
-        0, KING, BLACK_PAWN, KNIGHT, 0, BISHOP, ROOK, QUEEN, 0, KING, WHITE_PAWN, KNIGHT, 0,
-        BISHOP, ROOK, QUEEN,
+        0, KING, BLACK_PAWN, KNIGHT, 0, BISHOP, ROOK, QUEEN,
+        0, KING, WHITE_PAWN, KNIGHT, 0, BISHOP, ROOK, QUEEN,
     ])
     .broadcast64();
+
+    #[rustfmt::skip]
     let valid_attackers = u8x64::from([
-        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG,
-        DIAG, DIAG, KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, KNIGHT, BPDJ, DIAG, DIAG,
-        DIAG, DIAG, DIAG, DIAG, KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, KNIGHT, BPDJ,
-        DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        KNIGHT, BPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        KNIGHT, BPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
         KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
     ]);
 
-    let pieces = (rays & u8x64::splat(Place::PIECE_MASK | Place::COLOR_MASK))
-        .to_u16x32()
-        .shr::<4>()
-        .to_u8x64()
-        .shuffle(bits_to_piece);
-    (pieces & valid_attackers).nonzero()
+    let ray_pieces = (rays & u8x64::splat(Place::PIECE_MASK | Place::COLOR_MASK)).to_u16x32().shr::<4>().to_u8x64();
+    let ray_pieces = bits_to_piece.shuffle(ray_pieces);
+
+    (ray_pieces & valid_attackers).nonzero()
 }
 
 #[inline]
@@ -339,11 +373,16 @@ pub fn ray_sliders(rays: u8x64) -> Mask64 {
     const DIAG: u8 = 0b001 << 4;
     const ORTH: u8 = 0b010 << 4;
 
+    #[rustfmt::skip]
     let slider_mask = u8x64::from([
-        0, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, 0, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
-        0, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, 0, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
-        0, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, 0, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
-        0, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, 0, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        0, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        0, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        0, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        0, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        0, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        0, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
+        0, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
+        0, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
     ]);
 
     (rays & u8x64::splat(Place::SLIDER_BIT)).nonzero() & (rays & slider_mask).nonzero()

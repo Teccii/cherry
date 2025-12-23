@@ -41,6 +41,7 @@ mod search {
     pub use window::*;
 }
 
+mod attacks;
 #[cfg(feature = "datagen")]
 mod datagen;
 mod engine;
@@ -50,6 +51,7 @@ mod syzygy;
 mod uci;
 mod util;
 
+pub use attacks::*;
 #[cfg(feature = "datagen")]
 pub use datagen::*;
 pub use engine::*;

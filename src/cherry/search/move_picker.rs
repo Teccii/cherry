@@ -120,7 +120,7 @@ impl MovePicker {
             while let Some(index) = select_next(&self.good_tactics) {
                 let mv = swap_pop(&mut self.good_tactics, index).unwrap();
 
-                if pos.board().cmp_see(mv.0, 0) {
+                if pos.cmp_see(mv.0, 0) {
                     return Some(mv);
                 } else {
                     if !self.skip_bad_tactics {

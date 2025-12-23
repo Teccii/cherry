@@ -281,7 +281,7 @@ pub fn search<Node: NodeType>(
                 let see_margin = (see_base + see_scale * depth / DEPTH_SCALE) as i16;
                 if depth <= see_depth
                     && move_picker.stage() > Stage::YieldGoodTactics
-                    && !pos.board().cmp_see(mv, see_margin)
+                    && !pos.cmp_see(mv, see_margin)
                 {
                     continue;
                 }
@@ -328,7 +328,7 @@ pub fn search<Node: NodeType>(
                 let see_margin = (see_base + see_scale * lmr_depth / DEPTH_SCALE) as i16;
                 if lmr_depth <= see_depth
                     && move_picker.stage() > Stage::YieldGoodTactics
-                    && !pos.board().cmp_see(mv, see_margin)
+                    && !pos.cmp_see(mv, see_margin)
                 {
                     continue;
                 }

@@ -75,7 +75,7 @@ impl MoveList {
         let len = self.0.len();
         unsafe {
             let ptr = self.0.as_mut_ptr().add(len);
-            let new_len = len + mask.to_bitmask().count_ones() as usize;
+            let new_len = len + 4 * mask.to_bitmask().count_ones() as usize;
 
             moves.compress_store(mask, ptr);
             self.0.set_len(new_len);
@@ -176,7 +176,7 @@ impl Board {
             src,
         );
 
-        if let Some(ep_sq) = self.ep_square() && (KING_MOVES || checker == Some(Piece::Pawn)) {
+        if let Some(ep_sq) = self.ep_square() {
             let mask = masked_attacks.get(ep_sq) & pawn_mask;
             let ep_info = self.en_passant.unwrap();
 
@@ -185,6 +185,7 @@ impl Board {
                 let left = src.file() < ep_sq.file();
 
                 if (left && ep_info.left()) || (!left && ep_info.right()) {
+
                     moves.push(Move::new(src, ep_sq, MoveFlag::EnPassant));
                 }
             }
@@ -212,19 +213,19 @@ impl Board {
         let valid_pawns = self.color_pieces(self.stm, Piece::Pawn) & !pinned_pawn_mask;
         let (normal_empty, double_empty) = pawn_empty(self.stm, empty, valid);
 
-        let pawn_normal = (valid_pawns & normal_empty).relative_to(self.stm);
-        let pawn_double = (valid_pawns & double_empty).relative_to(self.stm);
+        let pawn_normal = valid_pawns & normal_empty;
+        let pawn_double = valid_pawns & double_empty;
 
-        let promo_mask = Mask8(pawn_normal.shift::<South>(7).0 as u8);
-        moves.write4x8(unsafe { u64x8::load(PAWN_PROMOS.as_ptr()) }, promo_mask);
+        let promo_mask = Mask8((pawn_normal >> PAWN_PROMO_SHIFT[self.stm]).0 as u8);
+        moves.write4x8(unsafe { u64x8::load(PAWN_PROMOS[self.stm].as_ptr()) }, promo_mask);
 
-        let normal_mask = pawn_normal.shift::<South>(1).0 as u8;
-        let double_mask = pawn_double.shift::<South>(1).0 as u8;
+        let normal_mask = (pawn_normal >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
+        let double_mask = (pawn_double >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
         let double_mask = Mask16(double_mask as u16 | ((normal_mask as u16) << 8));
-        moves.write16(unsafe { u16x16::load(PAWN_DOUBLE.as_ptr()) }, double_mask);
+        moves.write16(unsafe { u16x16::load(PAWN_DOUBLE[self.stm].as_ptr()) }, double_mask);
 
-        let normal_mask = Mask32(pawn_normal.shift::<South>(2).0 as u32);
-        moves.write32(unsafe { u16x32::load(PAWN_NORMAL.as_ptr())}, normal_mask);
+        let normal_mask = Mask32((pawn_normal >> PAWN_NORMAL_SHIFT).0 as u32);
+        moves.write32(unsafe { u16x32::load(PAWN_NORMAL[self.stm].as_ptr())}, normal_mask);
 
         moves.write(
             &masked_attacks,
@@ -249,8 +250,8 @@ impl Board {
             let king_src = self.king(self.stm);
 
             macro_rules! write_castling_moves {
-                ($king_dest:expr, $rook_dest:expr, $flag:expr) => {
-                    if let Some(rook_src) = rights.short.map(|f| Square::new(f, our_backrank)) {
+                ($king_dest:expr, $rook_dest:expr, $rights:expr, $flag:expr) => {
+                    if let Some(rook_src) = $rights.map(|f| Square::new(f, our_backrank)) {
                         let king_dest = Square::new($king_dest, our_backrank);
                         let rook_dest = Square::new($rook_dest, our_backrank);
                         let king_to_rook = between(king_src, rook_src);
@@ -268,15 +269,15 @@ impl Board {
                 };
             }
 
-            write_castling_moves!(File::G, File::F, MoveFlag::ShortCastling);
-            write_castling_moves!(File::C, File::D, MoveFlag::LongCastling);
+            write_castling_moves!(File::G, File::F, rights.short, MoveFlag::ShortCastling);
+            write_castling_moves!(File::C, File::D, rights.long, MoveFlag::LongCastling);
         }
     }
 
     #[inline]
     fn gen_king_moves<const CHECKERS: usize>(&self, moves: &mut MoveList, checkers: PieceMask) {
         let (our_attacks, their_attacks) = (self.attack_table(self.stm), self.attack_table(!self.stm));
-        let (our_pieces, their_pieces) = (self.colors(self.stm), !self.colors(self.stm));
+        let (our_pieces, their_pieces) = (self.colors(self.stm), self.colors(!self.stm));
         let our_king = self.king(self.stm);
 
         let mut valid = our_attacks.for_mask(PieceMask::KING) & !their_attacks.all() & !our_pieces;
@@ -329,11 +330,11 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn calc_pins(&self) -> (u16x64, Bitboard) {
+    pub fn calc_pins(&self) -> (u16x64, Bitboard) {
         let king = self.king(self.stm);
-        let (ray_coords, ray_valid) = ray_perm(king);
-        let ray_places = self.inner.permute(ray_coords);
-        let inv_perm = inv_perm(king);
+        let (ray_perm, ray_valid) = ray_perm(king);
+        let (inv_perm, inv_valid) = inv_perm(king);
+        let ray_places = self.inner.permute(ray_perm).mask(Mask64(ray_valid));
 
         let their_color = match self.stm {
             Color::White => ray_places.msb(),
@@ -342,28 +343,36 @@ impl Board {
         let blockers = ray_places.nonzero().to_bitmask() & NON_HORSE_ATTACK_MASK;
         let sliders = ray_sliders(ray_places);
         let closest = extend_bitrays(blockers, ray_valid) & blockers;
-        let second_closest = extend_bitrays(blockers & !closest, ray_valid) & blockers & !closest;
+        let pinner_bitrays = extend_bitrays(blockers & !closest, ray_valid) & NON_HORSE_ATTACK_MASK;
+        let second_closest = pinner_bitrays & blockers & !closest;
 
-        let pinners = their_color & sliders & second_closest;
-        let pinner_bitrays =
-            ray_places.mask(pinners).extend_rays().nonzero() & NON_HORSE_ATTACK_MASK;
-        let pinned_mailbox = ray_places
-            .mask(!their_color & pinner_bitrays & closest)
-            .permute(inv_perm);
-        let pinned_mask = pinned_mailbox.nonzero();
-        let pinned_bb = pinned_mask.to_bitmask();
-
-        let pinned_count = pinned_bb.count_ones() as usize;
-        let pinned_coords = ray_coords.compress(pinned_mask).extract16::<0>();
+        let their_pieces = their_color & blockers;
+        let pinners = their_pieces & sliders & second_closest;
+        let pinned = !their_pieces & u64x2::splat(closest)
+            .to_u8x16()
+            .mask(u64x2::splat(pinners.to_bitmask()).to_u8x16().nonzero())
+            .to_u64x2()
+            .extract::<0>();
+        let pinned_bitmask = pinned.to_bitmask();
+        let pinned_places = ray_places
+            .mask(pinned)
+            .extend_rays()
+            .mask(Mask64(pinner_bitrays))
+            .permute(inv_perm)
+            .mask(Mask64(inv_valid));
 
         let index = unsafe { u8x16::load(self.index_to_square[self.stm].0.as_ptr()) };
-        let piece_mask = index.findset(pinned_coords, pinned_count);
+        let pinned_coords = ray_perm.compress(pinned).extract16::<0>();
+        let pinned_count = pinned_bitmask.count_ones() as usize;
+        let pinned_mask = index.findset(pinned_coords, pinned_count);
 
-        let pinned_indices = (pinned_mailbox & u8x64::splat(Place::INDEX_MASK)).zero_ext();
-        let table_mask =
-            u16x64::splat(!piece_mask) | u16x64::splat(1).shlv(pinned_indices).mask(pinned_mask);
+        let pinned_indices = pinned_places & u8x64::splat(Place::INDEX_MASK);
+        let valid_indices = pinned_indices.nonzero();
+        let table_mask = u16x64::splat(!pinned_mask) | u16x64::splat(1)
+            .shlv(pinned_indices.zero_ext())
+            .mask(valid_indices);
 
-        (table_mask, Bitboard(pinned_bb))
+        (table_mask, Bitboard(valid_indices.to_bitmask()))
     }
 }
 
@@ -379,42 +388,57 @@ fn pawn_empty(stm: Color, empty: Bitboard, valid: Bitboard) -> (Bitboard, Bitboa
     }
 }
 
-const PAWN_NORMAL: [Move; 32] = {
-    let mut table = [Move::from_bits(1); 32];
+const PAWN_NORMAL_SHIFT: usize = 16;
+const PAWN_NORMAL: [[Move; 32]; Color::COUNT] = {
+    let mut table = [[Move::from_bits(1); 32]; Color::COUNT];
     let mut i = 0;
     while i < 32 {
-        let src = Square::index(i + 16);
-        table[i] = Move::new(src, src.offset(0, 1), MoveFlag::Normal);
+        let src = Square::index(i + PAWN_NORMAL_SHIFT);
+
+        table[0][i] = Move::new(src, src.offset(0, 1), MoveFlag::Normal);
+        table[1][i] = Move::new(src, src.offset(0, -1), MoveFlag::Normal);
         i += 1;
     }
 
     table
 };
 
-const PAWN_DOUBLE: [Move; 16] = {
-    let mut table = [Move::from_bits(1); 16];
+const PAWN_DOUBLE_SHIFT: [usize; Color::COUNT] = [8, 48];
+const PAWN_DOUBLE: [[Move; 16]; Color::COUNT] = {
+    let mut table = [[Move::from_bits(1); 16]; Color::COUNT];
     let mut i = 0;
     while i < 8 {
-        let white_src = Square::index(i + 8);
-        table[i] = Move::new(white_src, white_src.offset(0, 2), MoveFlag::DoublePush);
-        table[i + 8] = Move::new(white_src, white_src.offset(0, 1), MoveFlag::Normal);
+        let white_src = Square::index(i + PAWN_DOUBLE_SHIFT[0]);
+        let black_src = Square::index(i + PAWN_DOUBLE_SHIFT[1]);
+
+        table[0][i] = Move::new(white_src, white_src.offset(0, 2), MoveFlag::DoublePush);
+        table[0][i + 8] = Move::new(white_src, white_src.offset(0, 1), MoveFlag::Normal);
+        table[1][i] = Move::new(black_src, black_src.offset(0, -2), MoveFlag::DoublePush);
+        table[1][i + 8] = Move::new(black_src, black_src.offset(0, -1), MoveFlag::Normal);
         i += 1;
     }
 
     table
 };
 
-const PAWN_PROMOS: [Move; 32] = {
-    let mut table = [Move::from_bits(1); 32];
+const PAWN_PROMO_SHIFT: [usize; Color::COUNT] = [48, 8];
+const PAWN_PROMOS: [[Move; 32]; Color::COUNT] = {
+    let mut table = [[Move::from_bits(1); 32]; Color::COUNT];
     let mut i = 0;
     while i < 8 {
-        let src = Square::index(i + 48);
-        let dest = src.offset(0, 1);
+        let white_src = Square::index(i + PAWN_PROMO_SHIFT[0]);
+        let black_src = Square::index(i + PAWN_PROMO_SHIFT[1]);
+        let white_dest = white_src.offset(0, 1);
+        let black_dest = black_src.offset(0, -1);
 
-        table[i * 4] = Move::new(src, dest, MoveFlag::PromotionQueen);
-        table[i * 4 + 1] = Move::new(src, dest, MoveFlag::PromotionRook);
-        table[i * 4 + 2] = Move::new(src, dest, MoveFlag::PromotionBishop);
-        table[i * 4 + 3] = Move::new(src, dest, MoveFlag::PromotionKnight);
+        table[0][i * 4 + 0] = Move::new(white_src, white_dest, MoveFlag::PromotionQueen);
+        table[0][i * 4 + 1] = Move::new(white_src, white_dest, MoveFlag::PromotionRook);
+        table[0][i * 4 + 2] = Move::new(white_src, white_dest, MoveFlag::PromotionBishop);
+        table[0][i * 4 + 3] = Move::new(white_src, white_dest, MoveFlag::PromotionKnight);
+        table[1][i * 4 + 0] = Move::new(black_src, black_dest, MoveFlag::PromotionQueen);
+        table[1][i * 4 + 1] = Move::new(black_src, black_dest, MoveFlag::PromotionRook);
+        table[1][i * 4 + 2] = Move::new(black_src, black_dest, MoveFlag::PromotionBishop);
+        table[1][i * 4 + 3] = Move::new(black_src, black_dest, MoveFlag::PromotionKnight);
 
         i += 1;
     }

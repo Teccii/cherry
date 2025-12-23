@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -124,6 +125,113 @@ impl Position {
         eval = (i32::from(eval) * (W::mat_scale_base() + material) / 32768) as i16;
 
         Score::new(eval.clamp(-Score::MIN_TB_WIN.0 + 1, Score::MIN_TB_WIN.0 - 1))
+    }
+
+    #[inline]
+    pub fn cmp_see(&self, mv: Move, threshold: i16) -> bool {
+        if mv.is_castling() {
+            return threshold <= 0;
+        }
+
+        let board = self.board();
+        let (src, dest, flag) = (mv.src(), mv.dest(), mv.flag());
+
+        let next_victim = mv.promotion().unwrap_or_else(|| board.piece_on(src).unwrap());
+        let mut balance = -threshold + match flag {
+            MoveFlag::Normal | MoveFlag::DoublePush => 0,
+            MoveFlag::EnPassant => W::see_value(Piece::Pawn),
+            MoveFlag::Capture => W::see_value(board.piece_on(dest).unwrap()),
+            _ if mv.is_capture_promotion() =>
+                W::see_value(board.piece_on(dest).unwrap())
+                    + W::see_value(mv.promotion().unwrap())
+                    - W::see_value(Piece::Pawn),
+            _ if mv.is_promotion() =>
+                W::see_value(board.piece_on(dest).unwrap()) - W::see_value(Piece::Pawn),
+            _ => unreachable!()
+        };
+
+        if balance < 0 {
+            return false;
+        }
+
+        balance -= W::see_value(next_victim);
+
+        if balance >= 0 {
+            return true;
+        }
+
+        let src_place = board.get(src);
+        let mut see_board: Byteboard = *self.current;
+        see_board.set(src, Place::EMPTY);
+        see_board.set(dest, src_place);
+
+        if flag == MoveFlag::EnPassant {
+            let victim_sq = dest.offset(0, -board.stm().sign() as i8);
+            see_board.set(victim_sq, Place::EMPTY);
+        }
+
+        let mut stm = !board.stm();
+
+        let (ray_perm, ray_valid) = ray_perm(dest);
+        let ray_places = see_board.permute(ray_perm).mask(Mask64(ray_valid));
+
+        let colors = ray_places.msb().to_bitmask();
+        let mut blockers = ray_places.nonzero().to_bitmask();
+        let attackers = ray_attackers(ray_places);
+
+        let ray_pieces = (ray_places & u8x64::splat(Place::PIECE_MASK)).mask(attackers);
+        let ray_pieces_vec = u64x8::from([
+            u8x64::eq(ray_pieces, u8x64::splat(Piece::Pawn.bits() << 4)).to_bitmask(),
+            u8x64::eq(ray_pieces, u8x64::splat(Piece::Knight.bits() << 4)).to_bitmask(),
+            u8x64::eq(ray_pieces, u8x64::splat(Piece::Bishop.bits() << 4)).to_bitmask(),
+            u8x64::eq(ray_pieces, u8x64::splat(Piece::Rook.bits() << 4)).to_bitmask(),
+            u8x64::eq(ray_pieces, u8x64::splat(Piece::Queen.bits() << 4)).to_bitmask(),
+            u8x64::eq(ray_pieces, u8x64::splat(Piece::King.bits() << 4)).to_bitmask(),
+            0,
+            0,
+        ]);
+        let ray_pieces: [u64; 8] = unsafe { core::mem::transmute(ray_pieces_vec) };
+        let attackers = attackers.to_bitmask();
+
+        #[inline]
+        fn next_attackers(stm: Color, blockers: u64, ray_valid: u64, attackers: u64, colors: u64) -> u64 {
+            let closest_blockers = extend_bitrays(blockers, ray_valid) & blockers;
+            let colors = match stm {
+                Color::White => !colors,
+                Color::Black => colors,
+            };
+
+            closest_blockers & attackers & colors
+        }
+
+        loop {
+            let current_attackers = next_attackers(stm, blockers, ray_valid, attackers, colors);
+
+            if current_attackers == 0 {
+                break;
+            }
+
+            let next_piece = Piece::index((ray_pieces_vec & u64x8::splat(current_attackers)).nonzero().to_bitmask().trailing_zeros() as usize);
+            let piece_blockers = ray_pieces[next_piece as usize] & current_attackers;
+
+            blockers ^= piece_blockers & piece_blockers.wrapping_neg();
+            balance = -balance - 1 - W::see_value(next_piece);
+            stm = !stm;
+
+            if next_piece == Piece::King {
+                if next_attackers(stm, blockers, ray_valid, attackers, colors) != 0 {
+                    stm = !stm;
+                }
+
+                break;
+            }
+
+            if balance >= 0 {
+                break;
+            }
+        }
+
+        stm != board.stm()
     }
 
     /*----------------------------------------------------------------*/

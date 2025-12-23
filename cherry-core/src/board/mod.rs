@@ -9,6 +9,7 @@ mod move_gen;
 mod parse;
 mod perft;
 mod startpos;
+mod print;
 
 pub use move_gen::*;
 
@@ -43,8 +44,8 @@ impl EnPassant {
     pub fn new(file: File, left: bool, right: bool) -> EnPassant {
         let mut bits = 0;
         bits |= file as u8;
-        bits |= (left as u8) << 4;
-        bits |= (right as u8) << 7;
+        bits |= (left as u8) << 3;
+        bits |= (right as u8) << 4;
 
         EnPassant {
             bits: NonZeroU8::new(bits).unwrap(),
@@ -228,7 +229,7 @@ impl Board {
             board.remove_piece(src, src_place);
             board.remove_piece(dest, dest_place);
             board.add_piece(king_dest, src_place);
-            board.add_piece(rook_dest, src_place);
+            board.add_piece(rook_dest, dest_place);
 
             board.index_to_square[stm][src_place.index().unwrap()] = Some(king_dest);
             board.index_to_square[stm][dest_place.index().unwrap()] = Some(rook_dest);
@@ -258,8 +259,7 @@ impl Board {
             let new_place = Place::from_piece(promotion, stm, src_index);
 
             board.remove_piece(src, src_place);
-            board.remove_piece(dest, dest_place);
-            board.add_piece(dest, new_place);
+            board.change_piece(dest, dest_place, new_place);
 
             board.index_to_piece[stm][src_index] = Some(promotion);
             board.index_to_piece[!stm][dest_index] = None;
@@ -367,11 +367,12 @@ impl Board {
                 let stm = self.stm;
                 let src_piece = src_place.piece().unwrap();
                 let src_index = src_place.index().unwrap();
-                let dest_index = dest_place.index().unwrap();
+                let dest_index = dest_place.index().unwrap_or_else(|| {
+                    panic!("Whuh? {} | {}", self.to_fen(true), mv);
+                });
 
                 self.remove_piece(src, src_place);
-                self.remove_piece(dest, dest_place);
-                self.add_piece(dest, src_place);
+                self.change_piece(dest, dest_place, src_place);
 
                 self.index_to_square[stm][src_index] = Some(dest);
                 self.index_to_square[!stm][dest_index] = None;
@@ -445,7 +446,7 @@ impl Board {
             let mut right = false;
 
             let king = self.king(self.stm);
-            let (ray_coords, ray_valid) = ray_perm(king);
+            let (ray_perm, ray_valid) = ray_perm(king);
 
             for index in our_pawns & our_attacks {
                 let ep_src = self.index_to_square[self.stm][index].unwrap();
@@ -455,7 +456,7 @@ impl Board {
                 ep_board.set(dest, Place::EMPTY);
                 ep_board.set(ep_dest, pawn_place);
 
-                let ray_places = ep_board.permute(ray_coords);
+                let ray_places = ep_board.permute(ray_perm).mask(Mask64(ray_valid));
                 let their_color = match self.stm {
                     Color::White => ray_places.msb(),
                     Color::Black => !ray_places.msb(),
@@ -465,7 +466,7 @@ impl Board {
                 let closest = extend_bitrays(blockers, ray_valid) & blockers;
 
                 let their_attackers = their_color & attackers & closest;
-                if their_attackers.to_bitmask() != 0 {
+                if their_attackers.to_bitmask() == 0 {
                     if ep_src.file() < ep_file {
                         left = true;
                     } else {
@@ -545,8 +546,8 @@ impl Board {
         let mut attacks = [[PieceMask::EMPTY; Square::COUNT]; Color::COUNT];
 
         for &sq in &Square::ALL {
-            let (ray_coords, ray_valid) = ray_perm(sq);
-            let ray_places = self.inner.permute(ray_coords);
+            let (ray_perm, ray_valid) = ray_perm(sq);
+            let ray_places = self.inner.permute(ray_perm).mask(Mask64(ray_valid));
 
             let color = ray_places.msb();
             let blockers = ray_places.nonzero().to_bitmask();
@@ -558,16 +559,12 @@ impl Board {
             let white_attackers = !color & attackers & closest;
             let black_attackers = color & attackers & closest;
 
-            let white_coords = ray_coords.compress(white_attackers).extract16::<0>();
-            let black_coords = ray_coords.compress(black_attackers).extract16::<0>();
-            let white_mask = white_index.findset(
-                white_coords,
-                white_attackers.to_bitmask().count_ones() as usize,
-            );
-            let black_mask = black_index.findset(
-                black_coords,
-                black_attackers.to_bitmask().count_ones() as usize,
-            );
+            let white_coords = ray_perm.compress(white_attackers).extract16::<0>();
+            let black_coords = ray_perm.compress(black_attackers).extract16::<0>();
+            let white_count = white_attackers.to_bitmask().count_ones() as usize;
+            let black_count = black_attackers.to_bitmask().count_ones() as usize;
+            let white_mask = white_index.findset(white_coords, white_count);
+            let black_mask = black_index.findset(black_coords, black_count);
 
             attacks[Color::White][sq] = PieceMask(white_mask);
             attacks[Color::Black][sq] = PieceMask(black_mask);
@@ -580,33 +577,33 @@ impl Board {
 
     #[inline]
     fn add_piece(&mut self, sq: Square, new_place: Place) {
+        self.inner.set(sq, new_place);
+
         self.update_sliders(sq);
         self.add_attacks(sq, new_place);
-
-        self.inner.set(sq, new_place);
     }
 
     #[inline]
     fn remove_piece(&mut self, sq: Square, old_place: Place) {
-        self.update_sliders(sq);
         self.remove_attacks(old_place);
+        self.update_sliders(sq);
 
         self.inner.set(sq, Place::EMPTY);
     }
 
     #[inline]
     fn change_piece(&mut self, sq: Square, old_place: Place, new_place: Place) {
+        self.inner.set(sq, new_place);
+
         self.remove_attacks(old_place);
         self.add_attacks(sq, new_place);
-
-        self.inner.set(sq, new_place);
     }
 
     #[inline]
     fn update_sliders(&mut self, sq: Square) {
-        let (ray_coords, ray_valid) = ray_perm(sq);
-        let ray_places = self.inner.permute(ray_coords);
-        let inv_perm = inv_perm(sq);
+        let (ray_perm, ray_valid) = ray_perm(sq);
+        let (inv_perm, inv_valid) = inv_perm(sq);
+        let ray_places = self.inner.permute(ray_perm).mask(Mask64(ray_valid));
 
         let blockers = ray_places.nonzero().to_bitmask();
         let sliders = ray_sliders(ray_places);
@@ -615,8 +612,9 @@ impl Board {
         let slider_rays = ray_places.mask(sliders & bitrays).extend_rays();
         let updates = slider_rays
             .flip_rays()
-            .mask(Mask64(bitrays.rotate_left(32)))
-            .permute(inv_perm);
+            .mask(Mask64(bitrays))
+            .permute(inv_perm)
+            .mask(Mask64(inv_valid));
         let update_colors = updates.msb();
         let update_indices = updates & u8x64::splat(Place::INDEX_MASK);
         let valid_updates = update_indices.nonzero();
@@ -636,19 +634,20 @@ impl Board {
             new_place.color().unwrap(),
         );
 
-        let (ray_coords, ray_valid) = ray_perm(sq);
-        let ray_places = self.inner.permute(ray_coords);
-        let inv_perm = inv_perm(sq);
+        let (ray_perm, ray_valid) = ray_perm(sq);
+        let (inv_perm, inv_valid) = inv_perm(sq);
+        let ray_places = self.inner.permute(ray_perm).mask(Mask64(ray_valid));
 
         let blockers = ray_places.nonzero().to_bitmask();
         let bitrays = extend_bitrays(blockers, ray_valid);
         let valid_bitrays = bitrays & attack_mask(color, piece);
 
-        let indices = u8x64::splat(index.0)
+        let add_mask = u8x64::splat(1)
             .mask(Mask64(valid_bitrays))
             .permute(inv_perm)
-            .zero_ext();
-        let add_mask = u16x64::splat(1).shlv(indices);
+            .mask(Mask64(inv_valid))
+            .zero_ext()
+            .shlv(u16x64::splat(index.0 as u16));
 
         self.attack_table[color].0 |= add_mask;
     }

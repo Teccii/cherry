@@ -79,14 +79,14 @@ pub struct Engine {
     searcher: Arc<Mutex<Searcher>>,
     time_man: Arc<TimeManager>,
     sender: Sender<ThreadCommand>,
-    chess960: bool,
+    frc: bool,
 }
 
 impl Engine {
     pub fn new() -> Engine {
         let time_man = Arc::new(TimeManager::new());
         let searcher = Arc::new(Mutex::new(Searcher::new(
-            Board::default(),
+            Board::startpos(),
             Arc::clone(&time_man),
         )));
 
@@ -166,7 +166,7 @@ impl Engine {
             searcher,
             time_man,
             sender: tx,
-            chess960: false,
+            frc: false,
         }
     }
 
@@ -174,7 +174,7 @@ impl Engine {
         let cmd = if bytes == 0 {
             UciCommand::Quit
         } else {
-            match UciCommand::parse(input, self.chess960) {
+            match UciCommand::parse(input, self.frc) {
                 Ok(cmd) => cmd,
                 Err(e) => {
                     println!("{:?}", e);
@@ -356,7 +356,7 @@ impl Engine {
                 let searcher = self.searcher.lock().unwrap();
                 let board = searcher.pos.board();
 
-                println!("{}", board.pretty_print(self.chess960));
+                println!("{}", board.print(self.frc));
             }
             UciCommand::Eval => {
                 let mut searcher = self.searcher.lock().unwrap();
@@ -558,7 +558,7 @@ impl Engine {
                     "MoveOverhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
                     "UseSoftNodes" => self.time_man.set_soft_nodes(value.parse::<bool>().unwrap()),
                     "SyzygyPath" => set_syzygy_path(value.as_str()),
-                    "UCI_Chess960" => self.chess960 = value.parse::<bool>().unwrap(),
+                    "UCI_Chess960" => self.frc = value.parse::<bool>().unwrap(),
                     _ => {}
                 }
 

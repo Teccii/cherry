@@ -540,6 +540,114 @@ impl BitXorAssign<__mmask64> for Mask64 {
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
+pub struct u64x2(pub __m128i);
+
+impl u64x2 {
+    #[inline]
+    pub unsafe fn load<T>(src: *const T) -> u64x2 {
+        unsafe { _mm_loadu_si128(src.cast()).into() }
+    }
+
+    #[inline]
+    pub unsafe fn store<T>(self, dest: *mut T) {
+        unsafe {
+            _mm_storeu_si128(dest.cast(), self.0);
+        }
+    }
+
+    #[inline]
+    pub fn splat(value: u64) -> u64x2 {
+        unsafe { _mm_set1_epi64x(value as i64).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn to_u8x16(self) -> u8x16 {
+        u8x16(self.0)
+    }
+
+    #[inline]
+    pub fn to_u16x8(self) -> u16x8 {
+        u16x8(self.0)
+    }
+
+    #[inline]
+    pub fn to_u32x4(self) -> u32x4 {
+        u32x4(self.0)
+    }
+    
+    #[inline]
+    pub fn extract<const INDEX: i32>(self) -> u64 {
+        unsafe { _mm_extract_epi64::<INDEX>(self.0) as u64 }
+    }
+}
+
+impl From<__m128i> for u64x2 {
+    #[inline]
+    fn from(raw: __m128i) -> Self {
+        u64x2(raw)
+    }
+}
+
+impl From<[u64; 2]> for u64x2 {
+    #[inline]
+    fn from(arr: [u64; 2]) -> Self {
+        unsafe { u64x2::load(arr.as_ptr()) }
+    }
+}
+
+impl BitAnd for u64x2 {
+    type Output = u64x2;
+
+    #[inline]
+    fn bitand(self, rhs: Self) -> Self::Output {
+        unsafe { _mm_and_si128(self.0, rhs.0).into() }
+    }
+}
+
+impl BitOr for u64x2 {
+    type Output = u64x2;
+
+    #[inline]
+    fn bitor(self, rhs: Self) -> Self::Output {
+        unsafe { _mm_or_si128(self.0, rhs.0).into() }
+    }
+}
+
+impl BitXor for u64x2 {
+    type Output = u64x2;
+
+    #[inline]
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        unsafe { _mm_xor_si128(self.0, rhs.0).into() }
+    }
+}
+
+impl BitAndAssign for u64x2 {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: u64x2) {
+        *self = *self & rhs;
+    }
+}
+
+impl BitOrAssign for u64x2 {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: u64x2) {
+        *self = *self | rhs;
+    }
+}
+
+impl BitXorAssign for u64x2 {
+    #[inline]
+    fn bitxor_assign(&mut self, rhs: u64x2) {
+        *self = *self ^ rhs;
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone)]
 pub struct u32x4(pub __m128i);
 
 impl u32x4 {
@@ -570,6 +678,16 @@ impl u32x4 {
     #[inline]
     pub fn to_u16x8(self) -> u16x8 {
         u16x8(self.0)
+    }
+
+    #[inline]
+    pub fn to_u64x2(self) -> u64x2 {
+        u64x2(self.0)
+    }
+
+    #[inline]
+    pub fn extract<const INDEX: i32>(self) -> u32 {
+        unsafe { _mm_extract_epi32::<INDEX>(self.0) as u32 }
     }
 }
 
@@ -669,6 +787,16 @@ impl u16x8 {
     pub fn to_u32x4(self) -> u32x4 {
         u32x4(self.0)
     }
+    
+    #[inline]
+    pub fn to_u64x2(self) -> u64x2 {
+        u64x2(self.0)
+    }
+
+    #[inline]
+    pub fn extract<const INDEX: i32>(self) -> u16 {
+        unsafe { _mm_extract_epi16::<INDEX>(self.0) as u16 }
+    }
 }
 
 impl From<__m128i> for u16x8 {
@@ -758,6 +886,26 @@ impl u8x16 {
 
     /*----------------------------------------------------------------*/
 
+    #[inline]
+    pub fn to_u16x8(self) -> u16x8 {
+        u16x8(self.0)
+    }
+
+    #[inline]
+    pub fn to_u32x4(self) -> u32x4 {
+        u32x4(self.0)
+    }
+
+    #[inline]
+    pub fn to_u64x2(self) -> u64x2 {
+        u64x2(self.0)
+    }
+
+    #[inline]
+    pub fn extract<const INDEX: i32>(self) -> u8 {
+        unsafe { _mm_extract_epi8::<INDEX>(self.0) as u8 }
+    }
+    
     #[inline]
     pub fn broadcast32(self) -> u8x32 {
         unsafe { _mm256_broadcastsi128_si256(self.0).into() }
@@ -1509,6 +1657,83 @@ impl BitXorAssign for u32x16 {
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
+pub struct i32x16(pub __m512i);
+
+impl i32x16 {
+    #[inline]
+    pub unsafe fn load<T>(src: *const T) -> i32x16 {
+        unsafe { _mm512_loadu_si512(src.cast()).into() }
+    }
+
+    #[inline]
+    pub unsafe fn store<T>(self, dest: *mut T) {
+        unsafe {
+            _mm512_storeu_si512(dest.cast(), self.0);
+        }
+    }
+
+    #[inline]
+    pub fn splat(value: i32) -> i32x16 {
+        unsafe { _mm512_set1_epi32(value).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn reduce_sum(self) -> i32 {
+        unsafe { _mm512_reduce_add_epi32(self.0) }
+    }
+}
+
+impl From<__m512i> for i32x16 {
+    #[inline]
+    fn from(raw: __m512i) -> Self {
+        i32x16(raw)
+    }
+}
+
+impl From<[i32; 16]> for i32x16 {
+    #[inline]
+    fn from(arr: [i32; 16]) -> Self {
+        unsafe { i32x16::load(arr.as_ptr()) }
+    }
+}
+
+impl Add for i32x16 {
+    type Output = i32x16;
+
+    #[inline]
+    fn add(self, rhs: Self) -> Self::Output {
+        unsafe { _mm512_add_epi32(self.0, rhs.0).into() }
+    }
+}
+
+impl Sub for i32x16 {
+    type Output = i32x16;
+
+    #[inline]
+    fn sub(self, rhs: Self) -> Self::Output {
+        unsafe { _mm512_add_epi32(self.0, rhs.0).into() }
+    }
+}
+
+impl AddAssign for i32x16 {
+    #[inline]
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl SubAssign for i32x16 {
+    #[inline]
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone)]
 pub struct u16x32(pub __m512i);
 
 impl u16x32 {
@@ -1679,6 +1904,97 @@ impl BitXorAssign for u16x32 {
     #[inline]
     fn bitxor_assign(&mut self, rhs: u16x32) {
         *self = *self ^ rhs;
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone)]
+pub struct i16x32(pub __m512i);
+
+impl i16x32 {
+    #[inline]
+    pub unsafe fn load<T>(src: *const T) -> i16x32 {
+        unsafe { _mm512_loadu_si512(src.cast()).into() }
+    }
+
+    #[inline]
+    pub unsafe fn store<T>(self, dest: *mut T) {
+        unsafe {
+            _mm512_storeu_si512(dest.cast(), self.0);
+        }
+    }
+
+    #[inline]
+    pub fn splat(value: i16) -> i16x32 {
+        unsafe { _mm512_set1_epi16(value).into() }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn clamp(self, min: i16x32, max: i16x32) -> i16x32 {
+        unsafe { _mm512_min_epi16(_mm512_max_epi16(self.0, min.0), max.0).into() }
+    }
+
+    #[inline]
+    pub fn madd(self, rhs: i16x32) -> i32x16 {
+        unsafe { _mm512_madd_epi16(self.0, rhs.0).into() }
+    }
+}
+
+impl From<__m512i> for i16x32 {
+    #[inline]
+    fn from(raw: __m512i) -> Self {
+        i16x32(raw)
+    }
+}
+
+impl From<[i16; 32]> for i16x32 {
+    #[inline]
+    fn from(arr: [i16; 32]) -> Self {
+        unsafe { i16x32::load(arr.as_ptr()) }
+    }
+}
+
+impl Add for i16x32 {
+    type Output = i16x32;
+
+    #[inline]
+    fn add(self, rhs: Self) -> Self::Output {
+        unsafe { _mm512_add_epi16(self.0, rhs.0).into() }
+    }
+}
+
+impl Sub for i16x32 {
+    type Output = i16x32;
+
+    #[inline]
+    fn sub(self, rhs: Self) -> Self::Output {
+        unsafe { _mm512_add_epi16(self.0, rhs.0).into() }
+    }
+}
+
+impl Mul for i16x32 {
+    type Output = i16x32;
+
+    #[inline]
+    fn mul(self, rhs: Self) -> Self::Output {
+        unsafe { _mm512_mullo_epi16(self.0, rhs.0).into() }
+    }
+}
+
+impl AddAssign for i16x32 {
+    #[inline]
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl SubAssign for i16x32 {
+    #[inline]
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
     }
 }
 
