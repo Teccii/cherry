@@ -24,7 +24,7 @@ mod tests {
 
         nodes
     }
-    
+
     macro_rules! perft_test {
         ($name:ident: $board:expr; $($nodes:expr),*) => {
             #[test]

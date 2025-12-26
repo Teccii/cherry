@@ -358,7 +358,7 @@ impl Board {
                 let their_attacks = self.attack_table(!stm).get(src.offset(0, stm.sign() as i8));
 
                 if !(their_pawns & their_attacks).is_empty() {
-                    new_ep = Some(src.file());
+                    new_ep = Some(src.offset(0, stm.sign() as i8));
                 }
 
                 self.halfmove_clock = 0;
@@ -436,53 +436,7 @@ impl Board {
         }
 
         self.toggle_stm();
-        let new_ep = if let Some(ep_file) = new_ep {
-            let ep_dest = Square::new(ep_file, Rank::Sixth.relative_to(self.stm));
-            let our_pawns = self.index_to_piece[self.stm].mask_eq(Piece::Pawn);
-            let our_attacks = self.attack_table(self.stm).get(ep_dest);
-            let mut left = false;
-            let mut right = false;
-
-            let king = self.king(self.stm);
-            let (ray_perm, ray_valid) = ray_perm(king);
-
-            for index in our_pawns & our_attacks {
-                let ep_src = self.index_to_square[self.stm][index].unwrap();
-                let pawn_place = self.inner.get(ep_src);
-                let mut ep_board = self.inner.clone();
-                ep_board.set(ep_src, Place::EMPTY);
-                ep_board.set(dest, Place::EMPTY);
-                ep_board.set(ep_dest, pawn_place);
-
-                let ray_places = ep_board.permute(ray_perm).mask(Mask8x64::from(ray_valid));
-                let their_color = match self.stm {
-                    Color::White => ray_places.msb(),
-                    Color::Black => !ray_places.msb(),
-                };
-                let blockers = ray_places.nonzero().to_bitmask();
-                let attackers = ray_attackers(ray_places);
-                let closest = extend_bitrays(blockers, ray_valid) & blockers;
-
-                let their_attackers = their_color & attackers & closest;
-                if their_attackers.to_bitmask() == 0 {
-                    if ep_src.file() < ep_file {
-                        left = true;
-                    } else {
-                        right = true;
-                    }
-                }
-            }
-
-            if left || right {
-                Some(EnPassant::new(ep_file, left, right))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        self.set_en_passant(new_ep);
+        self.calc_ep(new_ep);
     }
 
     pub fn null_move(&mut self) -> bool {
@@ -537,6 +491,51 @@ impl Board {
         if self.stm == Color::Black {
             self.hash ^= ZOBRIST.stm;
         }
+    }
+
+    #[inline]
+    fn calc_ep(&mut self, new_ep: Option<Square>) {
+        let Some(ep_sq) = new_ep else {
+            self.set_en_passant(None);
+            return;
+        };
+
+        let ep_file = ep_sq.file();
+        let ep_victim = ep_sq.offset(0, -self.stm.sign() as i8);
+        let our_pawns = self.index_to_piece[self.stm].mask_eq(Piece::Pawn);
+        let our_attacks = self.attack_table(self.stm).get(ep_sq);
+        let mut left = false;
+        let mut right = false;
+
+        let king = self.king(self.stm);
+        let (ray_perm, ray_valid) = ray_perm(king);
+        for index in our_pawns & our_attacks {
+            let ep_src = self.index_to_square[self.stm][index].unwrap();
+            let pawn_place = self.inner.get(ep_src);
+            let mut ep_board = self.inner.clone();
+            ep_board.set(ep_src, Place::EMPTY);
+            ep_board.set(ep_victim, Place::EMPTY);
+            ep_board.set(ep_sq, pawn_place);
+
+            let ray_places = ep_board.permute(ray_perm).mask(Mask8x64::from(ray_valid));
+            let their_color = match self.stm {
+                Color::White => ray_places.msb(),
+                Color::Black => !ray_places.msb(),
+            };
+            let blockers = ray_places.nonzero().to_bitmask();
+            let attackers = ray_attackers(ray_places);
+            let closest = extend_bitrays(blockers, ray_valid) & blockers;
+            let their_attackers = their_color & attackers & closest;
+            if their_attackers.to_bitmask() == 0 {
+                if ep_src.file() < ep_file {
+                    left = true;
+                } else {
+                    right = true;
+                }
+            }
+        }
+
+        self.set_en_passant((left || right).then(|| EnPassant::new(ep_file, left, right)));
     }
 
     #[inline]
