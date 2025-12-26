@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -145,8 +144,7 @@ impl Position {
                 W::see_value(board.piece_on(dest).unwrap())
                     + W::see_value(mv.promotion().unwrap())
                     - W::see_value(Piece::Pawn),
-            _ if mv.is_promotion() =>
-                W::see_value(board.piece_on(dest).unwrap()) - W::see_value(Piece::Pawn),
+            _ if mv.is_promotion() => W::see_value(mv.promotion().unwrap()) - W::see_value(Piece::Pawn),
             _ => unreachable!()
         };
 
@@ -161,7 +159,7 @@ impl Position {
         }
 
         let src_place = board.get(src);
-        let mut see_board: Byteboard = *self.current;
+        let mut see_board: Byteboard = self.current.inner;
         see_board.set(src, Place::EMPTY);
         see_board.set(dest, src_place);
 
@@ -173,7 +171,7 @@ impl Position {
         let mut stm = !board.stm();
 
         let (ray_perm, ray_valid) = ray_perm(dest);
-        let ray_places = see_board.permute(ray_perm).mask(Mask64(ray_valid));
+        let ray_places = see_board.permute(ray_perm).mask(Mask8x64::from(ray_valid));
 
         let colors = ray_places.msb().to_bitmask();
         let mut blockers = ray_places.nonzero().to_bitmask();

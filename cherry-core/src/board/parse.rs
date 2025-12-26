@@ -82,7 +82,7 @@ impl Board {
         {
             return None;
         }
-
+        
         if stm.len() != 1 {
             return None;
         }
@@ -90,8 +90,6 @@ impl Board {
         board.stm = stm.chars().next().unwrap().try_into().ok()?;
 
         if castle_rights.len() < 1 || castle_rights.len() > 4 {
-            println!("castle_rights");
-
             return None;
         }
 

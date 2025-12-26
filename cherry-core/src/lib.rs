@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types)]
+
 mod bitboard;
 mod board;
 mod byteboard;

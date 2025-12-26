@@ -7,7 +7,7 @@ use crate::*;
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Clone)]
-pub struct MoveList(ArrayVec<Move, 218>);
+pub struct MoveList(ArrayVec<Move, 256>);
 
 impl MoveList {
     #[inline]
@@ -30,7 +30,7 @@ impl MoveList {
             let mask = attacks.get(sq) & mask;
             let dest = ((sq as u16) << 6) | (flag as u16);
 
-            self.write16(src | u16x16::splat(dest), Mask16(mask.0));
+            self.write16(src | u16x16::splat(dest), Mask16x16::from(mask.0));
         }
     }
 
@@ -71,7 +71,7 @@ impl MoveList {
     }
 
     #[inline]
-    fn write4x8(&mut self, moves: u64x8, mask: Mask8) {
+    fn write4x8(&mut self, moves: u64x8, mask: Mask64x8) {
         let len = self.0.len();
         unsafe {
             let ptr = self.0.as_mut_ptr().add(len);
@@ -83,7 +83,7 @@ impl MoveList {
     }
 
     #[inline]
-    fn write16(&mut self, moves: u16x16, mask: Mask16) {
+    fn write16(&mut self, moves: u16x16, mask: Mask16x16) {
         let len = self.0.len();
         unsafe {
             let ptr = self.0.as_mut_ptr().add(len);
@@ -94,8 +94,17 @@ impl MoveList {
         }
     }
 
+    /*
+    SAFETY:
+    Since we're doing `_mm512_storeu_si512(ptr.cast(), _mm512_maskz_compress_epi16(mask, moves)` instead of
+    `_mm512_mask_compressstoreu_epi16(ptr.cast(), mask, moves)` which is slow on zen4 for whatever reason,
+    this does a full vector width write instead of a write with just the size of the compressed elements.
+    This doesn't write outside the list because the list has a size of u16x256, and since the maximum number
+    of legal moves is 218, even if we were to write u16x32 at move number 217, we would not write anything
+    outside the list, because 217+32=249 < 256.
+    */
     #[inline]
-    fn write32(&mut self, moves: u16x32, mask: Mask32) {
+    fn write32(&mut self, moves: u16x32, mask: Mask16x32) {
         let len = self.0.len();
         unsafe {
             let ptr = self.0.as_mut_ptr().add(len);
@@ -108,7 +117,7 @@ impl MoveList {
 }
 
 impl Deref for MoveList {
-    type Target = ArrayVec<Move, 218>;
+    type Target = ArrayVec<Move, 256>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -135,7 +144,7 @@ impl Board {
             0 => self.gen_no_check(&mut moves),
             1 => self.gen_check(&mut moves, checkers),
             2 => self.gen_double_check(&mut moves, checkers),
-            _ => panic!("Triple Check (???)"),
+            _ => unreachable!(),
         }
 
         moves
@@ -144,7 +153,7 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn gen_moves_to<const KING_MOVES: bool>(&self, moves: &mut MoveList, valid: Bitboard, checker: Option<Piece>) {
+    fn gen_moves_to<const KING_MOVES: bool>(&self, moves: &mut MoveList, valid: Bitboard) {
         let (attack_mask, pinned) = self.calc_pins();
         let masked_attacks = Wordboard(self.attack_table(self.stm).0 & attack_mask);
 
@@ -216,15 +225,15 @@ impl Board {
         let pawn_normal = valid_pawns & normal_empty;
         let pawn_double = valid_pawns & double_empty;
 
-        let promo_mask = Mask8((pawn_normal >> PAWN_PROMO_SHIFT[self.stm]).0 as u8);
+        let promo_mask = Mask64x8::from((pawn_normal >> PAWN_PROMO_SHIFT[self.stm]).0 as u8);
         moves.write4x8(unsafe { u64x8::load(PAWN_PROMOS[self.stm].as_ptr()) }, promo_mask);
 
         let normal_mask = (pawn_normal >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
         let double_mask = (pawn_double >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
-        let double_mask = Mask16(double_mask as u16 | ((normal_mask as u16) << 8));
+        let double_mask = Mask16x16::from(double_mask as u16 | ((normal_mask as u16) << 8));
         moves.write16(unsafe { u16x16::load(PAWN_DOUBLE[self.stm].as_ptr()) }, double_mask);
 
-        let normal_mask = Mask32((pawn_normal >> PAWN_NORMAL_SHIFT).0 as u32);
+        let normal_mask = Mask16x32::from((pawn_normal >> PAWN_NORMAL_SHIFT).0 as u32);
         moves.write32(unsafe { u16x32::load(PAWN_NORMAL[self.stm].as_ptr())}, normal_mask);
 
         moves.write(
@@ -303,7 +312,7 @@ impl Board {
 
     #[inline]
     fn gen_no_check(&self, moves: &mut MoveList) {
-        self.gen_moves_to::<true>(moves, Bitboard::FULL, None)
+        self.gen_moves_to::<true>(moves, Bitboard::FULL)
     }
 
     #[inline]
@@ -318,7 +327,7 @@ impl Board {
             between(king, checker_sq) | checker_sq
         };
 
-        self.gen_moves_to::<false>(moves, valid, Some(checker_piece));
+        self.gen_moves_to::<false>(moves, valid);
         self.gen_king_moves::<1>(moves, checkers);
     }
 
@@ -334,7 +343,7 @@ impl Board {
         let king = self.king(self.stm);
         let (ray_perm, ray_valid) = ray_perm(king);
         let (inv_perm, inv_valid) = inv_perm(king);
-        let ray_places = self.inner.permute(ray_perm).mask(Mask64(ray_valid));
+        let ray_places = self.inner.permute(ray_perm).mask(Mask8x64::from(ray_valid));
 
         let their_color = match self.stm {
             Color::White => ray_places.msb(),
@@ -357,19 +366,19 @@ impl Board {
         let pinned_places = ray_places
             .mask(pinned)
             .extend_rays()
-            .mask(Mask64(pinner_bitrays))
+            .mask(Mask8x64::from(pinner_bitrays))
             .permute(inv_perm)
-            .mask(Mask64(inv_valid));
+            .mask(Mask8x64::from(inv_valid));
 
         let index = unsafe { u8x16::load(self.index_to_square[self.stm].0.as_ptr()) };
         let pinned_coords = ray_perm.compress(pinned).extract16::<0>();
         let pinned_count = pinned_bitmask.count_ones() as usize;
         let pinned_mask = index.findset(pinned_coords, pinned_count);
 
-        let pinned_indices = pinned_places & u8x64::splat(Place::INDEX_MASK);
+        let pinned_indices = (pinned_places & u8x64::splat(Place::INDEX_MASK)).zero_ext();
         let valid_indices = pinned_indices.nonzero();
         let table_mask = u16x64::splat(!pinned_mask) | u16x64::splat(1)
-            .shlv(pinned_indices.zero_ext())
+            .shlv(pinned_indices)
             .mask(valid_indices);
 
         (table_mask, Bitboard(valid_indices.to_bitmask()))

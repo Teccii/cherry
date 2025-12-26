@@ -85,7 +85,7 @@ impl Byteboard {
         self.0 = u8x64::blend(
             self.0,
             u8x64::splat(place.0),
-            Mask64::from_bitmask(sq.bitboard().0),
+            Mask8x64::from(sq.bitboard().0),
         );
     }
 

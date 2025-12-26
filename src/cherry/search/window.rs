@@ -2,7 +2,6 @@ use crate::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Window {
-    start: i16,
     window: i16,
     center: Score,
     alpha: Score,
@@ -14,7 +13,6 @@ impl Window {
     pub fn new(window: i16) -> Window {
         Window {
             window,
-            start: window,
             center: Score::ZERO,
             alpha: Score(-window),
             beta: Score(window),

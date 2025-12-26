@@ -67,7 +67,7 @@ pub fn vec_add_sub(
         unsafe {
             let mut value = i16x32::load(input.as_ptr().add(offset));
             value += i16x32::load(weights.ft_weights.as_ptr().add(add * HL + offset));
-            value -= i16x32::load(weights.ft_weights.as_ptr().sub(sub * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub * HL + offset));
 
             value.store(output.as_mut_ptr().add(offset));
         }
@@ -95,8 +95,8 @@ pub fn vec_add_sub2(
         unsafe {
             let mut value = i16x32::load(input.as_ptr().add(offset));
             value += i16x32::load(weights.ft_weights.as_ptr().add(add * HL + offset));
-            value -= i16x32::load(weights.ft_weights.as_ptr().sub(sub1 * HL + offset));
-            value -= i16x32::load(weights.ft_weights.as_ptr().sub(sub2 * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub1 * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub2 * HL + offset));
 
             value.store(output.as_mut_ptr().add(offset));
         }
@@ -127,11 +127,10 @@ pub fn vec_add2_sub2(
             let mut value = i16x32::load(input.as_ptr().add(offset));
             value += i16x32::load(weights.ft_weights.as_ptr().add(add1 * HL + offset));
             value += i16x32::load(weights.ft_weights.as_ptr().add(add2 * HL + offset));
-            value -= i16x32::load(weights.ft_weights.as_ptr().sub(sub1 * HL + offset));
-            value -= i16x32::load(weights.ft_weights.as_ptr().sub(sub2 * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub1 * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub2 * HL + offset));
 
             value.store(output.as_mut_ptr().add(offset));
-
         }
     }
 

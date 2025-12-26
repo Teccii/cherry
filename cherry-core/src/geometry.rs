@@ -328,7 +328,7 @@ pub const fn attack_mask(color: Color, piece: Piece) -> u64 {
 }
 
 #[inline]
-pub fn ray_attackers(rays: u8x64) -> Mask64 {
+pub fn ray_attackers(rays: u8x64) -> Mask8x64 {
     const KING: u8 = 1 << 0;
     const WHITE_PAWN: u8 = 1 << 1;
     const BLACK_PAWN: u8 = 1 << 2;
@@ -369,7 +369,7 @@ pub fn ray_attackers(rays: u8x64) -> Mask64 {
 }
 
 #[inline]
-pub fn ray_sliders(rays: u8x64) -> Mask64 {
+pub fn ray_sliders(rays: u8x64) -> Mask8x64 {
     const DIAG: u8 = 0b001 << 4;
     const ORTH: u8 = 0b010 << 4;
 

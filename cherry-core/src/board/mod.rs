@@ -72,7 +72,7 @@ impl EnPassant {
 
 #[derive(Debug, Clone)]
 pub struct Board {
-    inner: Byteboard,
+    pub inner: Byteboard,
     attack_table: [Wordboard; Color::COUNT],
     index_to_piece: [IndexToPiece; Color::COUNT],
     index_to_square: [IndexToSquare; Color::COUNT],
@@ -367,9 +367,7 @@ impl Board {
                 let stm = self.stm;
                 let src_piece = src_place.piece().unwrap();
                 let src_index = src_place.index().unwrap();
-                let dest_index = dest_place.index().unwrap_or_else(|| {
-                    panic!("Whuh? {} | {}", self.to_fen(true), mv);
-                });
+                let dest_index = dest_place.index().unwrap();
 
                 self.remove_piece(src, src_place);
                 self.change_piece(dest, dest_place, src_place);
@@ -456,7 +454,7 @@ impl Board {
                 ep_board.set(dest, Place::EMPTY);
                 ep_board.set(ep_dest, pawn_place);
 
-                let ray_places = ep_board.permute(ray_perm).mask(Mask64(ray_valid));
+                let ray_places = ep_board.permute(ray_perm).mask(Mask8x64::from(ray_valid));
                 let their_color = match self.stm {
                     Color::White => ray_places.msb(),
                     Color::Black => !ray_places.msb(),
@@ -547,7 +545,7 @@ impl Board {
 
         for &sq in &Square::ALL {
             let (ray_perm, ray_valid) = ray_perm(sq);
-            let ray_places = self.inner.permute(ray_perm).mask(Mask64(ray_valid));
+            let ray_places = self.inner.permute(ray_perm).mask(Mask8x64::from(ray_valid));
 
             let color = ray_places.msb();
             let blockers = ray_places.nonzero().to_bitmask();
@@ -603,7 +601,7 @@ impl Board {
     fn update_sliders(&mut self, sq: Square) {
         let (ray_perm, ray_valid) = ray_perm(sq);
         let (inv_perm, inv_valid) = inv_perm(sq);
-        let ray_places = self.inner.permute(ray_perm).mask(Mask64(ray_valid));
+        let ray_places = self.inner.permute(ray_perm).mask(Mask8x64::from(ray_valid));
 
         let blockers = ray_places.nonzero().to_bitmask();
         let sliders = ray_sliders(ray_places);
@@ -612,15 +610,15 @@ impl Board {
         let slider_rays = ray_places.mask(sliders & bitrays).extend_rays();
         let updates = slider_rays
             .flip_rays()
-            .mask(Mask64(bitrays))
+            .mask(Mask8x64::from(bitrays))
             .permute(inv_perm)
-            .mask(Mask64(inv_valid));
-        let update_colors = updates.msb();
-        let update_indices = updates & u8x64::splat(Place::INDEX_MASK);
+            .mask(Mask8x64::from(inv_valid));
+        let update_colors = updates.msb().widen();
+        let update_indices = (updates & u8x64::splat(Place::INDEX_MASK)).zero_ext();
         let valid_updates = update_indices.nonzero();
 
         let updates = u16x64::splat(1)
-            .shlv(update_indices.zero_ext())
+            .shlv(update_indices)
             .mask(valid_updates);
         self.attack_table[Color::White].0 ^= updates.mask(!update_colors);
         self.attack_table[Color::Black].0 ^= updates.mask(update_colors);
@@ -636,16 +634,16 @@ impl Board {
 
         let (ray_perm, ray_valid) = ray_perm(sq);
         let (inv_perm, inv_valid) = inv_perm(sq);
-        let ray_places = self.inner.permute(ray_perm).mask(Mask64(ray_valid));
+        let ray_places = self.inner.permute(ray_perm).mask(Mask8x64::from(ray_valid));
 
         let blockers = ray_places.nonzero().to_bitmask();
         let bitrays = extend_bitrays(blockers, ray_valid);
         let valid_bitrays = bitrays & attack_mask(color, piece);
 
         let add_mask = u8x64::splat(1)
-            .mask(Mask64(valid_bitrays))
+            .mask(Mask8x64::from(valid_bitrays))
             .permute(inv_perm)
-            .mask(Mask64(inv_valid))
+            .mask(Mask8x64::from(inv_valid))
             .zero_ext()
             .shlv(u16x64::splat(index.0 as u16));
 
