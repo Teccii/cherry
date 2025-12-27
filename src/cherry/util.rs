@@ -20,7 +20,6 @@ pub type SquareTo<T> = [T; Square::COUNT];
 
 /*----------------------------------------------------------------*/
 
-#[derive(Default)]
 pub struct BatchedAtomicCounter {
     global: Arc<AtomicU64>,
     local: u64,

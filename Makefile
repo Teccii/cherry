@@ -8,6 +8,6 @@ NAME := $(EXE)
 endif
 
 native:
-	cargo rustc --release -p cherry -- -C target-cpu=native --emit link=$(NAME)
+	RUSTFLAGS="-C target-cpu=native" cargo rustc --release -p cherry -- --emit link=$(NAME)
 datagen:
-	cargo rustc --release -p cherry --features datagen -- -C target-cpu=native --emit link=$(NAME)
+	RUSTFLAGS="-C target-cpu=native" cargo rustc --release -p cherry --features datagen -- --emit link=$(NAME)

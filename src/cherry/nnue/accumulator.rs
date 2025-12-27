@@ -34,22 +34,20 @@ impl Accumulator {
 /*----------------------------------------------------------------*/
 
 pub fn vec_add(acc: &mut Align64<[i16; HL]>, weights: &NetworkWeights, adds: &[usize]) {
-    for i in 0..(HL / NativeVec::CHUNKS_16) {
-        let offset = i * NativeVec::CHUNKS_16;
+    for i in 0..(HL / 32) {
+        let offset = i * 32;
 
         unsafe {
-            let mut value = NativeVec::load(acc.as_ptr().add(offset));
-
+            let mut value = i16x32::load(acc.as_ptr().add(offset));
             for &index in adds {
-                let weight = NativeVec::load(weights.ft_weights.as_ptr().add(index * HL + offset));
-                value = NativeVec::add16(value, weight);
+                value += i16x32::load(weights.ft_weights.as_ptr().add(index * HL + offset));
             }
 
-            NativeVec::store(acc.as_mut_ptr().add(offset), value);
+            value.store(acc.as_mut_ptr().add(offset));
         }
     }
 
-    for i in (HL - HL % NativeVec::CHUNKS_16)..HL {
+    for i in (HL - HL % 32)..HL {
         for &index in adds {
             acc[i] += weights.ft_weights[index * HL + i];
         }
@@ -63,22 +61,19 @@ pub fn vec_add_sub(
     add: usize,
     sub: usize,
 ) {
-    for i in 0..(HL / NativeVec::CHUNKS_16) {
-        let offset = i * NativeVec::CHUNKS_16;
+    for i in 0..(HL / 32) {
+        let offset = i * 32;
 
         unsafe {
-            let mut value = NativeVec::load(input.as_ptr().add(offset));
-            let add_weight = NativeVec::load(weights.ft_weights.as_ptr().add(add * HL + offset));
-            let sub_weight = NativeVec::load(weights.ft_weights.as_ptr().add(sub * HL + offset));
+            let mut value = i16x32::load(input.as_ptr().add(offset));
+            value += i16x32::load(weights.ft_weights.as_ptr().add(add * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub * HL + offset));
 
-            value = NativeVec::add16(value, add_weight);
-            value = NativeVec::sub16(value, sub_weight);
-
-            NativeVec::store(output.as_mut_ptr().add(offset), value);
+            value.store(output.as_mut_ptr().add(offset));
         }
     }
 
-    for i in (HL - HL % NativeVec::CHUNKS_16)..HL {
+    for i in (HL - HL % 32)..HL {
         let add_weight = weights.ft_weights[add * HL + i];
         let sub_weight = weights.ft_weights[sub * HL + i];
 
@@ -94,24 +89,20 @@ pub fn vec_add_sub2(
     sub1: usize,
     sub2: usize,
 ) {
-    for i in 0..(HL / NativeVec::CHUNKS_16) {
-        let offset = i * NativeVec::CHUNKS_16;
+    for i in 0..(HL / 32) {
+        let offset = i * 32;
 
         unsafe {
-            let mut value = NativeVec::load(input.as_ptr().add(offset));
-            let add_weight = NativeVec::load(weights.ft_weights.as_ptr().add(add * HL + offset));
-            let sub1_weight = NativeVec::load(weights.ft_weights.as_ptr().add(sub1 * HL + offset));
-            let sub2_weight = NativeVec::load(weights.ft_weights.as_ptr().add(sub2 * HL + offset));
+            let mut value = i16x32::load(input.as_ptr().add(offset));
+            value += i16x32::load(weights.ft_weights.as_ptr().add(add * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub1 * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub2 * HL + offset));
 
-            value = NativeVec::add16(value, add_weight);
-            value = NativeVec::sub16(value, sub1_weight);
-            value = NativeVec::sub16(value, sub2_weight);
-
-            NativeVec::store(output.as_mut_ptr().add(offset), value);
+            value.store(output.as_mut_ptr().add(offset));
         }
     }
 
-    for i in (HL - HL % NativeVec::CHUNKS_16)..HL {
+    for i in (HL - HL % 32)..HL {
         let add_weight = weights.ft_weights[add * HL + i];
         let sub1_weight = weights.ft_weights[sub1 * HL + i];
         let sub2_weight = weights.ft_weights[sub2 * HL + i];
@@ -129,26 +120,21 @@ pub fn vec_add2_sub2(
     sub1: usize,
     sub2: usize,
 ) {
-    for i in 0..(HL / NativeVec::CHUNKS_16) {
-        let offset = i * NativeVec::CHUNKS_16;
+    for i in 0..(HL / 32) {
+        let offset = i * 32;
 
         unsafe {
-            let mut value = NativeVec::load(input.as_ptr().add(offset));
-            let add1_weight = NativeVec::load(weights.ft_weights.as_ptr().add(add1 * HL + offset));
-            let add2_weight = NativeVec::load(weights.ft_weights.as_ptr().add(add2 * HL + offset));
-            let sub1_weight = NativeVec::load(weights.ft_weights.as_ptr().add(sub1 * HL + offset));
-            let sub2_weight = NativeVec::load(weights.ft_weights.as_ptr().add(sub2 * HL + offset));
+            let mut value = i16x32::load(input.as_ptr().add(offset));
+            value += i16x32::load(weights.ft_weights.as_ptr().add(add1 * HL + offset));
+            value += i16x32::load(weights.ft_weights.as_ptr().add(add2 * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub1 * HL + offset));
+            value -= i16x32::load(weights.ft_weights.as_ptr().add(sub2 * HL + offset));
 
-            value = NativeVec::add16(value, add1_weight);
-            value = NativeVec::add16(value, add2_weight);
-            value = NativeVec::sub16(value, sub1_weight);
-            value = NativeVec::sub16(value, sub2_weight);
-
-            NativeVec::store(output.as_mut_ptr().add(offset), value);
+            value.store(output.as_mut_ptr().add(offset));
         }
     }
 
-    for i in (HL - HL % NativeVec::CHUNKS_16)..HL {
+    for i in (HL - HL % 32)..HL {
         let add1_weight = weights.ft_weights[add1 * HL + i];
         let add2_weight = weights.ft_weights[add2 * HL + i];
         let sub1_weight = weights.ft_weights[sub1 * HL + i];

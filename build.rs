@@ -1,16 +1,5 @@
-use std::{
-    env,
-    fs,
-    io::{BufWriter, Write},
-    path::PathBuf,
-};
-
-use cherry_types::*;
-
-fn main() {
-    write_slider_magics();
-    write_network_file();
-}
+use std::{env, fs, io::{BufWriter, Write}, path::PathBuf};
+use cherry_core::*;
 
 #[inline]
 fn write_moves(
@@ -26,8 +15,12 @@ fn write_moves(
     }
 }
 
-#[inline]
-fn write_slider_magics() {
+fn main() {
+    write_magics();
+    write_network();
+}
+
+fn write_magics() {
     println!("cargo:rerun-if-changed=build.rs");
 
     let mut table = [Bitboard::EMPTY; SLIDER_TABLE_SIZE];
@@ -54,20 +47,19 @@ fn write_slider_magics() {
         "const SLIDER_MOVES: &[Bitboard; {}] = &[",
         SLIDER_TABLE_SIZE
     )
-    .unwrap();
+        .unwrap();
     for &bb in table.iter() {
         writeln!(out_file, "{:?},", bb).unwrap();
     }
     writeln!(out_file, "];").unwrap();
 }
 
-#[inline]
-fn write_network_file() {
+fn write_network() {
     let network_dir = env::var("EVALFILE").unwrap_or_else(|_| "./networks/default.bin".to_string());
     let network_path = PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("network.bin");
-    let network_bytes = std::fs::read(&network_dir).unwrap();
+    let network_bytes = fs::read(&network_dir).unwrap();
 
-    std::fs::write(&network_path, &network_bytes).unwrap();
+    fs::write(&network_path, &network_bytes).unwrap();
 
     println!("cargo:rerun-if-env-changed=EVALFILE");
     println!("cargo:rerun-if-changed={}", network_dir);

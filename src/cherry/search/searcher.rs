@@ -56,7 +56,7 @@ impl Default for ThreadData {
     #[inline]
     fn default() -> Self {
         ThreadData {
-            nodes: BatchedAtomicCounter::default(),
+            nodes: BatchedAtomicCounter::new(),
             search_stack: vec![SearchStack::default(); MAX_PLY as usize + 1],
             windows: Vec::new(),
             root_moves: Vec::new(),

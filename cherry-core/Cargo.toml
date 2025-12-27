@@ -1,0 +1,8 @@
+[package]
+name = "cherry-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+arrayvec = "0.7.6"
+colored = "3.0.0"

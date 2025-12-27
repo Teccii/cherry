@@ -248,5 +248,3 @@ impl W {
         }
     }
 }
-
-pub const HIST_DEPTH: u8 = 10;

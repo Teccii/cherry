@@ -109,7 +109,7 @@ impl UciCommand {
                 let board_kind = reader.next().ok_or(UciParseError::InvalidArguments)?;
                 let mut moves_token_passed = false;
                 let board = match board_kind {
-                    "startpos" => Board::default(),
+                    "startpos" => Board::startpos(),
                     "fen" => {
                         let mut fen = String::new();
 
