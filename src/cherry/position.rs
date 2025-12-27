@@ -241,6 +241,7 @@ impl Position {
             || self.current.status() == BoardStatus::Draw
     }
 
+    #[inline]
     pub fn insufficient_material(&self) -> bool {
         match self.current.occupied().popcnt() {
             2 => true,
@@ -249,7 +250,6 @@ impl Position {
                     > 0,
             4 => {
                 let bishops = self.current.pieces(Piece::Bishop);
-
                 if bishops.popcnt() != 2 || self.current.colors(Color::White).popcnt() != 2 {
                     return false;
                 }
@@ -258,11 +258,12 @@ impl Position {
                 let light_bishops = bishops.is_subset(Bitboard::LIGHT_SQUARES);
 
                 dark_bishops || light_bishops
-            }
+            },
             _ => false,
         }
     }
 
+    #[inline]
     pub fn repetition(&self) -> bool {
         let hash = self.hash();
         let hm = self.current.halfmove_clock() as usize;
@@ -274,8 +275,8 @@ impl Position {
         self.boards
             .iter()
             .rev()
-            .take(hm + 1) //idk if hm or hm + 1
             .skip(3)
+            .take(hm.saturating_sub(3))
             .step_by(2)
             .any(|b| b.hash() == hash)
     }
