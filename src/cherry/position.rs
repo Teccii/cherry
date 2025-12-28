@@ -248,18 +248,16 @@ impl Position {
             3 =>
                 (self.current.pieces(Piece::Knight) | self.current.pieces(Piece::Bishop)).popcnt()
                     > 0,
-            4 => {
+            n => {
                 let bishops = self.current.pieces(Piece::Bishop);
-                if bishops.popcnt() != 2 || self.current.colors(Color::White).popcnt() != 2 {
+                if bishops.popcnt() != n - 2 {
                     return false;
                 }
 
                 let dark_bishops = bishops.is_subset(Bitboard::DARK_SQUARES);
                 let light_bishops = bishops.is_subset(Bitboard::LIGHT_SQUARES);
-
                 dark_bishops || light_bishops
-            },
-            _ => false,
+            }
         }
     }
 
