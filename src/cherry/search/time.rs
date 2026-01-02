@@ -148,31 +148,27 @@ impl TimeManager {
             self.soft_time.store(nodes, Ordering::Relaxed);
             self.hard_time.store(2000 * nodes, Ordering::Relaxed);
         } else if let Some(moves_to_go) = moves_to_go {
-            let (time, inc) = match stm {
-                Color::White => (w_time, w_inc),
-                Color::Black => (b_time, b_inc),
-            };
             let move_overhead = self.move_overhead.load(Ordering::Relaxed);
-            let hard_time =
-                (time * W::hard_time_frac() / 4096).min(time.saturating_sub(move_overhead));
-            let soft_time = (time / moves_to_go as u64 + inc)
-                .saturating_sub(move_overhead)
-                .min(hard_time);
+            let (time, inc) = match stm {
+                Color::White => (w_time.saturating_sub(move_overhead), w_inc),
+                Color::Black => (b_time.saturating_sub(move_overhead), b_inc),
+            };
+
+            let hard_time = time * W::hard_time_frac() / 4096;
+            let soft_time = (time / moves_to_go as u64 + inc).min(hard_time);
 
             self.base_time.store(soft_time, Ordering::Relaxed);
             self.soft_time.store(soft_time, Ordering::Relaxed);
             self.hard_time.store(hard_time, Ordering::Relaxed);
         } else {
-            let (time, inc) = match stm {
-                Color::White => (w_time, w_inc),
-                Color::Black => (b_time, b_inc),
-            };
             let move_overhead = self.move_overhead.load(Ordering::Relaxed);
-            let hard_time =
-                (time * W::hard_time_frac() / 4096).min(time.saturating_sub(move_overhead));
-            let soft_time = (time * W::soft_time_frac() / 4096 + inc)
-                .saturating_sub(move_overhead)
-                .min(hard_time);
+            let (time, inc) = match stm {
+                Color::White => (w_time.saturating_sub(move_overhead), w_inc),
+                Color::Black => (b_time.saturating_sub(move_overhead), b_inc),
+            };
+
+            let hard_time = time * W::hard_time_frac() / 4096;
+            let soft_time = (time * W::soft_time_frac() / 4096 + inc).min(hard_time);
 
             self.base_time.store(soft_time, Ordering::Relaxed);
             self.soft_time.store(soft_time, Ordering::Relaxed);
