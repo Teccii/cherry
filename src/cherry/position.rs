@@ -123,7 +123,7 @@ impl Position {
             + W::queen_mat_scale() * self.current.pieces(Piece::Queen).popcnt() as i32;
         eval = (i32::from(eval) * (W::mat_scale_base() + material) / 32768) as i16;
 
-        Score::new(eval.clamp(-Score::MIN_TB_WIN.0 + 1, Score::MIN_TB_WIN.0 - 1))
+        Score::new(eval.clamp(-Score::MAX_TB_WIN.0 + 1, Score::MAX_TB_WIN.0 - 1))
     }
 
     #[inline]

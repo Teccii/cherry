@@ -143,7 +143,7 @@ impl fmt::Display for Score {
                 write!(f, "{:+.1}", self.0 as f32 / 100.0)
             }
         } else {
-            if let Some(ply) = self.decisive_in() {
+            if let Some(ply) = self.mate_in() {
                 write!(f, "mate {}", (ply + ply.signum()) / 2)
             } else {
                 write!(f, "cp {}", self.0)

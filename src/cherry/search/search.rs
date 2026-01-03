@@ -136,8 +136,8 @@ pub fn search<Node: NodeType>(
         };
 
         if flag == TTFlag::Exact
-            || (flag == TTFlag::LowerBound && score <= alpha)
-            || (flag == TTFlag::UpperBound && score >= beta)
+            || (flag == TTFlag::UpperBound && score <= alpha)
+            || (flag == TTFlag::LowerBound && score >= beta)
         {
             let depth_bias = if Node::PV {
                 W::tt_depth_pv_bias()

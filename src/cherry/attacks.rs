@@ -50,7 +50,7 @@ pub const fn pawn_attacks(sq: Square, color: Color) -> Bitboard {
 
         match color {
             Color::White => Bitboard(bb.shift::<NorthEast>(1).0 | bb.shift::<NorthWest>(1).0),
-            Color::Black => Bitboard(bb.shift::<SouthEast>(1).0 | bb.shift::<NorthWest>(1).0),
+            Color::Black => Bitboard(bb.shift::<SouthEast>(1).0 | bb.shift::<SouthWest>(1).0),
         }
     }
 
