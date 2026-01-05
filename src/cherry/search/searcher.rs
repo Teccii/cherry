@@ -46,7 +46,6 @@ impl ThreadData {
         self.exclude_moves.clear();
         self.root_nodes = new_zeroed();
         self.root_pv = PrincipalVariation::default();
-        self.history.reset();
         self.sel_depth = 0;
         self.abort_now = false;
     }
@@ -278,8 +277,9 @@ impl Searcher {
     }
 
     #[inline]
-    pub fn clear_ttable(&mut self) {
+    pub fn new_game(&mut self) {
         self.shared_data.ttable.clear();
+        self.thread_data.history.reset();
     }
 
     /*----------------------------------------------------------------*/

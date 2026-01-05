@@ -174,10 +174,7 @@ impl Engine {
                                 _ => {}
                             }
                         }
-                        ThreadCommand::NewGame(searcher) => {
-                            let mut searcher = searcher.lock().unwrap();
-                            searcher.clear_ttable();
-                        }
+                        ThreadCommand::NewGame(searcher) => searcher.lock().unwrap().new_game(),
                         ThreadCommand::Quit => return,
                     }
                 }
@@ -814,7 +811,7 @@ impl Engine {
                     searcher
                         .pos
                         .set_board(pos.clone(), &searcher.shared_data.nnue_weights);
-                    searcher.clear_ttable();
+                    searcher.new_game();
 
                     let start_time = Instant::now();
                     let (best_move, _, score, _, nodes) = searcher.search::<NoInfo>(limits.clone());

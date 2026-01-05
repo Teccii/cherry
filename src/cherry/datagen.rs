@@ -170,7 +170,7 @@ fn datagen_worker(
     let time_man = Arc::new(TimeManager::new());
     time_man.set_soft_nodes(true);
 
-    let mut searcher = Searcher::new(Board::default(), time_man);
+    let mut searcher = Searcher::new(Board::startpos(), time_man);
 
     let start = Instant::now();
     let limits = vec![SearchLimit::MaxNodes(5000)];
@@ -186,14 +186,14 @@ fn datagen_worker(
             break;
         }
 
-        searcher.clean_ttable();
+        searcher.new_game();
         searcher.pos.set_board(
             if options.dfrc {
                 DfrcOpeningGenerator::gen_opening(&mut rng)
             } else {
                 StdOpeningGenerator::gen_opening(&mut rng)
             },
-            &searcher.shared_ctx.weights,
+            &searcher.shared_data.nnue_weights,
         );
 
         let eval = searcher.search::<NoInfo>(vec![SearchLimit::MaxDepth(10)]).2;
@@ -382,7 +382,7 @@ pub struct DfrcOpeningGenerator;
 
 impl OpeningGenerator for StdOpeningGenerator {
     fn gen_opening(rng: &mut ThreadRng) -> Board {
-        let mut board = Board::default();
+        let mut board = Board::startpos();
         let moves = 8 + rng.random_bool(0.5) as usize;
 
         for _ in 0..moves {
