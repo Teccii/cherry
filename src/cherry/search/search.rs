@@ -206,6 +206,8 @@ pub fn search<Node: NodeType>(
             && static_eval >= beta
             && pos.null_move()
         {
+            shared.ttable.prefetch(pos.board());
+
             let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / DEPTH_SCALE as i64) as i32;
             let score = -search::<Node>(
                 pos,
@@ -375,6 +377,8 @@ pub fn search<Node: NodeType>(
         }
 
         pos.make_move(mv, &shared.nnue_weights);
+        shared.ttable.prefetch(pos.board());
+
         let new_depth = depth + ext - 1 * DEPTH_SCALE;
         if moves_seen == 0 {
             score = -search::<Node>(
@@ -609,6 +613,7 @@ fn q_search<Node: NodeType>(
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         pos.make_move(mv, &shared.nnue_weights);
+        shared.ttable.prefetch(pos.board());
         let score = -q_search::<Node>(pos, thread, shared, ply + 1, -beta, -alpha);
         pos.unmake_move();
         moves_seen += 1;

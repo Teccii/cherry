@@ -1,5 +1,4 @@
-use std::sync::atomic::*;
-
+use core::{arch::x86_64::*, ptr, sync::atomic::*};
 use rayon::prelude::*;
 
 use crate::*;
@@ -184,6 +183,11 @@ impl TTable {
     }
 
     /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn prefetch(&self, board: &Board) {
+        unsafe { _mm_prefetch::<_MM_HINT_T0>(ptr::from_ref(&self.clusters[self.index(board.hash())]).cast()) }
+    }
 
     #[inline]
     pub fn fetch(&self, board: &Board, ply: u16) -> Option<TTData> {
