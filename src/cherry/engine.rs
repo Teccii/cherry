@@ -65,6 +65,28 @@ const BENCH_POSITIONS: &[&str] = &[
     "2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93",
 ];
 
+fn perft<const BULK: bool>(board: &Board, depth: u8) -> u64 {
+    if depth == 0 {
+        return 1;
+    }
+
+    let mut nodes = 0;
+    let move_list = board.gen_moves();
+
+    if BULK && depth == 1 {
+        nodes += move_list.len() as u64;
+    } else {
+        for &mv in move_list.iter() {
+            let mut board = board.clone();
+            board.make_move(mv);
+
+            nodes += perft::<BULK>(&board, depth - 1);
+        }
+    }
+
+    nodes
+}
+
 /*----------------------------------------------------------------*/
 
 pub enum ThreadCommand {
@@ -710,6 +732,66 @@ impl Engine {
                         value,
                     ))
                     .unwrap();
+            },
+            UciCommand::Perft { depth, bulk } => {
+                let board = self.searcher.lock().unwrap().pos.board().clone();
+                let time = Instant::now();
+                let nodes = if bulk {
+                    perft::<true>(&board, depth)
+                } else {
+                    perft::<false>(&board, depth)
+                };
+                let elapsed = time.elapsed();
+                let nanos = elapsed.as_nanos();
+                let nps = if nanos > 0 {
+                    (nodes as u128 * 1_000_000_000) / nanos
+                } else {
+                    0
+                };
+
+                println!("nodes {} time {:.2?} nps {}", nodes, elapsed, nps);
+            },
+            UciCommand::SplitPerft { depth, bulk } => {
+                if depth == 0 {
+                    return true;
+                }
+
+                let board = self.searcher.lock().unwrap().pos.board().clone();
+                let mut perft_data = Vec::new();
+                let mut total = 0u64;
+
+                let moves = board.gen_moves();
+                let time = Instant::now();
+
+                for &mv in moves.iter() {
+                    let mut board = board.clone();
+                    board.make_move(mv);
+
+                    let nodes = if bulk {
+                        perft::<true>(&board, depth - 1)
+                    } else {
+                        perft::<false>(&board, depth - 1)
+                    };
+                    total += nodes;
+                    perft_data.push((mv, nodes));
+                }
+
+                let elapsed = time.elapsed();
+
+                println!("\n================================================================");
+                for (mv, nodes) in perft_data {
+                    println!("{}: {}", mv.display(&board, self.frc), nodes);
+                }
+                println!("================================================================");
+
+                let nanos = elapsed.as_nanos();
+                let nps = if nanos > 0 {
+                    (total as u128 * 1_000_000_000) / nanos
+                } else {
+                    0
+                };
+
+                println!("nodes {} time {:.2?} nps {}", total, elapsed, nps);
             }
             UciCommand::Bench {
                 depth,
@@ -757,7 +839,7 @@ impl Engine {
                         (*nodes / *time) * 1000,
                     );
                 }
-                println!("==================================================================");
+                println!("================================================================");
                 let total_nodes = bench_data
                     .iter()
                     .fold(0u64, |acc, (_, _, _, nodes)| acc + nodes);
