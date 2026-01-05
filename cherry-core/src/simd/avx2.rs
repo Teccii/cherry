@@ -38,7 +38,7 @@ macro_rules! def_mask {
             fn not(self) -> Self::Output {
                 match self {
                     $mask::Vec(vec) => $mask::Vec(!vec),
-                    $mask::Bitmask(bitmask) => $mask::Bitmask(!bitmask)
+                    $mask::Bitmask(bitmask) => $mask::Bitmask(!bitmask),
                 }
             }
         }
@@ -51,8 +51,10 @@ macro_rules! def_mask {
                 match (self, rhs) {
                     ($mask::Vec(a), $mask::Vec(b)) => $mask::Vec(a & b),
                     ($mask::Bitmask(a), $mask::Bitmask(b)) => $mask::Bitmask(a & b),
-                    ($mask::Vec(_), $mask::Bitmask(bitmask)) => $mask::Bitmask(self.to_bitmask() & bitmask),
-                    ($mask::Bitmask(bitmask), $mask::Vec(_)) => $mask::Bitmask(rhs.to_bitmask() & bitmask),
+                    ($mask::Vec(_), $mask::Bitmask(bitmask)) =>
+                        $mask::Bitmask(self.to_bitmask() & bitmask),
+                    ($mask::Bitmask(bitmask), $mask::Vec(_)) =>
+                        $mask::Bitmask(rhs.to_bitmask() & bitmask),
                 }
             }
         }
@@ -65,8 +67,10 @@ macro_rules! def_mask {
                 match (self, rhs) {
                     ($mask::Vec(a), $mask::Vec(b)) => $mask::Vec(a | b),
                     ($mask::Bitmask(a), $mask::Bitmask(b)) => $mask::Bitmask(a | b),
-                    ($mask::Vec(_), $mask::Bitmask(bitmask)) => $mask::Bitmask(self.to_bitmask() | bitmask),
-                    ($mask::Bitmask(bitmask), $mask::Vec(_)) => $mask::Bitmask(rhs.to_bitmask() | bitmask),
+                    ($mask::Vec(_), $mask::Bitmask(bitmask)) =>
+                        $mask::Bitmask(self.to_bitmask() | bitmask),
+                    ($mask::Bitmask(bitmask), $mask::Vec(_)) =>
+                        $mask::Bitmask(rhs.to_bitmask() | bitmask),
                 }
             }
         }
@@ -79,8 +83,10 @@ macro_rules! def_mask {
                 match (self, rhs) {
                     ($mask::Vec(a), $mask::Vec(b)) => $mask::Vec(a ^ b),
                     ($mask::Bitmask(a), $mask::Bitmask(b)) => $mask::Bitmask(a ^ b),
-                    ($mask::Vec(_), $mask::Bitmask(bitmask)) => $mask::Bitmask(self.to_bitmask() ^ bitmask),
-                    ($mask::Bitmask(bitmask), $mask::Vec(_)) => $mask::Bitmask(rhs.to_bitmask() ^ bitmask),
+                    ($mask::Vec(_), $mask::Bitmask(bitmask)) =>
+                        $mask::Bitmask(self.to_bitmask() ^ bitmask),
+                    ($mask::Bitmask(bitmask), $mask::Vec(_)) =>
+                        $mask::Bitmask(rhs.to_bitmask() ^ bitmask),
                 }
             }
         }
@@ -167,12 +173,12 @@ impl Mask8x16 {
             Mask8x16::Bitmask(bitmask) => unsafe {
                 let shuffled = _mm_shuffle_epi8(
                     _mm_cvtsi32_si128(bitmask as i32),
-                    _mm_set_epi64x(0x0101010101010101, 0)
+                    _mm_set_epi64x(0x0101010101010101, 0),
                 );
                 let and_mask = _mm_set1_epi64x(0x8040201008040201u64 as i64);
 
                 _mm_cmpeq_epi8(and_mask, _mm_and_si128(and_mask, shuffled)).into()
-            }
+            },
         }
     }
 
@@ -182,8 +188,8 @@ impl Mask8x16 {
             Mask8x16::Vec(vec) => {
                 let vec = vec.zero_ext();
                 (vec | (vec.shl::<8>())).into()
-            },
-            Mask8x16::Bitmask(bitmask) => Mask16x16::from(bitmask)
+            }
+            Mask8x16::Bitmask(bitmask) => Mask16x16::from(bitmask),
         }
     }
 
@@ -204,10 +210,7 @@ impl Mask16x8 {
             Mask16x8::Vec(vec) => vec,
             Mask16x8::Bitmask(bitmask) => unsafe {
                 let mask_vec = _mm_set1_epi8(bitmask as i8);
-                let and_mask = _mm_setr_epi16(
-                    0x01, 0x02, 0x04, 0x08,
-                    0x10, 0x20, 0x40, 0x80
-                );
+                let and_mask = _mm_setr_epi16(0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80);
 
                 _mm_cmpeq_epi16(and_mask, _mm_and_si128(mask_vec, and_mask)).into()
             },
@@ -221,14 +224,16 @@ impl Mask16x8 {
                 let vec = vec.zero_ext();
                 (vec | (_mm256_slli_epi32::<16>(vec.0).into())).into()
             },
-            Mask16x8::Bitmask(bitmask) => Mask32x8::from(bitmask)
+            Mask16x8::Bitmask(bitmask) => Mask32x8::from(bitmask),
         }
     }
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
         match self {
-            Mask16x8::Vec(vec) => unsafe { _pext_u32(_mm_movemask_epi8(vec.0) as u32, 0xAAAAAAAAu32) as u8 },
+            Mask16x8::Vec(vec) => unsafe {
+                _pext_u32(_mm_movemask_epi8(vec.0) as u32, 0xAAAAAAAAu32) as u8
+            },
             Mask16x8::Bitmask(bitmask) => bitmask,
         }
     }
@@ -245,7 +250,7 @@ impl Mask32x4 {
                 let and_mask = _mm_setr_epi32(0x01, 0x02, 0x04, 0x08);
 
                 _mm_cmpeq_epi32(and_mask, _mm_and_si128(and_mask, mask_vec)).into()
-            }
+            },
         }
     }
 
@@ -256,14 +261,16 @@ impl Mask32x4 {
                 let vec = vec.zero_ext();
                 (vec | (_mm256_slli_epi64::<32>(vec.0).into())).into()
             },
-            Mask32x4::Bitmask(bitmask) => Mask64x4::from(bitmask)
+            Mask32x4::Bitmask(bitmask) => Mask64x4::from(bitmask),
         }
     }
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
         match self {
-            Mask32x4::Vec(vec) => unsafe { _pext_u32(_mm_movemask_epi8(vec.0) as u32, 0x88888888u32) as u8 },
+            Mask32x4::Vec(vec) => unsafe {
+                _pext_u32(_mm_movemask_epi8(vec.0) as u32, 0x88888888u32) as u8
+            },
             Mask32x4::Bitmask(bitmask) => bitmask,
         }
     }
@@ -280,15 +287,17 @@ impl Mask64x2 {
                 let and_mask = _mm_set_epi64x(0x02, 0x01);
 
                 _mm_cmpeq_epi64(and_mask, _mm_and_si128(mask_vec, and_mask)).into()
-            }
+            },
         }
     }
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
         match self {
-            Mask64x2::Vec(vec) => unsafe { _pext_u32(_mm_movemask_epi8(vec.0) as u32, 0x80808080u32) as u8 },
-            Mask64x2::Bitmask(bitmask) => bitmask
+            Mask64x2::Vec(vec) => unsafe {
+                _pext_u32(_mm_movemask_epi8(vec.0) as u32, 0x80808080u32) as u8
+            },
+            Mask64x2::Bitmask(bitmask) => bitmask,
         }
     }
 }
@@ -309,12 +318,12 @@ impl Mask8x32 {
                         0x0101010101010101,
                         0x0202020202020202,
                         0x0303030303030303,
-                    )
+                    ),
                 );
                 let and_mask = _mm256_set1_epi64x(0x8040201008040201u64 as i64);
 
                 _mm256_cmpeq_epi8(and_mask, _mm256_and_si256(and_mask, shuffled)).into()
-            }
+            },
         }
     }
 
@@ -324,8 +333,8 @@ impl Mask8x32 {
             Mask8x32::Vec(vec) => {
                 let vec = vec.zero_ext();
                 (vec | vec.shl::<8>()).into()
-            },
-            Mask8x32::Bitmask(bitmask) => Mask16x32::from(bitmask)
+            }
+            Mask8x32::Bitmask(bitmask) => Mask16x32::from(bitmask),
         }
     }
 
@@ -347,12 +356,26 @@ impl Mask16x16 {
             Mask16x16::Bitmask(bitmask) => unsafe {
                 let vec = _mm256_set1_epi16(bitmask as i16);
                 let and_mask = _mm256_setr_epi16(
-                    0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
-                    0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x4000, 0x8000u16 as i16
+                    0x0001,
+                    0x0002,
+                    0x0004,
+                    0x0008,
+                    0x0010,
+                    0x0020,
+                    0x0040,
+                    0x0080,
+                    0x0100,
+                    0x0200,
+                    0x0400,
+                    0x0800,
+                    0x1000,
+                    0x2000,
+                    0x4000,
+                    0x8000u16 as i16,
                 );
 
                 _mm256_cmpeq_epi16(and_mask, _mm256_and_si256(vec, and_mask)).into()
-            }
+            },
         }
     }
 
@@ -366,14 +389,16 @@ impl Mask16x16 {
 
                 (vec | u32x16([shifted_lo, shifted_hi])).into()
             },
-            Mask16x16::Bitmask(bitmask) => Mask32x16::from(bitmask)
+            Mask16x16::Bitmask(bitmask) => Mask32x16::from(bitmask),
         }
     }
 
     #[inline]
     pub fn to_bitmask(self) -> u16 {
         match self {
-            Mask16x16::Vec(vec) => unsafe { _pext_u32(_mm256_movemask_epi8(vec.0) as u32, 0xAAAAAAAAu32) as u16 },
+            Mask16x16::Vec(vec) => unsafe {
+                _pext_u32(_mm256_movemask_epi8(vec.0) as u32, 0xAAAAAAAAu32) as u16
+            },
             Mask16x16::Bitmask(bitmask) => bitmask,
         }
     }
@@ -390,7 +415,7 @@ impl Mask32x8 {
                 let and_mask = _mm256_setr_epi32(0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80);
 
                 _mm256_cmpeq_epi32(and_mask, _mm256_and_si256(and_mask, mask_vec)).into()
-            }
+            },
         }
     }
 
@@ -404,14 +429,16 @@ impl Mask32x8 {
 
                 (vec | u64x8([shifted_lo, shifted_hi])).into()
             },
-            Mask32x8::Bitmask(bitmask) => Mask64x8::from(bitmask)
+            Mask32x8::Bitmask(bitmask) => Mask64x8::from(bitmask),
         }
     }
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
         match self {
-            Mask32x8::Vec(vec) => unsafe { _pext_u32(_mm256_movemask_epi8(vec.0) as u32, 0x88888888u32) as u8 },
+            Mask32x8::Vec(vec) => unsafe {
+                _pext_u32(_mm256_movemask_epi8(vec.0) as u32, 0x88888888u32) as u8
+            },
             Mask32x8::Bitmask(bitmask) => bitmask,
         }
     }
@@ -428,15 +455,17 @@ impl Mask64x4 {
                 let and_mask = _mm256_setr_epi64x(0x01, 0x02, 0x04, 0x08);
 
                 _mm256_cmpeq_epi64(and_mask, _mm256_and_si256(mask_vec, and_mask)).into()
-            }
+            },
         }
     }
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
         match self {
-            Mask64x4::Vec(vec) => unsafe { _pext_u32(_mm256_movemask_epi8(vec.0) as u32, 0x80808080u32) as u8 },
-            Mask64x4::Bitmask(bitmask) => bitmask
+            Mask64x4::Vec(vec) => unsafe {
+                _pext_u32(_mm256_movemask_epi8(vec.0) as u32, 0x80808080u32) as u8
+            },
+            Mask64x4::Bitmask(bitmask) => bitmask,
         }
     }
 }
@@ -457,7 +486,7 @@ impl Mask8x64 {
                         0x0101010101010101,
                         0x0202020202020202,
                         0x0303030303030303,
-                    )
+                    ),
                 );
                 let shuffled1 = _mm256_shuffle_epi8(
                     _mm256_set1_epi32((bitmask >> 32) as i32),
@@ -466,7 +495,7 @@ impl Mask8x64 {
                         0x0101010101010101,
                         0x0202020202020202,
                         0x0303030303030303,
-                    )
+                    ),
                 );
 
                 let and_mask = _mm256_set1_epi64x(0x8040201008040201u64 as i64);
@@ -474,7 +503,7 @@ impl Mask8x64 {
                 let hi = _mm256_cmpeq_epi8(and_mask, _mm256_and_si256(and_mask, shuffled1));
 
                 u8x64([u8x32(lo), u8x32(hi)])
-            }
+            },
         }
     }
 
@@ -484,8 +513,8 @@ impl Mask8x64 {
             Mask8x64::Vec(vec) => {
                 let vec = vec.zero_ext();
                 (vec | (vec.shl::<8>())).into()
-            },
-            Mask8x64::Bitmask(bitmask) => Mask16x64::from(bitmask)
+            }
+            Mask8x64::Bitmask(bitmask) => Mask16x64::from(bitmask),
         }
     }
 
@@ -512,7 +541,7 @@ impl Mask16x32 {
                 let lo = Mask16x16::from(bitmask as u16).expand();
                 let hi = Mask16x16::from((bitmask >> 16) as u16).expand();
                 u16x32([lo, hi])
-            },
+            }
         }
     }
 
@@ -569,10 +598,12 @@ impl Mask64x8 {
                 let and_mask0 = _mm256_setr_epi64x(0x01, 0x02, 0x04, 0x08);
                 let and_mask1 = _mm256_setr_epi64x(0x10, 0x20, 0x40, 0x80);
 
-                let lo = _mm256_cmpeq_epi64(and_mask0, _mm256_and_si256(mask_vec, and_mask0)).into();
-                let hi = _mm256_cmpeq_epi64(and_mask1, _mm256_and_si256(mask_vec, and_mask1)).into();
+                let lo =
+                    _mm256_cmpeq_epi64(and_mask0, _mm256_and_si256(mask_vec, and_mask0)).into();
+                let hi =
+                    _mm256_cmpeq_epi64(and_mask1, _mm256_and_si256(mask_vec, and_mask1)).into();
                 u64x8([lo, hi])
-            }
+            },
         }
     }
 
@@ -732,7 +763,7 @@ macro_rules! def_vec {
                 *self = *self ^ other;
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_conv {
@@ -810,7 +841,9 @@ macro_rules! impl_select {
             #[inline]
             pub fn compress(self, mask: $mask) -> $vec {
                 let mut values = <$arr>::default();
-                unsafe { self.store(values.as_mut_ptr()); }
+                unsafe {
+                    self.store(values.as_mut_ptr());
+                }
 
                 let mut mask = mask.to_bitmask();
                 let mut temp = <$arr>::default();
@@ -908,7 +941,9 @@ impl u8x16 {
     #[inline]
     pub fn compress(self, mask: Mask8x16) -> u8x16 {
         let mut values = [0u8; 16];
-        unsafe { self.store(values.as_mut_ptr()); }
+        unsafe {
+            self.store(values.as_mut_ptr());
+        }
 
         let mut mask = mask.to_bitmask();
         let mut temp = [0u8; 16];
@@ -1142,7 +1177,9 @@ impl u8x32 {
     #[inline]
     pub fn compress(self, mask: Mask8x32) -> u8x32 {
         let mut values = [0u8; 32];
-        unsafe { self.store(values.as_mut_ptr()); }
+        unsafe {
+            self.store(values.as_mut_ptr());
+        }
 
         let mut mask = mask.to_bitmask();
         let mut temp = [0u8; 32];
@@ -1213,7 +1250,7 @@ impl u16x16 {
     }
 
     #[inline]
-    pub fn extract8<const INDEX:i32>(self) -> u16x8 {
+    pub fn extract8<const INDEX: i32>(self) -> u16x8 {
         unsafe { _mm256_extracti128_si256::<INDEX>(self.0).into() }
     }
 
@@ -1476,7 +1513,7 @@ macro_rules! def_big_vec {
                 *self = *self ^ other;
             }
         }
-    }
+    };
 }
 macro_rules! impl_big_conv {
     ($vec:ty, $($conv_fn:ident | $half_conv_fn:ident => $other_ty:ident;)*) => {
@@ -1598,10 +1635,9 @@ impl u8x64 {
             let lo: u8x32 = _mm256_sad_epu8(self.0[0].0, zero.0).into();
             let hi: u8x32 = _mm256_sad_epu8(self.0[1].0, zero.0).into();
             let index = u8x32::from([
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
-                0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
-                0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
+                0x08, 0x08, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x18, 0x18, 0x18, 0x18,
+                0x18, 0x18, 0x18, 0x18,
             ]);
 
             u8x64([lo.shuffle(index), hi.shuffle(index)])
@@ -1626,7 +1662,9 @@ impl u8x64 {
     #[inline]
     pub fn compress(self, mask: Mask8x64) -> u8x64 {
         let mut values = [0u8; 64];
-        unsafe { self.store(values.as_mut_ptr()); }
+        unsafe {
+            self.store(values.as_mut_ptr());
+        }
 
         let mut mask = mask.to_bitmask();
         let mut temp = [0u8; 64];
@@ -1650,8 +1688,16 @@ impl u8x64 {
     pub fn permute(self, index: u8x64) -> u8x64 {
         let mask_lo = Mask8x32::from(index.0[0].to_u16x16().shl::<2>().to_u8x32());
         let mask_hi = Mask8x32::from(index.0[1].to_u16x16().shl::<2>().to_u8x32());
-        let lo = u8x32::blend(self.0[0].permute(index.0[0]), self.0[1].permute(index.0[0]), mask_lo);
-        let hi = u8x32::blend(self.0[0].permute(index.0[1]), self.0[1].permute(index.0[1]), mask_hi);
+        let lo = u8x32::blend(
+            self.0[0].permute(index.0[0]),
+            self.0[1].permute(index.0[0]),
+            mask_lo,
+        );
+        let hi = u8x32::blend(
+            self.0[0].permute(index.0[1]),
+            self.0[1].permute(index.0[1]),
+            mask_hi,
+        );
         u8x64([lo, hi])
     }
 
@@ -1867,7 +1913,9 @@ impl u16x64 {
     #[inline]
     pub fn compress(self, mask: Mask16x64) -> u16x64 {
         let mut values = [0u16; 64];
-        unsafe { self.store(values.as_mut_ptr()); }
+        unsafe {
+            self.store(values.as_mut_ptr());
+        }
 
         let mut mask = mask.to_bitmask();
         let mut temp = [0u16; 64];
@@ -1966,7 +2014,9 @@ impl i32x16 {
     #[inline]
     pub fn reduce_sum(self) -> i32 {
         let mut temp = [0i32; 16];
-        unsafe { self.store(temp.as_mut_ptr()); }
+        unsafe {
+            self.store(temp.as_mut_ptr());
+        }
         temp.iter().sum()
     }
 }

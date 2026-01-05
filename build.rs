@@ -1,4 +1,10 @@
-use std::{env, fs, io::{BufWriter, Write}, path::PathBuf};
+use std::{
+    env,
+    fs,
+    io::{BufWriter, Write},
+    path::PathBuf,
+};
+
 use cherry_core::*;
 
 #[inline]
@@ -47,7 +53,7 @@ fn write_magics() {
         "const SLIDER_MOVES: &[Bitboard; {}] = &[",
         SLIDER_TABLE_SIZE
     )
-        .unwrap();
+    .unwrap();
     for &bb in table.iter() {
         writeln!(out_file, "{:?},", bb).unwrap();
     }

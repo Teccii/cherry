@@ -57,12 +57,12 @@ impl Piece {
             Piece::King => 0b001,
         }
     }
-    
+
     #[inline]
-    pub const fn is_slider(self) -> bool  {
+    pub const fn is_slider(self) -> bool {
         match self {
             Piece::Bishop | Piece::Rook | Piece::Queen => true,
-            _ => false
+            _ => false,
         }
     }
 

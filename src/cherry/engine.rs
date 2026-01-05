@@ -729,7 +729,7 @@ impl Engine {
                         value,
                     ))
                     .unwrap();
-            },
+            }
             UciCommand::Perft { depth, bulk } => {
                 let board = self.searcher.lock().unwrap().pos.board().clone();
                 let time = Instant::now();
@@ -747,7 +747,7 @@ impl Engine {
                 };
 
                 println!("nodes {} time {:.2?} nps {}", nodes, elapsed, nps);
-            },
+            }
             UciCommand::SplitPerft { depth, bulk } => {
                 if depth == 0 {
                     return true;

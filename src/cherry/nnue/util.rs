@@ -42,7 +42,7 @@ pub fn feed_forward(
             let ntm = i16x32::load(ntm.as_ptr().add(offset)).clamp(zero, qa);
             let stm_weight = i16x32::load(out_weights.as_ptr().add(bucket_offset + offset));
             let ntm_weight = i16x32::load(out_weights.as_ptr().add(bucket_offset + HL + offset));
-            
+
             sum += (stm * stm_weight).madd(stm);
             sum += (ntm * ntm_weight).madd(ntm);
         }

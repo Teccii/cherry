@@ -135,18 +135,22 @@ impl Position {
         let board = self.board();
         let (src, dest, flag) = (mv.src(), mv.dest(), mv.flag());
 
-        let next_victim = mv.promotion().unwrap_or_else(|| board.piece_on(src).unwrap());
-        let mut balance = -threshold + match flag {
-            MoveFlag::Normal | MoveFlag::DoublePush => 0,
-            MoveFlag::EnPassant => W::see_value(Piece::Pawn),
-            MoveFlag::Capture => W::see_value(board.piece_on(dest).unwrap()),
-            _ if mv.is_capture_promotion() =>
-                W::see_value(board.piece_on(dest).unwrap())
-                    + W::see_value(mv.promotion().unwrap())
-                    - W::see_value(Piece::Pawn),
-            _ if mv.is_promotion() => W::see_value(mv.promotion().unwrap()) - W::see_value(Piece::Pawn),
-            _ => unreachable!()
-        };
+        let next_victim = mv
+            .promotion()
+            .unwrap_or_else(|| board.piece_on(src).unwrap());
+        let mut balance = -threshold
+            + match flag {
+                MoveFlag::Normal | MoveFlag::DoublePush => 0,
+                MoveFlag::EnPassant => W::see_value(Piece::Pawn),
+                MoveFlag::Capture => W::see_value(board.piece_on(dest).unwrap()),
+                _ if mv.is_capture_promotion() =>
+                    W::see_value(board.piece_on(dest).unwrap())
+                        + W::see_value(mv.promotion().unwrap())
+                        - W::see_value(Piece::Pawn),
+                _ if mv.is_promotion() =>
+                    W::see_value(mv.promotion().unwrap()) - W::see_value(Piece::Pawn),
+                _ => unreachable!(),
+            };
 
         if balance < 0 {
             return false;
@@ -192,7 +196,13 @@ impl Position {
         let attackers = attackers.to_bitmask();
 
         #[inline]
-        fn next_attackers(stm: Color, blockers: u64, ray_valid: u64, attackers: u64, colors: u64) -> u64 {
+        fn next_attackers(
+            stm: Color,
+            blockers: u64,
+            ray_valid: u64,
+            attackers: u64,
+            colors: u64,
+        ) -> u64 {
             let closest_blockers = extend_bitrays(blockers, ray_valid) & blockers;
             let colors = match stm {
                 Color::White => !colors,
@@ -209,7 +219,12 @@ impl Position {
                 break;
             }
 
-            let next_piece = Piece::index((ray_pieces_vec & u64x8::splat(current_attackers)).nonzero().to_bitmask().trailing_zeros() as usize);
+            let next_piece = Piece::index(
+                (ray_pieces_vec & u64x8::splat(current_attackers))
+                    .nonzero()
+                    .to_bitmask()
+                    .trailing_zeros() as usize,
+            );
             let piece_blockers = ray_pieces[next_piece as usize] & current_attackers;
 
             blockers ^= piece_blockers & piece_blockers.wrapping_neg();

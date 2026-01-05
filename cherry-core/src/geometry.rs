@@ -41,7 +41,6 @@ const BETWEEN: [[Bitboard; Square::COUNT]; Square::COUNT] = {
     table
 };
 
-
 const LINE: [[Bitboard; Square::COUNT]; Square::COUNT] = {
     #[inline]
     const fn calc_line(src: Square, dest: Square) -> Bitboard {
@@ -80,7 +79,6 @@ const LINE: [[Bitboard; Square::COUNT]; Square::COUNT] = {
 
     table
 };
-
 
 const RAY_PERMS: [[u8; Square::COUNT]; Square::COUNT] = {
     #[inline]
@@ -239,7 +237,7 @@ const ATTACK_MASKS: [[u64; Piece::COUNT]; Color::COUNT] = {
     const WPDJ: u8 = BISHOP | QUEEN | KING | WHITE_PAWN;
     const BPDJ: u8 = BISHOP | QUEEN | KING | BLACK_PAWN;
 
-    #[rustfmt::skipo]
+    #[rustfmt::skip]
     const BASE: [u8; 64] = [
         KNIGHT, OADJ, ORTH, ORTH, ORTH, ORTH, ORTH, ORTH,
         KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
@@ -362,7 +360,10 @@ pub fn ray_attackers(rays: u8x64) -> Mask8x64 {
         KNIGHT, WPDJ, DIAG, DIAG, DIAG, DIAG, DIAG, DIAG,
     ]);
 
-    let ray_pieces = (rays & u8x64::splat(Place::PIECE_MASK | Place::COLOR_MASK)).to_u16x32().shr::<4>().to_u8x64();
+    let ray_pieces = (rays & u8x64::splat(Place::PIECE_MASK | Place::COLOR_MASK))
+        .to_u16x32()
+        .shr::<4>()
+        .to_u8x64();
     let ray_pieces = bits_to_piece.shuffle(ray_pieces);
 
     (ray_pieces & valid_attackers).nonzero()

@@ -1,5 +1,7 @@
 use core::fmt::Write;
+
 use colored::Colorize;
+
 use crate::*;
 
 impl Board {
@@ -86,7 +88,7 @@ impl Board {
                             " {}",
                             String::from(piece.to_ascii_uppercase()).bright_green()
                         )
-                            .unwrap();
+                        .unwrap();
                     } else {
                         write!(&mut result, " {}", String::from(piece).bright_blue()).unwrap();
                     }
@@ -112,7 +114,7 @@ impl Board {
                     "╟───┼───┼───┼───┼───┼───┼───┼───╢"
                 }
             )
-                .unwrap();
+            .unwrap();
         }
 
         for &file in &File::ALL {

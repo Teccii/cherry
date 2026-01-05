@@ -9,7 +9,7 @@ macro_rules! def_mask {
 
         impl $mask {
             #[inline]
-            pub fn expand_inner(&mut self) { }
+            pub fn expand_inner(&mut self) {}
 
             #[inline]
             pub fn widen(self) -> $mask {
@@ -144,7 +144,7 @@ macro_rules! def_mask {
                 $next_mask(self.0 as $next_ty | ((other.0 as $next_ty) << $concat_shift))
             }
         }
-    }
+    };
 }
 
 /*----------------------------------------------------------------*/
@@ -265,7 +265,7 @@ macro_rules! def_vec {
                 *self = *self ^ other;
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_conv {
@@ -326,7 +326,7 @@ macro_rules! impl_cmp {
                 unsafe { $msb(self.0).into() }
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_select {
@@ -384,7 +384,7 @@ macro_rules! impl_select {
                 unsafe { $shuffle(self.0, index.0).into() }
             }
         }
-    }
+    };
 }
 
 /*----------------------------------------------------------------*/
@@ -587,7 +587,6 @@ impl u64x2 {
         unsafe { _mm512_broadcast_i64x2(self.0).into() }
     }
 }
-
 
 /*----------------------------------------------------------------*/
 

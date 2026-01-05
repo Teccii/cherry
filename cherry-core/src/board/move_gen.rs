@@ -1,5 +1,6 @@
 use core::ops::{Deref, DerefMut};
 use std::ptr;
+
 use arrayvec::ArrayVec;
 
 use crate::*;
@@ -175,7 +176,7 @@ impl Board {
             self,
             &masked_attacks,
             pawn_mask,
-            pawn_dest & their_pieces & their_backrank
+            pawn_dest & their_pieces & their_backrank,
         );
         moves.write(
             &masked_attacks,
@@ -194,7 +195,6 @@ impl Board {
                 let left = src.file() < ep_sq.file();
 
                 if (left && ep_info.left()) || (!left && ep_info.right()) {
-
                     moves.push(Move::new(src, ep_sq, MoveFlag::EnPassant));
                 }
             }
@@ -226,15 +226,24 @@ impl Board {
         let pawn_double = valid_pawns & double_empty;
 
         let promo_mask = Mask64x8::from((pawn_normal >> PAWN_PROMO_SHIFT[self.stm]).0 as u8);
-        moves.write4x8(unsafe { u64x8::load(PAWN_PROMOS[self.stm].as_ptr()) }, promo_mask);
+        moves.write4x8(
+            unsafe { u64x8::load(PAWN_PROMOS[self.stm].as_ptr()) },
+            promo_mask,
+        );
 
         let normal_mask = (pawn_normal >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
         let double_mask = (pawn_double >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
         let double_mask = Mask16x16::from(double_mask as u16 | ((normal_mask as u16) << 8));
-        moves.write16(unsafe { u16x16::load(PAWN_DOUBLE[self.stm].as_ptr()) }, double_mask);
+        moves.write16(
+            unsafe { u16x16::load(PAWN_DOUBLE[self.stm].as_ptr()) },
+            double_mask,
+        );
 
         let normal_mask = Mask16x32::from((pawn_normal >> PAWN_NORMAL_SHIFT).0 as u32);
-        moves.write32(unsafe { u16x32::load(PAWN_NORMAL[self.stm].as_ptr())}, normal_mask);
+        moves.write32(
+            unsafe { u16x32::load(PAWN_NORMAL[self.stm].as_ptr()) },
+            normal_mask,
+        );
 
         moves.write(
             &masked_attacks,
@@ -271,7 +280,8 @@ impl Board {
 
                         if !pinned.has(rook_src)
                             && blockers.is_disjoint(must_be_empty)
-                            && their_attacks.is_disjoint(must_be_safe) {
+                            && their_attacks.is_disjoint(must_be_safe)
+                        {
                             moves.push(Move::new(king_src, rook_src, $flag));
                         }
                     }
@@ -285,7 +295,8 @@ impl Board {
 
     #[inline]
     fn gen_king_moves<const CHECKERS: usize>(&self, moves: &mut MoveList, checkers: PieceMask) {
-        let (our_attacks, their_attacks) = (self.attack_table(self.stm), self.attack_table(!self.stm));
+        let (our_attacks, their_attacks) =
+            (self.attack_table(self.stm), self.attack_table(!self.stm));
         let (our_pieces, their_pieces) = (self.colors(self.stm), self.colors(!self.stm));
         let our_king = self.king(self.stm);
 
@@ -357,11 +368,12 @@ impl Board {
 
         let their_pieces = their_color & blockers;
         let pinners = their_pieces & sliders & second_closest;
-        let pinned = !their_pieces & u64x2::splat(closest)
-            .to_u8x16()
-            .mask(u64x2::splat(pinners.to_bitmask()).to_u8x16().nonzero())
-            .to_u64x2()
-            .extract::<0>();
+        let pinned = !their_pieces
+            & u64x2::splat(closest)
+                .to_u8x16()
+                .mask(u64x2::splat(pinners.to_bitmask()).to_u8x16().nonzero())
+                .to_u64x2()
+                .extract::<0>();
         let pinned_bitmask = pinned.to_bitmask();
         let pinned_places = ray_places
             .mask(pinned)
@@ -377,9 +389,8 @@ impl Board {
 
         let pinned_indices = (pinned_places & u8x64::splat(Place::INDEX_MASK)).zero_ext();
         let valid_indices = pinned_indices.nonzero();
-        let table_mask = u16x64::splat(!pinned_mask) | u16x64::splat(1)
-            .shlv(pinned_indices)
-            .mask(valid_indices);
+        let table_mask =
+            u16x64::splat(!pinned_mask) | u16x64::splat(1).shlv(pinned_indices).mask(valid_indices);
 
         (table_mask, Bitboard(valid_indices.to_bitmask()))
     }
@@ -392,8 +403,14 @@ fn pawn_empty(stm: Color, empty: Bitboard, valid: Bitboard) -> (Bitboard, Bitboa
     let valid_empty = valid & empty;
 
     match stm {
-        Color::White => (valid_empty.shift::<South>(1), empty.shift::<South>(1) & valid_empty.shift::<South>(2)),
-        Color::Black => (valid_empty.shift::<North>(1), empty.shift::<North>(1) & valid_empty.shift::<North>(2))
+        Color::White => (
+            valid_empty.shift::<South>(1),
+            empty.shift::<South>(1) & valid_empty.shift::<South>(2),
+        ),
+        Color::Black => (
+            valid_empty.shift::<North>(1),
+            empty.shift::<North>(1) & valid_empty.shift::<North>(2),
+        ),
     }
 }
 

@@ -85,20 +85,24 @@ impl UciCommand {
             #[cfg(feature = "tune")]
             "spsa" => Ok(UciCommand::PrintSpsa),
             "perft" => Ok(UciCommand::Perft {
-                depth: reader.next()
+                depth: reader
+                    .next()
                     .and_then(|s| s.parse::<u8>().ok())
                     .ok_or(UciParseError::InvalidArguments)?,
-                bulk: reader.next()
+                bulk: reader
+                    .next()
                     .and_then(|s| s.parse::<bool>().ok())
-                    .unwrap_or(true)
+                    .unwrap_or(true),
             }),
             "splitperft" => Ok(UciCommand::SplitPerft {
-                depth: reader.next()
+                depth: reader
+                    .next()
                     .and_then(|s| s.parse::<u8>().ok())
                     .ok_or(UciParseError::InvalidArguments)?,
-                bulk: reader.next()
+                bulk: reader
+                    .next()
                     .and_then(|s| s.parse::<bool>().ok())
-                    .unwrap_or(true)
+                    .unwrap_or(true),
             }),
             "bench" => Ok(UciCommand::Bench {
                 depth: reader
@@ -269,7 +273,7 @@ impl UciCommand {
                 }
 
                 Ok(UciCommand::Go(limits))
-            },
+            }
             "setoption" => {
                 reader
                     .next()

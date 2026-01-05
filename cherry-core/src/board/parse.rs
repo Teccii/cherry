@@ -1,4 +1,5 @@
 use core::fmt::Write;
+
 use crate::*;
 
 impl Board {
@@ -82,7 +83,7 @@ impl Board {
         {
             return None;
         }
-        
+
         if stm.len() != 1 {
             return None;
         }
@@ -132,7 +133,7 @@ impl Board {
             if ep_sq.rank() != Rank::Sixth.relative_to(board.stm) {
                 return None;
             }
-            
+
             board.calc_ep(Some(ep_sq));
         }
 

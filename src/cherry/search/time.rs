@@ -136,8 +136,10 @@ impl TimeManager {
             .store(max_depth.unwrap_or(MAX_DEPTH), Ordering::Relaxed);
         self.max_nodes
             .store(max_nodes.unwrap_or(u64::MAX), Ordering::Relaxed);
-        self.no_manage
-            .store(infinite || use_soft_nodes || move_time.is_some(), Ordering::Relaxed);
+        self.no_manage.store(
+            infinite || use_soft_nodes || move_time.is_some(),
+            Ordering::Relaxed,
+        );
 
         if let Some(time) = move_time {
             self.base_target.store(time, Ordering::Relaxed);

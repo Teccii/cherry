@@ -8,8 +8,8 @@ use crate::*;
 mod move_gen;
 mod parse;
 mod perft;
-mod startpos;
 mod print;
+mod startpos;
 
 pub use move_gen::*;
 
@@ -616,9 +616,7 @@ impl Board {
         let update_indices = (updates & u8x64::splat(Place::INDEX_MASK)).zero_ext();
         let valid_updates = update_indices.nonzero();
 
-        let updates = u16x64::splat(1)
-            .shlv(update_indices)
-            .mask(valid_updates);
+        let updates = u16x64::splat(1).shlv(update_indices).mask(valid_updates);
         self.attack_table[Color::White].0 ^= updates.mask(!update_colors);
         self.attack_table[Color::Black].0 ^= updates.mask(update_colors);
     }
