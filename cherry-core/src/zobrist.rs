@@ -32,6 +32,7 @@ pub struct Zobrist {
     pub pieces: [[[u64; Square::COUNT]; Piece::COUNT]; Color::COUNT],
     pub castle_rights: [[u64; File::COUNT]; Color::COUNT],
     pub en_passant: [u64; File::COUNT],
+    pub halfmove_clock: [u64; 11],
     pub stm: u64,
 }
 
@@ -69,6 +70,12 @@ impl Zobrist {
             i += 1;
         }
 
+        i = 0;
+        while i < 11 {
+            zobrist.halfmove_clock[i] = rng.next();
+            i += 1;
+        }
+
         zobrist.stm = rng.next();
 
         zobrist
@@ -80,6 +87,7 @@ impl Zobrist {
             pieces: [[[0; Square::COUNT]; Piece::COUNT]; Color::COUNT],
             castle_rights: [[0; File::COUNT]; Color::COUNT],
             en_passant: [0; File::COUNT],
+            halfmove_clock: [0; 11],
             stm: 0,
         }
     }
@@ -100,8 +108,24 @@ impl Zobrist {
     }
 
     #[inline]
+    pub const fn halfmove_clock(&self, bucket: usize) -> u64 {
+        self.halfmove_clock[bucket]
+    }
+    
+    #[inline]
     pub const fn stm(&self) -> u64 {
         self.stm
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn hm_bucket(hm: u8) -> usize {
+        if hm >= 50 {
+            (1 + (hm - 50) / 5).min(10) as usize
+        } else {
+            0
+        }
     }
 }
 

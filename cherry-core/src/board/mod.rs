@@ -239,7 +239,7 @@ impl Board {
             board.xor_piece(king_dest, Piece::King, stm);
             board.xor_piece(rook_dest, Piece::Rook, stm);
 
-            board.halfmove_clock = (board.halfmove_clock + 1).min(100);
+            board.set_halfmove_clock((board.halfmove_clock + 1).min(100));
             board.set_castle_rights(stm, true, None);
             board.set_castle_rights(stm, false, None);
         }
@@ -270,7 +270,7 @@ impl Board {
             board.xor_piece(dest, dest_place.piece().unwrap(), !stm);
             board.xor_piece(dest, promotion, stm);
 
-            board.halfmove_clock = 0;
+            board.set_halfmove_clock(0);
             check_castle_rights(board, !stm, dest);
         }
 
@@ -295,7 +295,7 @@ impl Board {
             board.xor_piece(src, Piece::Pawn, stm);
             board.xor_piece(dest, promotion, stm);
 
-            board.halfmove_clock = 0;
+            board.set_halfmove_clock(0);
         }
 
         #[inline]
@@ -328,9 +328,9 @@ impl Board {
                 self.xor_piece(dest, src_piece, stm);
 
                 if src_piece != Piece::Pawn {
-                    self.halfmove_clock = (self.halfmove_clock + 1).min(100);
+                    self.set_halfmove_clock((self.halfmove_clock + 1).min(100));
                 } else {
-                    self.halfmove_clock = 0;
+                    self.set_halfmove_clock(0);
                 }
 
                 match src_piece {
@@ -361,7 +361,7 @@ impl Board {
                     new_ep = Some(src.offset(0, stm.sign() as i8));
                 }
 
-                self.halfmove_clock = 0;
+                self.set_halfmove_clock(0);
             }
             MoveFlag::Capture => {
                 let stm = self.stm;
@@ -380,7 +380,7 @@ impl Board {
                 self.xor_piece(dest, src_piece, stm);
                 self.xor_piece(dest, dest_place.piece().unwrap(), !stm);
 
-                self.halfmove_clock = 0;
+                self.set_halfmove_clock(0);
 
                 match src_piece {
                     Piece::Rook => check_castle_rights(self, stm, src),
@@ -411,7 +411,7 @@ impl Board {
                 self.index_to_piece[!stm][ep_index] = None;
                 self.index_to_square[!stm][ep_index] = None;
 
-                self.halfmove_clock = 0;
+                self.set_halfmove_clock(0);
             }
             MoveFlag::ShortCastling =>
                 castling(self, src, dest, src_place, dest_place, File::G, File::F),
@@ -444,7 +444,7 @@ impl Board {
             return false;
         }
 
-        self.halfmove_clock = (self.halfmove_clock + 1).min(100);
+        self.set_halfmove_clock((self.halfmove_clock + 1).min(100));
         if self.stm == Color::Black {
             self.fullmove_count += 1;
         }
@@ -487,6 +487,8 @@ impl Board {
                 self.hash ^= ZOBRIST.castle_rights(file, color);
             }
         }
+
+        self.hash ^= ZOBRIST.halfmove_clock(Zobrist::hm_bucket(self.halfmove_clock));
 
         if self.stm == Color::Black {
             self.hash ^= ZOBRIST.stm;
@@ -704,6 +706,18 @@ impl Board {
 
         if let Some(ep) = ep {
             self.hash ^= ZOBRIST.en_passant(ep.file());
+        }
+    }
+
+    #[inline]
+    fn set_halfmove_clock(&mut self, hm: u8) {
+        let old_bucket = Zobrist::hm_bucket(self.halfmove_clock);
+        let new_bucket = Zobrist::hm_bucket(hm);
+        self.halfmove_clock = hm;
+
+        if old_bucket != new_bucket {
+            self.hash ^= ZOBRIST.halfmove_clock(old_bucket);
+            self.hash ^= ZOBRIST.halfmove_clock(new_bucket);
         }
     }
 
