@@ -247,7 +247,7 @@ pub fn search<Node: NodeType>(
     };
     let lmr_lookup_depth = ((depth + lmr_depth_bias) / DEPTH_SCALE) as u8;
 
-    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
+    while let Some(ScoredMove(mv, stat_score)) = move_picker.next(pos, &thread.history, &cont_indices) {
         if skip_move == Some(mv) {
             continue;
         }
@@ -394,6 +394,10 @@ pub fn search<Node: NodeType>(
         } else {
             if depth >= 2 {
                 lmr += W::cutnode_lmr() * cut_node as i32;
+
+                if !is_tactic {
+                    lmr -= W::quiet_hist_lmr() * stat_score / MAX_HISTORY;
+                }
             } else {
                 lmr = 0;
             }
