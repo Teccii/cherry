@@ -64,6 +64,7 @@ pub fn search<Node: NodeType>(
         Some(_) => None,
         None => shared.ttable.fetch(pos.board(), ply),
     };
+    let tt_tactic = tt_entry.and_then(|e| e.mv).is_some_and(|mv| mv.is_tactic());
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
     if let Some(entry) = tt_entry {
@@ -394,6 +395,7 @@ pub fn search<Node: NodeType>(
         } else {
             if depth >= 2 {
                 lmr += W::cutnode_lmr() * cut_node as i32;
+                lmr += W::tt_tactic_lmr() * (tt_tactic && !is_tactic) as i32;
             } else {
                 lmr = 0;
             }
