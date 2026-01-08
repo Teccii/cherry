@@ -395,6 +395,7 @@ pub fn search<Node: NodeType>(
             if depth >= 2 {
                 lmr += W::cutnode_lmr() * cut_node as i32;
                 lmr -= W::improving_lmr() * improving as i32;
+                lmr -= W::tt_pv_lmr() * tt_pv as i32;
             } else {
                 lmr = 0;
             }
