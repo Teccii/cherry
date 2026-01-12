@@ -212,6 +212,7 @@ weights! {
 
     cutnode_lmr   | CUTNODE_LMR:   i32 => 1024,
     improving_lmr | IMPROVING_LMR: i32 => 1024,
+    non_pv_lmr    | NON_PV_LMR:    i32 => 1024,
     tt_pv_lmr     | TT_PV_LMR:     i32 => 1024,
 
     lmr_depth_bias    | LMR_DEPTH_BIAS:    i32 => 0,

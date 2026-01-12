@@ -343,6 +343,7 @@ impl Engine {
 
                     CUTNODE_LMR   => W::cutnode_lmr(),   0, 4096;
                     IMPROVING_LMR => W::improving_lmr(), 0, 4096;
+                    NON_PV_LMR    => W::non_pv_lmr(),    0, 4096;
                     TT_PV_LMR     => W::tt_pv_lmr(),     0, 4096;
 
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
@@ -519,6 +520,7 @@ impl Engine {
 
                     CUTNODE_LMR   => W::cutnode_lmr(),   0, 4096;
                     IMPROVING_LMR => W::improving_lmr(), 0, 4096;
+                    NON_PV_LMR    => W::non_pv_lmr(),    0, 4096;
                     TT_PV_LMR     => W::tt_pv_lmr(),     0, 4096;
 
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
@@ -701,6 +703,7 @@ impl Engine {
 
                     "CUTNODE_LMR"   => CUTNODE_LMR,   i32;
                     "IMPROVING_LMR" => IMPROVING_LMR, i32;
+                    "NON_PV_LMR"    => NON_PV_LMR,    i32;
                     "TT_PV_LMR"     => TT_PV_LMR,     i32;
 
                     "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i16;
