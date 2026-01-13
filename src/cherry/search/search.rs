@@ -264,7 +264,7 @@ pub fn search<Node: NodeType>(
         let mut lmr = get_lmr(is_tactic, improving, lmr_lookup_depth, moves_seen);
         let mut score;
 
-        if !Node::PV && best_score.map_or(false, |s: Score| !s.is_loss()) {
+        if best_score.map_or(false, |s: Score| !s.is_loss()) {
             if is_tactic {
                 let (see_depth, see_base, see_scale) = if improving {
                     (
@@ -281,7 +281,7 @@ pub fn search<Node: NodeType>(
                 };
 
                 let see_margin = (see_base + see_scale * depth / DEPTH_SCALE) as i16;
-                if depth <= see_depth
+                if !Node::PV && depth <= see_depth
                     && move_picker.stage() > Stage::YieldGoodTactics
                     && !pos.cmp_see(mv, see_margin)
                 {
@@ -309,7 +309,7 @@ pub fn search<Node: NodeType>(
                 };
 
                 let fp_margin = (fp_base + fp_scale * lmr_depth / DEPTH_SCALE) as i16;
-                if lmr_depth <= fp_depth && !in_check && static_eval + fp_margin <= alpha {
+                if !Node::PV && lmr_depth <= fp_depth && !in_check && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }
 
@@ -328,7 +328,7 @@ pub fn search<Node: NodeType>(
                 };
 
                 let see_margin = (see_base + see_scale * lmr_depth / DEPTH_SCALE) as i16;
-                if lmr_depth <= see_depth
+                if !Node::PV && lmr_depth <= see_depth
                     && move_picker.stage() > Stage::YieldGoodTactics
                     && !pos.cmp_see(mv, see_margin)
                 {
