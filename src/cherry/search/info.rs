@@ -67,7 +67,7 @@ impl SearchInfo for UciInfo {
             },
             time,
             nodes,
-            nodes / time.max(1) * 1000,
+            ((nodes as f64) / (time.max(1) as f64) * 1000.0) as u64,
             pv.display(board, self.frc)
         );
     }

@@ -338,7 +338,7 @@ pub fn search_worker<Info: SearchInfo>(
                 };
 
                 thread.sel_depth = 0;
-                let new_score = search::<PV>(
+                let new_score = search::<Root>(
                     &mut pos,
                     thread,
                     shared,

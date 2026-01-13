@@ -9,17 +9,30 @@ use crate::*;
 
 pub trait NodeType {
     const PV: bool;
+    const ROOT: bool;
+    type Next: NodeType;
 }
 
+pub struct Root;
 pub struct PV;
 pub struct NonPV;
 
+impl NodeType for Root {
+    const PV: bool = true;
+    const ROOT: bool = true;
+    type Next = PV;
+}
+
 impl NodeType for PV {
     const PV: bool = true;
+    const ROOT: bool = false;
+    type Next = PV;
 }
 
 impl NodeType for NonPV {
     const PV: bool = false;
+    const ROOT: bool = false;
+    type Next = NonPV;
 }
 
 /*----------------------------------------------------------------*/
@@ -34,13 +47,8 @@ pub fn search<Node: NodeType>(
     beta: Score,
     cut_node: bool,
 ) -> Score {
-    if ply != 0
-        && (thread.abort_now
-            || (thread.nodes.local() % 1024 == 0
-                && shared.time_man.abort_search(thread.nodes.global())))
-    {
+    if !Node::ROOT && (thread.abort_now || shared.time_man.abort_search(thread.nodes.local(), thread.nodes.global())) {
         thread.abort_now = true;
-
         return Score::ZERO;
     }
 
@@ -48,7 +56,7 @@ pub fn search<Node: NodeType>(
         thread.search_stack[ply as usize].pv.len = 0;
     }
 
-    if ply != 0 && pos.is_draw() {
+    if !Node::ROOT && pos.is_draw() {
         return Score::ZERO;
     }
 
@@ -57,7 +65,10 @@ pub fn search<Node: NodeType>(
     }
 
     thread.sel_depth = thread.sel_depth.max(ply);
-    thread.nodes.inc();
+
+    if !Node::ROOT {
+        thread.nodes.inc();
+    }
 
     let skip_move = thread.search_stack[ply as usize].skip_move;
     let tt_entry = match skip_move {
@@ -209,7 +220,7 @@ pub fn search<Node: NodeType>(
             shared.ttable.prefetch(pos.board());
 
             let nmp_reduction = (nmp_base + nmp_scale * depth as i64 / DEPTH_SCALE as i64) as i32;
-            let score = -search::<Node>(
+            let score = -search::<NonPV>(
                 pos,
                 thread,
                 shared,
@@ -252,7 +263,7 @@ pub fn search<Node: NodeType>(
             continue;
         }
 
-        if ply == 0
+        if Node::ROOT
             && ((!thread.root_moves.is_empty() && !thread.root_moves.contains(&mv))
                 || thread.exclude_moves.contains(&mv))
         {
@@ -338,7 +349,7 @@ pub fn search<Node: NodeType>(
         }
 
         let mut ext = 0;
-        if ply != 0
+        if !Node::ROOT
             && depth >= W::singular_depth()
             && skip_move.is_none()
             && let Some(entry) = tt_entry
@@ -381,7 +392,7 @@ pub fn search<Node: NodeType>(
 
         let new_depth = depth + ext - 1 * DEPTH_SCALE;
         if moves_seen == 0 {
-            score = -search::<Node>(
+            score = -search::<Node::Next>(
                 pos,
                 thread,
                 shared,
@@ -443,19 +454,19 @@ pub fn search<Node: NodeType>(
         pos.unmake_move();
         moves_seen += 1;
 
-        if thread.abort_now {
-            return Score::ZERO;
-        }
-
-        if ply == 0 {
-            thread.root_nodes[mv.src()][mv.dest()] += thread.nodes.local() - nodes;
-        }
-
         if Node::PV && (moves_seen == 1 || score > alpha) {
             let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
             let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
 
             parent.pv.update(mv, &child.pv);
+        }
+
+        if thread.abort_now {
+            return Score::ZERO;
+        }
+
+        if Node::ROOT {
+            thread.root_nodes[mv.src()][mv.dest()] += thread.nodes.local() - nodes;
         }
 
         if best_score.is_none() || score > best_score.unwrap() {
@@ -542,9 +553,7 @@ fn q_search<Node: NodeType>(
     mut alpha: Score,
     beta: Score,
 ) -> Score {
-    if thread.abort_now
-        || (thread.nodes.local() % 1024 == 0 && shared.time_man.abort_search(thread.nodes.global()))
-    {
+    if thread.abort_now || shared.time_man.abort_search(thread.nodes.local(), thread.nodes.global()) {
         thread.abort_now = true;
 
         return Score::ZERO;
@@ -617,7 +626,7 @@ fn q_search<Node: NodeType>(
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         pos.make_move(mv, &shared.nnue_weights);
         shared.ttable.prefetch(pos.board());
-        let score = -q_search::<Node>(pos, thread, shared, ply + 1, -beta, -alpha);
+        let score = -q_search::<Node::Next>(pos, thread, shared, ply + 1, -beta, -alpha);
         pos.unmake_move();
         moves_seen += 1;
 

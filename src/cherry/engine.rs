@@ -842,7 +842,7 @@ impl Engine {
                         score,
                         best_move,
                         nodes,
-                        (*nodes / *time) * 1000,
+                        ((*nodes as f64) / ((*time).max(1) as f64) * 1000.0) as u64,
                     );
                 }
                 println!("================================================================");
@@ -853,7 +853,7 @@ impl Engine {
                 println!(
                     "OVERALL: {:>30} nodes {:>8} nps",
                     total_nodes,
-                    (total_nodes / total_time) * 1000
+                    ((total_nodes as f64) / (total_time.max(1) as f64) * 1000.0) as u64
                 );
             }
             UciCommand::Quit => {
