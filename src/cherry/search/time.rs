@@ -266,7 +266,9 @@ impl TimeManager {
     #[inline]
     pub fn abort_search(&self, local_nodes: u64, nodes: u64) -> bool {
         self.abort_now()
-            || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)
+            || (!self.use_soft_nodes()
+                && self.use_max_nodes()
+                && self.max_nodes.load(Ordering::Relaxed) <= nodes)
             || (local_nodes % 1024 == 0 && self.timeout_search(nodes))
     }
 
@@ -274,7 +276,9 @@ impl TimeManager {
     pub fn abort_id(&self, depth: u8, nodes: u64) -> bool {
         self.abort_now()
             || (self.use_max_depth() && self.max_depth.load(Ordering::Relaxed) <= depth)
-            || (!self.use_soft_nodes() && self.use_max_nodes() && self.max_nodes.load(Ordering::Relaxed) <= nodes)
+            || (!self.use_soft_nodes()
+                && self.use_max_nodes()
+                && self.max_nodes.load(Ordering::Relaxed) <= nodes)
             || self.timeout_id(nodes)
     }
 

@@ -47,7 +47,12 @@ pub fn search<Node: NodeType>(
     beta: Score,
     cut_node: bool,
 ) -> Score {
-    if !Node::ROOT && (thread.abort_now || shared.time_man.abort_search(thread.nodes.local(), thread.nodes.global())) {
+    if !Node::ROOT
+        && (thread.abort_now
+            || shared
+                .time_man
+                .abort_search(thread.nodes.local(), thread.nodes.global()))
+    {
         thread.abort_now = true;
         return Score::ZERO;
     }
@@ -292,7 +297,8 @@ pub fn search<Node: NodeType>(
                 };
 
                 let see_margin = (see_base + see_scale * depth / DEPTH_SCALE) as i16;
-                if !Node::PV && depth <= see_depth
+                if !Node::PV
+                    && depth <= see_depth
                     && move_picker.stage() > Stage::YieldGoodTactics
                     && !pos.cmp_see(mv, see_margin)
                 {
@@ -320,7 +326,11 @@ pub fn search<Node: NodeType>(
                 };
 
                 let fp_margin = (fp_base + fp_scale * lmr_depth / DEPTH_SCALE) as i16;
-                if !Node::PV && lmr_depth <= fp_depth && !in_check && static_eval + fp_margin <= alpha {
+                if !Node::PV
+                    && lmr_depth <= fp_depth
+                    && !in_check
+                    && static_eval + fp_margin <= alpha
+                {
                     move_picker.skip_quiets();
                 }
 
@@ -339,7 +349,8 @@ pub fn search<Node: NodeType>(
                 };
 
                 let see_margin = (see_base + see_scale * lmr_depth / DEPTH_SCALE) as i16;
-                if !Node::PV && lmr_depth <= see_depth
+                if !Node::PV
+                    && lmr_depth <= see_depth
                     && move_picker.stage() > Stage::YieldGoodTactics
                     && !pos.cmp_see(mv, see_margin)
                 {
@@ -553,7 +564,11 @@ fn q_search<Node: NodeType>(
     mut alpha: Score,
     beta: Score,
 ) -> Score {
-    if thread.abort_now || shared.time_man.abort_search(thread.nodes.local(), thread.nodes.global()) {
+    if thread.abort_now
+        || shared
+            .time_man
+            .abort_search(thread.nodes.local(), thread.nodes.global())
+    {
         thread.abort_now = true;
 
         return Score::ZERO;

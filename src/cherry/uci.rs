@@ -138,7 +138,10 @@ impl UciCommand {
                 let mut moves_token_passed = false;
                 let board = match board_kind {
                     "startpos" => Board::startpos(),
-                    "kiwipete" => Board::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap(),
+                    "kiwipete" => Board::from_fen(
+                        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+                    )
+                    .unwrap(),
                     "lasker" => Board::from_fen("8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1").unwrap(),
                     "frc" => {
                         let scharnagl = reader
@@ -147,7 +150,7 @@ impl UciCommand {
                             .ok_or(UciParseError::InvalidArguments)?;
 
                         Board::frc_startpos(scharnagl)
-                    },
+                    }
                     "dfrc" => {
                         let white_scharnagl = reader
                             .next()
@@ -159,7 +162,7 @@ impl UciCommand {
                             .ok_or(UciParseError::InvalidArguments)?;
 
                         Board::dfrc_startpos(white_scharnagl, black_scharnagl)
-                    },
+                    }
                     "fen" => {
                         let mut fen = String::new();
 
