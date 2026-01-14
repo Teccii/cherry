@@ -238,7 +238,7 @@ pub fn search<Node: NodeType>(
             pos.unmake_null_move();
 
             if thread.abort_now {
-                return Score::INFINITE;
+                return Score::ZERO;
             }
 
             if score >= beta {

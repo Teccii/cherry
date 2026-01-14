@@ -50,7 +50,7 @@ impl SearchInfo for UciInfo {
         let time = shared.time_man.elapsed();
 
         println!(
-            "info depth {} seldepth {} {}score {} {}time {} nodes {} nps {} pv {}",
+            "info depth {} seldepth {} {}score {} {}hashfull {} time {} nodes {} nps {} pv {}",
             depth,
             thread.sel_depth,
             if multipv > 1 {
@@ -65,6 +65,7 @@ impl SearchInfo for UciInfo {
                 TTFlag::LowerBound => "lowerbound ",
                 TTFlag::None => "",
             },
+            shared.ttable.hash_usage(),
             time,
             nodes,
             ((nodes as f64) / (time.max(1) as f64) * 1000.0) as u64,

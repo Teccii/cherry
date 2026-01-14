@@ -186,6 +186,25 @@ impl TTable {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub fn hash_usage(&self) -> u16 {
+        let mut filled_entries = 0;
+        let age = self.age.load(Ordering::Relaxed);
+
+        for i in 0..1000 {
+            let cluster = &self.clusters[i];
+
+            for i in 0..CLUSTER_SIZE {
+                let entry = cluster.load(i);
+                if entry.flag != TTFlag::None && entry.age == age {
+                    filled_entries += 1;
+                }
+            }
+        }
+
+        filled_entries / CLUSTER_SIZE as u16
+    }
+
+    #[inline]
     pub fn prefetch(&self, board: &Board) {
         unsafe {
             _mm_prefetch::<_MM_HINT_T0>(
