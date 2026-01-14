@@ -82,27 +82,25 @@ pub fn search<Node: NodeType>(
     };
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
-    if let Some(entry) = tt_entry {
-        if !Node::PV && entry.depth as i32 >= depth / DEPTH_SCALE {
-            let score = entry.score;
-
-            match entry.flag {
-                TTFlag::Exact => return score,
-                TTFlag::UpperBound =>
-                    if score <= alpha {
-                        return score;
-                    },
-                TTFlag::LowerBound =>
-                    if score >= beta {
-                        return score;
-                    },
-                TTFlag::None => unreachable!(),
-            }
+    if let Some(entry) = tt_entry && !Node::PV && entry.depth as i32 >= depth / DEPTH_SCALE
+    {
+        let score = entry.score;
+        match entry.flag {
+            TTFlag::Exact => return score,
+            TTFlag::UpperBound =>
+                if score <= alpha {
+                    return score;
+                },
+            TTFlag::LowerBound =>
+                if score >= beta {
+                    return score;
+                },
+            TTFlag::None => unreachable!(),
         }
     }
 
     let in_check = pos.board().in_check();
-    let (raw_eval, static_eval, _corr) = if !in_check && skip_move.is_none() {
+    let (raw_eval, static_eval, corr) = if !in_check && skip_move.is_none() {
         let raw_eval = tt_entry
             .map(|e| e.eval)
             .unwrap_or_else(|| pos.eval(&shared.nnue_weights));
@@ -117,6 +115,7 @@ pub fn search<Node: NodeType>(
     } else {
         (Score::NONE, Score::NONE, 0)
     };
+    let corrplexity = corr.abs();
 
     let improving = !in_check && skip_move.is_none() && {
         let ss = &thread.search_stack;
@@ -189,18 +188,26 @@ pub fn search<Node: NodeType>(
     }
 
     if !Node::PV && !in_check && skip_move.is_none() {
-        let (rfp_depth, rfp_base, rfp_scale, rfp_lerp) = if improving {
+        let (rfp_depth, rfp_base, rfp_scale, rfp_corr, rfp_lerp) = if improving {
             (
                 W::rfp_imp_depth(),
                 W::rfp_imp_base(),
                 W::rfp_imp_scale(),
+                W::rfp_imp_corr(),
                 W::rfp_imp_lerp(),
             )
         } else {
-            (W::rfp_depth(), W::rfp_base(), W::rfp_scale(), W::rfp_lerp())
+            (
+                W::rfp_depth(),
+                W::rfp_base(),
+                W::rfp_scale(),
+                W::rfp_corr(),
+                W::rfp_lerp(),
+            )
         };
 
-        let rfp_margin = (rfp_base + rfp_scale * depth / DEPTH_SCALE) as i16;
+        let rfp_margin =
+            (rfp_base + rfp_scale * depth / DEPTH_SCALE + corrplexity * rfp_corr / 1024) as i16;
         if depth < rfp_depth && static_eval - rfp_margin >= beta {
             return if !static_eval.is_win() && !beta.is_win() {
                 let (static_eval, beta) = (i32::from(static_eval.0), i32::from(beta.0));
@@ -238,7 +245,7 @@ pub fn search<Node: NodeType>(
             pos.unmake_null_move();
 
             if thread.abort_now {
-                return Score::INFINITE;
+                return Score::ZERO;
             }
 
             if score >= beta {

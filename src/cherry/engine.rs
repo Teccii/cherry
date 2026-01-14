@@ -279,10 +279,12 @@ impl Engine {
                     RFP_DEPTH     => W::rfp_depth(),        0, 16384;
                     RFP_BASE      => W::rfp_base(),      -256, 256;
                     RFP_SCALE     => W::rfp_scale(),     -256, 256;
+                    RFP_CORR      => W::rfp_corr(),         0, 1024;
                     RFP_LERP      => W::rfp_lerp(),         0, 1024;
                     RFP_IMP_DEPTH => W::rfp_imp_depth(),    0, 16384;
                     RFP_IMP_BASE  => W::rfp_imp_base(),  -256, 256;
                     RFP_IMP_SCALE => W::rfp_imp_scale(), -256, 256;
+                    RFP_IMP_CORR  => W::rfp_imp_corr(),     0, 1204;
                     RFP_IMP_LERP  => W::rfp_imp_lerp(),     0, 1024;
 
                     NMP_DEPTH     => W::nmp_depth(),     0, 16384;
@@ -456,10 +458,12 @@ impl Engine {
                     RFP_DEPTH     => W::rfp_depth(),        0, 16384;
                     RFP_BASE      => W::rfp_base(),      -256, 256;
                     RFP_SCALE     => W::rfp_scale(),     -256, 256;
+                    RFP_CORR      => W::rfp_corr(),         0, 1024;
                     RFP_LERP      => W::rfp_lerp(),         0, 1024;
                     RFP_IMP_DEPTH => W::rfp_imp_depth(),    0, 16384;
                     RFP_IMP_BASE  => W::rfp_imp_base(),  -256, 256;
                     RFP_IMP_SCALE => W::rfp_imp_scale(), -256, 256;
+                    RFP_IMP_CORR  => W::rfp_imp_corr(),     0, 1204;
                     RFP_IMP_LERP  => W::rfp_imp_lerp(),     0, 1024;
 
                     NMP_DEPTH     => W::nmp_depth(),     0, 16384;
@@ -639,10 +643,12 @@ impl Engine {
                     "RFP_DEPTH"     => RFP_DEPTH,     i32;
                     "RFP_BASE"      => RFP_BASE,      i32;
                     "RFP_SCALE"     => RFP_SCALE,     i32;
+                    "RFP_CORR"      => RFP_CORR,      i32;
                     "RFP_LERP"      => RFP_LERP,      i32;
                     "RFP_IMP_DEPTH" => RFP_IMP_DEPTH, i32;
                     "RFP_IMP_BASE"  => RFP_IMP_BASE,  i32;
                     "RFP_IMP_SCALE" => RFP_IMP_SCALE, i32;
+                    "RFP_IMP_CORR"  => RFP_IMP_CORR,  i32;
                     "RFP_IMP_LERP"  => RFP_IMP_LERP,  i32;
 
                     "NMP_DEPTH"     => NMP_DEPTH,     i32;

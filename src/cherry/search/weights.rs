@@ -153,10 +153,12 @@ weights! {
     rfp_depth     | RFP_DEPTH:     i32 => 6144,
     rfp_base      | RFP_BASE:      i32 => 0,
     rfp_scale     | RFP_SCALE:     i32 => 80,
+    rfp_corr      | RFP_CORR:      i32 => 512,
     rfp_lerp      | RFP_LERP:      i32 => 512,
     rfp_imp_depth | RFP_IMP_DEPTH: i32 => 6144,
     rfp_imp_base  | RFP_IMP_BASE:  i32 => -80,
     rfp_imp_scale | RFP_IMP_SCALE: i32 => 80,
+    rfp_imp_corr  | RFP_IMP_CORR:  i32 => 512,
     rfp_imp_lerp  | RFP_IMP_LERP:  i32 => 512,
 
     nmp_depth     | NMP_DEPTH:     i32 => 3072,
