@@ -1,1 +1,14 @@
-fastchess -engine cmd=cherry-dev name=CherryDev -engine cmd=cherry-main name=CherryMain -each tc=40+0.4 option.Hash=16 -sprt elo0=-3.0 elo1=0 alpha=0.05 beta=0.1 -rounds 500000 -repeat -concurrency 8 -openings order=random format=epd file=data/epds/UHO_Lichess.epd -recover
+fastchess                                                          \
+  -engine cmd=cherry-dev name=CherryDev                            \
+  -engine cmd=cherry-main name=CherryMain                          \
+  -each tc=40+0.4 option.Hash=128                                  \
+  -sprt elo0=-2.0 elo1=0.0 alpha=0.05 beta=0.1                     \
+  -rounds 500000                                                   \
+  -repeat                                                          \
+  -concurrency 8                                                   \
+  -openings order=random format=epd file=data/epds/UHO_Lichess.epd \
+  -draw movenumber=40 movecount=8 score=10                         \
+  -resign movecount=3 score=400                                    \
+  -tbpieces 5                                                      \
+  -tb ./data/syzygy/                                               \
+  -recover
