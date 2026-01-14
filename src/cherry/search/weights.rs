@@ -8,46 +8,29 @@ type LmrLookup = [[i32; MAX_PLY as usize]; MAX_PLY as usize];
 
 pub static LMR_QUIET: SyncUnsafeCell<LmrLookup> =
     SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
-pub static LMR_QUIET_IMP: SyncUnsafeCell<LmrLookup> =
-    SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
 pub static LMR_TACTIC: SyncUnsafeCell<LmrLookup> =
-    SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
-pub static LMR_TACTIC_IMP: SyncUnsafeCell<LmrLookup> =
     SyncUnsafeCell::new([[0; MAX_PLY as usize]; MAX_PLY as usize]);
 
 #[inline]
-pub fn get_lmr(is_tactic: bool, improving: bool, depth: u8, moves_seen: u16) -> i32 {
-    let table = match (is_tactic, improving) {
-        (true, true) => &LMR_TACTIC_IMP,
-        (true, false) => &LMR_TACTIC,
-        (false, true) => &LMR_QUIET_IMP,
-        (false, false) => &LMR_QUIET,
-    };
-
-    unsafe { (*table.get())[depth as usize][moves_seen as usize] }
+pub fn get_lmr(is_tactic: bool, depth: u8, moves_seen: u8) -> i32 {
+    if is_tactic {
+        unsafe { (*LMR_TACTIC.get())[depth as usize][moves_seen as usize] }
+    } else {
+        unsafe { (*LMR_QUIET.get())[depth as usize][moves_seen as usize] }
+    }
 }
 
 pub fn init_lmr() {
     let mut quiet_table: Box<LmrLookup> = new_zeroed();
-    let mut quiet_imp_table: Box<LmrLookup> = new_zeroed();
     let mut tactic_table: Box<LmrLookup> = new_zeroed();
-    let mut tactic_imp_table: Box<LmrLookup> = new_zeroed();
 
     let (quiet_base, quiet_div) = (
         W::lmr_quiet_base() as f32 / 1024.0,
         W::lmr_quiet_div() as f32 / 1024.0,
     );
-    let (quiet_imp_base, quiet_imp_div) = (
-        W::lmr_quiet_imp_base() as f32 / 1024.0,
-        W::lmr_quiet_imp_div() as f32 / 1024.0,
-    );
     let (tactic_base, tactic_div) = (
         W::lmr_tactic_base() as f32 / 1024.0,
         W::lmr_tactic_div() as f32 / 1024.0,
-    );
-    let (tactic_imp_base, tactic_imp_div) = (
-        W::lmr_tactic_imp_base() as f32 / 1024.0,
-        W::lmr_tactic_imp_div() as f32 / 1024.0,
     );
 
     for i in 0..MAX_PLY as usize {
@@ -56,23 +39,16 @@ pub fn init_lmr() {
             let y = if j != 0 { (j as f32).ln() } else { 0.0 };
 
             quiet_table[i][j] = DEPTH_SCALE * (quiet_base + x * y / quiet_div) as i32;
-            quiet_imp_table[i][j] = DEPTH_SCALE * (quiet_imp_base + x * y / quiet_imp_div) as i32;
             tactic_table[i][j] = DEPTH_SCALE * (tactic_base + x * y / tactic_div) as i32;
-            tactic_imp_table[i][j] =
-                DEPTH_SCALE * (tactic_imp_base + x * y / tactic_imp_div) as i32;
         }
     }
 
     unsafe {
         let lmr_quiet: &mut LmrLookup = &mut *LMR_QUIET.get();
-        let lmr_quiet_imp: &mut LmrLookup = &mut *LMR_QUIET_IMP.get();
         let lmr_tactic: &mut LmrLookup = &mut *LMR_TACTIC.get();
-        let lmr_tactic_imp: &mut LmrLookup = &mut *LMR_TACTIC_IMP.get();
 
         lmr_quiet.copy_from_slice(&*quiet_table);
-        lmr_quiet_imp.copy_from_slice(&*quiet_imp_table);
         lmr_tactic.copy_from_slice(&*tactic_table);
-        lmr_tactic_imp.copy_from_slice(&*tactic_imp_table);
     }
 }
 
@@ -162,9 +138,6 @@ weights! {
     nmp_depth     | NMP_DEPTH:     i32 => 3072,
     nmp_base      | NMP_BASE:      i64 => 3072,
     nmp_scale     | NMP_SCALE:     i64 => 340,
-    nmp_imp_depth | NMP_IMP_DEPTH: i32 => 3072,
-    nmp_imp_base  | NMP_IMP_BASE:  i64 => 3072,
-    nmp_imp_scale | NMP_IMP_SCALE: i64 => 340,
 
     lmp_base      | LMP_BASE:      i64 => 2048,
     lmp_scale     | LMP_SCALE:     i64 => 512,
@@ -181,16 +154,10 @@ weights! {
     see_quiet_depth      | SEE_QUIET_DEPTH:      i32 => 10240,
     see_quiet_base       | SEE_QUIET_BASE:       i32 => 0,
     see_quiet_scale      | SEE_QUIET_SCALE:      i32 => -89,
-    see_quiet_imp_depth  | SEE_QUIET_IMP_DEPTH:  i32 => 10240,
-    see_quiet_imp_base   | SEE_QUIET_IMP_BASE:   i32 => 0,
-    see_quiet_imp_scale  | SEE_QUIET_IMP_SCALE:  i32 => -89,
 
     see_tactic_depth     | SEE_TACTIC_DEPTH:     i32 => 10240,
     see_tactic_base      | SEE_TACTIC_BASE:      i32 => 0,
     see_tactic_scale     | SEE_TACTIC_SCALE:     i32 => -62,
-    see_tactic_imp_depth | SEE_TACTIC_IMP_DEPTH: i32 => 10240,
-    see_tactic_imp_base  | SEE_TACTIC_IMP_BASE:  i32 => 0,
-    see_tactic_imp_scale | SEE_TACTIC_IMP_SCALE: i32 => -62,
 
     singular_depth        | SINGULAR_DEPTH:             i32 => 6144,
     singular_tt_depth     | SINGULAR_TT_DEPTH:          i32 => 3072,
@@ -202,13 +169,9 @@ weights! {
     singular_tt_ext       | SINGULAR_TT_EXT:           i32 => -1024,
 
     lmr_quiet_base      | LMR_QUIET_BASE:      i32 => 579,
-    lmr_quiet_imp_base  | LMR_QUIET_IMP_BASE:  i32 => 579,
     lmr_quiet_div       | LMR_QUIET_DIV:       i32 => 1626,
-    lmr_quiet_imp_div   | LMR_QUIET_IMP_DIV:   i32 => 1626,
     lmr_tactic_base     | LMR_TACTIC_BASE:     i32 => 450,
-    lmr_tactic_imp_base | LMR_TACTIC_IMP_BASE: i32 => 450,
     lmr_tactic_div      | LMR_TACTIC_DIV:      i32 => 3688,
-    lmr_tactic_imp_div  | LMR_TACTIC_IMP_DIV:  i32 => 3688,
 
     cutnode_lmr   | CUTNODE_LMR:   i32 => 1024,
     improving_lmr | IMPROVING_LMR: i32 => 1024,

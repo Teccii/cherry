@@ -288,9 +288,6 @@ impl Engine {
                     NMP_DEPTH     => W::nmp_depth(),     0, 16384;
                     NMP_BASE      => W::nmp_base(),      0, 16384;
                     NMP_SCALE     => W::nmp_scale(),     0, 1024;
-                    NMP_IMP_DEPTH => W::nmp_imp_depth(), 0, 16384;
-                    NMP_IMP_BASE  => W::nmp_imp_base(),  0, 16384;
-                    NMP_IMP_SCALE => W::nmp_imp_scale(), 0, 1024;
 
                     LMP_BASE      => W::lmp_base(),      0, 8192;
                     LMP_SCALE     => W::lmp_scale(),     0, 2048;
@@ -307,16 +304,10 @@ impl Engine {
                     SEE_QUIET_DEPTH     => W::see_quiet_depth(),        0, 16384;
                     SEE_QUIET_BASE      => W::see_quiet_base(),      -256, 256;
                     SEE_QUIET_SCALE     => W::see_quiet_scale(),     -256, 256;
-                    SEE_QUIET_IMP_DEPTH => W::see_quiet_imp_depth(),    0, 16384;
-                    SEE_QUIET_IMP_BASE  => W::see_quiet_imp_base(),  -256, 256;
-                    SEE_QUIET_IMP_SCALE => W::see_quiet_imp_scale(), -256, 256;
 
                     SEE_TACTIC_DEPTH     => W::see_tactic_depth(),        0, 16384;
                     SEE_TACTIC_BASE      => W::see_tactic_base(),      -256, 256;
                     SEE_TACTIC_SCALE     => W::see_tactic_scale(),     -256, 256;
-                    SEE_TACTIC_IMP_DEPTH => W::see_tactic_imp_depth(),    0, 16384;
-                    SEE_TACTIC_IMP_BASE  => W::see_tactic_imp_base(),  -256, 256;
-                    SEE_TACTIC_IMP_SCALE => W::see_tactic_imp_scale(), -256, 256;
 
                     SINGULAR_DEPTH        => W::singular_depth(),        0, 16384;
                     SINGULAR_TT_DEPTH     => W::singular_tt_depth(),     0, 16384;
@@ -333,13 +324,9 @@ impl Engine {
                     LMR_DEPTH_PV_BIAS => W::lmr_depth_pv_bias(), -1024, 1024;
 
                     LMR_QUIET_BASE      => W::lmr_quiet_base(),      -4096, 4096;
-                    LMR_QUIET_IMP_BASE  => W::lmr_quiet_imp_base(),  -4096, 4096;
                     LMR_QUIET_DIV       => W::lmr_quiet_div(),           1, 8192;
-                    LMR_QUIET_IMP_DIV   => W::lmr_quiet_imp_div(),       1, 8192;
                     LMR_TACTIC_BASE     => W::lmr_tactic_base(),     -4096, 4096;
-                    LMR_TACTIC_IMP_BASE => W::lmr_tactic_imp_base(), -4096, 4096;
                     LMR_TACTIC_DIV      => W::lmr_tactic_div(),          1, 8192;
-                    LMR_TACTIC_IMP_DIV  => W::lmr_tactic_imp_div(),      1, 8192;
 
                     CUTNODE_LMR   => W::cutnode_lmr(),   0, 4096;
                     IMPROVING_LMR => W::improving_lmr(), 0, 4096;
@@ -465,9 +452,6 @@ impl Engine {
                     NMP_DEPTH     => W::nmp_depth(),     0, 16384;
                     NMP_BASE      => W::nmp_base(),      0, 16384;
                     NMP_SCALE     => W::nmp_scale(),     0, 1024;
-                    NMP_IMP_DEPTH => W::nmp_imp_depth(), 0, 16384;
-                    NMP_IMP_BASE  => W::nmp_imp_base(),  0, 16384;
-                    NMP_IMP_SCALE => W::nmp_imp_scale(), 0, 1024;
 
                     LMP_BASE      => W::lmp_base(),      0, 8192;
                     LMP_SCALE     => W::lmp_scale(),     0, 2048;
@@ -484,16 +468,10 @@ impl Engine {
                     SEE_QUIET_DEPTH     => W::see_quiet_depth(),        0, 16384;
                     SEE_QUIET_BASE      => W::see_quiet_base(),      -256, 256;
                     SEE_QUIET_SCALE     => W::see_quiet_scale(),     -256, 256;
-                    SEE_QUIET_IMP_DEPTH => W::see_quiet_imp_depth(),    0, 16384;
-                    SEE_QUIET_IMP_BASE  => W::see_quiet_imp_base(),  -256, 256;
-                    SEE_QUIET_IMP_SCALE => W::see_quiet_imp_scale(), -256, 256;
 
                     SEE_TACTIC_DEPTH     => W::see_tactic_depth(),        0, 16384;
                     SEE_TACTIC_BASE      => W::see_tactic_base(),      -256, 256;
                     SEE_TACTIC_SCALE     => W::see_tactic_scale(),     -256, 256;
-                    SEE_TACTIC_IMP_DEPTH => W::see_tactic_imp_depth(),    0, 16384;
-                    SEE_TACTIC_IMP_BASE  => W::see_tactic_imp_base(),  -256, 256;
-                    SEE_TACTIC_IMP_SCALE => W::see_tactic_imp_scale(), -256, 256;
 
                     SINGULAR_DEPTH        => W::singular_depth(),        0, 16384;
                     SINGULAR_TT_DEPTH     => W::singular_tt_depth(),     0, 16384;
@@ -510,13 +488,9 @@ impl Engine {
                     LMR_DEPTH_PV_BIAS => W::lmr_depth_pv_bias(), -1024, 1024;
 
                     LMR_QUIET_BASE      => W::lmr_quiet_base(),      -4096, 4096;
-                    LMR_QUIET_IMP_BASE  => W::lmr_quiet_imp_base(),  -4096, 4096;
                     LMR_QUIET_DIV       => W::lmr_quiet_div(),           1, 8192;
-                    LMR_QUIET_IMP_DIV   => W::lmr_quiet_imp_div(),       1, 8192;
                     LMR_TACTIC_BASE     => W::lmr_tactic_base(),     -4096, 4096;
-                    LMR_TACTIC_IMP_BASE => W::lmr_tactic_imp_base(), -4096, 4096;
                     LMR_TACTIC_DIV      => W::lmr_tactic_div(),          1, 8192;
-                    LMR_TACTIC_IMP_DIV  => W::lmr_tactic_imp_div(),      1, 8192;
 
                     CUTNODE_LMR   => W::cutnode_lmr(),   0, 4096;
                     IMPROVING_LMR => W::improving_lmr(), 0, 4096;
@@ -648,9 +622,6 @@ impl Engine {
                     "NMP_DEPTH"     => NMP_DEPTH,     i32;
                     "NMP_BASE"      => NMP_BASE,      i64;
                     "NMP_SCALE"     => NMP_SCALE,     i64;
-                    "NMP_IMP_DEPTH" => NMP_IMP_DEPTH, i32;
-                    "NMP_IMP_BASE"  => NMP_IMP_BASE,  i64;
-                    "NMP_IMP_SCALE" => NMP_IMP_SCALE, i64;
 
                     "LMP_BASE"      => LMP_BASE,      i64;
                     "LMP_SCALE"     => LMP_SCALE,     i64;
@@ -667,16 +638,10 @@ impl Engine {
                     "SEE_QUIET_DEPTH"     => SEE_QUIET_DEPTH,     i32;
                     "SEE_QUIET_BASE"      => SEE_QUIET_BASE,      i32;
                     "SEE_QUIET_SCALE"     => SEE_QUIET_SCALE,     i32;
-                    "SEE_QUIET_IMP_DEPTH" => SEE_QUIET_IMP_DEPTH, i32;
-                    "SEE_QUIET_IMP_BASE"  => SEE_QUIET_IMP_BASE,  i32;
-                    "SEE_QUIET_IMP_SCALE" => SEE_QUIET_IMP_SCALE, i32;
 
                     "SEE_TACTIC_DEPTH"     => SEE_TACTIC_DEPTH,     i32;
                     "SEE_TACTIC_BASE"      => SEE_TACTIC_BASE,      i32;
                     "SEE_TACTIC_SCALE"     => SEE_TACTIC_SCALE,     i32;
-                    "SEE_TACTIC_IMP_DEPTH" => SEE_TACTIC_IMP_DEPTH, i32;
-                    "SEE_TACTIC_IMP_BASE"  => SEE_TACTIC_IMP_BASE,  i32;
-                    "SEE_TACTIC_IMP_SCALE" => SEE_TACTIC_IMP_SCALE, i32;
 
                     "SINGULAR_DEPTH"        => SINGULAR_DEPTH,        i32;
                     "SINGULAR_TT_DEPTH"     => SINGULAR_TT_DEPTH,     i32;
@@ -693,13 +658,9 @@ impl Engine {
                     "LMR_DEPTH_PV_BIAS" => LMR_DEPTH_PV_BIAS, i32;
 
                     "LMR_QUIET_BASE"      => LMR_QUIET_BASE,      i32;
-                    "LMR_QUIET_IMP_BASE"  => LMR_QUIET_IMP_BASE,  i32;
                     "LMR_QUIET_DIV"       => LMR_QUIET_DIV,       i32;
-                    "LMR_QUIET_IMP_DIV"   => LMR_QUIET_IMP_DIV,   i32;
                     "LMR_TACTIC_BASE"     => LMR_TACTIC_BASE,     i32;
-                    "LMR_TACTIC_IMP_BASE" => LMR_TACTIC_IMP_BASE, i32;
                     "LMR_TACTIC_DIV"      => LMR_TACTIC_DIV,      i32;
-                    "LMR_TACTIC_IMP_DIV"  => LMR_TACTIC_IMP_DIV,  i32;
 
                     "CUTNODE_LMR"   => CUTNODE_LMR,   i32;
                     "IMPROVING_LMR" => IMPROVING_LMR, i32;
