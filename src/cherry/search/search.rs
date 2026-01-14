@@ -419,6 +419,7 @@ pub fn search<Node: NodeType>(
                 lmr -= W::improving_lmr() * improving as i32;
                 lmr += W::non_pv_lmr() * !Node::PV as i32;
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
+                lmr += W::dest_threat_lmr() * (!is_tactic && !pos.board().attack_table(!pos.stm()).get(mv.dest()).is_empty()) as i32;
             } else {
                 lmr = 0;
             }

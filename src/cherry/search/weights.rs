@@ -210,10 +210,11 @@ weights! {
     lmr_tactic_div      | LMR_TACTIC_DIV:      i32 => 3688,
     lmr_tactic_imp_div  | LMR_TACTIC_IMP_DIV:  i32 => 3688,
 
-    cutnode_lmr   | CUTNODE_LMR:   i32 => 1024,
-    improving_lmr | IMPROVING_LMR: i32 => 1024,
-    non_pv_lmr    | NON_PV_LMR:    i32 => 1024,
-    tt_pv_lmr     | TT_PV_LMR:     i32 => 1024,
+    cutnode_lmr     | CUTNODE_LMR:     i32 => 1024,
+    improving_lmr   | IMPROVING_LMR:   i32 => 1024,
+    non_pv_lmr      | NON_PV_LMR:      i32 => 1024,
+    tt_pv_lmr       | TT_PV_LMR:       i32 => 1024,
+    dest_threat_lmr | DEST_THREAT_LMR: i32 => 1024,
 
     lmr_depth_bias    | LMR_DEPTH_BIAS:    i32 => 0,
     lmr_depth_pv_bias | LMR_DEPTH_PV_BIAS: i32 => 0,
