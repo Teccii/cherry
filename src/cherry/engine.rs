@@ -345,6 +345,7 @@ impl Engine {
                     IMPROVING_LMR => W::improving_lmr(), 0, 4096;
                     NON_PV_LMR    => W::non_pv_lmr(),    0, 4096;
                     TT_PV_LMR     => W::tt_pv_lmr(),     0, 4096;
+                    CHECK_LMR     => W::check_lmr(),     0, 4096;
 
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
@@ -522,6 +523,7 @@ impl Engine {
                     IMPROVING_LMR => W::improving_lmr(), 0, 4096;
                     NON_PV_LMR    => W::non_pv_lmr(),    0, 4096;
                     TT_PV_LMR     => W::tt_pv_lmr(),     0, 4096;
+                    CHECK_LMR     => W::check_lmr(),     0, 4096;
 
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
@@ -705,6 +707,7 @@ impl Engine {
                     "IMPROVING_LMR" => IMPROVING_LMR, i32;
                     "NON_PV_LMR"    => NON_PV_LMR,    i32;
                     "TT_PV_LMR"     => TT_PV_LMR,     i32;
+                    "CHECK_LMR"     => CHECK_LMR,     i32;
 
                     "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i16;
                     "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i32;

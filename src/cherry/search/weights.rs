@@ -214,6 +214,7 @@ weights! {
     improving_lmr | IMPROVING_LMR: i32 => 1024,
     non_pv_lmr    | NON_PV_LMR:    i32 => 1024,
     tt_pv_lmr     | TT_PV_LMR:     i32 => 1024,
+    check_lmr     | CHECK_LMR:     i32 => 1024,
 
     lmr_depth_bias    | LMR_DEPTH_BIAS:    i32 => 0,
     lmr_depth_pv_bias | LMR_DEPTH_PV_BIAS: i32 => 0,
