@@ -108,7 +108,7 @@ impl UciCommand {
                 depth: reader
                     .next()
                     .and_then(|s| s.parse::<u8>().ok())
-                    .unwrap_or(13),
+                    .unwrap_or(12),
                 threads: reader
                     .next()
                     .and_then(|s| s.parse::<u16>().ok())

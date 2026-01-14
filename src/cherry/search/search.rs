@@ -314,7 +314,7 @@ pub fn search<Node: NodeType>(
                 let lmp_margin = lmp_base
                     + lmp_scale * depth as i64 * depth as i64
                         / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64);
-                if moves_seen as i64 * 1024 >= lmp_margin {
+                if !Node::ROOT && moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
 
