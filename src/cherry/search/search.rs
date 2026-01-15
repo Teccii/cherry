@@ -275,7 +275,7 @@ pub fn search<Node: NodeType>(
         let mut lmr = get_lmr(is_tactic, lmr_lookup_depth, moves_seen);
         let mut score;
 
-        if best_score.map_or(false, |s: Score| !s.is_loss()) {
+        if !Node::ROOT && best_score.map_or(false, |s: Score| !s.is_loss()) {
             if is_tactic {
                 let see_margin =
                     (W::see_tactic_base() + W::see_tactic_scale() * depth / DEPTH_SCALE) as i16;
@@ -296,7 +296,7 @@ pub fn search<Node: NodeType>(
                 let lmp_margin = lmp_base
                     + lmp_scale * depth as i64 * depth as i64
                         / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64);
-                if !Node::ROOT && moves_seen as i64 * 1024 >= lmp_margin {
+                if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
 
@@ -379,10 +379,14 @@ pub fn search<Node: NodeType>(
                 !Node::PV && !cut_node,
             );
         } else {
-            lmr += W::cutnode_lmr() * cut_node as i32;
-            lmr -= W::improving_lmr() * improving as i32;
-            lmr += W::non_pv_lmr() * !Node::PV as i32;
-            lmr -= W::tt_pv_lmr() * tt_pv as i32;
+            if depth >= 2 * DEPTH_SCALE {
+                lmr += W::cutnode_lmr() * cut_node as i32;
+                lmr -= W::improving_lmr() * improving as i32;
+                lmr += W::non_pv_lmr() * !Node::PV as i32;
+                lmr -= W::tt_pv_lmr() * tt_pv as i32;
+            } else {
+                lmr = 0;
+            }
 
             let lmr_depth = (new_depth - lmr).max(1 * DEPTH_SCALE).min(new_depth);
 
