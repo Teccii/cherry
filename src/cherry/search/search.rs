@@ -243,7 +243,7 @@ pub fn search<Node: NodeType>(
     }
 
     let mut best_move = None;
-    let mut best_score = None;
+    let mut best_score = -Score::INFINITE;
     let mut moves_seen = 0;
     let mut flag = TTFlag::UpperBound;
     let mut move_picker = MovePicker::new(tt_entry.and_then(|e| e.mv));
@@ -275,7 +275,7 @@ pub fn search<Node: NodeType>(
         let mut lmr = get_lmr(is_tactic, lmr_lookup_depth, moves_seen);
         let mut score;
 
-        if !Node::ROOT && best_score.map_or(false, |s: Score| !s.is_loss()) {
+        if !Node::ROOT && !best_score.is_loss() {
             if is_tactic {
                 let see_margin =
                     (W::see_tactic_base() + W::see_tactic_scale() * depth / DEPTH_SCALE) as i16;
@@ -445,8 +445,8 @@ pub fn search<Node: NodeType>(
             thread.root_nodes[mv.src()][mv.dest()] += thread.nodes.local() - nodes;
         }
 
-        if best_score.is_none() || score > best_score.unwrap() {
-            best_score = Some(score);
+        if score > best_score {
+            best_score = score;
         }
 
         if score > alpha {
@@ -482,7 +482,7 @@ pub fn search<Node: NodeType>(
         };
     }
 
-    let best_score = best_score.unwrap().clamp(syzygy_min, syzygy_max);
+    let best_score = best_score.clamp(syzygy_min, syzygy_max);
     if skip_move.is_none() {
         let tt_depth_bias = if Node::PV {
             W::tt_depth_pv_bias()
@@ -573,12 +573,16 @@ fn q_search<Node: NodeType>(
     }
 
     let in_check = pos.board().in_check();
-    if !in_check {
+    let static_eval;
+
+    if in_check {
+        static_eval = Score::new_mated(ply);
+    } else {
         let raw_eval = tt_entry
             .map(|e| e.eval)
             .unwrap_or_else(|| pos.eval(&shared.nnue_weights));
         let corr = thread.history.get_corr(pos.board());
-        let static_eval = Score::clamp(
+        static_eval = Score::clamp(
             raw_eval + corr as i16,
             -Score::MIN_TB_WIN,
             Score::MIN_TB_WIN,
@@ -593,7 +597,7 @@ fn q_search<Node: NodeType>(
         }
     }
 
-    let mut best_score = None;
+    let mut best_score = static_eval;
     let mut moves_seen = 0;
     let mut move_picker = MovePicker::new(None);
     let cont_indices = ContIndices::new(&pos);
@@ -621,8 +625,8 @@ fn q_search<Node: NodeType>(
             parent.pv.update(mv, &child.pv);
         }
 
-        if best_score.is_none() || score > best_score.unwrap() {
-            best_score = Some(score);
+        if score > best_score {
+            best_score = score;
         }
 
         if score > alpha {
@@ -638,5 +642,5 @@ fn q_search<Node: NodeType>(
         return Score::new_mated(ply);
     }
 
-    best_score.unwrap_or(alpha)
+    best_score
 }
