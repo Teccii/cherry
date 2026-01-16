@@ -249,6 +249,13 @@ impl Engine {
                     TACTIC_MALUS_SCALE => W::tactic_malus_scale(), -512, 512;
                     TACTIC_MALUS_MAX   => W::tactic_malus_max(),      1, 8192;
 
+                    PAWN_BONUS_BASE  => W::pawn_bonus_base(),  -512, 512;
+                    PAWN_BONUS_SCALE => W::pawn_bonus_scale(), -512, 512;
+                    PAWN_BONUS_MAX   => W::pawn_bonus_max(),      1, 8192;
+                    PAWN_MALUS_BASE  => W::pawn_malus_base(),  -512, 512;
+                    PAWN_MALUS_SCALE => W::pawn_malus_scale(), -512, 512;
+                    PAWN_MALUS_MAX   => W::pawn_malus_max(),      1, 8192;
+                    
                     CONT1_BONUS_BASE  => W::cont1_bonus_base(),  -512, 512;
                     CONT1_BONUS_SCALE => W::cont1_bonus_scale(), -512, 512;
                     CONT1_BONUS_MAX   => W::cont1_bonus_max(),      1, 8192;
@@ -412,6 +419,13 @@ impl Engine {
                     TACTIC_MALUS_BASE  => W::tactic_malus_base(),  -512, 512;
                     TACTIC_MALUS_SCALE => W::tactic_malus_scale(), -512, 512;
                     TACTIC_MALUS_MAX   => W::tactic_malus_max(),      1, 8192;
+
+                    PAWN_BONUS_BASE  => W::pawn_bonus_base(),  -512, 512;
+                    PAWN_BONUS_SCALE => W::pawn_bonus_scale(), -512, 512;
+                    PAWN_BONUS_MAX   => W::pawn_bonus_max(),      1, 8192;
+                    PAWN_MALUS_BASE  => W::pawn_malus_base(),  -512, 512;
+                    PAWN_MALUS_SCALE => W::pawn_malus_scale(), -512, 512;
+                    PAWN_MALUS_MAX   => W::pawn_malus_max(),      1, 8192;
 
                     CONT1_BONUS_BASE  => W::cont1_bonus_base(),  -512, 512;
                     CONT1_BONUS_SCALE => W::cont1_bonus_scale(), -512, 512;
@@ -582,6 +596,13 @@ impl Engine {
                     "TACTIC_MALUS_BASE"  => TACTIC_MALUS_BASE,  i32;
                     "TACTIC_MALUS_SCALE" => TACTIC_MALUS_SCALE, i32;
                     "TACTIC_MALUS_MAX"   => TACTIC_MALUS_MAX,   i32;
+
+                    "PAWN_BONUS_BASE"  => PAWN_BONUS_BASE,  i32;
+                    "PAWN_BONUS_SCALE" => PAWN_BONUS_SCALE, i32;
+                    "PAWN_BONUS_MAX"   => PAWN_BONUS_MAX,   i32;
+                    "PAWN_MALUS_BASE"  => PAWN_MALUS_BASE,  i32;
+                    "PAWN_MALUS_SCALE" => PAWN_MALUS_SCALE, i32;
+                    "PAWN_MALUS_MAX"   => PAWN_MALUS_MAX,   i32;
 
                     "CONT1_BONUS_BASE"  => CONT1_BONUS_BASE,  i32;
                     "CONT1_BONUS_SCALE" => CONT1_BONUS_SCALE, i32;

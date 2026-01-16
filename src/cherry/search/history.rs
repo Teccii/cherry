@@ -177,17 +177,82 @@ impl TacticHistory {
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
+pub struct PawnEntry(i16);
+
+#[derive(Debug, Copy, Clone)]
+pub struct PawnHistory<const SIZE: usize> {
+    entries: [[[[PawnEntry; Square::COUNT]; Piece::COUNT]; SIZE]; Color::COUNT], // [stm][pawn hash % size][piece][dest]
+}
+
+impl<const SIZE: usize> PawnHistory<SIZE> {
+    #[inline]
+    pub fn bonus(depth: i32) -> i32 {
+        let base = W::pawn_bonus_base();
+        let scale = W::pawn_bonus_scale();
+        let max = W::pawn_bonus_max();
+
+        (base + scale * depth / DEPTH_SCALE).min(max)
+    }
+
+    #[inline]
+    pub fn malus(depth: i32) -> i32 {
+        let base = W::pawn_malus_base();
+        let scale = W::pawn_malus_scale();
+        let max = W::pawn_malus_max();
+
+        (base + scale * depth / DEPTH_SCALE).min(max)
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn entry(&self, board: &Board, mv: Move) -> i16 {
+        let stm = board.stm();
+        let pawn_hash = board.pawn_hash();
+        let piece = board.piece_on(mv.src()).unwrap();
+        let dest = mv.dest();
+
+        self.entries[stm][(pawn_hash % SIZE as u64) as usize][piece][dest].0
+    }
+
+    #[inline]
+    pub fn entry_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
+        let stm = board.stm();
+        let pawn_hash = board.pawn_hash();
+        let piece = board.piece_on(mv.src()).unwrap();
+        let dest = mv.dest();
+
+        &mut self.entries[stm][(pawn_hash % SIZE as u64) as usize][piece][dest].0
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn update(&mut self, board: &Board, depth: i32, mv: Move, bonus: bool) {
+        let amount = if bonus {
+            Self::bonus(depth)
+        } else {
+            -Self::malus(depth)
+        };
+
+        gravity::<MAX_HISTORY, MAX_HISTORY>(self.entry_mut(board, mv), amount);
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone)]
 pub struct ContEntry(i16);
 
 #[derive(Debug, Copy, Clone)]
-pub struct ContHistory<const PLY: usize> {
+pub struct ContHistory {
     entries:
         [[[[[ContEntry; Square::COUNT]; Piece::COUNT]; Square::COUNT]; Piece::COUNT]; Color::COUNT], // [stm][prev piece][prev dest][piece][dest]
 }
 
-impl<const PLY: usize> ContHistory<PLY> {
+impl ContHistory {
     #[inline]
-    pub fn bonus(depth: i32) -> i32 {
+    pub fn bonus<const PLY: usize>(depth: i32) -> i32 {
         let (base, scale, max) = match PLY {
             1 => (
                 W::cont1_bonus_base(),
@@ -206,7 +271,7 @@ impl<const PLY: usize> ContHistory<PLY> {
     }
 
     #[inline]
-    pub fn malus(depth: i32) -> i32 {
+    pub fn malus<const PLY: usize>(depth: i32) -> i32 {
         let (base, scale, max) = match PLY {
             1 => (
                 W::cont1_malus_base(),
@@ -256,7 +321,7 @@ impl<const PLY: usize> ContHistory<PLY> {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn update(
+    pub fn update<const PLY: usize>(
         &mut self,
         board: &Board,
         depth: i32,
@@ -265,9 +330,9 @@ impl<const PLY: usize> ContHistory<PLY> {
         bonus: bool,
     ) {
         let amount = if bonus {
-            Self::bonus(depth)
+            Self::bonus::<PLY>(depth)
         } else {
-            -Self::malus(depth)
+            -Self::malus::<PLY>(depth)
         };
 
         if let Some(entry) = self.entry_mut(board, mv, prev_mv) {
@@ -314,6 +379,8 @@ impl<const SIZE: usize> CorrHistory<SIZE> {
 
 /*----------------------------------------------------------------*/
 
+pub const PAWN_HIST_SIZE: usize = 4096;
+
 pub const PAWN_CORR_SIZE: usize = 4096;
 pub const MINOR_CORR_SIZE: usize = 16384;
 pub const MAJOR_CORR_SIZE: usize = 16384;
@@ -323,8 +390,9 @@ pub const NONPAWN_CORR_SIZE: usize = 16384;
 pub struct History {
     quiet: QuietHistory,
     tactic: TacticHistory,
-    counter_move: ContHistory<1>,
-    follow_up: ContHistory<2>,
+    pawn: PawnHistory<PAWN_HIST_SIZE>,
+    counter_move: ContHistory,
+    follow_up: ContHistory,
     pawn_corr: CorrHistory<PAWN_CORR_SIZE>,
     minor_corr: CorrHistory<MINOR_CORR_SIZE>,
     major_corr: CorrHistory<MAJOR_CORR_SIZE>,
@@ -336,6 +404,7 @@ impl History {
     #[inline]
     pub fn get_quiet(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
         let mut result = self.quiet.entry(board, mv) as i32;
+        result += self.pawn.entry(board, mv) as i32;
         result += self
             .counter_move
             .entry(board, mv, indices.counter_move)
@@ -404,6 +473,7 @@ impl History {
     #[inline]
     pub fn update_quiet(&mut self, board: &Board, depth: i32, mv: Move, bonus: bool) {
         self.quiet.update(board, depth, mv, bonus);
+        self.pawn.update(board, depth, mv, bonus);
     }
 
     #[inline]
@@ -421,9 +491,9 @@ impl History {
         bonus: bool,
     ) {
         self.counter_move
-            .update(board, depth, mv, indices.counter_move, bonus);
+            .update::<1>(board, depth, mv, indices.counter_move, bonus);
         self.follow_up
-            .update(board, depth, mv, indices.follow_up, bonus);
+            .update::<2>(board, depth, mv, indices.follow_up, bonus);
     }
 
     #[inline]

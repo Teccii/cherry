@@ -99,6 +99,13 @@ weights! {
     tactic_malus_scale | TACTIC_MALUS_SCALE: i32 => 129,
     tactic_malus_max   | TACTIC_MALUS_MAX:   i32 => 2012,
 
+    pawn_bonus_base  | PAWN_BONUS_BASE:  i32 => 128,
+    pawn_bonus_scale | PAWN_BONUS_SCALE: i32 => 128,
+    pawn_bonus_max   | PAWN_BONUS_MAX:   i32 => 2048,
+    pawn_malus_base  | PAWN_MALUS_BASE:  i32 => 128,
+    pawn_malus_scale | PAWN_MALUS_SCALE: i32 => 128,
+    pawn_malus_max   | PAWN_MALUS_MAX:   i32 => 2048,
+
     cont1_bonus_base  | CONT1_BONUS_BASE:  i32 => 133,
     cont1_bonus_scale | CONT1_BONUS_SCALE: i32 => 137,
     cont1_bonus_max   | CONT1_BONUS_MAX:   i32 => 1911,
