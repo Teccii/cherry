@@ -80,9 +80,9 @@ impl MovePicker {
 
                 if self.move_list.contains(&mv) {
                     let score = if mv.is_tactic() {
-                        history.get_tactic(pos.board(), mv) as i32
+                        history.get_tactic(pos.board(), mv)
                     } else {
-                        history.get_quiet_total(pos.board(), indices, mv)
+                        history.get_quiet(pos.board(), indices, mv)
                     };
 
                     return Some(ScoredMove(mv, score));
@@ -104,12 +104,10 @@ impl MovePicker {
 
                 if mv.is_tactic() {
                     self.good_tactics
-                        .push(ScoredMove(mv, history.get_tactic(pos.board(), mv) as i32));
+                        .push(ScoredMove(mv, history.get_tactic(pos.board(), mv)));
                 } else if !self.skip_quiets {
-                    self.quiets.push(ScoredMove(
-                        mv,
-                        history.get_quiet_total(pos.board(), indices, mv),
-                    ));
+                    self.quiets
+                        .push(ScoredMove(mv, history.get_quiet(pos.board(), indices, mv)));
                 }
             }
         }

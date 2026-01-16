@@ -459,7 +459,7 @@ pub fn search<Node: NodeType>(
             flag = TTFlag::LowerBound;
             thread
                 .history
-                .update(pos.board(), &cont_indices, depth, mv, &tactics, &quiets);
+                .update_history(pos.board(), &cont_indices, depth, mv, &quiets, &tactics);
             break;
         }
 

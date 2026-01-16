@@ -31,7 +31,7 @@ pub struct ThreadData {
     pub exclude_moves: Vec<Move>,
     pub root_nodes: Box<SquareTo<SquareTo<u64>>>,
     pub root_pv: PrincipalVariation,
-    pub history: History,
+    pub history: Box<History>,
     pub sel_depth: u16,
     pub abort_now: bool,
 }
@@ -62,7 +62,7 @@ impl Default for ThreadData {
             exclude_moves: Vec::new(),
             root_nodes: new_zeroed(),
             root_pv: PrincipalVariation::default(),
-            history: History::default(),
+            history: new_zeroed(),
             sel_depth: 0,
             abort_now: false,
         }
@@ -279,7 +279,7 @@ impl Searcher {
     #[inline]
     pub fn new_game(&mut self) {
         self.shared_data.ttable.clear();
-        self.thread_data.history.reset();
+        self.thread_data.history = new_zeroed();
     }
 
     /*----------------------------------------------------------------*/

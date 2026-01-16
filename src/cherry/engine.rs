@@ -231,8 +231,8 @@ impl Engine {
                     PAWN_CORR_FRAC   => W::pawn_corr_frac(),   0, MAX_CORR;
                     MINOR_CORR_FRAC  => W::minor_corr_frac(),  0, MAX_CORR;
                     MAJOR_CORR_FRAC  => W::major_corr_frac(),  0, MAX_CORR;
-                    WHITE_CORR_FRAC  => W::white_corr_frac(),  0, MAX_CORR;
-                    BLACK_CORR_FRAC  => W::black_corr_frac(),  0, MAX_CORR;
+                    STM_CORR_FRAC    => W::stm_corr_frac(),    0, MAX_CORR;
+                    NTM_CORR_FRAC    => W::ntm_corr_frac(),    0, MAX_CORR;
                     CORR_BONUS_SCALE => W::corr_bonus_scale(), 0, 1024;
 
                     QUIET_BONUS_BASE  => W::quiet_bonus_base(),  -512, 512;
@@ -395,8 +395,8 @@ impl Engine {
                     PAWN_CORR_FRAC   => W::pawn_corr_frac(),   0, MAX_CORR;
                     MINOR_CORR_FRAC  => W::minor_corr_frac(),  0, MAX_CORR;
                     MAJOR_CORR_FRAC  => W::major_corr_frac(),  0, MAX_CORR;
-                    WHITE_CORR_FRAC  => W::white_corr_frac(),  0, MAX_CORR;
-                    BLACK_CORR_FRAC  => W::black_corr_frac(),  0, MAX_CORR;
+                    STM_CORR_FRAC    => W::stm_corr_frac(),    0, MAX_CORR;
+                    NTM_CORR_FRAC    => W::ntm_corr_frac(),    0, MAX_CORR;
                     CORR_BONUS_SCALE => W::corr_bonus_scale(), 0, 1024;
 
                     QUIET_BONUS_BASE  => W::quiet_bonus_base(),  -512, 512;
@@ -565,8 +565,8 @@ impl Engine {
                     "PAWN_CORR_FRAC"   => PAWN_CORR_FRAC,   i32;
                     "MINOR_CORR_FRAC"  => MINOR_CORR_FRAC,  i32;
                     "MAJOR_CORR_FRAC"  => MAJOR_CORR_FRAC,  i32;
-                    "WHITE_CORR_FRAC"  => WHITE_CORR_FRAC,  i32;
-                    "BLACK_CORR_FRAC"  => BLACK_CORR_FRAC,  i32;
+                    "STM_CORR_FRAC"    => STM_CORR_FRAC,  i32;
+                    "NTM_CORR_FRAC"    => NTM_CORR_FRAC,  i32;
                     "CORR_BONUS_SCALE" => CORR_BONUS_SCALE, i64;
 
                     "QUIET_BONUS_BASE"  => QUIET_BONUS_BASE,  i32;
