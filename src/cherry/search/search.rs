@@ -384,6 +384,7 @@ pub fn search<Node: NodeType>(
                 lmr -= W::improving_lmr() * improving as i32;
                 lmr += W::non_pv_lmr() * !Node::PV as i32;
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
+                lmr -= W::check_lmr() * pos.board().in_check() as i32;
             } else {
                 lmr = 0;
             }
