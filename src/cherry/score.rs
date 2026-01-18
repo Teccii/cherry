@@ -107,6 +107,16 @@ impl Score {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub fn saturating_add(self, rhs: Score) -> Score {
+        Score(self.0.saturating_add(rhs.0)).clamp(-Score::INFINITE, Score::INFINITE)
+    }
+
+    #[inline]
+    pub fn saturating_sub(self, rhs: Score) -> Score {
+        Score(self.0.saturating_sub(rhs.0)).clamp(-Score::INFINITE, Score::INFINITE)
+    }
+
+    #[inline]
     pub const fn abs(self) -> Score {
         Score(self.0.abs())
     }
