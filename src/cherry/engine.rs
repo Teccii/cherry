@@ -292,9 +292,10 @@ impl Engine {
                     RFP_IMP_SCALE => W::rfp_imp_scale(), -256, 256;
                     RFP_IMP_LERP  => W::rfp_imp_lerp(),     0, 1024;
 
-                    NMP_DEPTH     => W::nmp_depth(),     0, 16384;
-                    NMP_BASE      => W::nmp_base(),      0, 16384;
-                    NMP_SCALE     => W::nmp_scale(),     0, 1024;
+                    NMP_DEPTH       => W::nmp_depth(),       0, 16384;
+                    NMP_BASE        => W::nmp_base(),        0, 16384;
+                    NMP_SCALE       => W::nmp_scale(),       0, 1024;
+                    NMP_VERIF_DEPTH => W::nmp_verif_depth(), 0, 32768;
 
                     LMP_BASE      => W::lmp_base(),      0, 8192;
                     LMP_SCALE     => W::lmp_scale(),     0, 2048;
@@ -464,9 +465,10 @@ impl Engine {
                     RFP_IMP_SCALE => W::rfp_imp_scale(), -256, 256;
                     RFP_IMP_LERP  => W::rfp_imp_lerp(),     0, 1024;
 
-                    NMP_DEPTH     => W::nmp_depth(),     0, 16384;
-                    NMP_BASE      => W::nmp_base(),      0, 16384;
-                    NMP_SCALE     => W::nmp_scale(),     0, 1024;
+                    NMP_DEPTH       => W::nmp_depth(),       0, 16384;
+                    NMP_BASE        => W::nmp_base(),        0, 16384;
+                    NMP_SCALE       => W::nmp_scale(),       0, 1024;
+                    NMP_VERIF_DEPTH => W::nmp_verif_depth(), 0, 32768;
 
                     LMP_BASE      => W::lmp_base(),      0, 8192;
                     LMP_SCALE     => W::lmp_scale(),     0, 2048;
@@ -642,9 +644,10 @@ impl Engine {
                     "RFP_IMP_SCALE" => RFP_IMP_SCALE, i32;
                     "RFP_IMP_LERP"  => RFP_IMP_LERP,  i32;
 
-                    "NMP_DEPTH"     => NMP_DEPTH,     i32;
-                    "NMP_BASE"      => NMP_BASE,      i64;
-                    "NMP_SCALE"     => NMP_SCALE,     i64;
+                    "NMP_DEPTH"       => NMP_DEPTH,       i32;
+                    "NMP_BASE"        => NMP_BASE,        i64;
+                    "NMP_SCALE"       => NMP_SCALE,       i64;
+                    "NMP_VERIF_DEPTH" => NMP_VERIF_DEPTH, i32;
 
                     "LMP_BASE"      => LMP_BASE,      i64;
                     "LMP_SCALE"     => LMP_SCALE,     i64;

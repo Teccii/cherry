@@ -220,11 +220,13 @@ pub fn search<Node: NodeType>(
 
             let nmp_reduction =
                 (W::nmp_base() + W::nmp_scale() * depth as i64 / DEPTH_SCALE as i64) as i32;
+            let nmp_depth = depth - nmp_reduction;
+
             let score = -search::<NonPV>(
                 pos,
                 thread,
                 shared,
-                depth - nmp_reduction,
+                nmp_depth,
                 ply + 1,
                 -beta,
                 -beta + 1,
@@ -237,7 +239,28 @@ pub fn search<Node: NodeType>(
             }
 
             if score >= beta {
-                return beta;
+                if depth <= W::nmp_verif_depth() {
+                    return if score.is_win() {
+                        beta
+                    } else {
+                        score
+                    };
+                }
+
+                let v_score = search::<NonPV>(
+                    pos,
+                    thread,
+                    shared,
+                    nmp_depth,
+                    ply,
+                    beta - 1,
+                    beta,
+                    true
+                );
+
+                if v_score >= beta {
+                    return v_score;
+                }
             }
         }
     }

@@ -142,9 +142,10 @@ weights! {
     rfp_imp_scale | RFP_IMP_SCALE: i32 => 80,
     rfp_imp_lerp  | RFP_IMP_LERP:  i32 => 512,
 
-    nmp_depth | NMP_DEPTH: i32 => 3072,
-    nmp_base  | NMP_BASE:  i64 => 3072,
-    nmp_scale | NMP_SCALE: i64 => 340,
+    nmp_depth       | NMP_DEPTH:       i32 => 3072,
+    nmp_base        | NMP_BASE:        i64 => 3072,
+    nmp_scale       | NMP_SCALE:       i64 => 340,
+    nmp_verif_depth | NMP_VERIF_DEPTH: i32 => 14336,
 
     lmp_base      | LMP_BASE:      i64 => 2048,
     lmp_scale     | LMP_SCALE:     i64 => 512,

@@ -2,7 +2,7 @@ fastchess                                                          \
   -engine cmd=cherry-dev name=CherryDev                            \
   -engine cmd=cherry-main name=CherryMain                          \
   -each tc=8+0.08 option.Hash=16                                   \
-  -sprt elo0=-2.0 elo1=0.0 alpha=0.05 beta=0.1                     \
+  -sprt elo0=-3.0 elo1=1.0 alpha=0.05 beta=0.1                     \
   -rounds 500000                                                   \
   -repeat                                                          \
   -concurrency 8                                                   \
