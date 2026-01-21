@@ -175,6 +175,7 @@ weights! {
     singular_ext          | SINGULAR_EXT:          i32 => 1024,
     singular_dext         | SINGULAR_DEXT:         i32 => 2048,
     singular_tt_ext       | SINGULAR_TT_EXT:       i32 => -1024,
+    singular_cut_ext      | SINGULAR_CUT_EXT:      i32 => -1024,
 
     lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 579,
     lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1626,

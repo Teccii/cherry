@@ -324,7 +324,8 @@ impl Engine {
                     SINGULAR_DEXT_MARGIN  => W::singular_dext_margin(),  0, 64;
                     SINGULAR_EXT          => W::singular_ext(),          0, 4096;
                     SINGULAR_DEXT         => W::singular_dext(),         0, 4096;
-                    SINGULAR_TT_EXT       => W::singular_tt_ext(),  -4096, 0;
+                    SINGULAR_TT_EXT       => W::singular_tt_ext(),   -4096, 0;
+                    SINGULAR_CUT_EXT      => W::singular_cut_ext(),  -4096, 0;
 
                     TT_DEPTH_BIAS     => W::tt_depth_bias(),     -1024, 1024;
                     TT_DEPTH_PV_BIAS  => W::tt_depth_pv_bias(),  -1024, 1024;
@@ -497,7 +498,8 @@ impl Engine {
                     SINGULAR_DEXT_MARGIN  => W::singular_dext_margin(),  0, 64;
                     SINGULAR_EXT          => W::singular_ext(),          0, 4096;
                     SINGULAR_DEXT         => W::singular_dext(),         0, 4096;
-                    SINGULAR_TT_EXT       => W::singular_tt_ext(),  -4096, 0;
+                    SINGULAR_TT_EXT       => W::singular_tt_ext(),   -4096, 0;
+                    SINGULAR_CUT_EXT      => W::singular_cut_ext(),  -4096, 0;
 
                     TT_DEPTH_BIAS     => W::tt_depth_bias(),     -1024, 1024;
                     TT_DEPTH_PV_BIAS  => W::tt_depth_pv_bias(),  -1024, 1024;
@@ -676,7 +678,8 @@ impl Engine {
                     "SINGULAR_DEXT_MARGIN"  => SINGULAR_DEXT_MARGIN,  i16;
                     "SINGULAR_EXT"          => SINGULAR_EXT,          i32;
                     "SINGULAR_DEXT"         => SINGULAR_DEXT,         i32;
-                    "SINGULAR_TT_EXT"       => SINGULAR_TT_EXT,      i32;
+                    "SINGULAR_TT_EXT"       => SINGULAR_TT_EXT,       i32;
+                    "SINGULAR_CUT_EXT"      => SINGULAR_CUT_EXT,      i32;
 
                     "TT_DEPTH_BIAS"     => TT_DEPTH_BIAS,     i32;
                     "TT_DEPTH_PV_BIAS"  => TT_DEPTH_PV_BIAS,  i32;

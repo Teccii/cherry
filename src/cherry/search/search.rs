@@ -383,6 +383,8 @@ pub fn search<Node: NodeType>(
                 return s_beta;
             } else if entry.score >= beta {
                 ext = W::singular_tt_ext();
+            } else if cut_node {
+                ext = W::singular_cut_ext();  
             }
         }
 
