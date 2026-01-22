@@ -37,6 +37,13 @@ impl NodeType for NonPV {
 
 /*----------------------------------------------------------------*/
 
+#[inline]
+fn adjust_eval(raw_eval: Score, corr: i32) -> Score {
+    (raw_eval + corr as i16).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+}
+
+/*----------------------------------------------------------------*/
+
 pub fn search<Node: NodeType>(
     pos: &mut Position,
     thread: &mut ThreadData,
@@ -82,22 +89,23 @@ pub fn search<Node: NodeType>(
     };
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
-    if let Some(entry) = tt_entry {
-        if !Node::PV && entry.depth as i32 >= depth / DEPTH_SCALE {
-            let score = entry.score;
+    if !Node::PV
+        && let Some(entry) = tt_entry
+        && entry.depth as i32 >= depth / DEPTH_SCALE
+    {
+        let score = entry.score;
 
-            match entry.flag {
-                TTFlag::Exact => return score,
-                TTFlag::UpperBound =>
-                    if score <= alpha {
-                        return score;
-                    },
-                TTFlag::LowerBound =>
-                    if score >= beta {
-                        return score;
-                    },
-                TTFlag::None => unreachable!(),
-            }
+        match entry.flag {
+            TTFlag::Exact => return score,
+            TTFlag::UpperBound =>
+                if score <= alpha {
+                    return score;
+                },
+            TTFlag::LowerBound =>
+                if score >= beta {
+                    return score;
+                },
+            TTFlag::None => unreachable!(),
         }
     }
 
@@ -107,11 +115,7 @@ pub fn search<Node: NodeType>(
             .map(|e| e.eval)
             .unwrap_or_else(|| pos.eval(&shared.nnue_weights));
         let corr = thread.history.get_corr(pos.board());
-        let static_eval = Score::clamp(
-            raw_eval + corr as i16,
-            -Score::MIN_TB_WIN,
-            Score::MIN_TB_WIN,
-        );
+        let static_eval = adjust_eval(raw_eval, corr);
 
         (raw_eval, static_eval, corr)
     } else {
@@ -141,8 +145,8 @@ pub fn search<Node: NodeType>(
         && is_syzygy_enabled()
         && depth >= shared.syzygy_depth.load(Ordering::Relaxed) as i32 * DEPTH_SCALE
         && pos.board().halfmove_clock() == 0
-        && pos.board().castle_rights(Color::White) == CastleRights::default()
-        && pos.board().castle_rights(Color::Black) == CastleRights::default()
+        && pos.board().castle_rights(Color::White).is_none()
+        && pos.board().castle_rights(Color::Black).is_none()
         && let Some(wdl) = probe_wdl(pos.board())
     {
         let (score, flag) = match wdl {
@@ -516,13 +520,7 @@ pub fn search<Node: NodeType>(
         );
 
         let static_eval = if !in_check {
-            let corr = thread.history.get_corr(pos.board());
-
-            Score::clamp(
-                raw_eval + corr as i16,
-                -Score::MIN_TB_WIN,
-                Score::MIN_TB_WIN,
-            )
+            adjust_eval(raw_eval, thread.history.get_corr(pos.board()))
         } else {
             Score::NONE
         };
@@ -574,14 +572,19 @@ fn q_search<Node: NodeType>(
     }
 
     if ply >= MAX_PLY {
-        return pos.eval(&shared.nnue_weights);
+        let raw_eval = pos.eval(&shared.nnue_weights);
+        let corr = thread.history.get_corr(pos.board());
+
+        return adjust_eval(raw_eval, corr);
     }
 
     thread.sel_depth = thread.sel_depth.max(ply);
     thread.nodes.inc();
 
     let tt_entry = shared.ttable.fetch(pos.board(), ply);
-    if let Some(entry) = tt_entry {
+    if !Node::PV
+        && let Some(entry) = tt_entry
+    {
         let score = entry.score;
 
         match entry.flag {
@@ -608,11 +611,7 @@ fn q_search<Node: NodeType>(
             .map(|e| e.eval)
             .unwrap_or_else(|| pos.eval(&shared.nnue_weights));
         let corr = thread.history.get_corr(pos.board());
-        static_eval = Score::clamp(
-            raw_eval + corr as i16,
-            -Score::MIN_TB_WIN,
-            Score::MIN_TB_WIN,
-        );
+        static_eval = adjust_eval(raw_eval, corr);
 
         if static_eval >= beta {
             return static_eval;

@@ -28,6 +28,13 @@ pub struct CastleRights {
     pub long: Option<File>,
 }
 
+impl CastleRights {
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        self.short.is_none() && self.long.is_none()
+    }
+}
+
 /*
 Bit Layout:
 - Bits 0-3: File

@@ -80,12 +80,12 @@ impl QuietHistory {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn entry(&self, board: &Board, mv: Move) -> i16 {
+    pub fn entry(&self, board: &Board, mv: Move) -> i32 {
         let stm = board.stm();
         let (src, dest) = (mv.src(), mv.dest());
         let threat_index = threat_index(board, mv);
 
-        self.entries[stm][src][dest].buckets[threat_index]
+        self.entries[stm][src][dest].buckets[threat_index] as i32
     }
 
     #[inline]
@@ -143,12 +143,12 @@ impl TacticHistory {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn entry(&self, board: &Board, mv: Move) -> i16 {
+    pub fn entry(&self, board: &Board, mv: Move) -> i32 {
         let stm = board.stm();
         let piece = board.piece_on(mv.src()).unwrap();
         let dest = mv.dest();
 
-        self.entries[stm][piece][dest].0
+        self.entries[stm][piece][dest].0 as i32
     }
 
     #[inline]
@@ -206,13 +206,13 @@ impl<const SIZE: usize> PawnHistory<SIZE> {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn entry(&self, board: &Board, mv: Move) -> i16 {
+    pub fn entry(&self, board: &Board, mv: Move) -> i32 {
         let stm = board.stm();
         let pawn_hash = board.pawn_hash();
         let piece = board.piece_on(mv.src()).unwrap();
         let dest = mv.dest();
 
-        self.entries[stm][(pawn_hash % SIZE as u64) as usize][piece][dest].0
+        self.entries[stm][(pawn_hash % SIZE as u64) as usize][piece][dest].0 as i32
     }
 
     #[inline]
@@ -292,14 +292,14 @@ impl ContHistory {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn entry(&self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<i16> {
+    pub fn entry(&self, board: &Board, mv: Move, prev_mv: Option<MoveData>) -> Option<i32> {
         let prev_mv = prev_mv?;
 
         let stm = board.stm();
         let piece = board.piece_on(mv.src()).unwrap();
         let dest = mv.dest();
 
-        Some(self.entries[stm][prev_mv.piece][prev_mv.mv.dest()][piece][dest].0)
+        Some(self.entries[stm][prev_mv.piece][prev_mv.mv.dest()][piece][dest].0 as i32)
     }
 
     #[inline]
@@ -360,8 +360,8 @@ impl<const SIZE: usize> CorrHistory<SIZE> {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn entry(&self, stm: Color, hash: u64) -> i16 {
-        self.entries[stm][(hash % SIZE as u64) as usize].0
+    pub fn entry(&self, stm: Color, hash: u64) -> i32 {
+        self.entries[stm][(hash % SIZE as u64) as usize].0 as i32
     }
 
     #[inline]
@@ -403,23 +403,23 @@ pub struct History {
 impl History {
     #[inline]
     pub fn get_quiet(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
-        let mut result = self.quiet.entry(board, mv) as i32;
-        result += self.pawn.entry(board, mv) as i32;
+        let mut result = self.quiet.entry(board, mv);
+        result += self.pawn.entry(board, mv);
         result += self
             .counter_move
             .entry(board, mv, indices.counter_move)
-            .unwrap_or_default() as i32;
+            .unwrap_or_default();
         result += self
             .follow_up
             .entry(board, mv, indices.follow_up)
-            .unwrap_or_default() as i32;
+            .unwrap_or_default();
 
         result
     }
 
     #[inline]
     pub fn get_tactic(&self, board: &Board, mv: Move) -> i32 {
-        self.tactic.entry(board, mv) as i32
+        self.tactic.entry(board, mv)
     }
 
     #[inline]
@@ -432,11 +432,11 @@ impl History {
 
         let mut corr = 0;
 
-        corr += W::pawn_corr_frac() * self.pawn_corr.entry(stm, board.pawn_hash()) as i32;
-        corr += W::minor_corr_frac() * self.minor_corr.entry(stm, board.minor_hash()) as i32;
-        corr += W::major_corr_frac() * self.major_corr.entry(stm, board.major_hash()) as i32;
-        corr += white_frac * self.white_corr.entry(stm, board.white_hash()) as i32;
-        corr += black_frac * self.black_corr.entry(stm, board.black_hash()) as i32;
+        corr += W::pawn_corr_frac() * self.pawn_corr.entry(stm, board.pawn_hash());
+        corr += W::minor_corr_frac() * self.minor_corr.entry(stm, board.minor_hash());
+        corr += W::major_corr_frac() * self.major_corr.entry(stm, board.major_hash());
+        corr += white_frac * self.white_corr.entry(stm, board.white_hash());
+        corr += black_frac * self.black_corr.entry(stm, board.black_hash());
 
         corr / MAX_CORR
     }

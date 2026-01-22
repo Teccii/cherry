@@ -110,20 +110,32 @@ impl Position {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    #[cfg(not(feature = "datagen"))]
     pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
         self.nnue.apply_updates(&self.current, weights);
 
         let bucket = OUTPUT_BUCKETS[self.current.occupied().popcnt()];
-        let mut eval = self.nnue.eval(weights, bucket, self.stm());
+        let mut eval = self.nnue.eval(weights, bucket, self.stm()) as i32;
 
         let material = W::pawn_mat_scale() * self.current.pieces(Piece::Pawn).popcnt() as i32
             + W::knight_mat_scale() * self.current.pieces(Piece::Knight).popcnt() as i32
             + W::bishop_mat_scale() * self.current.pieces(Piece::Bishop).popcnt() as i32
             + W::rook_mat_scale() * self.current.pieces(Piece::Rook).popcnt() as i32
             + W::queen_mat_scale() * self.current.pieces(Piece::Queen).popcnt() as i32;
-        eval = (i32::from(eval) * (W::mat_scale_base() + material) / 32768) as i16;
+        eval = eval * (W::mat_scale_base() + material) / 32768;
 
-        Score::new(eval.clamp(-Score::MAX_TB_WIN.0 + 1, Score::MAX_TB_WIN.0 - 1))
+        Score(eval as i16).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+    }
+
+    #[inline]
+    #[cfg(feature = "datagen")]
+    pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
+        self.nnue.apply_updates(&self.current, weights);
+
+        let bucket = OUTPUT_BUCKETS[self.current.occupied().popcnt()];
+        let eval = self.nnue.eval(weights, bucket, self.stm());
+
+        Score(eval).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
     }
 
     #[inline]
