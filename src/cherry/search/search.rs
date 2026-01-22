@@ -527,7 +527,20 @@ pub fn search<Node: NodeType>(
             tt_pv,
         );
 
+        let static_eval = if !in_check {
+            let corr = thread.history.get_corr(pos.board());
+
+            Score::clamp(
+                raw_eval + corr as i16,
+                -Score::MIN_TB_WIN,
+                Score::MIN_TB_WIN,
+            )
+        } else {
+            Score::NONE
+        };
+
         if !in_check
+            
             && best_move.is_none_or(|mv| !mv.is_tactic())
             && match flag {
                 TTFlag::Exact => true,
