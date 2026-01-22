@@ -255,7 +255,7 @@ impl Engine {
                     PAWN_MALUS_BASE  => W::pawn_malus_base(),  -512, 512;
                     PAWN_MALUS_SCALE => W::pawn_malus_scale(), -512, 512;
                     PAWN_MALUS_MAX   => W::pawn_malus_max(),      1, 8192;
-                    
+
                     CONT1_BONUS_BASE  => W::cont1_bonus_base(),  -512, 512;
                     CONT1_BONUS_SCALE => W::cont1_bonus_scale(), -512, 512;
                     CONT1_BONUS_MAX   => W::cont1_bonus_max(),      1, 8192;

@@ -240,23 +240,11 @@ pub fn search<Node: NodeType>(
 
             if score >= beta {
                 if depth <= W::nmp_verif_depth() {
-                    return if score.is_win() {
-                        beta
-                    } else {
-                        score
-                    };
+                    return if score.is_win() { beta } else { score };
                 }
 
-                let v_score = search::<NonPV>(
-                    pos,
-                    thread,
-                    shared,
-                    nmp_depth,
-                    ply,
-                    beta - 1,
-                    beta,
-                    true
-                );
+                let v_score =
+                    search::<NonPV>(pos, thread, shared, nmp_depth, ply, beta - 1, beta, true);
 
                 if v_score >= beta {
                     return v_score;
@@ -384,7 +372,7 @@ pub fn search<Node: NodeType>(
             } else if entry.score >= beta {
                 ext = W::singular_tt_ext();
             } else if cut_node {
-                ext = W::singular_cut_ext();  
+                ext = W::singular_cut_ext();
             }
         }
 
@@ -540,7 +528,6 @@ pub fn search<Node: NodeType>(
         };
 
         if !in_check
-            
             && best_move.is_none_or(|mv| !mv.is_tactic())
             && match flag {
                 TTFlag::Exact => true,

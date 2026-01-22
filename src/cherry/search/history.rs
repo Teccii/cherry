@@ -429,7 +429,7 @@ impl History {
             Color::White => (W::stm_corr_frac(), W::ntm_corr_frac()),
             Color::Black => (W::ntm_corr_frac(), W::stm_corr_frac()),
         };
-        
+
         let mut corr = 0;
 
         corr += W::pawn_corr_frac() * self.pawn_corr.entry(stm, board.pawn_hash()) as i32;

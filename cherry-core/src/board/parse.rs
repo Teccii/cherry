@@ -184,10 +184,18 @@ impl Board {
 
         let mut castle_rights = String::new();
         if let Some(file) = self.castle_rights[Color::White].short {
-            castle_rights.push(if chess960 { char::from(file).to_ascii_uppercase() } else { 'K' });
+            castle_rights.push(if chess960 {
+                char::from(file).to_ascii_uppercase()
+            } else {
+                'K'
+            });
         }
         if let Some(file) = self.castle_rights[Color::White].long {
-            castle_rights.push(if chess960 { char::from(file).to_ascii_uppercase() } else { 'Q' });
+            castle_rights.push(if chess960 {
+                char::from(file).to_ascii_uppercase()
+            } else {
+                'Q'
+            });
         }
         if let Some(file) = self.castle_rights[Color::Black].short {
             castle_rights.push(if chess960 {
