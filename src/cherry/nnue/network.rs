@@ -26,7 +26,6 @@ pub const OUTPUT_BUCKETS: [usize; 33] = [
     7, 7, 7, 7, // 29, 30, 31, 32
 ];
 
-pub const EVAL_SCALE: i32 = 400;
 pub const QA: i32 = 255;
 pub const QB: i32 = 64;
 
@@ -190,7 +189,7 @@ impl Nnue {
         let mut output = 0;
         feed_forward(stm, ntm, bucket, &weights, &mut output);
 
-        ((output / QA + i32::from(weights.out_bias[bucket])) * EVAL_SCALE / (QA * QB)) as i16
+        ((output / QA + i32::from(weights.out_bias[bucket])) * W::eval_scale() / (QA * QB)) as i16
     }
 
     /*----------------------------------------------------------------*/

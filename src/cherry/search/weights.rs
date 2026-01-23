@@ -132,6 +132,7 @@ weights! {
     rook_mat_scale   | ROOK_MAT_SCALE:   i32 => 590,
     queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973,
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 25100,
+    eval_scale       | EVAL_SCALE:       i32 => 400,
 
     rfp_depth     | RFP_DEPTH:     i32 => 6144,
     rfp_base      | RFP_BASE:      i32 => 0,

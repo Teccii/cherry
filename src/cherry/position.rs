@@ -45,17 +45,10 @@ impl Position {
 
     #[inline]
     pub fn prev_move(&self, ply: usize) -> Option<MoveData> {
-        if self.moves.is_empty() {
-            return None;
-        }
-
-        let ply = ply as isize - 1; //countermove is last
-        let last_index = self.moves.len() as isize - 1;
-        let index = last_index - ply;
-
-        (index >= 0)
-            .then(|| self.moves.get(index as usize).and_then(|&m| m))
-            .flatten()
+        self.moves
+            .len()
+            .checked_sub(ply)
+            .and_then(|i| self.moves[i])
     }
 
     #[inline]

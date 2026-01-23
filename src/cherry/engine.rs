@@ -282,6 +282,7 @@ impl Engine {
                     ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
+                    EVAL_SCALE       => W::eval_scale(),       1, 1024;
 
                     RFP_DEPTH     => W::rfp_depth(),        0, 16384;
                     RFP_BASE      => W::rfp_base(),      -256, 256;
@@ -456,6 +457,7 @@ impl Engine {
                     ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
                     QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
                     MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
+                    EVAL_SCALE       => W::eval_scale(),       1, 1024;
 
                     RFP_DEPTH     => W::rfp_depth(),        0, 16384;
                     RFP_BASE      => W::rfp_base(),      -256, 256;
@@ -636,6 +638,7 @@ impl Engine {
                     "ROOK_MAT_SCALE"   => ROOK_MAT_SCALE,   i32;
                     "QUEEN_MAT_SCALE"  => QUEEN_MAT_SCALE,  i32;
                     "MAT_SCALE_BASE"   => MAT_SCALE_BASE,   i32;
+                    "EVAL_SCALE"       => EVAL_SCALE,       i32;
 
                     "RFP_DEPTH"     => RFP_DEPTH,     i32;
                     "RFP_BASE"      => RFP_BASE,      i32;
