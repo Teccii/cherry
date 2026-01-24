@@ -419,7 +419,7 @@ pub fn search<Node: NodeType>(
                 true,
             );
 
-            if lmr > 0 && score > alpha {
+            if lmr_depth < new_depth && score > alpha {
                 score = -search::<NonPV>(
                     pos,
                     thread,
