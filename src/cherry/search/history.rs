@@ -402,7 +402,7 @@ pub struct History {
 
 impl History {
     #[inline]
-    pub fn get_quiet(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
+    pub fn quiet(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
         let mut result = self.quiet.entry(board, mv);
         result += self.pawn.entry(board, mv);
         result += self
@@ -418,12 +418,12 @@ impl History {
     }
 
     #[inline]
-    pub fn get_tactic(&self, board: &Board, mv: Move) -> i32 {
+    pub fn tactic(&self, board: &Board, mv: Move) -> i32 {
         self.tactic.entry(board, mv)
     }
 
     #[inline]
-    pub fn get_corr(&self, board: &Board) -> i32 {
+    pub fn corr(&self, board: &Board) -> i32 {
         let stm = board.stm();
         let (white_frac, black_frac) = match stm {
             Color::White => (W::stm_corr_frac(), W::ntm_corr_frac()),
@@ -456,12 +456,9 @@ impl History {
         if best_move.is_tactic() {
             self.update_tactic(board, depth, best_move, true);
         } else {
-            self.update_quiet(board, depth, best_move, true);
-            self.update_cont(board, indices, depth, best_move, true);
-
+            self.update_quiet(board, indices, depth, best_move, true);
             for &quiet in quiets {
-                self.update_quiet(board, depth, quiet, false);
-                self.update_cont(board, indices, depth, quiet, false);
+                self.update_quiet(board, indices, depth, quiet, false);
             }
         }
 
@@ -471,29 +468,19 @@ impl History {
     }
 
     #[inline]
-    pub fn update_quiet(&mut self, board: &Board, depth: i32, mv: Move, bonus: bool) {
+    pub fn update_quiet(&mut self, board: &Board, indices: &ContIndices, depth: i32, mv: Move, bonus: bool) {
         self.quiet.update(board, depth, mv, bonus);
         self.pawn.update(board, depth, mv, bonus);
+
+        self.counter_move
+            .update::<1>(board, depth, mv, indices.counter_move, bonus);
+        self.follow_up
+            .update::<2>(board, depth, mv, indices.follow_up, bonus);
     }
 
     #[inline]
     pub fn update_tactic(&mut self, board: &Board, depth: i32, mv: Move, bonus: bool) {
         self.tactic.update(board, depth, mv, bonus);
-    }
-
-    #[inline]
-    pub fn update_cont(
-        &mut self,
-        board: &Board,
-        indices: &ContIndices,
-        depth: i32,
-        mv: Move,
-        bonus: bool,
-    ) {
-        self.counter_move
-            .update::<1>(board, depth, mv, indices.counter_move, bonus);
-        self.follow_up
-            .update::<2>(board, depth, mv, indices.follow_up, bonus);
     }
 
     #[inline]
