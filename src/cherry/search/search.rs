@@ -93,17 +93,15 @@ pub fn search<Node: NodeType>(
         && let Some(entry) = tt_entry
         && entry.depth as i32 >= depth / DEPTH_SCALE
     {
-        let score = entry.score;
-
         match entry.flag {
-            TTFlag::Exact => return score,
+            TTFlag::Exact => return entry.score,
             TTFlag::UpperBound =>
-                if score <= alpha {
-                    return score;
+                if entry.score <= alpha {
+                    return entry.score;
                 },
             TTFlag::LowerBound =>
-                if score >= beta {
-                    return score;
+                if entry.score >= beta {
+                    return entry.score;
                 },
             TTFlag::None => unreachable!(),
         }
@@ -167,7 +165,7 @@ pub fn search<Node: NodeType>(
 
             shared.ttable.store(
                 pos.board(),
-                ((depth + depth_bias) / DEPTH_SCALE) as u8,
+                ((depth + depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8,
                 ply,
                 raw_eval,
                 score,
@@ -193,23 +191,18 @@ pub fn search<Node: NodeType>(
     }
 
     if !Node::PV && !in_check && skip_move.is_none() {
-        let (rfp_depth, rfp_base, rfp_scale, rfp_lerp) = if improving {
-            (
-                W::rfp_imp_depth(),
-                W::rfp_imp_base(),
-                W::rfp_imp_scale(),
-                W::rfp_imp_lerp(),
-            )
+        let (rfp_base, rfp_scale) = if improving {
+            (W::rfp_imp_base(), W::rfp_imp_scale())
         } else {
-            (W::rfp_depth(), W::rfp_base(), W::rfp_scale(), W::rfp_lerp())
+            (W::rfp_base(), W::rfp_scale())
         };
 
         let rfp_margin = (rfp_base + rfp_scale * depth / DEPTH_SCALE) as i16;
-        if depth < rfp_depth && static_eval - rfp_margin >= beta {
+        if depth < W::rfp_depth() && static_eval - rfp_margin >= beta {
             return if !static_eval.is_win() && !beta.is_win() {
                 let (static_eval, beta) = (i32::from(static_eval.0), i32::from(beta.0));
 
-                Score::new((static_eval + rfp_lerp * (beta - static_eval) / 1024) as i16)
+                Score::new((static_eval + W::rfp_lerp() * (beta - static_eval) / 1024) as i16)
             } else {
                 static_eval
             };
@@ -271,7 +264,7 @@ pub fn search<Node: NodeType>(
     } else {
         W::lmr_depth_bias()
     };
-    let lmr_lookup_depth = ((depth + lmr_depth_bias) / DEPTH_SCALE) as u8;
+    let lmr_lookup_depth = ((depth + lmr_depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8;
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         if skip_move == Some(mv) {
@@ -316,15 +309,15 @@ pub fn search<Node: NodeType>(
                 }
 
                 let lmr_depth = (depth - lmr).max(0);
-                let (fp_depth, fp_base, fp_scale) = if improving {
-                    (W::fp_imp_depth(), W::fp_imp_base(), W::fp_imp_scale())
+                let (fp_base, fp_scale) = if improving {
+                    (W::fp_imp_base(), W::fp_imp_scale())
                 } else {
-                    (W::fp_depth(), W::fp_base(), W::fp_scale())
+                    (W::fp_base(), W::fp_scale())
                 };
 
                 let fp_margin = (fp_base + fp_scale * lmr_depth / DEPTH_SCALE) as i16;
                 if !Node::PV
-                    && lmr_depth <= fp_depth
+                    && lmr_depth <= W::fp_depth()
                     && !in_check
                     && static_eval + fp_margin <= alpha
                 {
@@ -383,7 +376,7 @@ pub fn search<Node: NodeType>(
         pos.make_move(mv, &shared.nnue_weights);
         shared.ttable.prefetch(pos.board());
 
-        let new_depth = depth + ext - 1 * DEPTH_SCALE;
+        let new_depth = (depth + ext - 1 * DEPTH_SCALE).min(MAX_FRAC_DEPTH);
         if moves_seen == 0 {
             score = -search::<Node::Next>(
                 pos,
@@ -396,8 +389,8 @@ pub fn search<Node: NodeType>(
                 !Node::PV && !cut_node,
             );
         } else {
-            if depth >= 2 * DEPTH_SCALE {
-                lmr += W::cutnode_lmr() * cut_node as i32;
+            if depth >= W::lmr_depth() {
+                lmr += W::cut_lmr() * cut_node as i32;
                 lmr -= W::improving_lmr() * improving as i32;
                 lmr += W::non_pv_lmr() * !Node::PV as i32;
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
@@ -477,7 +470,7 @@ pub fn search<Node: NodeType>(
             flag = TTFlag::LowerBound;
             thread
                 .history
-                .update_history(pos.board(), &cont_indices, depth, mv, &quiets, &tactics);
+                .update(pos.board(), &cont_indices, depth, mv, &quiets, &tactics);
             break;
         }
 
@@ -510,7 +503,7 @@ pub fn search<Node: NodeType>(
 
         shared.ttable.store(
             pos.board(),
-            ((depth + tt_depth_bias) / DEPTH_SCALE) as u8,
+            ((depth + tt_depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8,
             ply,
             raw_eval,
             best_score,
@@ -585,17 +578,15 @@ fn q_search<Node: NodeType>(
     if !Node::PV
         && let Some(entry) = tt_entry
     {
-        let score = entry.score;
-
         match entry.flag {
-            TTFlag::Exact => return score,
+            TTFlag::Exact => return entry.score,
             TTFlag::UpperBound =>
-                if score <= alpha {
-                    return score;
+                if entry.score <= alpha {
+                    return entry.score;
                 },
             TTFlag::LowerBound =>
-                if score >= beta {
-                    return score;
+                if entry.score >= beta {
+                    return entry.score;
                 },
             TTFlag::None => unreachable!(),
         }

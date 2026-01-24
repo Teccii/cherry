@@ -137,11 +137,9 @@ weights! {
     rfp_depth     | RFP_DEPTH:     i32 => 6144,
     rfp_base      | RFP_BASE:      i32 => 0,
     rfp_scale     | RFP_SCALE:     i32 => 80,
-    rfp_lerp      | RFP_LERP:      i32 => 512,
-    rfp_imp_depth | RFP_IMP_DEPTH: i32 => 6144,
     rfp_imp_base  | RFP_IMP_BASE:  i32 => -80,
     rfp_imp_scale | RFP_IMP_SCALE: i32 => 80,
-    rfp_imp_lerp  | RFP_IMP_LERP:  i32 => 512,
+    rfp_lerp      | RFP_LERP:      i32 => 512,
 
     nmp_depth       | NMP_DEPTH:       i32 => 3072,
     nmp_base        | NMP_BASE:        i64 => 3072,
@@ -156,7 +154,6 @@ weights! {
     fp_depth     | FP_DEPTH:     i32 => 8192,
     fp_base      | FP_BASE:      i32 => 93,
     fp_scale     | FP_SCALE:     i32 => 79,
-    fp_imp_depth | FP_IMP_DEPTH: i32 => 8192,
     fp_imp_base  | FP_IMP_BASE:  i32 => 93,
     fp_imp_scale | FP_IMP_SCALE: i32 => 79,
 
@@ -183,7 +180,8 @@ weights! {
     lmr_tactic_base | LMR_TACTIC_BASE: i32 => 450,
     lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688,
 
-    cutnode_lmr   | CUTNODE_LMR:   i32 => 1024,
+    lmr_depth     | LMR_DEPTH:     i32 => 2048,
+    cut_lmr       | CUT_LMR:       i32 => 1024,
     improving_lmr | IMPROVING_LMR: i32 => 1024,
     non_pv_lmr    | NON_PV_LMR:    i32 => 1024,
     tt_pv_lmr     | TT_PV_LMR:     i32 => 1024,
@@ -197,8 +195,8 @@ weights! {
     asp_window_initial | ASP_WINDOW_INITIAL: i16 => 20,
     asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 48,
 
-    soft_time_frac      | SOFT_TIME_FRAC:      u64 => 64,
-    hard_time_frac      | HARD_TIME_FRAC:      u64 => 2458,
+    soft_time_div       | SOFT_TIME_DIV:       u64 => 262144,
+    hard_time_div       | HARD_TIME_DIV:       u64 => 6826,
     subtree_tm_base     | SUBTREE_TM_BASE:     u64 => 10240,
     subtree_tm_scale    | SUBTREE_TM_SCALE:    u64 => 6144,
     subtree_tm_min      | SUBTREE_TM_MIN:      u64 => 4096,
@@ -208,8 +206,6 @@ weights! {
     complexity_tm_base  | COMPLEXITY_TM_BASE:  u64 => 3277,
     complexity_tm_scale | COMPLEXITY_TM_SCALE: u64 => 82,
     complexity_tm_max   | COMPLEXITY_TM_MAX:   u64 => 6144,
-    complexity_tm_win   | COMPLEXITY_TM_WIN:   u64 => 4096,
-    complexity_tm_loss  | COMPLEXITY_TM_LOSS:  u64 => 4096,
 }
 
 impl W {

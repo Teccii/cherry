@@ -5,9 +5,10 @@ use smallvec::{Array, SmallVec};
 
 /*----------------------------------------------------------------*/
 
-pub const MAX_DEPTH: u8 = 128;
+pub const MAX_DEPTH: u8 = 255;
 pub const MAX_PLY: u16 = 256;
 pub const DEPTH_SCALE: i32 = 1024;
+pub const MAX_FRAC_DEPTH: i32 = MAX_DEPTH as i32 * DEPTH_SCALE;
 
 /*----------------------------------------------------------------*/
 

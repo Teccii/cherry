@@ -444,7 +444,7 @@ impl History {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn update_history(
+    pub fn update(
         &mut self,
         board: &Board,
         indices: &ContIndices,
@@ -468,7 +468,14 @@ impl History {
     }
 
     #[inline]
-    pub fn update_quiet(&mut self, board: &Board, indices: &ContIndices, depth: i32, mv: Move, bonus: bool) {
+    pub fn update_quiet(
+        &mut self,
+        board: &Board,
+        indices: &ContIndices,
+        depth: i32,
+        mv: Move,
+        bonus: bool,
+    ) {
         self.quiet.update(board, depth, mv, bonus);
         self.pawn.update(board, depth, mv, bonus);
 

@@ -156,7 +156,7 @@ impl TimeManager {
                 Color::Black => (b_time.saturating_sub(move_overhead), b_inc),
             };
 
-            let hard_time = time * W::hard_time_frac() / 4096;
+            let hard_time = (time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64;
             let soft_time = (time / moves_to_go as u64 + inc).min(hard_time);
 
             self.base_target.store(soft_time, Ordering::Relaxed);
@@ -169,8 +169,9 @@ impl TimeManager {
                 Color::Black => (b_time.saturating_sub(move_overhead), b_inc),
             };
 
-            let hard_time = time * W::hard_time_frac() / 4096;
-            let soft_time = (time * W::soft_time_frac() / 4096 + inc).min(hard_time);
+            let hard_time = (time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64;
+            let soft_time =
+                ((time as f64 / (W::soft_time_div() as f64 / 4096.0)) as u64 + inc).min(hard_time);
 
             self.base_target.store(soft_time, Ordering::Relaxed);
             self.soft_target.store(soft_time, Ordering::Relaxed);
@@ -216,10 +217,8 @@ impl TimeManager {
             (W::complexity_tm_base()
                 + (W::complexity_tm_scale() as f64 * complexity * (depth as f64).ln()) as u64)
                 .min(W::complexity_tm_max())
-        } else if score.is_win() {
-            W::complexity_tm_win()
         } else {
-            W::complexity_tm_loss()
+            4096
         };
 
         let base_time = self.base_target.load(Ordering::Relaxed);
