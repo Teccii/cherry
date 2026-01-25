@@ -182,14 +182,14 @@ impl Nnue {
         self.acc_index -= 1;
     }
 
-    pub fn eval(&self, weights: &NetworkWeights, bucket: usize, stm: Color) -> i16 {
+    pub fn eval(&self, weights: &NetworkWeights, bucket: usize, stm: Color) -> i32 {
         let acc = self.acc();
         let (stm, ntm) = (acc.select(stm), acc.select(!stm));
 
         let mut output = 0;
         feed_forward(stm, ntm, bucket, &weights, &mut output);
 
-        ((output / QA + i32::from(weights.out_bias[bucket])) * W::eval_scale() / (QA * QB)) as i16
+        (output / QA + i32::from(weights.out_bias[bucket])) * W::eval_scale() / (QA * QB)
     }
 
     /*----------------------------------------------------------------*/

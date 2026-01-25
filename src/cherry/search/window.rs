@@ -2,8 +2,8 @@ use crate::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Window {
-    window: i16,
-    initial_window: i16,
+    window: i32,
+    initial_window: i32,
     center: Score,
     alpha: Score,
     beta: Score,
@@ -11,7 +11,7 @@ pub struct Window {
 
 impl Window {
     #[inline]
-    pub fn new(window: i16) -> Window {
+    pub fn new(window: i32) -> Window {
         Window {
             window,
             initial_window: window,
@@ -37,9 +37,10 @@ impl Window {
 
     #[inline]
     pub fn expand(&mut self) {
-        self.window = (self.window as i32)
-            .saturating_add(self.window as i32 * W::asp_window_expand() / 64)
-            .min(Score::INFINITE.0 as i32) as i16;
+        self.window = self
+            .window
+            .saturating_add(self.window * W::asp_window_expand() / 64)
+            .min(Score::INFINITE.0);
     }
 
     #[inline]
@@ -49,7 +50,7 @@ impl Window {
 
     #[inline]
     pub fn fail_low(&mut self) {
-        self.beta = Score(((self.alpha.0 as i32 + self.beta.0 as i32) / 2) as i16);
+        self.beta = (self.alpha + self.beta) / 2;
         self.alpha = self.center.saturating_sub(Score(self.window));
     }
 

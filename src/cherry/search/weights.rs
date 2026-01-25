@@ -120,11 +120,11 @@ weights! {
     cont2_malus_scale | CONT2_MALUS_SCALE: i32 => 128,
     cont2_malus_max   | CONT2_MALUS_MAX:   i32 => 2048,
 
-    pawn_see_value   | PAWN_SEE_VALUE:   i16 => 101,
-    knight_see_value | KNIGHT_SEE_VALUE: i16 => 324,
-    bishop_see_value | BISHOP_SEE_VALUE: i16 => 332,
-    rook_see_value   | ROOK_SEE_VALUE:   i16 => 578,
-    queen_see_value  | QUEEN_SEE_VALUE:  i16 => 981,
+    pawn_see_value   | PAWN_SEE_VALUE:   i32 => 101,
+    knight_see_value | KNIGHT_SEE_VALUE: i32 => 324,
+    bishop_see_value | BISHOP_SEE_VALUE: i32 => 332,
+    rook_see_value   | ROOK_SEE_VALUE:   i32 => 578,
+    queen_see_value  | QUEEN_SEE_VALUE:  i32 => 981,
 
     pawn_mat_scale   | PAWN_MAT_SCALE:   i32 => 111,
     knight_mat_scale | KNIGHT_MAT_SCALE: i32 => 349,
@@ -169,7 +169,7 @@ weights! {
     singular_tt_depth     | SINGULAR_TT_DEPTH:     i32 => 3072,
     singular_beta_margin  | SINGULAR_BETA_MARGIN:  i32 => 196,
     singular_search_depth | SINGULAR_SEARCH_DEPTH: i32 => 512,
-    singular_dext_margin  | SINGULAR_DEXT_MARGIN:  i16 => 30,
+    singular_dext_margin  | SINGULAR_DEXT_MARGIN:  i32 => 30,
     singular_ext          | SINGULAR_EXT:          i32 => 1024,
     singular_dext         | SINGULAR_DEXT:         i32 => 2048,
     singular_tt_ext       | SINGULAR_TT_EXT:       i32 => -1024,
@@ -192,7 +192,7 @@ weights! {
     tt_depth_bias     | TT_DEPTH_BIAS:     i32 => 0,
     tt_depth_pv_bias  | TT_DEPTH_PV_BIAS:  i32 => 0,
 
-    asp_window_initial | ASP_WINDOW_INITIAL: i16 => 20,
+    asp_window_initial | ASP_WINDOW_INITIAL: i32 => 20,
     asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 48,
 
     soft_time_div       | SOFT_TIME_DIV:       u64 => 262144,
@@ -210,7 +210,7 @@ weights! {
 
 impl W {
     #[inline]
-    pub const fn see_value(piece: Piece) -> i16 {
+    pub const fn see_value(piece: Piece) -> i32 {
         match piece {
             Piece::Pawn => W::pawn_see_value(),
             Piece::Knight => W::knight_see_value(),
@@ -219,5 +219,55 @@ impl W {
             Piece::Queen => W::queen_see_value(),
             Piece::King => 20000,
         }
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub const fn rfp_margin(improving: bool, depth: i32) -> i32 {
+        let (base, scale) = if improving {
+            (W::rfp_imp_base(), W::rfp_imp_scale())
+        } else {
+            (W::rfp_base(), W::rfp_scale())
+        };
+
+        base + scale * depth / DEPTH_SCALE
+    }
+
+    #[inline]
+    pub const fn nmp_reduction(depth: i32) -> i32 {
+        (W::nmp_base() + W::nmp_scale() * depth as i64 / DEPTH_SCALE as i64) as i32
+    }
+
+    #[inline]
+    pub const fn lmp_margin(improving: bool, depth: i32) -> i64 {
+        let (base, scale) = if improving {
+            (W::lmp_imp_base(), W::lmp_imp_scale())
+        } else {
+            (W::lmp_base(), W::lmp_scale())
+        };
+
+        base + scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)
+    }
+
+    #[inline]
+    pub const fn fp_margin(improving: bool, depth: i32) -> i32 {
+        let (base, scale) = if improving {
+            (W::fp_imp_base(), W::fp_imp_scale())
+        } else {
+            (W::fp_base(), W::fp_scale())
+        };
+
+        base + scale * depth / DEPTH_SCALE
+    }
+
+    #[inline]
+    pub const fn see_quiet_margin(depth: i32) -> i32 {
+        W::see_quiet_base() + W::see_quiet_scale() * depth / DEPTH_SCALE
+    }
+
+    #[inline]
+    pub const fn see_tactic_margin(depth: i32) -> i32 {
+        W::see_tactic_base() + W::see_tactic_scale() * depth / DEPTH_SCALE
     }
 }

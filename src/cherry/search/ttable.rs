@@ -11,9 +11,9 @@ pub const MAX_TT_SIZE: u64 = 64 * 1024 * 1024; //64 TiB
 #[inline]
 fn score_from_tt(score: Score, ply: u16) -> Score {
     if score.is_loss() {
-        score + ply as i16
+        score + ply as i32
     } else if score.is_win() {
-        score - ply as i16
+        score - ply as i32
     } else {
         score
     }
@@ -22,9 +22,9 @@ fn score_from_tt(score: Score, ply: u16) -> Score {
 #[inline]
 fn score_to_tt(score: Score, ply: u16) -> Score {
     if score.is_loss() {
-        score - ply as i16
+        score - ply as i32
     } else if score.is_win() {
-        score + ply as i16
+        score + ply as i32
     } else {
         score
     }
@@ -78,10 +78,15 @@ impl TTData {
 
     #[inline]
     pub fn pack(self) -> TTPackedData {
+        assert!(self.eval.0 >= i16::MIN as i32);
+        assert!(self.eval.0 <= i16::MAX as i32);
+        assert!(self.score.0 >= i16::MIN as i32);
+        assert!(self.score.0 <= i16::MAX as i32);
+
         TTPackedData {
             depth: self.depth,
-            eval: self.eval,
-            score: self.score,
+            eval: self.eval.0 as i16,
+            score: self.score.0 as i16,
             mv: self.mv,
             other: self.flag as u8 | ((self.pv as u8) << 2) | (self.age << 3),
         }
@@ -96,8 +101,8 @@ impl TTData {
 #[derive(Debug, Copy, Clone)]
 pub struct TTPackedData {
     depth: u8,
-    eval: Score,
-    score: Score,
+    eval: i16,
+    score: i16,
     mv: Option<Move>,
     other: u8,
 }
@@ -108,8 +113,8 @@ impl TTPackedData {
         TTData::new(
             key,
             self.depth,
-            self.eval,
-            self.score,
+            Score(self.eval as i32),
+            Score(self.score as i32),
             self.mv,
             unsafe { core::mem::transmute(self.other & 0x3) },
             (self.other & 0x4) != 0,

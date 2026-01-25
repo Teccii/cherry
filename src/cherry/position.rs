@@ -108,7 +108,7 @@ impl Position {
         self.nnue.apply_updates(&self.current, weights);
 
         let bucket = OUTPUT_BUCKETS[self.current.occupied().popcnt()];
-        let mut eval = self.nnue.eval(weights, bucket, self.stm()) as i32;
+        let mut eval = self.nnue.eval(weights, bucket, self.stm());
 
         let material = W::pawn_mat_scale() * self.current.pieces(Piece::Pawn).popcnt() as i32
             + W::knight_mat_scale() * self.current.pieces(Piece::Knight).popcnt() as i32
@@ -117,7 +117,7 @@ impl Position {
             + W::queen_mat_scale() * self.current.pieces(Piece::Queen).popcnt() as i32;
         eval = eval * (W::mat_scale_base() + material) / 32768;
 
-        Score(eval as i16).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+        Score(eval).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
     }
 
     #[inline]
@@ -132,7 +132,7 @@ impl Position {
     }
 
     #[inline]
-    pub fn cmp_see(&self, mv: Move, threshold: i16) -> bool {
+    pub fn cmp_see(&self, mv: Move, threshold: i32) -> bool {
         if mv.is_castling() {
             return threshold <= 0;
         }

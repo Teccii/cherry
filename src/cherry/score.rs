@@ -5,32 +5,27 @@ use crate::MAX_PLY;
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Score(pub i16);
+pub struct Score(pub i32);
 
 impl Score {
     #[inline]
-    pub const fn new(value: i16) -> Score {
-        Score(value)
+    pub fn mate(ply: u16) -> Score {
+        Score::MIN_MATE - ply as i32
     }
 
     #[inline]
-    pub fn new_mate(ply: u16) -> Score {
-        Score::MIN_MATE - ply as i16
+    pub fn mated(ply: u16) -> Score {
+        -Score::MIN_MATE + ply as i32
     }
 
     #[inline]
-    pub fn new_mated(ply: u16) -> Score {
-        -Score::MIN_MATE + ply as i16
+    pub fn tb_win(ply: u16) -> Score {
+        Score::MIN_TB_WIN - ply as i32
     }
 
     #[inline]
-    pub fn new_tb_win(ply: u16) -> Score {
-        Score::MIN_TB_WIN - ply as i16
-    }
-
-    #[inline]
-    pub fn new_tb_loss(ply: u16) -> Score {
-        -Score::MIN_TB_WIN + ply as i16
+    pub fn tb_loss(ply: u16) -> Score {
+        -Score::MIN_TB_WIN + ply as i32
     }
 
     /*----------------------------------------------------------------*/
@@ -56,9 +51,10 @@ impl Score {
     pub fn mate_in(self) -> Option<i16> {
         if self.is_mate() {
             let abs_score = self.abs();
-            let sign = self.0.signum();
+            let sign = self.sign() as i16;
+            let ply = sign * (Score::MIN_MATE.0 - abs_score.0) as i16;
 
-            return Some(sign * (Score::MIN_MATE.0 - abs_score.0));
+            return Some(ply);
         }
 
         None
@@ -75,9 +71,9 @@ impl Score {
     pub fn tb_in(self) -> Option<i16> {
         if self.is_tb() {
             let abs_score = self.abs();
-            let sign = self.0.signum();
-
-            return Some(sign * (Score::MIN_TB_WIN.0 - abs_score.0));
+            let sign = self.sign() as i16;
+            let ply = sign * (Score::MIN_TB_WIN.0 - abs_score.0) as i16;
+            return Some(ply);
         }
 
         None
@@ -122,20 +118,20 @@ impl Score {
     }
 
     #[inline]
-    pub const fn sign(self) -> i16 {
+    pub const fn sign(self) -> i32 {
         self.0.signum()
     }
 
     /*----------------------------------------------------------------*/
 
-    pub const MIN_MATE: Score = Score(i16::MAX - MAX_PLY as i16);
-    pub const MAX_MATE: Score = Score(i16::MAX - (2 * MAX_PLY) as i16);
-    pub const MIN_TB_WIN: Score = Score(i16::MAX - (2 * MAX_PLY + 1) as i16);
-    pub const MAX_TB_WIN: Score = Score(i16::MAX - (3 * MAX_PLY + 1) as i16);
+    pub const MIN_MATE: Score = Score(i16::MAX as i32 - MAX_PLY as i32);
+    pub const MAX_MATE: Score = Score(i16::MAX as i32 - (2 * MAX_PLY) as i32);
+    pub const MIN_TB_WIN: Score = Score(i16::MAX as i32 - (2 * MAX_PLY + 1) as i32);
+    pub const MAX_TB_WIN: Score = Score(i16::MAX as i32 - (3 * MAX_PLY + 1) as i32);
 
     pub const ZERO: Score = Score(0);
-    pub const NONE: Score = Score(i16::MIN);
-    pub const INFINITE: Score = Score(i16::MAX - (MAX_PLY as i16 - 1));
+    pub const NONE: Score = Score(i16::MIN as i32);
+    pub const INFINITE: Score = Score(i16::MAX as i32);
 }
 
 impl fmt::Display for Score {
@@ -162,42 +158,42 @@ impl fmt::Display for Score {
     }
 }
 
-impl From<i16> for Score {
+impl From<i32> for Score {
     #[inline]
-    fn from(value: i16) -> Self {
+    fn from(value: i32) -> Self {
         Score(value)
     }
 }
 
-impl From<Score> for i16 {
+impl From<Score> for i32 {
     #[inline]
-    fn from(score: Score) -> i16 {
+    fn from(score: Score) -> i32 {
         score.0
     }
 }
 
-impl PartialEq<i16> for Score {
+impl PartialEq<i32> for Score {
     #[inline]
-    fn eq(&self, other: &i16) -> bool {
+    fn eq(&self, other: &i32) -> bool {
         self.0 == *other
     }
 }
 
-impl PartialEq<Score> for i16 {
+impl PartialEq<Score> for i32 {
     #[inline]
     fn eq(&self, other: &Score) -> bool {
         *self == other.0
     }
 }
 
-impl PartialOrd<i16> for Score {
+impl PartialOrd<i32> for Score {
     #[inline]
-    fn partial_cmp(&self, other: &i16) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &i32) -> Option<Ordering> {
         self.0.partial_cmp(other)
     }
 }
 
-impl PartialOrd<Score> for i16 {
+impl PartialOrd<Score> for i32 {
     #[inline]
     fn partial_cmp(&self, other: &Score) -> Option<Ordering> {
         self.partial_cmp(&other.0)
@@ -237,18 +233,18 @@ macro_rules! impl_score_assign_ops {
     )*};
 }
 
-macro_rules! impl_score_i16_ops {
+macro_rules! impl_score_i32_ops {
     ($($trait:ident, $fn:ident;)*) => {$(
-        impl $trait<i16> for Score {
+        impl $trait<i32> for Score {
             type Output = Score;
 
             #[inline]
-            fn $fn(self, rhs: i16) -> Self::Output {
+            fn $fn(self, rhs: i32) -> Self::Output {
                 Score(self.0.$fn(rhs))
             }
         }
 
-        impl $trait<Score> for i16 {
+        impl $trait<Score> for i32 {
             type Output = Score;
 
             #[inline]
@@ -259,11 +255,11 @@ macro_rules! impl_score_i16_ops {
     )*};
 }
 
-macro_rules! impl_score_i16_assign_ops {
+macro_rules! impl_score_i32_assign_ops {
     ($($trait:ident, $fn:ident;)*) => {$(
-        impl $trait<i16> for Score {
+        impl $trait<i32> for Score {
             #[inline]
-            fn $fn(&mut self, rhs: i16) {
+            fn $fn(&mut self, rhs: i32) {
                 self.0.$fn(rhs);
             }
         }
@@ -280,14 +276,14 @@ impl_score_assign_ops! {
     SubAssign, sub_assign;
 }
 
-impl_score_i16_ops! {
+impl_score_i32_ops! {
     Add, add;
     Sub, sub;
     Mul, mul;
     Div, div;
 }
 
-impl_score_i16_assign_ops! {
+impl_score_i32_assign_ops! {
     AddAssign, add_assign;
     SubAssign, sub_assign;
     MulAssign, mul_assign;
@@ -302,8 +298,8 @@ fn test_score() {
     assert!(!(-Score::INFINITE).is_mate());
 
     for i in 0..MAX_PLY {
-        let mate_score = Score::new_mate(i);
-        let mated_score = Score::new_mated(i);
+        let mate_score = Score::mate(i);
+        let mated_score = Score::mated(i);
 
         assert!(mate_score.is_mate());
         assert!(mated_score.is_mate());
