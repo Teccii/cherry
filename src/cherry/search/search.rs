@@ -413,7 +413,7 @@ pub fn search<Node: NodeType>(
         pos.unmake_move();
         moves_seen += 1;
 
-        if Node::PV && (moves_seen == 1 || score > alpha) {
+        if (Node::ROOT && moves_seen == 1) || (Node::PV && score > alpha) {
             let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
             let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
 
@@ -606,7 +606,7 @@ fn q_search<Node: NodeType>(
             return Score::ZERO;
         }
 
-        if Node::PV && (moves_seen == 1 || score > alpha) {
+        if Node::PV && score > alpha {
             let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
             let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
 
