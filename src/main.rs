@@ -15,8 +15,6 @@ use colored::Colorize;
 /*----------------------------------------------------------------*/
 
 fn main() {
-    init_lmr();
-
     let mut buffer = String::new();
     let mut engine = Engine::new();
     let args = env::args().skip(1).collect::<Vec<String>>();

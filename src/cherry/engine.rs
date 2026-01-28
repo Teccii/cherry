@@ -715,13 +715,6 @@ impl Engine {
                     "COMPLEXITY_MAX"       => COMPLEXITY_MAX,       u64;
                 }
 
-                #[cfg(feature = "tune")]
-                match name.as_str() {
-                    "LMR_QUIET_BASE" | "LMR_QUIET_DIV" | "LMR_TACTIC_BASE" | "LMR_TACTIC_DIV" =>
-                        init_lmr(),
-                    _ => {}
-                }
-
                 self.sender
                     .send(ThreadCommand::SetOption(
                         Arc::clone(&self.searcher),

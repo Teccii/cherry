@@ -138,7 +138,7 @@ pub fn search<Node: NodeType>(
 
     let (mut syzygy_min, mut syzygy_max) = (-Score::MIN_MATE, Score::MIN_MATE);
 
-    if ply != 0
+    if !Node::ROOT
         && skip_move.is_none()
         && is_syzygy_enabled()
         && depth >= shared.syzygy_depth.load(Ordering::Relaxed) as i32 * DEPTH_SCALE
@@ -248,7 +248,7 @@ pub fn search<Node: NodeType>(
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
     let cont_indices = ContIndices::new(&pos);
 
-    let lmr_depth_bias = if Node::PV {
+    let lmr_depth_bias = if tt_pv {
         W::lmr_depth_pv_bias()
     } else {
         W::lmr_depth_bias()
@@ -269,7 +269,7 @@ pub fn search<Node: NodeType>(
 
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
-        let mut lmr = get_lmr(is_tactic, lmr_lookup_depth, moves_seen);
+        let mut lmr = W::lmr(is_tactic, lmr_lookup_depth, moves_seen);
         let mut score;
 
         if !Node::ROOT && !best_score.is_loss() {
@@ -467,7 +467,7 @@ pub fn search<Node: NodeType>(
 
     let best_score = best_score.clamp(syzygy_min, syzygy_max);
     if skip_move.is_none() {
-        let tt_depth_bias = if Node::PV {
+        let tt_depth_bias = if tt_pv {
             W::tt_depth_pv_bias()
         } else {
             W::tt_depth_bias()
