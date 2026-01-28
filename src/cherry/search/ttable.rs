@@ -78,11 +78,6 @@ impl TTData {
 
     #[inline]
     pub fn pack(self) -> TTPackedData {
-        assert!(self.eval.0 >= i16::MIN as i32);
-        assert!(self.eval.0 <= i16::MAX as i32);
-        assert!(self.score.0 >= i16::MIN as i32);
-        assert!(self.score.0 <= i16::MAX as i32);
-
         TTPackedData {
             depth: self.depth,
             eval: self.eval.0 as i16,

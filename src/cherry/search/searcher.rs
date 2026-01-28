@@ -319,6 +319,7 @@ pub fn search_worker<Info: SearchInfo>(
         .extend((0..multipv).map(|_| Window::new(W::asp_window_initial())));
 
     let static_eval = pos.eval(&shared.nnue_weights);
+    let mut average_score = Score::NONE;
     let mut best_move: Option<Move> = None;
     let mut ponder_move: Option<Move> = None;
     let mut score = -Score::INFINITE;
@@ -365,6 +366,12 @@ pub fn search_worker<Info: SearchInfo>(
                         best_move = thread.root_pv.moves[0];
                         ponder_move = thread.root_pv.moves[1];
                         score = new_score;
+
+                        if average_score == Score::NONE {
+                            average_score = score;
+                        } else {
+                            average_score = (average_score + score) / 2;
+                        }
                     }
 
                     if worker == 0 {
@@ -420,6 +427,7 @@ pub fn search_worker<Info: SearchInfo>(
             shared.time_man.deepen(
                 depth,
                 score,
+                average_score,
                 static_eval,
                 best_move,
                 thread.root_nodes[best_move.src()][best_move.dest()],

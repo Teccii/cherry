@@ -21,6 +21,7 @@ pub struct TimeManager {
 
     prev_move: Mutex<Option<Move>>,
     move_stability: AtomicU8,
+    eval_stability: AtomicU8,
 
     move_overhead: AtomicU64,
     use_max_depth: AtomicBool,
@@ -45,6 +46,7 @@ impl TimeManager {
             hard_target: AtomicU64::new(0),
             prev_move: Mutex::new(None),
             move_stability: AtomicU8::new(0),
+            eval_stability: AtomicU8::new(0),
             move_overhead: AtomicU64::new(MOVE_OVERHEAD),
             use_max_depth: AtomicBool::new(false),
             use_max_nodes: AtomicBool::new(false),
@@ -63,6 +65,7 @@ impl TimeManager {
     pub fn init(&self, stm: Color, limits: &[SearchLimit]) {
         self.abort_now.store(false, Ordering::Relaxed);
         self.move_stability.store(0, Ordering::Relaxed);
+        self.eval_stability.store(0, Ordering::Relaxed);
         *self.prev_move.lock().unwrap() = None;
 
         let mut w_time = 0;
@@ -185,6 +188,7 @@ impl TimeManager {
         &self,
         depth: u8,
         score: Score,
+        average_score: Score,
         static_eval: Score,
         best_move: Move,
         move_nodes: u64,
@@ -196,27 +200,37 @@ impl TimeManager {
 
         let mut prev_move = self.prev_move.lock().unwrap();
         let mut move_stability = self.move_stability.load(Ordering::Relaxed);
+        let mut eval_stability = self.eval_stability.load(Ordering::Relaxed);
 
-        move_stability = (move_stability + 1).min(8);
+        move_stability = move_stability.saturating_add(1);
         if *prev_move != Some(best_move) {
             move_stability = 0;
         }
 
+        eval_stability = eval_stability.saturating_add(1);
+        if (score - average_score).abs().0 >= W::eval_stability_edge() {
+            eval_stability = 0;
+        }
+
         *prev_move = Some(best_move);
         self.move_stability.store(move_stability, Ordering::Relaxed);
+        self.eval_stability.store(eval_stability, Ordering::Relaxed);
 
         let complexity = (static_eval - score).abs().0 as f64;
 
-        let stability_factor = (W::stability_tm_base()
-            - W::stability_tm_scale() * move_stability as u64)
-            .max(W::stability_tm_min());
-        let subtree_factor = (W::subtree_tm_base()
-            - (W::subtree_tm_scale() as f64 * move_nodes as f64 / nodes as f64) as u64)
-            .max(W::subtree_tm_min());
+        let move_stability_factor = (W::move_stability_base()
+            - W::move_stability_scale() * move_stability as u64)
+            .max(W::move_stability_min());
+        let eval_stability_factor = (W::eval_stability_base()
+            - W::eval_stability_scale() * eval_stability as u64)
+            .max(W::eval_stability_min());
+        let subtree_factor = (W::subtree_base()
+            - (W::subtree_scale() as f64 * move_nodes as f64 / nodes as f64) as u64)
+            .max(W::subtree_min());
         let complexity_factor = if !score.is_decisive() {
-            (W::complexity_tm_base()
-                + (W::complexity_tm_scale() as f64 * complexity * (depth as f64).ln()) as u64)
-                .min(W::complexity_tm_max())
+            (W::complexity_base()
+                + (W::complexity_scale() as f64 * complexity * (depth as f64).ln()) as u64)
+                .min(W::complexity_max())
         } else {
             4096
         };
@@ -224,10 +238,11 @@ impl TimeManager {
         let base_time = self.base_target.load(Ordering::Relaxed);
         let hard_time = self.hard_target.load(Ordering::Relaxed);
         let new_target = ((base_time as u128
-            * stability_factor as u128
+            * move_stability_factor as u128
+            * eval_stability_factor as u128
             * subtree_factor as u128
             * complexity_factor as u128)
-            / 4096u128.pow(3)) as u64;
+            / 4096u128.pow(4)) as u64;
 
         self.soft_target
             .store(new_target.min(hard_time), Ordering::Relaxed);

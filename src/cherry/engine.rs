@@ -344,17 +344,21 @@ impl Engine {
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_DIV       => W::soft_time_div(),       1, 524288;
-                    HARD_TIME_DIV       => W::hard_time_div(),       1, 524288;
-                    SUBTREE_TM_BASE     => W::subtree_tm_base(),     0, 20480;
-                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(),    0, 20480;
-                    SUBTREE_TM_MIN      => W::subtree_tm_min(),      0, 8192;
-                    STABILITY_TM_BASE   => W::stability_tm_base(),   0, 32768;
-                    STABILITY_TM_SCALE  => W::stability_tm_scale(),  0, 4096;
-                    STABILITY_TM_MIN    => W::stability_tm_min(),    0, 8192;
-                    COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0, 20480;
-                    COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0, 20480;
-                    COMPLEXITY_TM_MAX   => W::complexity_tm_max(),   0, 20480;
+                    SOFT_TIME_DIV        => W::soft_time_div(),        1, 524288;
+                    HARD_TIME_DIV        => W::hard_time_div(),        1, 524288;
+                    SUBTREE_BASE         => W::subtree_base(),         0, 20480;
+                    SUBTREE_SCALE        => W::subtree_scale(),        0, 20480;
+                    SUBTREE_MIN          => W::subtree_min(),          0, 8192;
+                    MOVE_STABILITY_BASE  => W::move_stability_base(),  0, 32768;
+                    MOVE_STABILITY_SCALE => W::move_stability_scale(), 0, 4096;
+                    MOVE_STABILITY_MIN   => W::move_stability_min(),   0, 8192;
+                    EVAL_STABILITY_EDGE  => W::eval_stability_edge(),  0, 256;
+                    EVAL_STABILITY_BASE  => W::eval_stability_base(),  0, 32768;
+                    EVAL_STABILITY_SCALE => W::eval_stability_scale(), 0, 4096;
+                    EVAL_STABILITY_MIN   => W::eval_stability_min(),   0, 8192;
+                    COMPLEXITY_BASE      => W::complexity_base(),      0, 20480;
+                    COMPLEXITY_SCALE     => W::complexity_scale(),     0, 20480;
+                    COMPLEXITY_MAX       => W::complexity_max(),       0, 20480;
                 }
                 println!("uciok");
 
@@ -514,17 +518,21 @@ impl Engine {
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_DIV       => W::soft_time_div(),       1, 524288;
-                    HARD_TIME_DIV       => W::hard_time_div(),       1, 524288;
-                    SUBTREE_TM_BASE     => W::subtree_tm_base(),     0, 20480;
-                    SUBTREE_TM_SCALE    => W::subtree_tm_scale(),    0, 20480;
-                    SUBTREE_TM_MIN      => W::subtree_tm_min(),      0, 8192;
-                    STABILITY_TM_BASE   => W::stability_tm_base(),   0, 32768;
-                    STABILITY_TM_SCALE  => W::stability_tm_scale(),  0, 4096;
-                    STABILITY_TM_MIN    => W::stability_tm_min(),    0, 8192;
-                    COMPLEXITY_TM_BASE  => W::complexity_tm_base(),  0, 20480;
-                    COMPLEXITY_TM_SCALE => W::complexity_tm_scale(), 0, 20480;
-                    COMPLEXITY_TM_MAX   => W::complexity_tm_max(),   0, 20480;
+                    SOFT_TIME_DIV        => W::soft_time_div(),        1, 524288;
+                    HARD_TIME_DIV        => W::hard_time_div(),        1, 524288;
+                    SUBTREE_BASE         => W::subtree_base(),         0, 20480;
+                    SUBTREE_SCALE        => W::subtree_scale(),        0, 20480;
+                    SUBTREE_MIN          => W::subtree_min(),          0, 8192;
+                    MOVE_STABILITY_BASE  => W::move_stability_base(),  0, 32768;
+                    MOVE_STABILITY_SCALE => W::move_stability_scale(), 0, 4096;
+                    MOVE_STABILITY_MIN   => W::move_stability_min(),   0, 8192;
+                    EVAL_STABILITY_EDGE  => W::eval_stability_edge(),  0, 256;
+                    EVAL_STABILITY_BASE  => W::eval_stability_base(),  0, 32768;
+                    EVAL_STABILITY_SCALE => W::eval_stability_scale(), 0, 4096;
+                    EVAL_STABILITY_MIN   => W::eval_stability_min(),   0, 8192;
+                    COMPLEXITY_BASE      => W::complexity_base(),      0, 20480;
+                    COMPLEXITY_SCALE     => W::complexity_scale(),     0, 20480;
+                    COMPLEXITY_MAX       => W::complexity_max(),       0, 20480;
                 }
             }
             #[cfg(feature = "datagen")]
@@ -690,17 +698,21 @@ impl Engine {
                     "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i32;
                     "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i32;
 
-                    "SOFT_TIME_DIV"       => SOFT_TIME_DIV,       u64;
-                    "HARD_TIME_DIV"       => HARD_TIME_DIV,       u64;
-                    "SUBTREE_TM_BASE"     => SUBTREE_TM_BASE,     u64;
-                    "SUBTREE_TM_SCALE"    => SUBTREE_TM_SCALE,    u64;
-                    "SUBTREE_TM_MIN"      => SUBTREE_TM_MIN,      u64;
-                    "STABILITY_TM_BASE"   => STABILITY_TM_BASE,   u64;
-                    "STABILITY_TM_SCALE"  => STABILITY_TM_SCALE,  u64;
-                    "STABILITY_TM_MIN"    => STABILITY_TM_MIN,    u64;
-                    "COMPLEXITY_TM_BASE"  => COMPLEXITY_TM_BASE,  u64;
-                    "COMPLEXITY_TM_SCALE" => COMPLEXITY_TM_SCALE, u64;
-                    "COMPLEXITY_TM_MAX"   => COMPLEXITY_TM_MAX,   u64;
+                    "SOFT_TIME_DIV"        => SOFT_TIME_DIV,        u64;
+                    "HARD_TIME_DIV"        => HARD_TIME_DIV,        u64;
+                    "SUBTREE_BASE"         => SUBTREE_BASE,         u64;
+                    "SUBTREE_SCALE"        => SUBTREE_SCALE,        u64;
+                    "SUBTREE_MIN"          => SUBTREE_MIN,          u64;
+                    "MOVE_STABILITY_BASE"  => MOVE_STABILITY_BASE,  u64;
+                    "MOVE_STABILITY_SCALE" => MOVE_STABILITY_SCALE, u64;
+                    "MOVE_STABILITY_MIN"   => MOVE_STABILITY_MIN,   u64;
+                    "EVAL_STABILITY_EDGE"  => EVAL_STABILITY_EDGE,  i32;
+                    "EVAL_STABILITY_BASE"  => EVAL_STABILITY_BASE,  u64;
+                    "EVAL_STABILITY_SCALE" => EVAL_STABILITY_SCALE, u64;
+                    "EVAL_STABILITY_MIN"   => EVAL_STABILITY_MIN,   u64;
+                    "COMPLEXITY_BASE"      => COMPLEXITY_BASE,      u64;
+                    "COMPLEXITY_SCALE"     => COMPLEXITY_SCALE,     u64;
+                    "COMPLEXITY_MAX"       => COMPLEXITY_MAX,       u64;
                 }
 
                 #[cfg(feature = "tune")]
