@@ -155,7 +155,7 @@ weights! {
 
     singular_depth        | SINGULAR_DEPTH:        i32 => 6144,
     singular_tt_depth     | SINGULAR_TT_DEPTH:     i32 => 3072,
-    singular_beta_margin  | SINGULAR_BETA_MARGIN:  i32 => 196,
+    singular_beta_margin  | SINGULAR_BETA_MARGIN:  i32 => 96,
     singular_search_depth | SINGULAR_SEARCH_DEPTH: i32 => 512,
     singular_dext_margin  | SINGULAR_DEXT_MARGIN:  i32 => 30,
     singular_ext          | SINGULAR_EXT:          i32 => 1024,
