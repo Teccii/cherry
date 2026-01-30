@@ -159,7 +159,7 @@ impl TimeManager {
                 Color::Black => (b_time.saturating_sub(move_overhead), b_inc),
             };
 
-            let hard_time = (time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64;
+            let hard_time = ((time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64 + inc).min(time);
             let soft_time = (time / moves_to_go as u64 + inc).min(hard_time);
 
             self.base_target.store(soft_time, Ordering::Relaxed);
@@ -172,7 +172,7 @@ impl TimeManager {
                 Color::Black => (b_time.saturating_sub(move_overhead), b_inc),
             };
 
-            let hard_time = (time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64;
+            let hard_time = ((time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64 + inc).min(time);
             let soft_time =
                 ((time as f64 / (W::soft_time_div() as f64 / 4096.0)) as u64 + inc).min(hard_time);
 
