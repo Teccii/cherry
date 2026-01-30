@@ -219,17 +219,17 @@ impl TimeManager {
         let complexity = (static_eval - score).abs().0 as f64;
 
         let move_stability_factor = (W::move_stability_base()
-            - W::move_stability_scale() * move_stability as u64)
+            - W::move_stability_scale() * move_stability as i64)
             .max(W::move_stability_min());
         let eval_stability_factor = (W::eval_stability_base()
-            - W::eval_stability_scale() * eval_stability as u64)
+            - W::eval_stability_scale() * eval_stability as i64)
             .max(W::eval_stability_min());
         let subtree_factor = (W::subtree_base()
-            - (W::subtree_scale() as f64 * move_nodes as f64 / nodes as f64) as u64)
+            - (W::subtree_scale() as f64 * move_nodes as f64 / nodes as f64) as i64)
             .max(W::subtree_min());
         let complexity_factor = if !score.is_decisive() {
             (W::complexity_base()
-                + (W::complexity_scale() as f64 * complexity * (depth as f64).ln()) as u64)
+                + (W::complexity_scale() as f64 * complexity * (depth as f64).ln()) as i64)
                 .min(W::complexity_max())
         } else {
             4096

@@ -232,6 +232,10 @@ pub fn search<Node: NodeType>(
                 let v_score =
                     search::<NonPV>(pos, thread, shared, nmp_depth, ply, beta - 1, beta, true);
 
+                if thread.abort_now {
+                    return Score::ZERO;
+                }
+
                 if v_score >= beta {
                     return v_score;
                 }
