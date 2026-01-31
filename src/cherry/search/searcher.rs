@@ -320,6 +320,9 @@ pub fn search_worker<Info: SearchInfo>(
 
     let static_eval = pos.eval(&shared.nnue_weights);
     let mut average_score = Score::NONE;
+    let mut move_stability = 0u8;
+    let mut score_stability = 0u8;
+    let mut prev_move: Option<Move>;
     let mut best_move: Option<Move> = None;
     let mut ponder_move: Option<Move> = None;
     let mut score = -Score::INFINITE;
@@ -363,6 +366,7 @@ pub fn search_worker<Info: SearchInfo>(
 
                     if pv_index == 0 {
                         thread.root_pv = thread.search_stack[0].pv.clone();
+                        prev_move = best_move;
                         best_move = thread.root_pv.moves[0];
                         ponder_move = thread.root_pv.moves[1];
                         score = new_score;
@@ -371,6 +375,16 @@ pub fn search_worker<Info: SearchInfo>(
                             average_score = score;
                         } else {
                             average_score = (average_score + score) / 2;
+                        }
+
+                        move_stability = move_stability.saturating_add(1);
+                        if prev_move != best_move {
+                            move_stability = 0;
+                        }
+
+                        score_stability = score_stability.saturating_add(1);
+                        if (score - average_score).abs().0 >= W::score_stability_edge() {
+                            score_stability = 0;
                         }
                     }
 
@@ -427,9 +441,9 @@ pub fn search_worker<Info: SearchInfo>(
             shared.time_man.deepen(
                 depth,
                 score,
-                average_score,
                 static_eval,
-                best_move,
+                move_stability,
+                score_stability,
                 thread.root_nodes[best_move.src()][best_move.dest()],
                 thread.nodes.local(),
             );

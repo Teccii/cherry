@@ -417,7 +417,7 @@ pub fn search<Node: NodeType>(
         pos.unmake_move();
         moves_seen += 1;
 
-        if (Node::ROOT && moves_seen == 1) || (Node::PV && score > alpha) {
+        if Node::ROOT && moves_seen == 1 {
             let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
             let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
 
@@ -440,6 +440,13 @@ pub fn search<Node: NodeType>(
             alpha = score;
             best_move = Some(mv);
             flag = TTFlag::Exact;
+
+            if Node::PV {
+                let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
+                let (parent, child) = (parent.last_mut().unwrap(), child.first().unwrap());
+
+                parent.pv.update(mv, &child.pv);
+            }
         }
 
         if score >= beta {

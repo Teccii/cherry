@@ -76,7 +76,7 @@ static BISHOP_RAYS: [Bitboard; Square::COUNT] = {
 
         bb
     }
-    
+
     let mut table = [Bitboard::EMPTY; Square::COUNT];
     let mut i = 0;
     while i < Square::COUNT {
@@ -86,8 +86,6 @@ static BISHOP_RAYS: [Bitboard; Square::COUNT] = {
 
     table
 };
-
-
 
 static ROOK_RAYS: [Bitboard; Square::COUNT] = {
     const fn calc_rays(sq: Square) -> Bitboard {
@@ -102,7 +100,7 @@ static ROOK_RAYS: [Bitboard; Square::COUNT] = {
 
         bb
     }
-    
+
     let mut table = [Bitboard::EMPTY; Square::COUNT];
     let mut i = 0;
     while i < Square::COUNT {
@@ -112,8 +110,6 @@ static ROOK_RAYS: [Bitboard; Square::COUNT] = {
 
     table
 };
-
-
 
 static QUEEN_RAYS: [Bitboard; Square::COUNT] = {
     const fn calc_rays(sq: Square) -> Bitboard {
@@ -132,7 +128,7 @@ static QUEEN_RAYS: [Bitboard; Square::COUNT] = {
 
         bb
     }
-    
+
     let mut table = [Bitboard::EMPTY; Square::COUNT];
     let mut i = 0;
     while i < Square::COUNT {
