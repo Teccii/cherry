@@ -107,4 +107,4 @@ impl Zobrist {
 
 /*----------------------------------------------------------------*/
 
-pub const ZOBRIST: Zobrist = Zobrist::new(0x123456789ABCDEF);
+pub static ZOBRIST: Zobrist = Zobrist::new(0x123456789ABCDEF);

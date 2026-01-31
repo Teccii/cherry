@@ -20,7 +20,7 @@ struct PextMagics {
     table_size: usize,
 }
 
-const MAGICS: &PextMagics = {
+static MAGICS: &PextMagics = {
     let mut offset = 0;
     let mut rook_magics = [PextEntry::EMPTY; Square::COUNT];
     let mut i = 0;

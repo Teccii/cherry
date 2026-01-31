@@ -415,7 +415,7 @@ fn pawn_empty(stm: Color, empty: Bitboard, valid: Bitboard) -> (Bitboard, Bitboa
 }
 
 const PAWN_NORMAL_SHIFT: usize = 16;
-const PAWN_NORMAL: [[Move; 32]; Color::COUNT] = {
+static PAWN_NORMAL: [[Move; 32]; Color::COUNT] = {
     let mut table = [[Move::from_bits(1); 32]; Color::COUNT];
     let mut i = 0;
     while i < 32 {
@@ -430,7 +430,7 @@ const PAWN_NORMAL: [[Move; 32]; Color::COUNT] = {
 };
 
 const PAWN_DOUBLE_SHIFT: [usize; Color::COUNT] = [8, 48];
-const PAWN_DOUBLE: [[Move; 16]; Color::COUNT] = {
+static PAWN_DOUBLE: [[Move; 16]; Color::COUNT] = {
     let mut table = [[Move::from_bits(1); 16]; Color::COUNT];
     let mut i = 0;
     while i < 8 {
@@ -448,7 +448,7 @@ const PAWN_DOUBLE: [[Move; 16]; Color::COUNT] = {
 };
 
 const PAWN_PROMO_SHIFT: [usize; Color::COUNT] = [48, 8];
-const PAWN_PROMOS: [[Move; 32]; Color::COUNT] = {
+static PAWN_PROMOS: [[Move; 32]; Color::COUNT] = {
     let mut table = [[Move::from_bits(1); 32]; Color::COUNT];
     let mut i = 0;
     while i < 8 {

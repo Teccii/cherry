@@ -2,8 +2,7 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-const BETWEEN: [[Bitboard; Square::COUNT]; Square::COUNT] = {
-    #[inline]
+static BETWEEN: [[Bitboard; Square::COUNT]; Square::COUNT] = {
     const fn calc_between(src: Square, dest: Square) -> Bitboard {
         let dx = dest.file() as i8 - src.file() as i8;
         let dy = dest.rank() as i8 - src.rank() as i8;
@@ -41,8 +40,7 @@ const BETWEEN: [[Bitboard; Square::COUNT]; Square::COUNT] = {
     table
 };
 
-const LINE: [[Bitboard; Square::COUNT]; Square::COUNT] = {
-    #[inline]
+static LINE: [[Bitboard; Square::COUNT]; Square::COUNT] = {
     const fn calc_line(src: Square, dest: Square) -> Bitboard {
         let dx = dest.file() as i8 - src.file() as i8;
         let dy = dest.rank() as i8 - src.rank() as i8;
@@ -80,8 +78,7 @@ const LINE: [[Bitboard; Square::COUNT]; Square::COUNT] = {
     table
 };
 
-const RAY_PERMS: [[u8; Square::COUNT]; Square::COUNT] = {
-    #[inline]
+static RAY_PERMS: [[u8; Square::COUNT]; Square::COUNT] = {
     const fn calc_perm(sq: Square) -> [u8; Square::COUNT] {
         const SLIDER_DIRS: &[(i8, i8); 8] = &[
             (North::DX, North::DY),
@@ -142,8 +139,7 @@ const RAY_PERMS: [[u8; Square::COUNT]; Square::COUNT] = {
     table
 };
 
-const RAY_VALID: [u64; Square::COUNT] = {
-    #[inline]
+static RAY_VALID: [u64; Square::COUNT] = {
     const fn calc_valid(sq: Square) -> u64 {
         let ray_perm = RAY_PERMS[sq as usize];
         let mut valid = 0;
@@ -168,8 +164,7 @@ const RAY_VALID: [u64; Square::COUNT] = {
     table
 };
 
-const INV_PERMS: [[u8; Square::COUNT]; Square::COUNT] = {
-    #[inline]
+static INV_PERMS: [[u8; Square::COUNT]; Square::COUNT] = {
     const fn calc_inv_perm(sq: Square) -> [u8; Square::COUNT] {
         let ray_perm = RAY_PERMS[sq as usize];
         let mut inv_perm = [0x88; Square::COUNT];
@@ -196,8 +191,7 @@ const INV_PERMS: [[u8; Square::COUNT]; Square::COUNT] = {
     table
 };
 
-const INV_VALID: [u64; Square::COUNT] = {
-    #[inline]
+static INV_VALID: [u64; Square::COUNT] = {
     const fn calc_valid(sq: Square) -> u64 {
         let ray_perm = INV_PERMS[sq as usize];
         let mut valid = 0;
@@ -222,7 +216,7 @@ const INV_VALID: [u64; Square::COUNT] = {
     table
 };
 
-const ATTACK_MASKS: [[u64; Piece::COUNT]; Color::COUNT] = {
+static ATTACK_MASKS: [[u64; Piece::COUNT]; Color::COUNT] = {
     const KING: u8 = 1 << 0;
     const WHITE_PAWN: u8 = 1 << 1;
     const BLACK_PAWN: u8 = 1 << 2;

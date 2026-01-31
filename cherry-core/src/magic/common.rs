@@ -63,10 +63,8 @@ pub const fn rook_moves_slow(sq: Square, blockers: Bitboard) -> Bitboard {
 
 /*----------------------------------------------------------------*/
 
-#[inline]
-pub const fn bishop_rays(sq: Square) -> Bitboard {
-    #[inline]
-    const fn calc_moves(sq: Square) -> Bitboard {
+static BISHOP_RAYS: [Bitboard; Square::COUNT] = {
+    const fn calc_rays(sq: Square) -> Bitboard {
         let mut bb = Bitboard::EMPTY;
         let sq = sq.bitboard();
 
@@ -78,81 +76,84 @@ pub const fn bishop_rays(sq: Square) -> Bitboard {
 
         bb
     }
+    
+    let mut table = [Bitboard::EMPTY; Square::COUNT];
+    let mut i = 0;
+    while i < Square::COUNT {
+        table[i] = calc_rays(Square::index(i));
+        i += 1;
+    }
 
-    const TABLE: [Bitboard; Square::COUNT] = {
-        let mut table = [Bitboard::EMPTY; Square::COUNT];
-        let mut i = 0;
-        while i < Square::COUNT {
-            table[i] = calc_moves(Square::index(i));
-            i += 1;
-        }
+    table
+};
 
-        table
-    };
 
-    TABLE[sq as usize]
+
+static ROOK_RAYS: [Bitboard; Square::COUNT] = {
+    const fn calc_rays(sq: Square) -> Bitboard {
+        let mut bb = Bitboard::EMPTY;
+        let sq = sq.bitboard();
+
+        bb.0 |= sq.smear::<North>().0;
+        bb.0 |= sq.smear::<South>().0;
+        bb.0 |= sq.smear::<East>().0;
+        bb.0 |= sq.smear::<West>().0;
+        bb.0 &= !sq.0;
+
+        bb
+    }
+    
+    let mut table = [Bitboard::EMPTY; Square::COUNT];
+    let mut i = 0;
+    while i < Square::COUNT {
+        table[i] = calc_rays(Square::index(i));
+        i += 1;
+    }
+
+    table
+};
+
+
+
+static QUEEN_RAYS: [Bitboard; Square::COUNT] = {
+    const fn calc_rays(sq: Square) -> Bitboard {
+        let mut bb = Bitboard::EMPTY;
+        let sq = sq.bitboard();
+
+        bb.0 |= sq.smear::<North>().0;
+        bb.0 |= sq.smear::<NorthEast>().0;
+        bb.0 |= sq.smear::<NorthWest>().0;
+        bb.0 |= sq.smear::<South>().0;
+        bb.0 |= sq.smear::<SouthEast>().0;
+        bb.0 |= sq.smear::<SouthWest>().0;
+        bb.0 |= sq.smear::<East>().0;
+        bb.0 |= sq.smear::<West>().0;
+        bb.0 &= !sq.0;
+
+        bb
+    }
+    
+    let mut table = [Bitboard::EMPTY; Square::COUNT];
+    let mut i = 0;
+    while i < Square::COUNT {
+        table[i] = calc_rays(Square::index(i));
+        i += 1;
+    }
+
+    table
+};
+
+#[inline]
+pub const fn bishop_rays(sq: Square) -> Bitboard {
+    BISHOP_RAYS[sq as usize]
 }
 
 #[inline]
 pub const fn rook_rays(sq: Square) -> Bitboard {
-    #[inline]
-    const fn calc_moves(sq: Square) -> Bitboard {
-        let mut bb = Bitboard::EMPTY;
-        let sq = sq.bitboard();
-
-        bb.0 |= sq.smear::<North>().0;
-        bb.0 |= sq.smear::<South>().0;
-        bb.0 |= sq.smear::<East>().0;
-        bb.0 |= sq.smear::<West>().0;
-        bb.0 &= !sq.0;
-
-        bb
-    }
-
-    const TABLE: [Bitboard; Square::COUNT] = {
-        let mut table = [Bitboard::EMPTY; Square::COUNT];
-        let mut i = 0;
-        while i < Square::COUNT {
-            table[i] = calc_moves(Square::index(i));
-            i += 1;
-        }
-
-        table
-    };
-
-    TABLE[sq as usize]
+    ROOK_RAYS[sq as usize]
 }
 
 #[inline]
 pub const fn queen_rays(sq: Square) -> Bitboard {
-    #[inline]
-    const fn calc_moves(sq: Square) -> Bitboard {
-        let mut bb = Bitboard::EMPTY;
-        let sq = sq.bitboard();
-
-        bb.0 |= sq.smear::<North>().0;
-        bb.0 |= sq.smear::<NorthEast>().0;
-        bb.0 |= sq.smear::<NorthWest>().0;
-        bb.0 |= sq.smear::<South>().0;
-        bb.0 |= sq.smear::<SouthEast>().0;
-        bb.0 |= sq.smear::<SouthWest>().0;
-        bb.0 |= sq.smear::<East>().0;
-        bb.0 |= sq.smear::<West>().0;
-        bb.0 &= !sq.0;
-
-        bb
-    }
-
-    const TABLE: [Bitboard; Square::COUNT] = {
-        let mut table = [Bitboard::EMPTY; Square::COUNT];
-        let mut i = 0;
-        while i < Square::COUNT {
-            table[i] = calc_moves(Square::index(i));
-            i += 1;
-        }
-
-        table
-    };
-
-    TABLE[sq as usize]
+    QUEEN_RAYS[sq as usize]
 }

@@ -43,7 +43,7 @@ macro_rules! magics {
 /*----------------------------------------------------------------*/
 
 const BISHOP_BITS: usize = 9;
-const BISHOP_MAGICS: &[BlackMagic; Square::COUNT] = &magics!(
+static BISHOP_MAGICS: &[BlackMagic; Square::COUNT] = &magics!(
     bishop_relevant_blockers,
     [
         (0xA7020080601803D8, 60984),
@@ -116,7 +116,7 @@ const BISHOP_MAGICS: &[BlackMagic; Square::COUNT] = &magics!(
 /*----------------------------------------------------------------*/
 
 const ROOK_BITS: usize = 12;
-const ROOK_MAGICS: &[BlackMagic; Square::COUNT] = &magics!(
+static ROOK_MAGICS: &[BlackMagic; Square::COUNT] = &magics!(
     rook_relevant_blockers,
     [
         (0x80280013FF84FFFF, 10890),
