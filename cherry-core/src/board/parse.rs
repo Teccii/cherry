@@ -24,6 +24,8 @@ impl Board {
             index_to_piece: [IndexToPiece::default(); Color::COUNT],
             castle_rights: [CastleRights::default(); Color::COUNT],
             en_passant: None,
+            pinned_mask: Wordboard(u16x64::splat(0)),
+            pinned: Bitboard::EMPTY,
             fullmove_count: 1,
             halfmove_clock: 0,
             pawn_hash: 0,
@@ -127,7 +129,10 @@ impl Board {
             }
         }
 
+        board.calc_hashes();
         board.calc_attacks();
+        board.calc_pinned();
+
         if en_passant != "-" {
             let ep_sq = en_passant.parse::<Square>().ok()?;
             if ep_sq.rank() != Rank::Sixth.relative_to(board.stm) {
@@ -139,7 +144,6 @@ impl Board {
 
         board.halfmove_clock = halfmove_clock.parse::<u8>().ok()?.min(100);
         board.fullmove_count = fullmove_count.parse::<u16>().ok()?.max(1);
-        board.calc_hashes();
 
         Some(board)
     }

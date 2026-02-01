@@ -282,6 +282,111 @@ static ATTACK_MASKS: [[u64; Piece::COUNT]; Color::COUNT] = {
     table
 };
 
+static PAWN_ATTACKS: [[Bitboard; Square::COUNT]; Color::COUNT] = {
+    const fn calc_attacks(sq: Square, color: Color) -> Bitboard {
+        let bb = sq.bitboard();
+
+        match color {
+            Color::White => Bitboard(bb.shift::<NorthEast>(1).0 | bb.shift::<NorthWest>(1).0),
+            Color::Black => Bitboard(bb.shift::<SouthEast>(1).0 | bb.shift::<SouthWest>(1).0),
+        }
+    }
+
+    let mut table = [[Bitboard::EMPTY; Square::COUNT]; Color::COUNT];
+    let mut i = 0;
+    while i < Color::COUNT {
+        let color = Color::index(i);
+        let mut j = 0;
+        while j < Square::COUNT {
+            table[i][j] = calc_attacks(Square::index(j), color);
+            j += 1;
+        }
+
+        i += 1;
+    }
+
+    table
+};
+
+static KNIGHT_ATTACKS: [Bitboard; Square::COUNT] = {
+    const fn calc_attacks(sq: Square) -> Bitboard {
+        const DELTAS: [(i8, i8); 8] = [
+            (1, 2),
+            (2, 1),
+            (2, -1),
+            (1, -2),
+            (-1, -2),
+            (-2, -1),
+            (-2, 1),
+            (-1, 2),
+        ];
+
+        let mut bb = Bitboard::EMPTY;
+        let mut i = 0;
+
+        while i < DELTAS.len() {
+            let (dx, dy) = DELTAS[i];
+
+            if let Some(mv) = sq.try_offset(dx, dy) {
+                bb.0 |= mv.bitboard().0;
+            }
+
+            i += 1;
+        }
+
+        bb
+    }
+
+    let mut table = [Bitboard::EMPTY; Square::COUNT];
+    let mut i = 0;
+    while i < Square::COUNT {
+        table[i] = calc_attacks(Square::index(i));
+        i += 1;
+    }
+
+    table
+};
+
+static KING_ATTACKS: [Bitboard; Square::COUNT] = {
+    #[inline]
+    const fn calc_attacks(sq: Square) -> Bitboard {
+        const DELTAS: [(i8, i8); 8] = [
+            (0, 1),
+            (1, 1),
+            (1, 0),
+            (1, -1),
+            (0, -1),
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+        ];
+
+        let mut bb = Bitboard::EMPTY;
+        let mut i = 0;
+
+        while i < DELTAS.len() {
+            let (dx, dy) = DELTAS[i];
+
+            if let Some(mv) = sq.try_offset(dx, dy) {
+                bb.0 |= mv.bitboard().0;
+            }
+
+            i += 1;
+        }
+
+        bb
+    }
+
+    let mut table = [Bitboard::EMPTY; Square::COUNT];
+    let mut i = 0;
+    while i < Square::COUNT {
+        table[i] = calc_attacks(Square::index(i));
+        i += 1;
+    }
+
+    table
+};
+
 pub const NON_HORSE_ATTACK_MASK: u64 = 0xFEFEFEFEFEFEFEFE;
 
 /*----------------------------------------------------------------*/
@@ -295,6 +400,44 @@ pub const fn between(from: Square, to: Square) -> Bitboard {
 pub const fn line(from: Square, to: Square) -> Bitboard {
     LINE[from as usize][to as usize]
 }
+
+#[inline]
+pub const fn pawn_quiets(sq: Square, color: Color, blockers: Bitboard) -> Bitboard {
+    let sq_bb = sq.bitboard();
+    let mut moves = Bitboard(if let Color::White = color {
+        sq_bb.0 << File::COUNT
+    } else {
+        sq_bb.0 >> File::COUNT
+    });
+
+    moves.0 &= !blockers.0;
+    if !moves.is_empty() && Rank::Second.relative_to(color).bitboard().has(sq) {
+        moves.0 |= if let Color::White = color {
+            moves.0 << File::COUNT
+        } else {
+            moves.0 >> File::COUNT
+        };
+        moves.0 &= !blockers.0;
+    }
+    moves
+}
+
+#[inline]
+pub const fn pawn_attacks(sq: Square, color: Color) -> Bitboard {
+    PAWN_ATTACKS[color as usize][sq as usize]
+}
+
+#[inline]
+pub const fn knight_attacks(sq: Square) -> Bitboard {
+    KNIGHT_ATTACKS[sq as usize]
+}
+
+#[inline]
+pub const fn king_attacks(sq: Square) -> Bitboard {
+    KING_ATTACKS[sq as usize]
+}
+
+/*----------------------------------------------------------------*/
 
 #[inline]
 pub fn ray_perm(sq: Square) -> (u8x64, u64) {

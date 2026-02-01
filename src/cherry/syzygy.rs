@@ -20,11 +20,11 @@ impl EngineAdapter for SyzygyAdapter {
     }
 
     fn knight_attacks(sq: u64) -> u64 {
-        knight_moves(Square::index(sq as usize)).0
+        knight_attacks(Square::index(sq as usize)).0
     }
 
     fn king_attacks(sq: u64) -> u64 {
-        king_moves(Square::index(sq as usize)).0
+        king_attacks(Square::index(sq as usize)).0
     }
 
     fn bishop_attacks(sq: u64, blockers: u64) -> u64 {

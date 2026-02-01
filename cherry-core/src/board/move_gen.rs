@@ -137,14 +137,53 @@ impl DerefMut for MoveList {
 
 impl Board {
     #[inline]
+    pub fn gen_tactics(&self) -> MoveList {
+        let mut moves = MoveList::empty();
+        let checkers = self.checkers();
+
+        match checkers.popcnt() {
+            0 => self.gen_no_check::<true>(&mut moves),
+            1 => self.gen_check::<true>(&mut moves, checkers),
+            2 => self.gen_double_check::<true>(&mut moves, checkers),
+            _ => unreachable!(),
+        }
+
+        moves
+    }
+
+    #[inline]
+    pub fn gen_quiets(&self) -> MoveList {
+        let mut moves = MoveList::empty();
+        let checkers = self.checkers();
+
+        match checkers.popcnt() {
+            0 => self.gen_no_check::<false>(&mut moves),
+            1 => self.gen_check::<false>(&mut moves, checkers),
+            2 => self.gen_double_check::<false>(&mut moves, checkers),
+            _ => unreachable!(),
+        }
+
+        moves
+    }
+
+    #[inline]
     pub fn gen_moves(&self) -> MoveList {
         let mut moves = MoveList::empty();
         let checkers = self.checkers();
 
         match checkers.popcnt() {
-            0 => self.gen_no_check(&mut moves),
-            1 => self.gen_check(&mut moves, checkers),
-            2 => self.gen_double_check(&mut moves, checkers),
+            0 => {
+                self.gen_no_check::<true>(&mut moves);
+                self.gen_no_check::<false>(&mut moves);
+            }
+            1 => {
+                self.gen_check::<true>(&mut moves, checkers);
+                self.gen_check::<false>(&mut moves, checkers);
+            }
+            2 => {
+                self.gen_double_check::<true>(&mut moves, checkers);
+                self.gen_double_check::<false>(&mut moves, checkers);
+            }
             _ => unreachable!(),
         }
 
@@ -154,9 +193,12 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn gen_moves_to<const KING_MOVES: bool>(&self, moves: &mut MoveList, valid: Bitboard) {
-        let (attack_mask, pinned) = self.calc_pins();
-        let masked_attacks = Wordboard(self.attack_table(self.stm).0 & attack_mask);
+    fn gen_moves_to<const KING_MOVES: bool, const TACTICS: bool>(
+        &self,
+        moves: &mut MoveList,
+        valid: Bitboard,
+    ) {
+        let masked_attacks = Wordboard(self.attack_table(self.stm).0 & self.pinned_mask.0);
 
         let valid_pieces = self.index_to_piece[self.stm].valid();
         let pawn_mask = self.index_to_piece[self.stm].mask_eq(Piece::Pawn);
@@ -172,129 +214,138 @@ impl Board {
         let king_dest = valid & masked_attacks.for_mask(PieceMask::KING) & !their_attacks;
 
         let src = unsafe { u8x16::load(self.index_to_square[self.stm].0.as_ptr()) }.zero_ext();
-        moves.write_capt_promos(
-            self,
-            &masked_attacks,
-            pawn_mask,
-            pawn_dest & their_pieces & their_backrank,
-        );
-        moves.write(
-            &masked_attacks,
-            pawn_mask,
-            MoveFlag::Capture,
-            pawn_dest & their_pieces & !their_backrank,
-            src,
-        );
 
-        if let Some(ep_sq) = self.ep_square() {
-            let mask = masked_attacks.get(ep_sq) & pawn_mask;
-            let ep_info = self.en_passant.unwrap();
+        if TACTICS {
+            moves.write_capt_promos(
+                self,
+                &masked_attacks,
+                pawn_mask,
+                pawn_dest & their_pieces & their_backrank,
+            );
+            moves.write(
+                &masked_attacks,
+                pawn_mask,
+                MoveFlag::Capture,
+                pawn_dest & their_pieces & !their_backrank,
+                src,
+            );
 
-            for index in mask {
-                let src = self.index_to_square[self.stm][index].unwrap();
-                let left = src.file() < ep_sq.file();
+            if let Some(ep_sq) = self.ep_square() {
+                let mask = masked_attacks.get(ep_sq) & pawn_mask;
+                let ep_info = self.en_passant.unwrap();
 
-                if (left && ep_info.left()) || (!left && ep_info.right()) {
-                    moves.push(Move::new(src, ep_sq, MoveFlag::EnPassant));
+                for index in mask {
+                    let src = self.index_to_square[self.stm][index].unwrap();
+                    let left = src.file() < ep_sq.file();
+
+                    if (left && ep_info.left()) || (!left && ep_info.right()) {
+                        moves.push(Move::new(src, ep_sq, MoveFlag::EnPassant));
+                    }
                 }
+            }
+
+            moves.write(
+                &masked_attacks,
+                non_pawn_mask,
+                MoveFlag::Capture,
+                non_pawn_dest & their_pieces,
+                src,
+            );
+
+            if KING_MOVES {
+                moves.write(
+                    &masked_attacks,
+                    PieceMask::KING,
+                    MoveFlag::Capture,
+                    king_dest & their_pieces,
+                    src,
+                );
             }
         }
 
-        moves.write(
-            &masked_attacks,
-            non_pawn_mask,
-            MoveFlag::Capture,
-            non_pawn_dest & their_pieces,
-            src,
-        );
-
-        if KING_MOVES {
-            moves.write(
-                &masked_attacks,
-                PieceMask::KING,
-                MoveFlag::Capture,
-                king_dest & their_pieces,
-                src,
-            );
-        }
-
-        let pinned_pawn_mask = pinned & !self.king(self.stm).file().bitboard();
+        let pinned_pawn_mask = self.pinned & !self.king(self.stm).file().bitboard();
         let valid_pawns = self.color_pieces(self.stm, Piece::Pawn) & !pinned_pawn_mask;
         let (normal_empty, double_empty) = pawn_empty(self.stm, empty, valid);
 
         let pawn_normal = valid_pawns & normal_empty;
         let pawn_double = valid_pawns & double_empty;
 
-        let promo_mask = Mask64x8::from((pawn_normal >> PAWN_PROMO_SHIFT[self.stm]).0 as u8);
-        moves.write4x8(
-            unsafe { u64x8::load(PAWN_PROMOS[self.stm].as_ptr()) },
-            promo_mask,
-        );
+        if TACTICS {
+            let promo_mask = Mask64x8::from((pawn_normal >> PAWN_PROMO_SHIFT[self.stm]).0 as u8);
+            moves.write4x8(
+                unsafe { u64x8::load(PAWN_PROMOS[self.stm].as_ptr()) },
+                promo_mask,
+            );
+        } else {
+            let normal_mask = (pawn_normal >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
+            let double_mask = (pawn_double >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
+            let double_mask = Mask16x16::from(double_mask as u16 | ((normal_mask as u16) << 8));
+            moves.write16(
+                unsafe { u16x16::load(PAWN_DOUBLE[self.stm].as_ptr()) },
+                double_mask,
+            );
 
-        let normal_mask = (pawn_normal >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
-        let double_mask = (pawn_double >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
-        let double_mask = Mask16x16::from(double_mask as u16 | ((normal_mask as u16) << 8));
-        moves.write16(
-            unsafe { u16x16::load(PAWN_DOUBLE[self.stm].as_ptr()) },
-            double_mask,
-        );
+            let normal_mask = Mask16x32::from((pawn_normal >> PAWN_NORMAL_SHIFT).0 as u32);
+            moves.write32(
+                unsafe { u16x32::load(PAWN_NORMAL[self.stm].as_ptr()) },
+                normal_mask,
+            );
 
-        let normal_mask = Mask16x32::from((pawn_normal >> PAWN_NORMAL_SHIFT).0 as u32);
-        moves.write32(
-            unsafe { u16x32::load(PAWN_NORMAL[self.stm].as_ptr()) },
-            normal_mask,
-        );
-
-        moves.write(
-            &masked_attacks,
-            non_pawn_mask,
-            MoveFlag::Normal,
-            non_pawn_dest & empty,
-            src,
-        );
-
-        if KING_MOVES {
             moves.write(
                 &masked_attacks,
-                PieceMask::KING,
+                non_pawn_mask,
                 MoveFlag::Normal,
-                king_dest & empty,
+                non_pawn_dest & empty,
                 src,
             );
 
-            let blockers = self.occupied();
-            let our_backrank = Rank::First.relative_to(self.stm);
-            let rights = self.castle_rights(self.stm);
-            let king_src = self.king(self.stm);
+            if KING_MOVES {
+                moves.write(
+                    &masked_attacks,
+                    PieceMask::KING,
+                    MoveFlag::Normal,
+                    king_dest & empty,
+                    src,
+                );
 
-            macro_rules! write_castling_moves {
-                ($king_dest:expr, $rook_dest:expr, $rights:expr, $flag:expr) => {
-                    if let Some(rook_src) = $rights.map(|f| Square::new(f, our_backrank)) {
-                        let king_dest = Square::new($king_dest, our_backrank);
-                        let rook_dest = Square::new($rook_dest, our_backrank);
-                        let king_to_rook = between(king_src, rook_src);
-                        let king_to_dest = between(king_src, king_dest);
-                        let must_be_safe = king_to_dest | king_dest;
-                        let must_be_empty = must_be_safe | king_to_rook | rook_dest;
-                        let blockers = blockers ^ king_src ^ rook_src;
+                let blockers = self.occupied();
+                let our_backrank = Rank::First.relative_to(self.stm);
+                let rights = self.castle_rights(self.stm);
+                let king_src = self.king(self.stm);
 
-                        if !pinned.has(rook_src)
-                            && blockers.is_disjoint(must_be_empty)
-                            && their_attacks.is_disjoint(must_be_safe)
-                        {
-                            moves.push(Move::new(king_src, rook_src, $flag));
+                macro_rules! write_castling_moves {
+                    ($king_dest:expr, $rook_dest:expr, $rights:expr, $flag:expr) => {
+                        if let Some(rook_src) = $rights.map(|f| Square::new(f, our_backrank)) {
+                            let king_dest = Square::new($king_dest, our_backrank);
+                            let rook_dest = Square::new($rook_dest, our_backrank);
+                            let king_to_rook = between(king_src, rook_src);
+                            let king_to_dest = between(king_src, king_dest);
+                            let must_be_safe = king_to_dest | king_dest;
+                            let must_be_empty = must_be_safe | king_to_rook | rook_dest;
+                            let blockers = blockers ^ king_src ^ rook_src;
+
+                            if !self.pinned.has(rook_src)
+                                && blockers.is_disjoint(must_be_empty)
+                                && their_attacks.is_disjoint(must_be_safe)
+                            {
+                                moves.push(Move::new(king_src, rook_src, $flag));
+                            }
                         }
-                    }
-                };
-            }
+                    };
+                }
 
-            write_castling_moves!(File::G, File::F, rights.short, MoveFlag::ShortCastling);
-            write_castling_moves!(File::C, File::D, rights.long, MoveFlag::LongCastling);
+                write_castling_moves!(File::G, File::F, rights.short, MoveFlag::ShortCastling);
+                write_castling_moves!(File::C, File::D, rights.long, MoveFlag::LongCastling);
+            }
         }
     }
 
     #[inline]
-    fn gen_king_moves<const CHECKERS: usize>(&self, moves: &mut MoveList, checkers: PieceMask) {
+    fn gen_king_moves<const CHECKERS: usize, const TACTICS: bool>(
+        &self,
+        moves: &mut MoveList,
+        checkers: PieceMask,
+    ) {
         let (our_attacks, their_attacks) =
             (self.attack_table(self.stm), self.attack_table(!self.stm));
         let (our_pieces, their_pieces) = (self.colors(self.stm), self.colors(!self.stm));
@@ -310,24 +361,26 @@ impl Board {
             }
         }
 
-        for dest in valid {
-            let flag = if their_pieces.has(dest) {
-                MoveFlag::Capture
-            } else {
-                MoveFlag::Normal
-            };
+        let flag = if TACTICS {
+            valid &= their_pieces;
+            MoveFlag::Capture
+        } else {
+            valid &= !their_pieces;
+            MoveFlag::Normal
+        };
 
+        for dest in valid {
             moves.push(Move::new(our_king, dest, flag));
         }
     }
 
     #[inline]
-    fn gen_no_check(&self, moves: &mut MoveList) {
-        self.gen_moves_to::<true>(moves, Bitboard::FULL)
+    fn gen_no_check<const TACTICS: bool>(&self, moves: &mut MoveList) {
+        self.gen_moves_to::<true, TACTICS>(moves, Bitboard::FULL)
     }
 
     #[inline]
-    fn gen_check(&self, moves: &mut MoveList, checkers: PieceMask) {
+    fn gen_check<const TACTICS: bool>(&self, moves: &mut MoveList, checkers: PieceMask) {
         let king = self.king(self.stm);
         let checker = checkers.next().unwrap();
         let checker_piece = self.index_to_piece[!self.stm][checker].unwrap();
@@ -338,61 +391,13 @@ impl Board {
             between(king, checker_sq) | checker_sq
         };
 
-        self.gen_moves_to::<false>(moves, valid);
-        self.gen_king_moves::<1>(moves, checkers);
+        self.gen_moves_to::<false, TACTICS>(moves, valid);
+        self.gen_king_moves::<1, TACTICS>(moves, checkers);
     }
 
     #[inline]
-    fn gen_double_check(&self, moves: &mut MoveList, checkers: PieceMask) {
-        self.gen_king_moves::<2>(moves, checkers);
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn calc_pins(&self) -> (u16x64, Bitboard) {
-        let king = self.king(self.stm);
-        let (ray_perm, ray_valid) = ray_perm(king);
-        let (inv_perm, inv_valid) = inv_perm(king);
-        let ray_places = self.inner.permute(ray_perm).mask(Mask8x64::from(ray_valid));
-
-        let their_color = match self.stm {
-            Color::White => ray_places.msb(),
-            Color::Black => !ray_places.msb(),
-        };
-        let blockers = ray_places.nonzero().to_bitmask() & NON_HORSE_ATTACK_MASK;
-        let sliders = ray_sliders(ray_places);
-        let closest = extend_bitrays(blockers, ray_valid) & blockers;
-        let pinner_bitrays = extend_bitrays(blockers & !closest, ray_valid) & NON_HORSE_ATTACK_MASK;
-        let second_closest = pinner_bitrays & blockers & !closest;
-
-        let their_pieces = their_color & blockers;
-        let pinners = their_pieces & sliders & second_closest;
-        let pinned = !their_pieces
-            & u64x2::splat(closest)
-                .to_u8x16()
-                .mask(u64x2::splat(pinners.to_bitmask()).to_u8x16().nonzero())
-                .to_u64x2()
-                .extract::<0>();
-        let pinned_bitmask = pinned.to_bitmask();
-        let pinned_places = ray_places
-            .mask(pinned)
-            .extend_rays()
-            .mask(Mask8x64::from(pinner_bitrays))
-            .permute(inv_perm)
-            .mask(Mask8x64::from(inv_valid));
-
-        let index = unsafe { u8x16::load(self.index_to_square[self.stm].0.as_ptr()) };
-        let pinned_coords = ray_perm.compress(pinned).extract16::<0>();
-        let pinned_count = pinned_bitmask.count_ones() as usize;
-        let pinned_mask = index.findset(pinned_coords, pinned_count);
-
-        let pinned_indices = (pinned_places & u8x64::splat(Place::INDEX_MASK)).zero_ext();
-        let valid_indices = pinned_indices.nonzero();
-        let table_mask =
-            u16x64::splat(!pinned_mask) | u16x64::splat(1).shlv(pinned_indices).mask(valid_indices);
-
-        (table_mask, Bitboard(valid_indices.to_bitmask()))
+    fn gen_double_check<const TACTICS: bool>(&self, moves: &mut MoveList, checkers: PieceMask) {
+        self.gen_king_moves::<2, TACTICS>(moves, checkers);
     }
 }
 

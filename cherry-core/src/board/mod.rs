@@ -5,6 +5,7 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
+mod is_legal;
 mod move_gen;
 mod parse;
 mod perft;
@@ -85,6 +86,8 @@ pub struct Board {
     index_to_square: [IndexToSquare; Color::COUNT],
     castle_rights: [CastleRights; Color::COUNT],
     en_passant: Option<EnPassant>,
+    pinned_mask: Wordboard,
+    pinned: Bitboard,
     fullmove_count: u16,
     halfmove_clock: u8,
     pawn_hash: u64,
@@ -444,6 +447,7 @@ impl Board {
 
         self.toggle_stm();
         self.calc_ep(new_ep);
+        self.calc_pinned();
     }
 
     pub fn null_move(&mut self) -> bool {
@@ -458,6 +462,7 @@ impl Board {
 
         self.set_en_passant(None);
         self.toggle_stm();
+        self.calc_pinned();
 
         true
     }
@@ -575,6 +580,53 @@ impl Board {
         }
 
         self.attack_table = unsafe { core::mem::transmute(attacks) };
+    }
+
+    #[inline]
+    fn calc_pinned(&mut self) {
+        let king = self.king(self.stm);
+        let (ray_perm, ray_valid) = ray_perm(king);
+        let (inv_perm, inv_valid) = inv_perm(king);
+        let ray_places = self.inner.permute(ray_perm).mask(Mask8x64::from(ray_valid));
+
+        let their_color = match self.stm {
+            Color::White => ray_places.msb(),
+            Color::Black => !ray_places.msb(),
+        };
+        let blockers = ray_places.nonzero().to_bitmask() & NON_HORSE_ATTACK_MASK;
+        let sliders = ray_sliders(ray_places);
+        let closest = extend_bitrays(blockers, ray_valid) & blockers;
+        let pinner_bitrays = extend_bitrays(blockers & !closest, ray_valid) & NON_HORSE_ATTACK_MASK;
+        let second_closest = pinner_bitrays & blockers & !closest;
+
+        let their_pieces = their_color & blockers;
+        let pinners = their_pieces & sliders & second_closest;
+        let pinned = !their_pieces
+            & u64x2::splat(closest)
+                .to_u8x16()
+                .mask(u64x2::splat(pinners.to_bitmask()).to_u8x16().nonzero())
+                .to_u64x2()
+                .extract::<0>();
+        let pinned_bitmask = pinned.to_bitmask();
+        let pinned_places = ray_places
+            .mask(pinned)
+            .extend_rays()
+            .mask(Mask8x64::from(pinner_bitrays))
+            .permute(inv_perm)
+            .mask(Mask8x64::from(inv_valid));
+
+        let index = unsafe { u8x16::load(self.index_to_square[self.stm].0.as_ptr()) };
+        let pinned_coords = ray_perm.compress(pinned).extract16::<0>();
+        let pinned_count = pinned_bitmask.count_ones() as usize;
+        let pinned_mask = index.findset(pinned_coords, pinned_count);
+
+        let pinned_indices = (pinned_places & u8x64::splat(Place::INDEX_MASK)).zero_ext();
+        let valid_indices = pinned_indices.nonzero();
+        let table_mask =
+            u16x64::splat(!pinned_mask) | u16x64::splat(1).shlv(pinned_indices).mask(valid_indices);
+
+        self.pinned_mask = Wordboard(table_mask);
+        self.pinned = Bitboard(valid_indices.to_bitmask());
     }
 
     /*----------------------------------------------------------------*/

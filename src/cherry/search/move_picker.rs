@@ -18,8 +18,9 @@ pub struct ScoredMove(pub Move, pub i32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Stage {
     TTMove,
-    GenMoves,
+    GenTactics,
     YieldGoodTactics,
+    GenQuiets,
     YieldQuiets,
     YieldBadTactics,
     Finished,
@@ -30,7 +31,6 @@ pub struct MovePicker {
     skip_quiets: bool,
     skip_bad_tactics: bool,
     tt_move: Option<Move>,
-    move_list: MoveList,
     good_tactics: SmallVec<[ScoredMove; 64]>,
     bad_tactics: SmallVec<[ScoredMove; 32]>,
     quiets: SmallVec<[ScoredMove; 64]>,
@@ -44,7 +44,6 @@ impl MovePicker {
             skip_quiets: false,
             skip_bad_tactics: false,
             tt_move,
-            move_list: MoveList::empty(),
             good_tactics: SmallVec::new(),
             bad_tactics: SmallVec::new(),
             quiets: SmallVec::new(),
@@ -73,42 +72,31 @@ impl MovePicker {
         indices: &ContIndices,
     ) -> Option<ScoredMove> {
         if self.stage == Stage::TTMove {
-            self.stage = Stage::GenMoves;
+            self.stage = Stage::GenTactics;
 
-            if let Some(mv) = self.tt_move {
-                self.move_list = pos.board().gen_moves();
+            if let Some(mv) = self.tt_move
+                && pos.board().is_legal(mv)
+            {
+                let score = if mv.is_tactic() {
+                    history.tactic(pos.board(), mv)
+                } else {
+                    history.quiet(pos.board(), indices, mv)
+                };
 
-                if self.move_list.contains(&mv) {
-                    let score = if mv.is_tactic() {
-                        history.tactic(pos.board(), mv)
-                    } else {
-                        history.quiet(pos.board(), indices, mv)
-                    };
-
-                    return Some(ScoredMove(mv, score));
-                }
+                return Some(ScoredMove(mv, score));
             }
         }
 
-        if self.stage == Stage::GenMoves {
+        if self.stage == Stage::GenTactics {
             self.stage = Stage::YieldGoodTactics;
 
-            if self.move_list.is_empty() {
-                self.move_list = pos.board().gen_moves();
-            }
-
-            for &mv in self.move_list.iter() {
+            for &mv in pos.board().gen_tactics().iter() {
                 if self.tt_move == Some(mv) {
                     continue;
                 }
 
-                if mv.is_tactic() {
-                    self.good_tactics
-                        .push(ScoredMove(mv, history.tactic(pos.board(), mv)));
-                } else if !self.skip_quiets {
-                    self.quiets
-                        .push(ScoredMove(mv, history.quiet(pos.board(), indices, mv)));
-                }
+                self.good_tactics
+                    .push(ScoredMove(mv, history.tactic(pos.board(), mv)));
             }
         }
 
@@ -129,7 +117,30 @@ impl MovePicker {
                 }
             }
 
-            self.stage = Stage::YieldQuiets;
+            if !self.skip_quiets {
+                self.stage = Stage::GenQuiets;
+            } else {
+                self.stage = Stage::YieldBadTactics;
+            }
+        }
+
+        /*----------------------------------------------------------------*/
+
+        if self.stage == Stage::GenQuiets {
+            if self.skip_quiets {
+                self.stage = Stage::YieldBadTactics;
+            } else {
+                self.stage = Stage::YieldQuiets;
+
+                for &mv in pos.board().gen_quiets().iter() {
+                    if self.tt_move == Some(mv) {
+                        continue;
+                    }
+
+                    self.quiets
+                        .push(ScoredMove(mv, history.quiet(pos.board(), indices, mv)));
+                }
+            }
         }
 
         /*----------------------------------------------------------------*/
@@ -147,6 +158,7 @@ impl MovePicker {
         }
 
         /*----------------------------------------------------------------*/
+
         if self.stage == Stage::YieldBadTactics {
             if self.skip_bad_tactics {
                 self.stage = Stage::Finished;

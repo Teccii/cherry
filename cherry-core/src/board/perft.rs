@@ -3,6 +3,85 @@ mod tests {
     use crate::*;
 
     #[inline]
+    fn all_moves() -> Vec<Move> {
+        let mut moves = Vec::new();
+
+        for &src in &Square::ALL {
+            let superpiece_rays = queen_rays(src) | knight_attacks(src);
+
+            moves.extend(
+                superpiece_rays
+                    .into_iter()
+                    .map(|dest| Move::new(src, dest, MoveFlag::Normal)),
+            );
+            moves.extend(
+                superpiece_rays
+                    .into_iter()
+                    .map(|dest| Move::new(src, dest, MoveFlag::Capture)),
+            );
+        }
+
+        for &color in &Color::ALL {
+            moves.extend(File::ALL.iter().map(|&f| {
+                let src = Square::new(f, Rank::Second.relative_to(color));
+                let dest = Square::new(f, Rank::Fourth.relative_to(color));
+
+                Move::new(src, dest, MoveFlag::DoublePush)
+            }));
+
+            moves.extend(File::ALL.iter().flat_map(|&f| {
+                let src = Square::new(f, Rank::Fifth.relative_to(color));
+                let dest = pawn_attacks(src, color);
+
+                dest.into_iter()
+                    .map(move |dest| Move::new(src, dest, MoveFlag::EnPassant))
+            }));
+
+            moves.extend(File::ALL.iter().flat_map(|&f| {
+                let src = Square::new(f, Rank::Seventh.relative_to(color));
+                let dest = Square::new(f, Rank::Eighth.relative_to(color));
+
+                [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight]
+                    .map(|piece| Move::new(src, dest, MoveFlag::promotion(piece).unwrap()))
+            }));
+
+            moves.extend(File::ALL.iter().flat_map(|&f| {
+                let src = Square::new(f, Rank::Fifth.relative_to(color));
+                let dest = pawn_attacks(src, color);
+
+                dest.into_iter().flat_map(move |dest| {
+                    [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight].map(|piece| {
+                        Move::new(src, dest, MoveFlag::capture_promotion(piece).unwrap())
+                    })
+                })
+            }));
+
+            let back_rank = Rank::First.relative_to(color);
+            for &src_file in &[File::B, File::C, File::D, File::E, File::G] {
+                for &dest_file in &File::ALL {
+                    if src_file == dest_file {
+                        continue;
+                    }
+
+                    let (src, dest) = (
+                        Square::new(src_file, back_rank),
+                        Square::new(dest_file, back_rank),
+                    );
+                    let flag = if src_file < dest_file {
+                        MoveFlag::ShortCastling
+                    } else {
+                        MoveFlag::LongCastling
+                    };
+
+                    moves.push(Move::new(src, dest, flag));
+                }
+            }
+        }
+
+        moves
+    }
+
+    #[inline]
     fn perft(board: &Board, depth: u8) -> u64 {
         if depth == 0 {
             return 1;
@@ -14,6 +93,17 @@ mod tests {
         if depth == 1 {
             nodes += move_list.len() as u64;
         } else {
+            for pseudo_mv in all_moves() {
+                assert_eq!(
+                    board.is_legal(pseudo_mv),
+                    move_list.contains(&pseudo_mv),
+                    "{} | {} | {:?}",
+                    board.to_fen(true),
+                    pseudo_mv.display(&board, true),
+                    pseudo_mv.flag()
+                );
+            }
+
             for &mv in move_list.iter() {
                 let mut board = board.clone();
                 board.make_move(mv);

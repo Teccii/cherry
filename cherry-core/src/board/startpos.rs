@@ -123,6 +123,8 @@ impl Board {
             index_to_piece: [IndexToPiece::default(); Color::COUNT],
             castle_rights: [CastleRights::default(); Color::COUNT],
             en_passant: None,
+            pinned_mask: Wordboard(u16x64::splat(0)),
+            pinned: Bitboard::EMPTY,
             fullmove_count: 1,
             halfmove_clock: 0,
             pawn_hash: 0,
@@ -138,6 +140,7 @@ impl Board {
         write_scharnagl(&mut board, Color::Black, black_scharnagl);
         board.calc_hashes();
         board.calc_attacks();
+        board.calc_pinned();
         board
     }
 }
