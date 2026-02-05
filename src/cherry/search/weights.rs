@@ -145,6 +145,10 @@ weights! {
     fp_imp_base  | FP_IMP_BASE:  i32 => 93,
     fp_imp_scale | FP_IMP_SCALE: i32 => 79,
 
+    hist_depth | HIST_DEPTH: i32 => 6144,
+    hist_base  | HIST_BASE:  i32 => 0,
+    hist_scale | HIST_SCALE: i32 => -2000,
+
     see_quiet_depth | SEE_QUIET_DEPTH: i32 => 10240,
     see_quiet_base  | SEE_QUIET_BASE:  i32 => 0,
     see_quiet_scale | SEE_QUIET_SCALE: i32 => -89,
@@ -254,6 +258,11 @@ impl W {
         };
 
         base + scale * depth / DEPTH_SCALE
+    }
+
+    #[inline]
+    pub const fn hist_margin(depth: i32) -> i32 {
+        W::hist_base() + W::hist_scale() * depth / DEPTH_SCALE
     }
 
     #[inline]

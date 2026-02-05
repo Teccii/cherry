@@ -259,7 +259,7 @@ pub fn search<Node: NodeType>(
     };
     let lmr_lookup_depth = ((depth + lmr_depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8;
 
-    while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
+    while let Some(ScoredMove(mv, hist_score)) = move_picker.next(pos, &thread.history, &cont_indices) {
         if skip_move == Some(mv) {
             continue;
         }
@@ -299,6 +299,11 @@ pub fn search<Node: NodeType>(
                     && !in_check
                     && static_eval + fp_margin <= alpha
                 {
+                    move_picker.skip_quiets();
+                }
+
+                let hist_margin = W::hist_margin(depth);
+                if depth <= W::hist_depth() && hist_score < hist_margin {
                     move_picker.skip_quiets();
                 }
 

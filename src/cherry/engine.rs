@@ -307,6 +307,10 @@ impl Engine {
                     FP_IMP_BASE  => W::fp_imp_base(),  -256, 256;
                     FP_IMP_SCALE => W::fp_imp_scale(), -256, 256;
 
+                    HIST_DEPTH => W::hist_depth,       0, 16 * DEPTH_SCALE;
+                    HIST_BASE  => W::hist_base(), - 2048, 0;
+                    HIST_SCALE => W::hist_scale(), -4096, 0;
+
                     SEE_QUIET_DEPTH     => W::see_quiet_depth(),        0, 16 * DEPTH_SCALE;
                     SEE_QUIET_BASE      => W::see_quiet_base(),      -256, 256;
                     SEE_QUIET_SCALE     => W::see_quiet_scale(),     -256, 256;
@@ -480,6 +484,10 @@ impl Engine {
                     FP_SCALE     => W::fp_scale(),     -256, 256;
                     FP_IMP_BASE  => W::fp_imp_base(),  -256, 256;
                     FP_IMP_SCALE => W::fp_imp_scale(), -256, 256;
+
+                    HIST_DEPTH => W::hist_depth,       0, 16 * DEPTH_SCALE;
+                    HIST_BASE  => W::hist_base(), - 2048, 0;
+                    HIST_SCALE => W::hist_scale(), -4096, 0;
 
                     SEE_QUIET_DEPTH => W::see_quiet_depth(),    0, 16 * DEPTH_SCALE;
                     SEE_QUIET_BASE  => W::see_quiet_base(),  -256, 256;
@@ -660,6 +668,10 @@ impl Engine {
                     "FP_SCALE"     => FP_SCALE,     i32;
                     "FP_IMP_BASE"  => FP_IMP_BASE,  i32;
                     "FP_IMP_SCALE" => FP_IMP_SCALE, i32;
+
+                    "HIST_DEPTH" => HIST_DEPTH, i32;
+                    "HIST_BASE"  => HIST_BASE,  i32;
+                    "HIST_SCALE" => HIST_SCALE, i32;
 
                     "SEE_QUIET_DEPTH" => SEE_QUIET_DEPTH, i32;
                     "SEE_QUIET_BASE"  => SEE_QUIET_BASE,  i32;
