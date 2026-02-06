@@ -307,7 +307,7 @@ impl Engine {
                     FP_IMP_BASE  => W::fp_imp_base(),  -256, 256;
                     FP_IMP_SCALE => W::fp_imp_scale(), -256, 256;
 
-                    HIST_DEPTH => W::hist_depth,       0, 16 * DEPTH_SCALE;
+                    HIST_DEPTH => W::hist_depth(),       0, 16 * DEPTH_SCALE;
                     HIST_BASE  => W::hist_base(), - 2048, 0;
                     HIST_SCALE => W::hist_scale(), -4096, 0;
 
@@ -360,9 +360,6 @@ impl Engine {
                     SCORE_STABILITY_BASE  => W::score_stability_base(),  0, 32768;
                     SCORE_STABILITY_SCALE => W::score_stability_scale(), 0, 4096;
                     SCORE_STABILITY_MIN   => W::score_stability_min(),   0, 32768;
-                    COMPLEXITY_BASE       => W::complexity_base(),       0, 32768;
-                    COMPLEXITY_SCALE      => W::complexity_scale(),      0, 4096;
-                    COMPLEXITY_MAX        => W::complexity_max(),        0, 32768;
                 }
                 println!("uciok");
 
@@ -485,7 +482,7 @@ impl Engine {
                     FP_IMP_BASE  => W::fp_imp_base(),  -256, 256;
                     FP_IMP_SCALE => W::fp_imp_scale(), -256, 256;
 
-                    HIST_DEPTH => W::hist_depth,       0, 16 * DEPTH_SCALE;
+                    HIST_DEPTH => W::hist_depth(),       0, 16 * DEPTH_SCALE;
                     HIST_BASE  => W::hist_base(), - 2048, 0;
                     HIST_SCALE => W::hist_scale(), -4096, 0;
 
@@ -538,9 +535,6 @@ impl Engine {
                     SCORE_STABILITY_BASE  => W::score_stability_base(),  0, 32768;
                     SCORE_STABILITY_SCALE => W::score_stability_scale(), 0, 4096;
                     SCORE_STABILITY_MIN   => W::score_stability_min(),   0, 32768;
-                    COMPLEXITY_BASE       => W::complexity_base(),       0, 32768;
-                    COMPLEXITY_SCALE      => W::complexity_scale(),      0, 4096;
-                    COMPLEXITY_MAX        => W::complexity_max(),        0, 32768;
                 }
             }
             #[cfg(feature = "datagen")]
@@ -722,9 +716,6 @@ impl Engine {
                     "SCORE_STABILITY_BASE"  => SCORE_STABILITY_BASE,  i64;
                     "SCORE_STABILITY_SCALE" => SCORE_STABILITY_SCALE, i64;
                     "SCORE_STABILITY_MIN"   => SCORE_STABILITY_MIN,   i64;
-                    "COMPLEXITY_BASE"       => COMPLEXITY_BASE,       i64;
-                    "COMPLEXITY_SCALE"      => COMPLEXITY_SCALE,      i64;
-                    "COMPLEXITY_MAX"        => COMPLEXITY_MAX,        i64;
                 }
 
                 self.sender
