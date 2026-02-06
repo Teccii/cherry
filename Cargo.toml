@@ -19,7 +19,6 @@ pyrrhic-rs = "0.2.0"
 smallvec = "1.15.1"
 arrayvec = "0.7.6"
 colored = "3.0.0"
-rayon =  "1.10.0"
 [build-dependencies]
 cherry-core = { path = "cherry-core" }
 

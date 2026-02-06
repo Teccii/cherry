@@ -1,7 +1,4 @@
 use core::{arch::x86_64::*, ptr, sync::atomic::*};
-
-use rayon::prelude::*;
-
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -292,9 +289,17 @@ impl TTable {
     }
 
     #[inline]
-    pub fn clear(&self) {
-        self.clusters.par_iter().for_each(|c| c.clear());
+    pub fn clear(&self, threads: usize) {
         self.age.store(0, Ordering::Relaxed);
+
+        let chunks = self
+            .clusters
+            .chunks(self.clusters.len().div_ceil(threads).max(8 * 1024 * 1024));
+        std::thread::scope(|s| {
+            chunks.for_each(|chunk| {
+                s.spawn(|| chunk.iter().for_each(|c| c.clear()));
+            });
+        });
     }
 
     #[inline]

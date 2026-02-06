@@ -273,12 +273,12 @@ impl Searcher {
     #[inline]
     pub fn resize_ttable(&mut self, mb: u64) {
         self.shared_data.ttable = Arc::new(TTable::new(mb));
-        self.shared_data.ttable.clear();
+        self.shared_data.ttable.clear(self.threads as usize);
     }
 
     #[inline]
     pub fn new_game(&mut self) {
-        self.shared_data.ttable.clear();
+        self.shared_data.ttable.clear(self.threads as usize);
         self.thread_data.history = new_zeroed();
     }
 
