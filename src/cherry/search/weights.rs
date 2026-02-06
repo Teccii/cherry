@@ -202,6 +202,10 @@ weights! {
     score_trend_base      | SCORE_TREND_BASE:      i64 => 3277,
     score_trend_scale     | SCORE_TREND_SCALE:     i64 => 205,
     score_trend_max       | SCORE_TREND_MAX:       i64 => 5939,
+    complexity_base       | COMPLEXITY_BASE:       i64 => 3277,
+    complexity_scale      | COMPLEXITY_SCALE:      i64 => 819,
+    complexity_min        | COMPLEXITY_MIN:        i64 => 4096,
+    complexity_max        | COMPLEXITY_MAX:        i64 => 6144,
 }
 
 impl W {

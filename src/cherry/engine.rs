@@ -348,18 +348,22 @@ impl Engine {
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_DIV         => W::soft_time_div(),         1, 524288;
-                    HARD_TIME_DIV         => W::hard_time_div(),         1, 524288;
-                    SUBTREE_BASE          => W::subtree_base(),          0, 32768;
-                    SUBTREE_SCALE         => W::subtree_scale(),         0, 32768;
-                    SUBTREE_MIN           => W::subtree_min(),           0, 32768;
-                    MOVE_STABILITY_BASE   => W::move_stability_base(),   0, 32768;
-                    MOVE_STABILITY_SCALE  => W::move_stability_scale(),  0, 4096;
-                    MOVE_STABILITY_MIN    => W::move_stability_min(),    0, 32768;
-                    SCORE_STABILITY_EDGE  => W::score_stability_edge(),  0, 256;
-                    SCORE_STABILITY_BASE  => W::score_stability_base(),  0, 32768;
-                    SCORE_STABILITY_SCALE => W::score_stability_scale(), 0, 4096;
-                    SCORE_STABILITY_MIN   => W::score_stability_min(),   0, 32768;
+                    SOFT_TIME_DIV         => W::soft_time_div(),            1, 524288;
+                    HARD_TIME_DIV         => W::hard_time_div(),            1, 524288;
+                    SUBTREE_BASE          => W::subtree_base(),             0, 32768;
+                    SUBTREE_SCALE         => W::subtree_scale(),            0, 32768;
+                    SUBTREE_MIN           => W::subtree_min(),              0, 32768;
+                    MOVE_STABILITY_BASE   => W::move_stability_base(),      0, 32768;
+                    MOVE_STABILITY_SCALE  => W::move_stability_scale(),     0, 4096;
+                    MOVE_STABILITY_MIN    => W::move_stability_min(),       0, 32768;
+                    SCORE_STABILITY_EDGE  => W::score_stability_edge(),     0, 256;
+                    SCORE_STABILITY_BASE  => W::score_stability_base(),     0, 32768;
+                    SCORE_STABILITY_SCALE => W::score_stability_scale(),    0, 4096;
+                    SCORE_STABILITY_MIN   => W::score_stability_min(),      0, 32768;
+                    COMPLEXITY_BASE       => W::complexity_base(),          0, 32768;
+                    COMPLEXITY_SCALE      => W::complexity_scale(),         0, 4096;
+                    COMPLEXITY_MIN        => W::complexity_min(),           0, 4096;
+                    COMPLEXITY_MAX        => W::complexity_max(),        4096, 32768;
                 }
                 println!("uciok");
 
@@ -523,18 +527,22 @@ impl Engine {
                     ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
                     ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
 
-                    SOFT_TIME_DIV         => W::soft_time_div(),         1, 524288;
-                    HARD_TIME_DIV         => W::hard_time_div(),         1, 524288;
-                    SUBTREE_BASE          => W::subtree_base(),          0, 32768;
-                    SUBTREE_SCALE         => W::subtree_scale(),         0, 32768;
-                    SUBTREE_MIN           => W::subtree_min(),           0, 32768;
-                    MOVE_STABILITY_BASE   => W::move_stability_base(),   0, 32768;
-                    MOVE_STABILITY_SCALE  => W::move_stability_scale(),  0, 4096;
-                    MOVE_STABILITY_MIN    => W::move_stability_min(),    0, 32768;
-                    SCORE_STABILITY_EDGE  => W::score_stability_edge(),  0, 256;
-                    SCORE_STABILITY_BASE  => W::score_stability_base(),  0, 32768;
-                    SCORE_STABILITY_SCALE => W::score_stability_scale(), 0, 4096;
-                    SCORE_STABILITY_MIN   => W::score_stability_min(),   0, 32768;
+                    SOFT_TIME_DIV         => W::soft_time_div(),            1, 524288;
+                    HARD_TIME_DIV         => W::hard_time_div(),            1, 524288;
+                    SUBTREE_BASE          => W::subtree_base(),             0, 32768;
+                    SUBTREE_SCALE         => W::subtree_scale(),            0, 32768;
+                    SUBTREE_MIN           => W::subtree_min(),              0, 32768;
+                    MOVE_STABILITY_BASE   => W::move_stability_base(),      0, 32768;
+                    MOVE_STABILITY_SCALE  => W::move_stability_scale(),     0, 4096;
+                    MOVE_STABILITY_MIN    => W::move_stability_min(),       0, 32768;
+                    SCORE_STABILITY_EDGE  => W::score_stability_edge(),     0, 256;
+                    SCORE_STABILITY_BASE  => W::score_stability_base(),     0, 32768;
+                    SCORE_STABILITY_SCALE => W::score_stability_scale(),    0, 4096;
+                    SCORE_STABILITY_MIN   => W::score_stability_min(),      0, 32768;
+                    COMPLEXITY_BASE       => W::complexity_base(),          0, 32768;
+                    COMPLEXITY_SCALE      => W::complexity_scale(),         0, 4096;
+                    COMPLEXITY_MIN        => W::complexity_min(),           0, 4096;
+                    COMPLEXITY_MAX        => W::complexity_max(),        4096, 32768;
                 }
             }
             #[cfg(feature = "datagen")]
@@ -716,6 +724,10 @@ impl Engine {
                     "SCORE_STABILITY_BASE"  => SCORE_STABILITY_BASE,  i64;
                     "SCORE_STABILITY_SCALE" => SCORE_STABILITY_SCALE, i64;
                     "SCORE_STABILITY_MIN"   => SCORE_STABILITY_MIN,   i64;
+                    "COMPLEXITY_BASE"       => COMPLEXITY_BASE,       i64;
+                    "COMPLEXITY_SCALE"      => COMPLEXITY_SCALE,      i64;
+                    "COMPLEXITY_MIN"        => COMPLEXITY_MIN,        i64;
+                    "COMPLEXITY_MAX"        => COMPLEXITY_MAX,        i64;
                 }
 
                 self.sender

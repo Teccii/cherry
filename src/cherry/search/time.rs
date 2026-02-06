@@ -176,8 +176,8 @@ impl TimeManager {
     pub fn deepen(
         &self,
         depth: u8,
-        _score: Score,
-        _static_eval: Score,
+        score: Score,
+        static_eval: Score,
         move_stability: u8,
         score_stability: u8,
         move_nodes: u64,
@@ -187,6 +187,7 @@ impl TimeManager {
             return;
         }
 
+        let complexity = (static_eval - score).abs().0 as f64;
         let move_stability_factor = (W::move_stability_base()
             - W::move_stability_scale() * move_stability as i64)
             .max(W::move_stability_min());
@@ -196,14 +197,22 @@ impl TimeManager {
         let subtree_factor = (W::subtree_base()
             - (W::subtree_scale() as f64 * move_nodes as f64 / nodes as f64) as i64)
             .max(W::subtree_min());
+        let complexity_factor = if !score.is_decisive() {
+            (W::complexity_base() + (W::complexity_scale() as f64 * 0.01f64 * complexity * (depth as f64).ln()) as i64)
+                .min(W::complexity_max())
+                .max(W::complexity_min())
+        } else {
+            4096
+        };
 
         let base_time = self.base_target.load(Ordering::Relaxed);
         let hard_time = self.hard_target.load(Ordering::Relaxed);
         let new_target = ((base_time as u128
             * move_stability_factor as u128
             * score_stability_factor as u128
-            * subtree_factor as u128)
-            / 4096u128.pow(3)) as u64;
+            * subtree_factor as u128
+            * complexity_factor as u128)
+            / 4096u128.pow(4)) as u64;
 
         self.soft_target
             .store(new_target.min(hard_time), Ordering::Relaxed);
