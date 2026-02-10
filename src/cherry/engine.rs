@@ -1,9 +1,6 @@
 use std::{
-    fmt::Write,
-    fs,
-    io::Write as _,
-    sync::{Arc, Mutex, atomic::Ordering, mpsc::*},
-    time::Instant,
+    sync::atomic::*,
+    time::{Duration, Instant},
 };
 
 use crate::*;
@@ -12,7 +9,7 @@ use crate::*;
 
 pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const BENCH_POSITIONS: &[&str] = &[
+const BENCH_FENS: &[&str] = &[
     "r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
     "4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",
     "r3qbrk/6p1/2b2pPp/p3pP1Q/PpPpP2P/3P1B2/2PB3K/R5R1 w - - 16 42",
@@ -65,6 +62,8 @@ const BENCH_POSITIONS: &[&str] = &[
     "2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93",
 ];
 
+/*----------------------------------------------------------------*/
+
 fn perft<const BULK: bool>(board: &Board, depth: u8) -> u64 {
     if depth == 0 {
         return 1;
@@ -89,767 +88,401 @@ fn perft<const BULK: bool>(board: &Board, depth: u8) -> u64 {
 
 /*----------------------------------------------------------------*/
 
-pub enum ThreadCommand {
-    Go(Arc<Mutex<Searcher>>, Vec<SearchLimit>),
-    SetOption(Arc<Mutex<Searcher>>, String, String),
-    Position(Arc<Mutex<Searcher>>, Board, Vec<Move>),
-    NewGame(Arc<Mutex<Searcher>>),
-    Quit,
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Abort {
+    Yes,
+    No,
 }
 
-pub struct Engine {
-    searcher: Arc<Mutex<Searcher>>,
-    time_man: Arc<TimeManager>,
-    sender: Sender<ThreadCommand>,
-    frc: bool,
+#[derive(Copy, Clone)]
+pub struct EngineOptions {
+    pub multipv: u8,
+    pub eval_scaling: bool,
+    pub move_overhead: u64,
+    pub soft_target: bool,
+    pub ponder: bool,
+    pub frc: bool,
 }
 
-impl Engine {
-    pub fn new() -> Engine {
-        let time_man = Arc::new(TimeManager::new());
-        let searcher = Arc::new(Mutex::new(Searcher::new(
-            Board::startpos(),
-            Arc::clone(&time_man),
-        )));
-
-        let (tx, rx): (Sender<ThreadCommand>, Receiver<ThreadCommand>) = channel();
-        std::thread::spawn(move || {
-            loop {
-                if let Ok(cmd) = rx.recv() {
-                    match cmd {
-                        ThreadCommand::Go(searcher, limits) => {
-                            let mut searcher = searcher.lock().unwrap();
-                            let mut output = String::new();
-
-                            let (mv, ponder, _, _, _) = searcher.search::<UciInfo>(limits);
-                            write!(
-                                output,
-                                "bestmove {}",
-                                mv.display(&searcher.pos.board(), searcher.frc)
-                            )
-                            .unwrap();
-
-                            if let Some(ponder) = ponder {
-                                write!(output, " ponder {}", ponder).unwrap();
-                            }
-
-                            println!("{}", output);
-                            io::stdout().flush().unwrap();
-                        }
-                        ThreadCommand::Position(searcher, board, moves) => {
-                            let mut searcher = searcher.lock().unwrap();
-                            let searcher = &mut *searcher;
-
-                            searcher.set_board(board);
-                            for mv in moves {
-                                searcher.make_move(mv);
-                                searcher.reset_nnue();
-                            }
-                        }
-                        ThreadCommand::SetOption(searcher, name, value) => {
-                            let mut searcher = searcher.lock().unwrap();
-
-                            match name.as_str() {
-                                "Threads" => searcher.threads = value.parse::<u16>().unwrap(),
-                                "EvalFile" =>
-                                    if value == "<default>" {
-                                        searcher.shared_data.nnue_weights =
-                                            NetworkWeights::default();
-                                    } else {
-                                        searcher.shared_data.nnue_weights =
-                                            NetworkWeights::new(&fs::read(value).unwrap());
-                                    },
-                                "Hash" => searcher
-                                    .resize_ttable(value.parse::<u64>().unwrap().min(MAX_TT_SIZE)),
-                                "MultiPV" => searcher
-                                    .shared_data
-                                    .multipv
-                                    .store(value.parse::<usize>().unwrap(), Ordering::Relaxed),
-                                "SyzygyProbeDepth" => searcher
-                                    .shared_data
-                                    .syzygy_depth
-                                    .store(value.parse::<u8>().unwrap(), Ordering::Relaxed),
-                                "Ponder" => searcher.ponder = value.parse::<bool>().unwrap(),
-                                "UCI_Chess960" => searcher.frc = value.parse::<bool>().unwrap(),
-                                _ => {}
-                            }
-                        }
-                        ThreadCommand::NewGame(searcher) => searcher.lock().unwrap().new_game(),
-                        ThreadCommand::Quit => return,
-                    }
-                }
-            }
-        });
-
-        Engine {
-            searcher,
-            time_man,
-            sender: tx,
+impl Default for EngineOptions {
+    #[inline]
+    fn default() -> Self {
+        EngineOptions {
+            multipv: 1,
+            eval_scaling: true,
+            move_overhead: DEFAULT_OVERHEAD,
+            soft_target: false,
+            ponder: false,
             frc: false,
         }
     }
+}
 
-    pub fn input(&mut self, input: &str, bytes: usize) -> bool {
-        let cmd = if bytes == 0 {
-            UciCommand::Quit
-        } else {
-            match UciCommand::parse(input, self.frc) {
-                Ok(cmd) => cmd,
-                Err(e) => {
-                    println!("{:?}", e);
-                    return true;
-                }
+pub struct Engine {
+    pos: Position,
+    searcher: Searcher,
+    options: EngineOptions,
+}
+
+impl Engine {
+    #[inline]
+    pub fn new() -> Engine {
+        Engine {
+            pos: Position::new(Board::startpos(), NetworkWeights::default()),
+            searcher: Searcher::default(),
+            options: EngineOptions::default(),
+        }
+    }
+
+    #[inline]
+    pub fn handle(&mut self, input: &str) -> Abort {
+        let cmd = match UciCommand::parse(input, self.pos.board(), self.options.frc) {
+            Ok(cmd) => cmd,
+            Err(e) => {
+                println!("info string {e}");
+                return Abort::No;
             }
         };
 
         match cmd {
-            UciCommand::Uci => {
-                macro_rules! list_tunables {
-                    ($($name:ident => $default:expr, $min:expr, $max:expr;)*) => {
-                        #[cfg(feature = "tune")] {$(
-                            println!("option name {} type spin default {} min {} max {}", stringify!($name), $default, $min, $max);
-                        )*}
-                    }
-                }
-
-                println!("id name Cherry v{}", ENGINE_VERSION);
-                println!("id author Tecci");
-                println!("option name Threads type spin default 1 min 1 max 65535");
-                println!(
-                    "option name Hash type spin default 16 min 1 max {}",
-                    MAX_TT_SIZE
-                );
-                println!("option name EvalFile type string default <default>");
-                println!("option name MultiPV type spin default 1 min 1 max 218");
-                println!("option name SyzygyPath type string default <empty>");
-                println!("option name SyzygyProbeDepth type spin default 1 min 0 max 128");
-                println!("option name MoveOverhead type spin default 100 min 0 max 5000");
-                println!("option name UseSoftNodes type check default false");
-                println!("option name Ponder type check default false");
-                println!("option name UCI_Chess960 type check default false");
-                list_tunables! {
-                    PAWN_CORR_FRAC   => W::pawn_corr_frac(),   0, MAX_CORR;
-                    MINOR_CORR_FRAC  => W::minor_corr_frac(),  0, MAX_CORR;
-                    MAJOR_CORR_FRAC  => W::major_corr_frac(),  0, MAX_CORR;
-                    STM_CORR_FRAC    => W::stm_corr_frac(),    0, MAX_CORR;
-                    NTM_CORR_FRAC    => W::ntm_corr_frac(),    0, MAX_CORR;
-                    CORR_BONUS_SCALE => W::corr_bonus_scale(), 0, 1024;
-
-                    QUIET_BONUS_BASE  => W::quiet_bonus_base(),  -512, 512;
-                    QUIET_BONUS_SCALE => W::quiet_bonus_scale(), -512, 512;
-                    QUIET_BONUS_MAX   => W::quiet_bonus_max(),      1, 8192;
-                    QUIET_MALUS_BASE  => W::quiet_malus_base(),  -512, 512;
-                    QUIET_MALUS_SCALE => W::quiet_malus_scale(), -512, 512;
-                    QUIET_MALUS_MAX   => W::quiet_malus_max(),      1, 8192;
-
-                    TACTIC_BONUS_BASE  => W::tactic_bonus_base(),  -512, 512;
-                    TACTIC_BONUS_SCALE => W::tactic_bonus_scale(), -512, 512;
-                    TACTIC_BONUS_MAX   => W::tactic_bonus_max(),      1, 8192;
-                    TACTIC_MALUS_BASE  => W::tactic_malus_base(),  -512, 512;
-                    TACTIC_MALUS_SCALE => W::tactic_malus_scale(), -512, 512;
-                    TACTIC_MALUS_MAX   => W::tactic_malus_max(),      1, 8192;
-
-                    PAWN_BONUS_BASE  => W::pawn_bonus_base(),  -512, 512;
-                    PAWN_BONUS_SCALE => W::pawn_bonus_scale(), -512, 512;
-                    PAWN_BONUS_MAX   => W::pawn_bonus_max(),      1, 8192;
-                    PAWN_MALUS_BASE  => W::pawn_malus_base(),  -512, 512;
-                    PAWN_MALUS_SCALE => W::pawn_malus_scale(), -512, 512;
-                    PAWN_MALUS_MAX   => W::pawn_malus_max(),      1, 8192;
-
-                    CONT1_BONUS_BASE  => W::cont1_bonus_base(),  -512, 512;
-                    CONT1_BONUS_SCALE => W::cont1_bonus_scale(), -512, 512;
-                    CONT1_BONUS_MAX   => W::cont1_bonus_max(),      1, 8192;
-                    CONT1_MALUS_BASE  => W::cont1_malus_base(),  -512, 512;
-                    CONT1_MALUS_SCALE => W::cont1_malus_scale(), -512, 512;
-                    CONT1_MALUS_MAX   => W::cont1_malus_max(),      1, 8192;
-
-                    CONT2_BONUS_BASE  => W::cont2_bonus_base(),  -512, 512;
-                    CONT2_BONUS_SCALE => W::cont2_bonus_scale(), -512, 512;
-                    CONT2_BONUS_MAX   => W::cont2_bonus_max(),      1, 8192;
-                    CONT2_MALUS_BASE  => W::cont2_malus_base(),  -512, 512;
-                    CONT2_MALUS_SCALE => W::cont2_malus_scale(), -512, 512;
-                    CONT2_MALUS_MAX   => W::cont2_malus_max(),      1, 8192;
-
-                    PAWN_SEE_VALUE   => W::pawn_see_value(),   1, 4096;
-                    KNIGHT_SEE_VALUE => W::knight_see_value(), 1, 4096;
-                    BISHOP_SEE_VALUE => W::bishop_see_value(), 1, 4096;
-                    ROOK_SEE_VALUE   => W::rook_see_value(),   1, 4096;
-                    QUEEN_SEE_VALUE  => W::queen_see_value(),  1, 4096;
-
-                    PAWN_MAT_SCALE   => W::pawn_mat_scale(),   1, 4096;
-                    KNIGHT_MAT_SCALE => W::knight_mat_scale(), 1, 4096;
-                    BISHOP_MAT_SCALE => W::bishop_mat_scale(), 1, 4096;
-                    ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
-                    QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
-                    MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
-                    EVAL_SCALE       => W::eval_scale(),       1, 1024;
-
-                    RFP_DEPTH     => W::rfp_depth(),        0, 16 * DEPTH_SCALE;
-                    RFP_BASE      => W::rfp_base(),      -256, 256;
-                    RFP_SCALE     => W::rfp_scale(),     -256, 256;
-                    RFP_IMP_BASE  => W::rfp_imp_base(),  -256, 256;
-                    RFP_IMP_SCALE => W::rfp_imp_scale(), -256, 256;
-                    RFP_LERP      => W::rfp_lerp(),         0, 1024;
-
-                    NMP_DEPTH       => W::nmp_depth(),       0, 16 * DEPTH_SCALE;
-                    NMP_BASE        => W::nmp_base(),        0, 16 * DEPTH_SCALE;
-                    NMP_SCALE       => W::nmp_scale(),       0, DEPTH_SCALE;
-                    NMP_VERIF_DEPTH => W::nmp_verif_depth(), 0, 32 * DEPTH_SCALE;
-
-                    LMP_BASE      => W::lmp_base(),      0, 8192;
-                    LMP_SCALE     => W::lmp_scale(),     0, 2048;
-                    LMP_IMP_BASE  => W::lmp_imp_base(),  0, 8192;
-                    LMP_IMP_SCALE => W::lmp_imp_scale(), 0, 2048;
-
-                    FP_DEPTH     => W::fp_depth(),        0, 16 * DEPTH_SCALE;
-                    FP_BASE      => W::fp_base(),      -256, 256;
-                    FP_SCALE     => W::fp_scale(),     -256, 256;
-                    FP_IMP_BASE  => W::fp_imp_base(),  -256, 256;
-                    FP_IMP_SCALE => W::fp_imp_scale(), -256, 256;
-
-                    HIST_DEPTH => W::hist_depth(),       0, 16 * DEPTH_SCALE;
-                    HIST_BASE  => W::hist_base(), - 2048, 0;
-                    HIST_SCALE => W::hist_scale(), -4096, 0;
-
-                    SEE_QUIET_DEPTH     => W::see_quiet_depth(),        0, 16 * DEPTH_SCALE;
-                    SEE_QUIET_BASE      => W::see_quiet_base(),      -256, 256;
-                    SEE_QUIET_SCALE     => W::see_quiet_scale(),     -256, 256;
-
-                    SEE_TACTIC_DEPTH     => W::see_tactic_depth(),        0, 16 * DEPTH_SCALE;
-                    SEE_TACTIC_BASE      => W::see_tactic_base(),      -256, 256;
-                    SEE_TACTIC_SCALE     => W::see_tactic_scale(),     -256, 256;
-
-                    SINGULAR_DEPTH        => W::singular_depth(),        0, 16 * DEPTH_SCALE;
-                    SINGULAR_TT_DEPTH     => W::singular_tt_depth(),     0, 16 * DEPTH_SCALE;
-                    SINGULAR_BETA_MARGIN  => W::singular_beta_margin(),  0, 256;
-                    SINGULAR_SEARCH_DEPTH => W::singular_search_depth(), 0, 1024;
-                    SINGULAR_DEXT_MARGIN  => W::singular_dext_margin(),  0, 64;
-                    SINGULAR_EXT          => W::singular_ext(),          0, 4 * DEPTH_SCALE;
-                    SINGULAR_DEXT         => W::singular_dext(),         0, 4 * DEPTH_SCALE;
-                    SINGULAR_TT_EXT       => W::singular_tt_ext(),   -4 * DEPTH_SCALE, 0;
-                    SINGULAR_CUT_EXT      => W::singular_cut_ext(),  -4 * DEPTH_SCALE, 0;
-
-                    TT_DEPTH_BIAS     => W::tt_depth_bias(),     -4 * DEPTH_SCALE, 4 * DEPTH_SCALE;
-                    TT_DEPTH_PV_BIAS  => W::tt_depth_pv_bias(),  -4 * DEPTH_SCALE, 4 * DEPTH_SCALE;
-                    LMR_DEPTH_BIAS    => W::lmr_depth_bias(),    -4 * DEPTH_SCALE, 4 * DEPTH_SCALE;
-                    LMR_DEPTH_PV_BIAS => W::lmr_depth_pv_bias(), -4 * DEPTH_SCALE, 4 * DEPTH_SCALE;
-
-                    LMR_QUIET_BASE  => W::lmr_quiet_base(),  -4096, 4096;
-                    LMR_QUIET_DIV   => W::lmr_quiet_div(),       1, 8192;
-                    LMR_TACTIC_BASE => W::lmr_tactic_base(), -4096, 4096;
-                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),      1, 8192;
-
-                    CUT_LMR       => W::cut_lmr(),       0, 4 * DEPTH_SCALE;
-                    IMPROVING_LMR => W::improving_lmr(), 0, 4 * DEPTH_SCALE;
-                    NON_PV_LMR    => W::non_pv_lmr(),    0, 4 * DEPTH_SCALE;
-                    TT_PV_LMR     => W::tt_pv_lmr(),     0, 4 * DEPTH_SCALE;
-                    CHECK_LMR     => W::check_lmr(),     0, 4 * DEPTH_SCALE;
-
-                    ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
-                    ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
-
-                    SOFT_TIME_DIV         => W::soft_time_div(),         1, 524288;
-                    HARD_TIME_DIV         => W::hard_time_div(),         1, 524288;
-                    SUBTREE_BASE          => W::subtree_base(),          0, 32768;
-                    SUBTREE_SCALE         => W::subtree_scale(),         0, 32768;
-                    SUBTREE_MIN           => W::subtree_min(),           0, 32768;
-                    MOVE_STABILITY_BASE   => W::move_stability_base(),   0, 32768;
-                    MOVE_STABILITY_SCALE  => W::move_stability_scale(),  0, 4096;
-                    MOVE_STABILITY_MIN    => W::move_stability_min(),    0, 32768;
-                    SCORE_STABILITY_EDGE  => W::score_stability_edge(),  0, 256;
-                    SCORE_STABILITY_BASE  => W::score_stability_base(),  0, 32768;
-                    SCORE_STABILITY_SCALE => W::score_stability_scale(), 0, 4096;
-                    SCORE_STABILITY_MIN   => W::score_stability_min(),   0, 32768;
-                }
-                println!("uciok");
-
-                io::stdout().flush().unwrap();
-            }
-            UciCommand::IsReady => println!("readyok"),
-            UciCommand::PonderHit => self.time_man.ponderhit(),
-            UciCommand::Stop => self.time_man.stop(),
-            UciCommand::NewGame => self
-                .sender
-                .send(ThreadCommand::NewGame(Arc::clone(&self.searcher)))
-                .unwrap(),
-            UciCommand::Display => {
-                let searcher = self.searcher.lock().unwrap();
-                let board = searcher.pos.board();
-
-                println!("{}", board.print(self.frc));
-            }
-            UciCommand::Eval => {
-                let mut searcher = self.searcher.lock().unwrap();
-                let searcher = &mut *searcher;
-
-                println!(
-                    "Eval: {:#}",
-                    searcher.pos.eval(&searcher.shared_data.nnue_weights)
-                );
-            }
-            #[cfg(feature = "tune")]
-            UciCommand::PrintSpsa => {
-                macro_rules! print_spsa {
-                    ($($name:ident => $default:expr, $min:expr, $max:expr;)*) => {$(
-                        println!(
-                            "{}, int, {:.1}, {:.1}, {:.1}, {:.2}, 0.002",
-                            stringify!($name),
-                            $default as f64,
-                            $min as f64,
-                            $max as f64,
-                            ($default as f64).abs() / 10.0,
-                        );
-                    )*}
-                }
-
-                print_spsa! {
-                    PAWN_CORR_FRAC   => W::pawn_corr_frac(),   0, MAX_CORR;
-                    MINOR_CORR_FRAC  => W::minor_corr_frac(),  0, MAX_CORR;
-                    MAJOR_CORR_FRAC  => W::major_corr_frac(),  0, MAX_CORR;
-                    STM_CORR_FRAC    => W::stm_corr_frac(),    0, MAX_CORR;
-                    NTM_CORR_FRAC    => W::ntm_corr_frac(),    0, MAX_CORR;
-                    CORR_BONUS_SCALE => W::corr_bonus_scale(), 0, 1024;
-
-                    QUIET_BONUS_BASE  => W::quiet_bonus_base(),  -512, 512;
-                    QUIET_BONUS_SCALE => W::quiet_bonus_scale(), -512, 512;
-                    QUIET_BONUS_MAX   => W::quiet_bonus_max(),      1, 8192;
-                    QUIET_MALUS_BASE  => W::quiet_malus_base(),  -512, 512;
-                    QUIET_MALUS_SCALE => W::quiet_malus_scale(), -512, 512;
-                    QUIET_MALUS_MAX   => W::quiet_malus_max(),      1, 8192;
-
-                    TACTIC_BONUS_BASE  => W::tactic_bonus_base(),  -512, 512;
-                    TACTIC_BONUS_SCALE => W::tactic_bonus_scale(), -512, 512;
-                    TACTIC_BONUS_MAX   => W::tactic_bonus_max(),      1, 8192;
-                    TACTIC_MALUS_BASE  => W::tactic_malus_base(),  -512, 512;
-                    TACTIC_MALUS_SCALE => W::tactic_malus_scale(), -512, 512;
-                    TACTIC_MALUS_MAX   => W::tactic_malus_max(),      1, 8192;
-
-                    PAWN_BONUS_BASE  => W::pawn_bonus_base(),  -512, 512;
-                    PAWN_BONUS_SCALE => W::pawn_bonus_scale(), -512, 512;
-                    PAWN_BONUS_MAX   => W::pawn_bonus_max(),      1, 8192;
-                    PAWN_MALUS_BASE  => W::pawn_malus_base(),  -512, 512;
-                    PAWN_MALUS_SCALE => W::pawn_malus_scale(), -512, 512;
-                    PAWN_MALUS_MAX   => W::pawn_malus_max(),      1, 8192;
-
-                    CONT1_BONUS_BASE  => W::cont1_bonus_base(),  -512, 512;
-                    CONT1_BONUS_SCALE => W::cont1_bonus_scale(), -512, 512;
-                    CONT1_BONUS_MAX   => W::cont1_bonus_max(),      1, 8192;
-                    CONT1_MALUS_BASE  => W::cont1_malus_base(),  -512, 512;
-                    CONT1_MALUS_SCALE => W::cont1_malus_scale(), -512, 512;
-                    CONT1_MALUS_MAX   => W::cont1_malus_max(),      1, 8192;
-
-                    CONT2_BONUS_BASE  => W::cont2_bonus_base(),  -512, 512;
-                    CONT2_BONUS_SCALE => W::cont2_bonus_scale(), -512, 512;
-                    CONT2_BONUS_MAX   => W::cont2_bonus_max(),      1, 8192;
-                    CONT2_MALUS_BASE  => W::cont2_malus_base(),  -512, 512;
-                    CONT2_MALUS_SCALE => W::cont2_malus_scale(), -512, 512;
-                    CONT2_MALUS_MAX   => W::cont2_malus_max(),      1, 8192;
-
-                    PAWN_SEE_VALUE   => W::pawn_see_value(),   1, 4096;
-                    KNIGHT_SEE_VALUE => W::knight_see_value(), 1, 4096;
-                    BISHOP_SEE_VALUE => W::bishop_see_value(), 1, 4096;
-                    ROOK_SEE_VALUE   => W::rook_see_value(),   1, 4096;
-                    QUEEN_SEE_VALUE  => W::queen_see_value(),  1, 4096;
-
-                    PAWN_MAT_SCALE   => W::pawn_mat_scale(),   1, 4096;
-                    KNIGHT_MAT_SCALE => W::knight_mat_scale(), 1, 4096;
-                    BISHOP_MAT_SCALE => W::bishop_mat_scale(), 1, 4096;
-                    ROOK_MAT_SCALE   => W::rook_mat_scale(),   1, 4096;
-                    QUEEN_MAT_SCALE  => W::queen_mat_scale(),  1, 4096;
-                    MAT_SCALE_BASE   => W::mat_scale_base(),   1, 32768;
-                    EVAL_SCALE       => W::eval_scale(),       1, 1024;
-
-                    RFP_DEPTH     => W::rfp_depth(),        0, 16 * DEPTH_SCALE;
-                    RFP_BASE      => W::rfp_base(),      -256, 256;
-                    RFP_SCALE     => W::rfp_scale(),     -256, 256;
-                    RFP_IMP_BASE  => W::rfp_imp_base(),  -256, 256;
-                    RFP_IMP_SCALE => W::rfp_imp_scale(), -256, 256;
-                    RFP_LERP      => W::rfp_lerp(),         0, 1024;
-
-                    NMP_DEPTH       => W::nmp_depth(),       0, 16 * DEPTH_SCALE;
-                    NMP_BASE        => W::nmp_base(),        0, 16 * DEPTH_SCALE;
-                    NMP_SCALE       => W::nmp_scale(),       0, DEPTH_SCALE;
-                    NMP_VERIF_DEPTH => W::nmp_verif_depth(), 0, 32 * DEPTH_SCALE;
-
-                    LMP_BASE      => W::lmp_base(),      0, 8192;
-                    LMP_SCALE     => W::lmp_scale(),     0, 2048;
-                    LMP_IMP_BASE  => W::lmp_imp_base(),  0, 8192;
-                    LMP_IMP_SCALE => W::lmp_imp_scale(), 0, 2048;
-
-                    FP_DEPTH     => W::fp_depth(),        0, 16 * DEPTH_SCALE;
-                    FP_BASE      => W::fp_base(),      -256, 256;
-                    FP_SCALE     => W::fp_scale(),     -256, 256;
-                    FP_IMP_BASE  => W::fp_imp_base(),  -256, 256;
-                    FP_IMP_SCALE => W::fp_imp_scale(), -256, 256;
-
-                    HIST_DEPTH => W::hist_depth(),       0, 16 * DEPTH_SCALE;
-                    HIST_BASE  => W::hist_base(), - 2048, 0;
-                    HIST_SCALE => W::hist_scale(), -4096, 0;
-
-                    SEE_QUIET_DEPTH => W::see_quiet_depth(),    0, 16 * DEPTH_SCALE;
-                    SEE_QUIET_BASE  => W::see_quiet_base(),  -256, 256;
-                    SEE_QUIET_SCALE => W::see_quiet_scale(), -256, 256;
-
-                    SEE_TACTIC_DEPTH => W::see_tactic_depth(),    0, 16 * DEPTH_SCALE;
-                    SEE_TACTIC_BASE  => W::see_tactic_base(),  -256, 256;
-                    SEE_TACTIC_SCALE => W::see_tactic_scale(), -256, 256;
-
-                    SINGULAR_DEPTH        => W::singular_depth(),                  0, 16 * DEPTH_SCALE;
-                    SINGULAR_TT_DEPTH     => W::singular_tt_depth(),               0, 16 * DEPTH_SCALE;
-                    SINGULAR_BETA_MARGIN  => W::singular_beta_margin(),            0, 256;
-                    SINGULAR_SEARCH_DEPTH => W::singular_search_depth(),           0, 1024;
-                    SINGULAR_DEXT_MARGIN  => W::singular_dext_margin(),            0, 64;
-                    SINGULAR_EXT          => W::singular_ext(),                    0, 4 * DEPTH_SCALE;
-                    SINGULAR_DEXT         => W::singular_dext(),                   0, 4 * DEPTH_SCALE;
-                    SINGULAR_TT_EXT       => W::singular_tt_ext(),  -4 * DEPTH_SCALE, 0;
-                    SINGULAR_CUT_EXT      => W::singular_cut_ext(), -4 * DEPTH_SCALE, 0;
-
-                    TT_DEPTH_BIAS     => W::tt_depth_bias(),     -4 * DEPTH_SCALE, 4 * DEPTH_SCALE;
-                    TT_DEPTH_PV_BIAS  => W::tt_depth_pv_bias(),  -4 * DEPTH_SCALE, 4 * DEPTH_SCALE;
-                    LMR_DEPTH_BIAS    => W::lmr_depth_bias(),    -4 * DEPTH_SCALE, 4 * DEPTH_SCALE;
-                    LMR_DEPTH_PV_BIAS => W::lmr_depth_pv_bias(), -4 * DEPTH_SCALE, 4 * DEPTH_SCALE;
-
-                    LMR_QUIET_BASE  => W::lmr_quiet_base(),  -4096, 4096;
-                    LMR_QUIET_DIV   => W::lmr_quiet_div(),       1, 8192;
-                    LMR_TACTIC_BASE => W::lmr_tactic_base(), -4096, 4096;
-                    LMR_TACTIC_DIV  => W::lmr_tactic_div(),      1, 8192;
-
-                    CUT_LMR       => W::cut_lmr(),       0, 4 * DEPTH_SCALE;
-                    IMPROVING_LMR => W::improving_lmr(), 0, 4 * DEPTH_SCALE;
-                    NON_PV_LMR    => W::non_pv_lmr(),    0, 4 * DEPTH_SCALE;
-                    TT_PV_LMR     => W::tt_pv_lmr(),     0, 4 * DEPTH_SCALE;
-                    CHECK_LMR     => W::check_lmr(),     0, 4 * DEPTH_SCALE;
-
-                    ASP_WINDOW_INITIAL => W::asp_window_initial(), 0, 64;
-                    ASP_WINDOW_EXPAND  => W::asp_window_expand(),  0, 64;
-
-                    SOFT_TIME_DIV         => W::soft_time_div(),         1, 524288;
-                    HARD_TIME_DIV         => W::hard_time_div(),         1, 524288;
-                    SUBTREE_BASE          => W::subtree_base(),          0, 32768;
-                    SUBTREE_SCALE         => W::subtree_scale(),         0, 32768;
-                    SUBTREE_MIN           => W::subtree_min(),           0, 32768;
-                    MOVE_STABILITY_BASE   => W::move_stability_base(),   0, 32768;
-                    MOVE_STABILITY_SCALE  => W::move_stability_scale(),  0, 4096;
-                    MOVE_STABILITY_MIN    => W::move_stability_min(),    0, 32768;
-                    SCORE_STABILITY_EDGE  => W::score_stability_edge(),  0, 256;
-                    SCORE_STABILITY_BASE  => W::score_stability_base(),  0, 32768;
-                    SCORE_STABILITY_SCALE => W::score_stability_scale(), 0, 4096;
-                    SCORE_STABILITY_MIN   => W::score_stability_min(),   0, 32768;
-                }
-            }
-            #[cfg(feature = "datagen")]
-            UciCommand::DataGen {
-                count,
-                threads,
-                dfrc,
-            } => {
-                self.sender.send(ThreadCommand::Quit).unwrap();
-                datagen(count, threads, dfrc);
-                return false;
-            }
-            UciCommand::Position(board, moves) => self
-                .sender
-                .send(ThreadCommand::Position(
-                    Arc::clone(&self.searcher),
-                    board,
-                    moves,
-                ))
-                .unwrap(),
-            UciCommand::Go(limits) => self
-                .sender
-                .send(ThreadCommand::Go(Arc::clone(&self.searcher), limits))
-                .unwrap(),
-            UciCommand::SetOption { name, value } => {
-                macro_rules! set_tunables {
-                    ($($option:expr => $tunable:ident, $ty:ty;)*) => {
-                        #[cfg(feature = "tune")]
-                        match name.as_str() {
-                            $(
-                                $option => unsafe {
-                                    let tunable: &mut $ty = &mut *$tunable.get();
-                                    *tunable = value.parse::<$ty>().unwrap();
-                                },
-                            )*
-                            _ => { }
-                        }
-                    }
-                }
-
-                match name.as_str() {
-                    "MoveOverhead" => self.time_man.set_overhead(value.parse::<u64>().unwrap()),
-                    "UseSoftNodes" => self.time_man.set_soft_nodes(value.parse::<bool>().unwrap()),
-                    "SyzygyPath" => set_syzygy_path(value.as_str()),
-                    "UCI_Chess960" => self.frc = value.parse::<bool>().unwrap(),
-                    _ => {}
-                }
-
-                set_tunables! {
-                    "PAWN_CORR_FRAC"   => PAWN_CORR_FRAC,   i32;
-                    "MINOR_CORR_FRAC"  => MINOR_CORR_FRAC,  i32;
-                    "MAJOR_CORR_FRAC"  => MAJOR_CORR_FRAC,  i32;
-                    "STM_CORR_FRAC"    => STM_CORR_FRAC,    i32;
-                    "NTM_CORR_FRAC"    => NTM_CORR_FRAC,    i32;
-                    "CORR_BONUS_SCALE" => CORR_BONUS_SCALE, i64;
-
-                    "QUIET_BONUS_BASE"  => QUIET_BONUS_BASE,  i32;
-                    "QUIET_BONUS_SCALE" => QUIET_BONUS_SCALE, i32;
-                    "QUIET_BONUS_MAX"   => QUIET_BONUS_MAX,   i32;
-                    "QUIET_MALUS_BASE"  => QUIET_MALUS_BASE,  i32;
-                    "QUIET_MALUS_SCALE" => QUIET_MALUS_SCALE, i32;
-                    "QUIET_MALUS_MAX"   => QUIET_MALUS_MAX,   i32;
-
-                    "TACTIC_BONUS_BASE"  => TACTIC_BONUS_BASE,  i32;
-                    "TACTIC_BONUS_SCALE" => TACTIC_BONUS_SCALE, i32;
-                    "TACTIC_BONUS_MAX"   => TACTIC_BONUS_MAX,   i32;
-                    "TACTIC_MALUS_BASE"  => TACTIC_MALUS_BASE,  i32;
-                    "TACTIC_MALUS_SCALE" => TACTIC_MALUS_SCALE, i32;
-                    "TACTIC_MALUS_MAX"   => TACTIC_MALUS_MAX,   i32;
-
-                    "PAWN_BONUS_BASE"  => PAWN_BONUS_BASE,  i32;
-                    "PAWN_BONUS_SCALE" => PAWN_BONUS_SCALE, i32;
-                    "PAWN_BONUS_MAX"   => PAWN_BONUS_MAX,   i32;
-                    "PAWN_MALUS_BASE"  => PAWN_MALUS_BASE,  i32;
-                    "PAWN_MALUS_SCALE" => PAWN_MALUS_SCALE, i32;
-                    "PAWN_MALUS_MAX"   => PAWN_MALUS_MAX,   i32;
-
-                    "CONT1_BONUS_BASE"  => CONT1_BONUS_BASE,  i32;
-                    "CONT1_BONUS_SCALE" => CONT1_BONUS_SCALE, i32;
-                    "CONT1_BONUS_MAX"   => CONT1_BONUS_MAX,   i32;
-                    "CONT1_MALUS_BASE"  => CONT1_MALUS_BASE,  i32;
-                    "CONT1_MALUS_SCALE" => CONT1_MALUS_SCALE, i32;
-                    "CONT1_MALUS_MAX"   => CONT1_MALUS_MAX,   i32;
-
-                    "CONT2_BONUS_BASE"  => CONT2_BONUS_BASE,  i32;
-                    "CONT2_BONUS_SCALE" => CONT2_BONUS_SCALE, i32;
-                    "CONT2_BONUS_MAX"   => CONT2_BONUS_MAX,   i32;
-                    "CONT2_MALUS_BASE"  => CONT2_MALUS_BASE,  i32;
-                    "CONT2_MALUS_SCALE" => CONT2_MALUS_SCALE, i32;
-                    "CONT2_MALUS_MAX"   => CONT2_MALUS_MAX,   i32;
-
-                    "PAWN_SEE_VALUE"   => PAWN_SEE_VALUE,   i32;
-                    "KNIGHT_SEE_VALUE" => KNIGHT_SEE_VALUE, i32;
-                    "BISHOP_SEE_VALUE" => BISHOP_SEE_VALUE, i32;
-                    "ROOK_SEE_VALUE"   => ROOK_SEE_VALUE,   i32;
-                    "QUEEN_SEE_VALUE"  => QUEEN_SEE_VALUE,  i32;
-
-                    "PAWN_MAT_SCALE"   => PAWN_MAT_SCALE,   i32;
-                    "KNIGHT_MAT_SCALE" => KNIGHT_MAT_SCALE, i32;
-                    "BISHOP_MAT_SCALE" => BISHOP_MAT_SCALE, i32;
-                    "ROOK_MAT_SCALE"   => ROOK_MAT_SCALE,   i32;
-                    "QUEEN_MAT_SCALE"  => QUEEN_MAT_SCALE,  i32;
-                    "MAT_SCALE_BASE"   => MAT_SCALE_BASE,   i32;
-                    "EVAL_SCALE"       => EVAL_SCALE,       i32;
-
-                    "RFP_DEPTH"     => RFP_DEPTH,     i32;
-                    "RFP_BASE"      => RFP_BASE,      i32;
-                    "RFP_SCALE"     => RFP_SCALE,     i32;
-                    "RFP_IMP_BASE"  => RFP_IMP_BASE,  i32;
-                    "RFP_IMP_SCALE" => RFP_IMP_SCALE, i32;
-                    "RFP_LERP"      => RFP_LERP,      i32;
-
-                    "NMP_DEPTH"       => NMP_DEPTH,       i32;
-                    "NMP_BASE"        => NMP_BASE,        i64;
-                    "NMP_SCALE"       => NMP_SCALE,       i64;
-                    "NMP_VERIF_DEPTH" => NMP_VERIF_DEPTH, i32;
-
-                    "LMP_BASE"      => LMP_BASE,      i64;
-                    "LMP_SCALE"     => LMP_SCALE,     i64;
-                    "LMP_IMP_BASE"  => LMP_IMP_BASE,  i64;
-                    "LMP_IMP_SCALE" => LMP_IMP_SCALE, i64;
-
-                    "FP_DEPTH"     => FP_DEPTH,     i32;
-                    "FP_BASE"      => FP_BASE,      i32;
-                    "FP_SCALE"     => FP_SCALE,     i32;
-                    "FP_IMP_BASE"  => FP_IMP_BASE,  i32;
-                    "FP_IMP_SCALE" => FP_IMP_SCALE, i32;
-
-                    "HIST_DEPTH" => HIST_DEPTH, i32;
-                    "HIST_BASE"  => HIST_BASE,  i32;
-                    "HIST_SCALE" => HIST_SCALE, i32;
-
-                    "SEE_QUIET_DEPTH" => SEE_QUIET_DEPTH, i32;
-                    "SEE_QUIET_BASE"  => SEE_QUIET_BASE,  i32;
-                    "SEE_QUIET_SCALE" => SEE_QUIET_SCALE, i32;
-
-                    "SEE_TACTIC_DEPTH" => SEE_TACTIC_DEPTH, i32;
-                    "SEE_TACTIC_BASE"  => SEE_TACTIC_BASE,  i32;
-                    "SEE_TACTIC_SCALE" => SEE_TACTIC_SCALE, i32;
-
-                    "SINGULAR_DEPTH"        => SINGULAR_DEPTH,        i32;
-                    "SINGULAR_TT_DEPTH"     => SINGULAR_TT_DEPTH,     i32;
-                    "SINGULAR_BETA_MARGIN"  => SINGULAR_BETA_MARGIN,  i32;
-                    "SINGULAR_SEARCH_DEPTH" => SINGULAR_SEARCH_DEPTH, i32;
-                    "SINGULAR_DEXT_MARGIN"  => SINGULAR_DEXT_MARGIN,  i32;
-                    "SINGULAR_EXT"          => SINGULAR_EXT,          i32;
-                    "SINGULAR_DEXT"         => SINGULAR_DEXT,         i32;
-                    "SINGULAR_TT_EXT"       => SINGULAR_TT_EXT,       i32;
-                    "SINGULAR_CUT_EXT"      => SINGULAR_CUT_EXT,      i32;
-
-                    "TT_DEPTH_BIAS"     => TT_DEPTH_BIAS,     i32;
-                    "TT_DEPTH_PV_BIAS"  => TT_DEPTH_PV_BIAS,  i32;
-                    "LMR_DEPTH_BIAS"    => LMR_DEPTH_BIAS,    i32;
-                    "LMR_DEPTH_PV_BIAS" => LMR_DEPTH_PV_BIAS, i32;
-
-                    "LMR_QUIET_BASE"  => LMR_QUIET_BASE,  i32;
-                    "LMR_QUIET_DIV"   => LMR_QUIET_DIV,   i32;
-                    "LMR_TACTIC_BASE" => LMR_TACTIC_BASE, i32;
-                    "LMR_TACTIC_DIV"  => LMR_TACTIC_DIV,  i32;
-
-                    "CUT_LMR"       => CUT_LMR,       i32;
-                    "IMPROVING_LMR" => IMPROVING_LMR, i32;
-                    "NON_PV_LMR"    => NON_PV_LMR,    i32;
-                    "TT_PV_LMR"     => TT_PV_LMR,     i32;
-                    "CHECK_LMR"     => CHECK_LMR,     i32;
-
-                    "ASP_WINDOW_INITIAL" => ASP_WINDOW_INITIAL, i32;
-                    "ASP_WINDOW_EXPAND"  => ASP_WINDOW_EXPAND,  i32;
-
-                    "SOFT_TIME_DIV"         => SOFT_TIME_DIV,         u64;
-                    "HARD_TIME_DIV"         => HARD_TIME_DIV,         u64;
-                    "SUBTREE_BASE"          => SUBTREE_BASE,          i64;
-                    "SUBTREE_SCALE"         => SUBTREE_SCALE,         i64;
-                    "SUBTREE_MIN"           => SUBTREE_MIN,           i64;
-                    "MOVE_STABILITY_BASE"   => MOVE_STABILITY_BASE,   i64;
-                    "MOVE_STABILITY_SCALE"  => MOVE_STABILITY_SCALE,  i64;
-                    "MOVE_STABILITY_MIN"    => MOVE_STABILITY_MIN,    i64;
-                    "SCORE_STABILITY_EDGE"  => SCORE_STABILITY_EDGE,  i32;
-                    "SCORE_STABILITY_BASE"  => SCORE_STABILITY_BASE,  i64;
-                    "SCORE_STABILITY_SCALE" => SCORE_STABILITY_SCALE, i64;
-                    "SCORE_STABILITY_MIN"   => SCORE_STABILITY_MIN,   i64;
-                }
-
-                self.sender
-                    .send(ThreadCommand::SetOption(
-                        Arc::clone(&self.searcher),
-                        name,
-                        value,
-                    ))
-                    .unwrap();
-            }
-            UciCommand::Perft { depth, bulk } => {
-                let board = self.searcher.lock().unwrap().pos.board().clone();
-                let time = Instant::now();
-                let nodes = if bulk {
-                    perft::<true>(&board, depth)
-                } else {
-                    perft::<false>(&board, depth)
-                };
-                let elapsed = time.elapsed();
-                let nanos = elapsed.as_nanos();
-                let nps = if nanos > 0 {
-                    (nodes as u128 * 1_000_000_000) / nanos
-                } else {
-                    0
-                };
-
-                println!("nodes {} time {:.2?} nps {}", nodes, elapsed, nps);
-            }
-            UciCommand::SplitPerft { depth, bulk } => {
-                if depth == 0 {
-                    return true;
-                }
-
-                let board = self.searcher.lock().unwrap().pos.board().clone();
-                let mut perft_data = Vec::new();
-                let mut total = 0u64;
-
-                let moves = board.gen_moves();
-                let time = Instant::now();
-
-                for &mv in moves.iter() {
-                    let mut board = board.clone();
-                    board.make_move(mv);
-
-                    let nodes = if bulk {
-                        perft::<true>(&board, depth - 1)
-                    } else {
-                        perft::<false>(&board, depth - 1)
-                    };
-                    total += nodes;
-                    perft_data.push((mv, nodes));
-                }
-
-                let elapsed = time.elapsed();
-
-                println!("\n================================================================");
-                for (mv, nodes) in perft_data {
-                    println!("{}: {}", mv.display(&board, self.frc), nodes);
-                }
-                println!("================================================================");
-
-                let nanos = elapsed.as_nanos();
-                let nps = if nanos > 0 {
-                    (total as u128 * 1_000_000_000) / nanos
-                } else {
-                    0
-                };
-
-                println!("nodes {} time {:.2?} nps {}", total, elapsed, nps);
-            }
-            UciCommand::Bench {
-                depth,
-                threads,
-                hash,
-            } => {
-                let mut searcher = self.searcher.lock().unwrap();
-                let searcher = &mut *searcher;
-                let mut bench_data = Vec::new();
-                let limits = vec![SearchLimit::MaxDepth(depth)];
-
-                searcher.resize_ttable(hash);
-                searcher.threads = threads;
-
-                let start_time = Instant::now();
-                for pos in BENCH_POSITIONS
-                    .iter()
-                    .map(|&fen| Board::from_fen(fen).unwrap())
-                {
-                    searcher
-                        .pos
-                        .set_board(pos.clone(), &searcher.shared_data.nnue_weights);
-                    searcher.new_game();
-
-                    let start_time = Instant::now();
-                    let (best_move, _, score, _, nodes) = searcher.search::<NoInfo>(limits.clone());
-                    bench_data.push((
-                        best_move.display(&pos, false),
-                        start_time.elapsed().as_millis().max(1) as u64,
-                        score.0,
-                        nodes,
-                    ));
-                }
-
-                let total_time = start_time.elapsed().as_millis() as u64;
-
-                println!("\n================================================================");
-                for (i, (best_move, time, score, nodes)) in bench_data.iter().enumerate() {
-                    println!(
-                        "[#{:>3}]{:>8} cp Best: {:>8} {:>8} nodes {:>8} nps",
-                        i + 1,
-                        score,
-                        best_move,
-                        nodes,
-                        ((*nodes as f64) / ((*time).max(1) as f64) * 1000.0) as u64,
-                    );
-                }
-                println!("================================================================");
-                let total_nodes = bench_data
-                    .iter()
-                    .fold(0u64, |acc, (_, _, _, nodes)| acc + nodes);
-
-                println!(
-                    "OVERALL: {:>30} nodes {:>8} nps",
-                    total_nodes,
-                    ((total_nodes as f64) / (total_time.max(1) as f64) * 1000.0) as u64
-                );
-            }
-            UciCommand::Quit => {
-                self.time_man.stop();
-                self.sender.send(ThreadCommand::Quit).unwrap();
-                return false;
-            }
+            UciCommand::Uci => self.uci(),
+            UciCommand::NewGame => self.searcher.newgame(),
+            UciCommand::IsReady => self.isready(),
+            UciCommand::PonderHit => self.searcher.ponderhit(),
+            UciCommand::Eval => self.eval(),
+            UciCommand::Display => self.display(),
+            UciCommand::Position { board, moves } => self.set_position(board, moves),
+            UciCommand::Go(limits) => self.go(limits),
+            UciCommand::Perft { depth, bulk } => self.perft(depth, bulk),
+            UciCommand::SplitPerft { depth, bulk } => self.splitperft(depth, bulk),
+            UciCommand::SetOption { name, value } => self.set_option(name, value),
+            UciCommand::Bench { depth } => self.bench(depth),
+            UciCommand::Wait => self.wait(),
+            UciCommand::Stop => self.stop(),
+            UciCommand::Quit => return self.quit(),
         }
 
-        true
+        Abort::No
+    }
+
+    #[inline]
+    fn uci(&self) {
+        println!("id name Cherry v{ENGINE_VERSION}-dev");
+        println!("id author Tecci");
+        println!("option name Threads type spin default 1 min 1 max {MAX_THREADS}");
+        println!("option name Hash type spin default 16 min 1 max {MAX_TT_SIZE}");
+        println!("option name MultiPV type spin default 1 min 1 max 218");
+        println!("option name EvalScaling type check default true");
+        println!("option name SyzygyPath type string default <empty>");
+        println!("option name MoveOverhead type spin default {DEFAULT_OVERHEAD} min 0 max 5000");
+        println!("option name SoftTarget type check default false");
+        println!("option name Ponder type check default false");
+        println!("option name UCI_Chess960 type check default false");
+        println!("uciok");
+    }
+
+    #[inline]
+    fn isready(&self) {
+        println!("readyok");
+    }
+
+    #[inline]
+    fn eval(&mut self) {
+        let raw_eval = self.pos.eval();
+        let static_eval = scale_eval(raw_eval, self.pos.board(), self.options.eval_scaling);
+
+        println!("Raw Eval: {}", raw_eval);
+        println!("Static Eval: {}", static_eval);
+    }
+
+    #[inline]
+    fn display(&self) {
+        println!("{}", self.pos.board().print(self.options.frc));
+    }
+
+    #[inline]
+    fn set_position(&mut self, board: Board, moves: Vec<Move>) {
+        self.pos.set_board(board);
+        for mv in moves {
+            self.pos.make_move(mv);
+            self.pos.reset_nnue();
+        }
+    }
+
+    #[inline]
+    fn go(&mut self, limits: Vec<SearchLimit>) {
+        if self.searcher.is_searching() {
+            println!("info string Already Searching");
+            return;
+        }
+
+        self.searcher.search(
+            self.pos.clone(),
+            limits,
+            self.options,
+            SearchInfo::Uci {
+                frc: self.options.frc,
+            },
+        );
+    }
+
+    #[inline]
+    fn perft(&mut self, depth: u8, bulk: bool) {
+        let board = self.pos.board().clone();
+        let time = Instant::now();
+        let nodes = if bulk {
+            perft::<true>(&board, depth)
+        } else {
+            perft::<false>(&board, depth)
+        };
+        let elapsed = time.elapsed();
+        let nanos = elapsed.as_nanos();
+        let nps = if nanos > 0 {
+            (nodes as u128 * 1_000_000_000) / nanos
+        } else {
+            0
+        };
+
+        println!("nodes {nodes} time {elapsed:.2?} nps {nps}");
+    }
+
+    #[inline]
+    fn splitperft(&mut self, depth: u8, bulk: bool) {
+        if depth == 0 {
+            return;
+        }
+
+        let board = self.pos.board().clone();
+        let mut perft_data = Vec::new();
+        let mut total_time = Duration::ZERO;
+        let mut total_nodes = 0u64;
+
+        for &mv in board.gen_moves().iter() {
+            let mut board = board.clone();
+            board.make_move(mv);
+
+            let time = Instant::now();
+            let nodes = if bulk {
+                perft::<true>(&board, depth)
+            } else {
+                perft::<false>(&board, depth)
+            };
+
+            total_time += time.elapsed();
+            total_nodes += nodes;
+
+            perft_data.push((mv, nodes));
+        }
+
+        println!("\n================================================================");
+        for (mv, nodes) in perft_data {
+            println!("{:<5}: {nodes}", mv.display(&board, self.options.frc));
+        }
+        println!("================================================================");
+
+        let nanos = total_time.as_nanos();
+        let nps = if nanos > 0 {
+            (total_nodes as u128 * 1_000_000_000) / nanos
+        } else {
+            0
+        };
+
+        println!("nodes {total_nodes} time {total_time:.2?} nps {nps}");
+    }
+
+    #[inline]
+    fn bench(&mut self, depth: u8) {
+        let limits = vec![SearchLimit::MaxDepth(depth)];
+        let mut total_time = Duration::ZERO;
+        let mut total_nodes = 0u64;
+
+        for board in BENCH_FENS.iter().map(|&fen| Board::from_fen(fen).unwrap()) {
+            self.pos.set_board(board);
+            self.searcher.newgame();
+
+            let time = Instant::now();
+            self.searcher.search(
+                self.pos.clone(),
+                limits.clone(),
+                self.options,
+                SearchInfo::None,
+            );
+            self.searcher.wait();
+
+            total_time += time.elapsed();
+            total_nodes += self.searcher.shared.nodes.load(Ordering::Relaxed);
+        }
+
+        let nanos = total_time.as_nanos();
+        let nps = if nanos > 0 {
+            (total_nodes as u128 * 1_000_000_000) / nanos
+        } else {
+            0
+        };
+
+        println!("nodes {total_nodes} time {total_time:.2?} nps {nps}");
+    }
+
+    #[inline]
+    fn set_option(&mut self, name: String, value: String) {
+        match name.as_str() {
+            "Threads" => {
+                if self.searcher.is_searching() {
+                    println!("info string Not Allowed to set Threads while Searching");
+                    return;
+                }
+
+                let value = match value.parse::<u32>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidInteger(e));
+                        return;
+                    }
+                };
+
+                if value == 0 || value > MAX_THREADS {
+                    println!("info string Invalid Number of Threads: `{value}`");
+                    return;
+                }
+
+                self.searcher.set_threads(value);
+                println!("info string Set Threads to {value}");
+            }
+            "Hash" => {
+                if self.searcher.is_searching() {
+                    println!("info string Not Allowed to set Hash while Searching");
+                    return;
+                }
+
+                let value = match value.parse::<u64>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidInteger(e));
+                        return;
+                    }
+                };
+
+                if value == 0 || value > MAX_TT_SIZE {
+                    println!("info string Invalid Hash Size: `{value}`");
+                    return;
+                }
+
+                self.searcher.resize_ttable(value);
+                println!("info string Set Hash to {value}");
+            }
+            "MultiPV" => {
+                let value = match value.parse::<u8>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidInteger(e));
+                        return;
+                    }
+                };
+
+                if value == 0 || value > 218 {
+                    println!("info string Invalid MultiPV value: `{value}`");
+                    return;
+                }
+
+                self.options.multipv = value;
+                println!("info string Set MultiPV to {value}");
+            }
+            "EvalScaling" => {
+                let value = match value.parse::<bool>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidBoolean(e));
+                        return;
+                    }
+                };
+
+                self.options.eval_scaling = value;
+                println!("info string Set EvalScaling to {value}");
+            }
+            "SyzygyPath" => set_syzygy_path(value.as_str()),
+            "MoveOverhead" => {
+                let value = match value.parse::<u64>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidInteger(e));
+                        return;
+                    }
+                };
+
+                if value > 5000 {
+                    println!("info string Invalid MoveOverhead value: `{value}`");
+                    return;
+                }
+
+                self.options.move_overhead = value;
+                println!("info string Set MoveOverhead to {value}");
+            }
+            "SoftTarget" => {
+                let value = match value.parse::<bool>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidBoolean(e));
+                        return;
+                    }
+                };
+
+                self.options.soft_target = value;
+                println!("info string Set SoftTarget to {value}");
+            }
+            "Ponder" => {
+                let value = match value.parse::<bool>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidBoolean(e));
+                        return;
+                    }
+                };
+
+                self.options.ponder = value;
+                println!("info string Set Ponder to {value}");
+            }
+            "UCI_Chess960" => {
+                let value = match value.parse::<bool>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidBoolean(e));
+                        return;
+                    }
+                };
+
+                self.options.frc = value;
+                println!("info string Set UCI_Chess960 to {value}");
+            }
+            _ => println!("info string Unknown Option: `{name}`"),
+        }
+    }
+
+    #[inline]
+    fn wait(&self) {
+        if !self.searcher.is_searching() {
+            println!("info string Not Searching");
+        } else {
+            println!("info string Waiting for Search to Stop...");
+            self.searcher.wait();
+            println!("info string Searcher Stopped");
+        }
+    }
+
+    #[inline]
+    fn stop(&self) {
+        if self.searcher.is_searching() {
+            self.searcher.stop();
+            self.searcher.wait();
+
+            println!("info string Searcher Stopped");
+        } else {
+            println!("info string Not Searching");
+        }
+    }
+
+    #[inline]
+    fn quit(&mut self) -> Abort {
+        self.searcher.quit();
+        Abort::Yes
     }
 }

@@ -1,6 +1,19 @@
-use smallvec::SmallVec;
+use smallvec::{Array, SmallVec};
 
 use crate::*;
+
+/*----------------------------------------------------------------*/
+
+fn swap_pop<A: Array>(vec: &mut SmallVec<A>, index: usize) -> Option<A::Item> {
+    let len = vec.len();
+
+    if index >= len {
+        return None;
+    }
+
+    vec.swap(index, len - 1);
+    vec.pop()
+}
 
 #[inline]
 fn select_next(moves: &[ScoredMove]) -> Option<usize> {

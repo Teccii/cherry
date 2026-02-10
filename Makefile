@@ -9,5 +9,3 @@ endif
 
 native:
 	cargo rustc --release -p cherry -- --emit link=$(NAME)
-datagen:
-	cargo rustc --release -p cherry --features datagen -- --emit link=$(NAME)
