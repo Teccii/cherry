@@ -179,12 +179,8 @@ impl Move {
         let promotion = if let Some(s) = mv.get(4..5) {
             let piece = s.parse::<Piece>().ok()?;
 
-            Some(piece).filter(|p| {
-                matches!(
-                    p,
-                    Piece::Knight | Piece::Bishop | Piece::Rook | Piece::Queen
-                )
-            })
+            Some(piece)
+                .filter(|p| [Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen].contains(p))
         } else {
             None
         };

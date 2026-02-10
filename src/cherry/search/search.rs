@@ -1,9 +1,15 @@
-use std::sync::atomic::Ordering;
+use std::sync::atomic::*;
 
-use pyrrhic_rs::WdlProbeResult;
 use smallvec::SmallVec;
 
 use crate::*;
+
+/*----------------------------------------------------------------*/
+
+pub const MAX_DEPTH: u8 = 255;
+pub const MAX_PLY: u16 = 256;
+pub const DEPTH_SCALE: i32 = 1024;
+pub const MAX_FRAC_DEPTH: i32 = MAX_DEPTH as i32 * DEPTH_SCALE;
 
 /*----------------------------------------------------------------*/
 
@@ -38,8 +44,211 @@ impl NodeType for NonPV {
 /*----------------------------------------------------------------*/
 
 #[inline]
-fn adjust_eval(raw_eval: Score, corr: i32) -> Score {
-    (raw_eval + corr).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+pub fn scale_eval(mut raw_eval: Score, board: &Board, scale: bool) -> Score {
+    if scale {
+        let material = W::pawn_mat_scale() * board.pieces(Piece::Pawn).popcnt() as i32
+            + W::knight_mat_scale() * board.pieces(Piece::Knight).popcnt() as i32
+            + W::bishop_mat_scale() * board.pieces(Piece::Bishop).popcnt() as i32
+            + W::rook_mat_scale() * board.pieces(Piece::Rook).popcnt() as i32
+            + W::queen_mat_scale() * board.pieces(Piece::Queen).popcnt() as i32;
+        raw_eval = raw_eval * (W::mat_scale_base() + material) / 32768;
+    }
+
+    raw_eval
+}
+
+#[inline]
+fn adjust_eval(eval: Score, corr: i32) -> Score {
+    (eval + corr).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+}
+
+/*----------------------------------------------------------------*/
+
+pub fn id_loop(
+    mut pos: Position,
+    thread: &mut ThreadData,
+    shared: &SharedData,
+    mut info: SearchInfo,
+    id: usize,
+) {
+    thread.multipv = thread.multipv.min(thread.root_moves.len() as u8);
+    thread
+        .windows
+        .extend((0..thread.multipv).map(|_| Window::new(W::asp_window_initial())));
+
+    let static_eval = scale_eval(pos.eval(), pos.board(), thread.eval_scaling);
+    let mut average_score = Score::NONE;
+    let mut move_stability = 0u8;
+    let mut score_stability = 0u8;
+    let mut prev_move: Option<Move>;
+    let mut best_move: Option<Move> = None;
+    let mut ponder_move: Option<Move> = None;
+    let mut score = -Score::INFINITE;
+    let mut depth = 1;
+
+    'id: loop {
+        thread.exclude_moves.clear();
+
+        for pv_index in 0..thread.multipv as usize {
+            thread.windows[pv_index].reset();
+
+            'asp: loop {
+                let (alpha, beta) = if depth >= 3 {
+                    thread.windows[pv_index].get()
+                } else {
+                    (-Score::INFINITE, Score::INFINITE)
+                };
+
+                thread.sel_depth = 0;
+                let new_score = search::<Root>(
+                    &mut pos,
+                    thread,
+                    shared,
+                    depth as i32 * DEPTH_SCALE,
+                    0,
+                    alpha,
+                    beta,
+                    false,
+                );
+                thread.nodes.flush();
+
+                if depth > 1 && thread.abort_now {
+                    break 'id;
+                }
+
+                thread.windows[pv_index].set_center(new_score);
+                if new_score > alpha && new_score < beta {
+                    thread
+                        .exclude_moves
+                        .push(thread.search_stack[0].pv.moves[0].unwrap());
+
+                    if pv_index == 0 {
+                        thread.root_pv = thread.search_stack[0].pv.clone();
+                        prev_move = best_move;
+                        best_move = thread.root_pv.moves[0];
+                        ponder_move = thread.root_pv.moves[1];
+                        score = new_score;
+
+                        if average_score == Score::NONE {
+                            average_score = score;
+                        } else {
+                            average_score = (average_score + score) / 2;
+                        }
+
+                        move_stability = move_stability.saturating_add(1);
+                        if prev_move != best_move {
+                            move_stability = 0;
+                        }
+
+                        score_stability = score_stability.saturating_add(1);
+                        if (score - average_score).abs().0 >= W::score_stability_edge() {
+                            score_stability = 0;
+                        }
+                    }
+
+                    if id == 0 {
+                        info.update(
+                            pos.board(),
+                            &thread,
+                            &shared,
+                            thread.multipv,
+                            pv_index,
+                            &thread.search_stack[0].pv,
+                            TTFlag::Exact,
+                            new_score,
+                            depth,
+                        );
+                    }
+
+                    break 'asp;
+                }
+
+                let (score, bound) = if new_score <= alpha {
+                    thread.windows[pv_index].fail_low();
+                    (alpha, TTFlag::UpperBound)
+                } else {
+                    thread.windows[pv_index].fail_high();
+                    (beta, TTFlag::LowerBound)
+                };
+
+                if id == 0 && shared.time_man.elapsed() >= 1000 {
+                    info.update(
+                        pos.board(),
+                        &thread,
+                        &shared,
+                        thread.multipv,
+                        pv_index,
+                        &thread.search_stack[0].pv,
+                        bound,
+                        score,
+                        depth,
+                    );
+                }
+
+                thread.windows[pv_index].expand();
+            }
+        }
+
+        if depth >= MAX_DEPTH || shared.time_man.abort_id(depth, thread.nodes.global()) {
+            break 'id;
+        }
+
+        if id == 0 {
+            let best_move = best_move.unwrap();
+
+            shared.time_man.deepen(
+                depth,
+                score,
+                static_eval,
+                move_stability,
+                score_stability,
+                thread.root_nodes[best_move.src()][best_move.dest()],
+                thread.nodes.local(),
+            );
+        }
+
+        depth += 1;
+    }
+
+    let last_thread = shared.num_searching.fetch_sub(1, Ordering::Relaxed) == 2;
+    if last_thread && id != 0 {
+        atomic_wait::wake_all(&shared.num_searching);
+    }
+
+    if id == 0 {
+        if !last_thread {
+            let mut num_searching = shared.num_searching.load(Ordering::Relaxed);
+            while num_searching != 0 {
+                atomic_wait::wait(&shared.num_searching, num_searching);
+                num_searching = shared.num_searching.load(Ordering::Relaxed);
+            }
+        }
+
+        shared.num_searching.store(0, Ordering::Relaxed);
+    }
+
+    if id == 0 {
+        info.update(
+            pos.board(),
+            &thread,
+            &shared,
+            thread.multipv,
+            0,
+            &thread.root_pv,
+            TTFlag::Exact,
+            score,
+            depth,
+        );
+
+        info.best_move(
+            pos.board(),
+            best_move.unwrap(),
+            ponder_move.filter(|_| thread.ponder),
+        );
+
+        atomic_wait::wake_all(&shared.num_searching);
+        shared.ttable.age();
+    }
 }
 
 /*----------------------------------------------------------------*/
@@ -54,12 +263,7 @@ pub fn search<Node: NodeType>(
     beta: Score,
     cut_node: bool,
 ) -> Score {
-    if !Node::ROOT
-        && (thread.abort_now
-            || shared
-                .time_man
-                .abort_search(thread.nodes.local(), thread.nodes.global()))
-    {
+    if !Node::ROOT && (thread.abort_now || shared.time_man.abort_search(&thread.nodes)) {
         thread.abort_now = true;
         return Score::ZERO;
     }
@@ -111,7 +315,7 @@ pub fn search<Node: NodeType>(
     let (raw_eval, static_eval, _corr) = if !in_check && skip_move.is_none() {
         let raw_eval = tt_entry
             .map(|e| e.eval)
-            .unwrap_or_else(|| pos.eval(&shared.nnue_weights));
+            .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
         let corr = thread.history.corr(pos.board());
         let static_eval = adjust_eval(raw_eval, corr);
 
@@ -135,61 +339,6 @@ pub fn search<Node: NodeType>(
     };
 
     thread.search_stack[ply as usize].static_eval = static_eval;
-
-    let (mut syzygy_min, mut syzygy_max) = (-Score::MIN_MATE, Score::MIN_MATE);
-
-    if !Node::ROOT
-        && skip_move.is_none()
-        && is_syzygy_enabled()
-        && depth >= shared.syzygy_depth.load(Ordering::Relaxed) as i32 * DEPTH_SCALE
-        && pos.board().halfmove_clock() == 0
-        && pos.board().castle_rights(Color::White).is_none()
-        && pos.board().castle_rights(Color::Black).is_none()
-        && let Some(wdl) = probe_wdl(pos.board())
-    {
-        let (score, flag) = match wdl {
-            WdlProbeResult::Win => (Score::tb_win(ply), TTFlag::LowerBound),
-            WdlProbeResult::Loss => (Score::tb_loss(ply), TTFlag::UpperBound),
-            _ => (Score::ZERO, TTFlag::Exact),
-        };
-
-        if flag == TTFlag::Exact
-            || (flag == TTFlag::UpperBound && score <= alpha)
-            || (flag == TTFlag::LowerBound && score >= beta)
-        {
-            let depth_bias = if Node::PV {
-                W::tt_depth_pv_bias()
-            } else {
-                W::tt_depth_bias()
-            };
-
-            shared.ttable.store(
-                pos.board(),
-                ((depth + depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8,
-                ply,
-                raw_eval,
-                score,
-                None,
-                flag,
-                tt_pv,
-            );
-
-            return score;
-        }
-
-        if Node::PV {
-            if flag == TTFlag::UpperBound {
-                syzygy_max = score;
-            } else {
-                if score > alpha {
-                    alpha = score;
-                }
-
-                syzygy_min = score;
-            }
-        }
-    }
-
     if !Node::PV && !in_check && skip_move.is_none() {
         let rfp_margin = W::rfp_margin(improving, depth);
         if depth < W::rfp_depth() && static_eval - rfp_margin >= beta {
@@ -356,7 +505,7 @@ pub fn search<Node: NodeType>(
             }
         }
 
-        pos.make_move(mv, &shared.nnue_weights);
+        pos.make_move(mv);
         shared.ttable.prefetch(pos.board());
 
         let new_depth = (depth + ext - 1 * DEPTH_SCALE).min(MAX_FRAC_DEPTH);
@@ -483,7 +632,6 @@ pub fn search<Node: NodeType>(
         };
     }
 
-    let best_score = best_score.clamp(syzygy_min, syzygy_max);
     if skip_move.is_none() {
         let tt_depth_bias = if tt_pv {
             W::tt_depth_pv_bias()
@@ -536,11 +684,7 @@ fn q_search<Node: NodeType>(
     mut alpha: Score,
     beta: Score,
 ) -> Score {
-    if thread.abort_now
-        || shared
-            .time_man
-            .abort_search(thread.nodes.local(), thread.nodes.global())
-    {
+    if thread.abort_now || shared.time_man.abort_search(&thread.nodes) {
         thread.abort_now = true;
 
         return Score::ZERO;
@@ -555,7 +699,7 @@ fn q_search<Node: NodeType>(
     }
 
     if ply >= MAX_PLY {
-        let raw_eval = pos.eval(&shared.nnue_weights);
+        let raw_eval = scale_eval(pos.eval(), pos.board(), thread.eval_scaling);
         let corr = thread.history.corr(pos.board());
 
         return adjust_eval(raw_eval, corr);
@@ -590,7 +734,7 @@ fn q_search<Node: NodeType>(
     } else {
         let raw_eval = tt_entry
             .map(|e| e.eval)
-            .unwrap_or_else(|| pos.eval(&shared.nnue_weights));
+            .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
         let corr = thread.history.corr(pos.board());
         static_eval = adjust_eval(raw_eval, corr);
 
@@ -614,7 +758,7 @@ fn q_search<Node: NodeType>(
     }
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
-        pos.make_move(mv, &shared.nnue_weights);
+        pos.make_move(mv);
         shared.ttable.prefetch(pos.board());
         let score = -q_search::<Node::Next>(pos, thread, shared, ply + 1, -beta, -alpha);
         pos.unmake_move();

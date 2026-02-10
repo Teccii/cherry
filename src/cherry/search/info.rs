@@ -1,98 +1,72 @@
+use std::fmt::Write;
+
 use crate::*;
 
-/*----------------------------------------------------------------*/
+#[derive(Debug, Clone)]
+pub enum SearchInfo {
+    Uci { frc: bool },
+    None,
+}
 
-pub trait SearchInfo {
-    fn new(frc: bool) -> Self;
-
-    fn update(
+impl SearchInfo {
+    pub fn update(
         &mut self,
         board: &Board,
         thread: &ThreadData,
         shared: &SharedData,
-        multipv: usize,
-        pv_index: usize,
-        pv: &PrincipalVariation,
-        bound: TTFlag,
-        score: Score,
-        depth: u8,
-    );
-}
-
-/*----------------------------------------------------------------*/
-
-pub struct UciInfo {
-    frc: bool,
-}
-pub struct NoInfo;
-
-/*----------------------------------------------------------------*/
-
-impl SearchInfo for UciInfo {
-    #[inline]
-    fn new(frc: bool) -> Self {
-        Self { frc }
-    }
-
-    fn update(
-        &mut self,
-        board: &Board,
-        thread: &ThreadData,
-        shared: &SharedData,
-        multipv: usize,
+        multipv: u8,
         pv_index: usize,
         pv: &PrincipalVariation,
         bound: TTFlag,
         score: Score,
         depth: u8,
     ) {
-        let nodes = thread.nodes.global();
-        let time = shared.time_man.elapsed();
+        match self {
+            SearchInfo::Uci { frc } => {
+                let nodes = thread.nodes.global();
+                let time = shared.time_man.elapsed();
 
-        println!(
-            "info depth {} seldepth {} {}score {} {}hashfull {} time {} nodes {} nps {} pv {}",
-            depth,
-            thread.sel_depth,
-            if multipv > 1 {
-                format!("multipv {} ", pv_index + 1)
-            } else {
-                String::new()
-            },
-            score,
-            match bound {
-                TTFlag::Exact => "",
-                TTFlag::UpperBound => "upperbound ",
-                TTFlag::LowerBound => "lowerbound ",
-                TTFlag::None => "",
-            },
-            shared.ttable.hash_usage(),
-            time,
-            nodes,
-            ((nodes as f64) / (time.max(1) as f64) * 1000.0) as u64,
-            pv.display(board, self.frc)
-        );
+                println!(
+                    "info depth {} seldepth {} {}score {} {}hashfull {} time {} nodes {} nps {} pv {}",
+                    depth,
+                    thread.sel_depth,
+                    if multipv > 1 {
+                        format!("multipv {} ", pv_index + 1)
+                    } else {
+                        String::new()
+                    },
+                    score,
+                    match bound {
+                        TTFlag::Exact => "",
+                        TTFlag::UpperBound => "upperbound ",
+                        TTFlag::LowerBound => "lowerbound ",
+                        TTFlag::None => "",
+                    },
+                    shared.ttable.hash_usage(),
+                    time,
+                    nodes,
+                    ((nodes as f64) / (time.max(1) as f64) * 1000.0) as u64,
+                    pv.display(board, *frc)
+                );
+            }
+            SearchInfo::None => {}
+        }
     }
-}
 
-/*----------------------------------------------------------------*/
-
-impl SearchInfo for NoInfo {
     #[inline]
-    fn new(_: bool) -> Self {
-        Self
-    }
+    pub fn best_move(&mut self, board: &Board, best_move: Move, ponder_move: Option<Move>) {
+        match self {
+            SearchInfo::Uci { frc } => {
+                let mut output = String::new();
 
-    fn update(
-        &mut self,
-        _: &Board,
-        _: &ThreadData,
-        _: &SharedData,
-        _: usize,
-        _: usize,
-        _: &PrincipalVariation,
-        _: TTFlag,
-        _: Score,
-        _: u8,
-    ) {
+                write!(output, "bestmove {}", best_move.display(board, *frc)).unwrap();
+                if let Some(mv) = ponder_move {
+                    write!(output, " ponder {}", mv.display(board, *frc)).unwrap();
+                }
+
+                println!("{}", output);
+            }
+            SearchInfo::None => {}
+        }
     }
 }

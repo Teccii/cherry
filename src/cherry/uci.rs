@@ -1,10 +1,12 @@
-use core::time::Duration;
+use std::{
+    iter::Peekable,
+    num::ParseIntError,
+    str::{FromStr, ParseBoolError, SplitAsciiWhitespace},
+};
 
 use crate::*;
 
 /*----------------------------------------------------------------*/
-
-pub type Result<T> = std::result::Result<T, UciParseError>;
 
 #[derive(Debug, Clone)]
 pub enum UciCommand {
@@ -12,316 +14,274 @@ pub enum UciCommand {
     NewGame,
     IsReady,
     PonderHit,
-    Position(Board, Vec<Move>),
-    Go(Vec<SearchLimit>),
-    SetOption {
-        name: String,
-        value: String,
-    },
     Eval,
     Display,
-    Perft {
-        depth: u8,
-        bulk: bool,
-    },
-    SplitPerft {
-        depth: u8,
-        bulk: bool,
-    },
-    Bench {
-        depth: u8,
-        threads: u16,
-        hash: u64,
-    },
-    #[cfg(feature = "datagen")]
-    DataGen {
-        count: usize,
-        threads: usize,
-        dfrc: bool,
-    },
-    #[cfg(feature = "tune")]
-    PrintSpsa,
+    Position { board: Board, moves: Vec<Move> },
+    Go(Vec<SearchLimit>),
+    Perft { depth: u8, bulk: bool },
+    SplitPerft { depth: u8, bulk: bool },
+    Bench { depth: u8 },
+    SetOption { name: String, value: String },
+    Wait,
     Stop,
     Quit,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SearchLimit {
-    SearchMoves(Vec<String>),
-    WhiteTime(Duration),
-    BlackTime(Duration),
-    WhiteInc(Duration),
-    BlackInc(Duration),
-    MoveTime(Duration),
-    MovesToGo(u16),
-    MaxDepth(u8),
-    MaxNodes(u64),
-    Infinite,
-    Ponder,
+/*----------------------------------------------------------------*/
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum UciParseError {
+    #[error("Missing Command")]
+    MissingCommand,
+    #[error("Unknown Command: `{0}`")]
+    UnknownCommand(String),
+    #[error("FRC isn't enabled")]
+    FrcNotEnabled,
+    #[error("Missing Scharnagl Number")]
+    MissingScharnagl,
+    #[error("Invalid Scharnagl Number: `{0}`")]
+    InvalidScharnagl(u16),
+    #[error("Invalid FEN: `{0}`")]
+    InvalidFen(String),
+    #[error("Invalid Move: `{0}`")]
+    InvalidMove(String),
+    #[error("Missing position type (e.g. `startpos`, `fen`) in `position` command")]
+    MissingPositionType,
+    #[error("Missing `moves` token in `position` command")]
+    MissingPositionMovesToken,
+    #[error("Unknown Search Limit: `{0}`")]
+    UnknownLimit(String),
+    #[error("Missing value for search limit: `{0}`")]
+    MissingLimitValue(String),
+    #[error("Missing depth option in `perft` or `splitperft` command")]
+    MissingPerftDepth,
+    #[error("Missing bulk option in `perft` or `splitperft` command")]
+    MissingPerftBulk,
+    #[error("Missing `name` token in `setoption` command")]
+    MissingOptionNameToken,
+    #[error("Missing `value` token in `setoption` command")]
+    MissingOptionValueToken,
+    #[error("Missing option name in `setoption` command")]
+    MissingOptionName,
+    #[error("Missing option value in `setoption` command")]
+    MissingOptionValue,
+    #[error("Error parsing integer: `{0}`")]
+    InvalidInteger(#[from] ParseIntError),
+    #[error("Error parsing boolean: `{0}`")]
+    InvalidBoolean(#[from] ParseBoolError),
 }
 
 /*----------------------------------------------------------------*/
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum UciParseError {
-    InvalidCommand,
-    InvalidArguments,
-}
-
 impl UciCommand {
-    pub fn parse(s: &str, chess960: bool) -> Result<Self> {
-        let mut reader = s.split_ascii_whitespace();
-        let token = reader.next().ok_or(UciParseError::InvalidCommand)?;
+    pub fn parse(input: &str, board: &Board, frc: bool) -> Result<UciCommand, UciParseError> {
+        use UciCommand::*;
+        use UciParseError::*;
 
-        match token {
-            "uci" => Ok(UciCommand::Uci),
-            "ucinewgame" => Ok(UciCommand::NewGame),
-            "isready" => Ok(UciCommand::IsReady),
-            "stop" => Ok(UciCommand::Stop),
-            "quit" | "q" => Ok(UciCommand::Quit),
-            "eval" => Ok(UciCommand::Eval),
-            "display" | "d" => Ok(UciCommand::Display),
-            "ponderhit" => Ok(UciCommand::PonderHit),
-            #[cfg(feature = "tune")]
-            "spsa" => Ok(UciCommand::PrintSpsa),
-            "perft" => Ok(UciCommand::Perft {
-                depth: reader
-                    .next()
-                    .and_then(|s| s.parse::<u8>().ok())
-                    .ok_or(UciParseError::InvalidArguments)?,
-                bulk: reader
-                    .next()
-                    .and_then(|s| s.parse::<bool>().ok())
-                    .unwrap_or(true),
-            }),
-            "splitperft" => Ok(UciCommand::SplitPerft {
-                depth: reader
-                    .next()
-                    .and_then(|s| s.parse::<u8>().ok())
-                    .ok_or(UciParseError::InvalidArguments)?,
-                bulk: reader
-                    .next()
-                    .and_then(|s| s.parse::<bool>().ok())
-                    .unwrap_or(true),
-            }),
-            "bench" => Ok(UciCommand::Bench {
-                depth: reader
-                    .next()
-                    .and_then(|s| s.parse::<u8>().ok())
-                    .unwrap_or(12),
-                threads: reader
-                    .next()
-                    .and_then(|s| s.parse::<u16>().ok())
-                    .unwrap_or(1),
-                hash: reader
-                    .next()
-                    .and_then(|s| s.parse::<u64>().ok())
-                    .unwrap_or(16),
-            }),
-            #[cfg(feature = "datagen")]
-            "datagen" => Ok(UciCommand::DataGen {
-                count: reader
-                    .next()
-                    .and_then(|s| s.parse::<usize>().ok())
-                    .unwrap_or(100_000),
-                threads: reader
-                    .next()
-                    .and_then(|s| s.parse::<usize>().ok())
-                    .unwrap_or(1),
-                dfrc: reader
-                    .next()
-                    .and_then(|s| s.parse::<bool>().ok())
-                    .unwrap_or(false),
-            }),
-            "position" => {
-                let board_kind = reader.next().ok_or(UciParseError::InvalidArguments)?;
-                let mut moves_token_passed = false;
-                let board = match board_kind {
-                    "startpos" => Board::startpos(),
-                    "kiwipete" => Board::from_fen(
-                        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-                    )
-                    .unwrap(),
-                    "lasker" => Board::from_fen("8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1").unwrap(),
-                    "frc" => {
-                        let scharnagl = reader
-                            .next()
-                            .and_then(|s| s.parse::<u16>().ok())
-                            .ok_or(UciParseError::InvalidArguments)?;
+        let mut reader = input.split_ascii_whitespace();
+        let cmd = reader.next().ok_or(MissingCommand)?;
 
-                        Board::frc_startpos(scharnagl)
-                    }
-                    "dfrc" => {
-                        let white_scharnagl = reader
-                            .next()
-                            .and_then(|s| s.parse::<u16>().ok())
-                            .ok_or(UciParseError::InvalidArguments)?;
-                        let black_scharnagl = reader
-                            .next()
-                            .and_then(|s| s.parse::<u16>().ok())
-                            .ok_or(UciParseError::InvalidArguments)?;
+        match cmd {
+            "uci" => Ok(Uci),
+            "ucinewgame" => Ok(NewGame),
+            "isready" => Ok(IsReady),
+            "eval" => Ok(Eval),
+            "display" | "d" => Ok(Display),
+            "wait" => Ok(Wait),
+            "stop" => Ok(Stop),
+            "quit" | "q" => Ok(Quit),
+            "position" => Self::parse_position(reader, frc),
+            "go" => Self::parse_go(reader, board, frc),
+            "perft" => {
+                let depth = reader.next().ok_or(MissingPerftDepth)?.parse::<u8>()?;
+                let bulk = reader.next().ok_or(MissingPerftBulk)?.parse::<bool>()?;
 
-                        Board::dfrc_startpos(white_scharnagl, black_scharnagl)
-                    }
-                    "fen" => {
-                        let mut fen = String::new();
-
-                        while let Some(part) = reader.next() {
-                            //TODO: could maybe use peekable here as well?
-                            if part == "moves" {
-                                moves_token_passed = true;
-                                break;
-                            }
-
-                            fen += part;
-                            fen += " ";
-                        }
-
-                        Board::from_fen(fen.trim()).ok_or(UciParseError::InvalidArguments)?
-                    }
-                    _ => return Err(UciParseError::InvalidArguments),
-                };
-
-                if !moves_token_passed {
-                    moves_token_passed = reader.next().is_some_and(|s| s == "moves");
-                }
-
-                let mut moves = Vec::new();
-
-                if moves_token_passed {
-                    let mut board_copy = board.clone();
-
-                    while let Some(mv_token) = reader.next() {
-                        let mv = Move::parse(&board_copy, chess960, mv_token.trim())
-                            .ok_or(UciParseError::InvalidArguments)?;
-                        board_copy.make_move(mv);
-                        moves.push(mv);
-                    }
-                }
-
-                Ok(UciCommand::Position(board, moves))
+                Ok(Perft { depth, bulk })
             }
-            "go" => {
-                let mut limits = Vec::new();
-                let mut tokens = reader.peekable();
-                let keywords = &[
-                    "searchmoves",
-                    "wtime",
-                    "btime",
-                    "winc",
-                    "binc",
-                    "movetime",
-                    "movestogo",
-                    "depth",
-                    "nodes",
-                    "infinite",
-                    "ponder",
-                ];
+            "splitperft" => {
+                let depth = reader.next().ok_or(MissingPerftDepth)?.parse::<u8>()?;
+                let bulk = reader.next().ok_or(MissingPerftBulk)?.parse::<bool>()?;
 
-                while let Some(&token) = tokens.peek() {
-                    tokens.next();
+                Ok(Perft { depth, bulk })
+            }
+            "bench" => {
+                let depth = reader.next().map_or(Ok(12), str::parse)?;
 
-                    limits.push(match token {
-                        "searchmoves" => {
-                            let mut moves = Vec::new();
-
-                            while let Some(&mv_token) = tokens.peek() {
-                                if keywords.contains(&mv_token) {
-                                    break;
-                                }
-
-                                moves.push(tokens.next().unwrap().to_owned());
-                            }
-
-                            SearchLimit::SearchMoves(moves)
-                        }
-                        "wtime" => {
-                            let millis = tokens
-                                .next()
-                                .and_then(|s| s.parse::<i64>().ok())
-                                .ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::WhiteTime(Duration::from_millis(millis.max(0) as u64))
-                        }
-                        "btime" => {
-                            let millis = tokens
-                                .next()
-                                .and_then(|s| s.parse::<i64>().ok())
-                                .ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::BlackTime(Duration::from_millis(millis.max(0) as u64))
-                        }
-                        "winc" => {
-                            let millis = tokens
-                                .next()
-                                .and_then(|s| s.parse::<i64>().ok())
-                                .ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::WhiteInc(Duration::from_millis(millis.max(0) as u64))
-                        }
-                        "binc" => {
-                            let millis = tokens
-                                .next()
-                                .and_then(|s| s.parse::<i64>().ok())
-                                .ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::BlackInc(Duration::from_millis(millis.max(0) as u64))
-                        }
-                        "movetime" => {
-                            let millis = tokens
-                                .next()
-                                .and_then(|s| s.parse::<i64>().ok())
-                                .ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::MoveTime(Duration::from_millis(millis.max(0) as u64))
-                        }
-                        "movestogo" => {
-                            let moves_to_go = tokens
-                                .next()
-                                .and_then(|s| s.parse::<u16>().ok())
-                                .ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::MovesToGo(moves_to_go)
-                        }
-                        "depth" => {
-                            let depth = tokens
-                                .next()
-                                .and_then(|s| s.parse::<u8>().ok())
-                                .ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::MaxDepth(depth)
-                        }
-                        "nodes" => {
-                            let nodes = tokens
-                                .next()
-                                .and_then(|s| s.parse::<u64>().ok())
-                                .ok_or(UciParseError::InvalidArguments)?;
-                            SearchLimit::MaxNodes(nodes)
-                        }
-                        "infinite" => SearchLimit::Infinite,
-                        "ponder" => SearchLimit::Ponder,
-                        _ => return Err(UciParseError::InvalidArguments),
-                    });
-                }
-
-                Ok(UciCommand::Go(limits))
+                Ok(Bench { depth })
             }
             "setoption" => {
-                reader
-                    .next()
-                    .filter(|&s| s == "name")
-                    .ok_or(UciParseError::InvalidArguments)?;
-
-                let mut name = String::new();
-                while let Some(token) = reader.next() {
-                    if token == "value" {
-                        break;
-                    }
-
-                    name += token;
+                if reader.next() != Some("name") {
+                    return Err(MissingOptionNameToken);
                 }
 
-                let value = reader
-                    .remainder()
-                    .map(str::to_owned)
-                    .unwrap_or(String::from("<empty>"));
+                let name = reader.next().ok_or(MissingOptionName)?.to_string();
+                if reader.next() != Some("value") {
+                    return Err(MissingOptionValueToken);
+                }
 
-                Ok(UciCommand::SetOption { name, value })
+                let value = reader.next().ok_or(MissingOptionValue)?.to_string();
+                Ok(SetOption { name, value })
             }
-            _ => Err(UciParseError::InvalidCommand),
+            _ => Err(UnknownCommand(cmd.to_string())),
         }
+    }
+
+    fn parse_position(
+        mut reader: SplitAsciiWhitespace,
+        frc: bool,
+    ) -> Result<UciCommand, UciParseError> {
+        use UciCommand::*;
+        use UciParseError::*;
+
+        let startpos = match reader.next() {
+            Some("startpos") => Board::startpos(),
+            Some("kiwipete") => Board::from_fen(
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            )
+            .unwrap(),
+            Some("lasker") => Board::from_fen("8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1").unwrap(),
+            Some("frc") => {
+                if !frc {
+                    return Err(FrcNotEnabled);
+                }
+
+                let scharnagl = reader.next().ok_or(MissingScharnagl)?.parse()?;
+                if scharnagl >= 960 {
+                    return Err(InvalidScharnagl(scharnagl));
+                }
+
+                Board::frc_startpos(scharnagl)
+            }
+            Some("dfrc") => {
+                if !frc {
+                    return Err(FrcNotEnabled);
+                }
+
+                let white_scharnagl: u16 = reader.next().ok_or(MissingScharnagl)?.parse()?;
+                let black_scharnagl: u16 = reader.next().ok_or(MissingScharnagl)?.parse()?;
+                let max = white_scharnagl.max(black_scharnagl);
+
+                if max >= 960 {
+                    return Err(InvalidScharnagl(max));
+                }
+
+                Board::dfrc_startpos(white_scharnagl, black_scharnagl)
+            }
+            Some("fen") => {
+                let mut fen = String::new();
+
+                for part in reader.by_ref().take(6) {
+                    if !fen.is_empty() {
+                        fen.push(' ');
+                    }
+
+                    fen.push_str(part);
+                }
+
+                Board::from_fen(&fen).ok_or(InvalidFen(fen))?
+            }
+            _ => return Err(MissingPositionType),
+        };
+
+        if reader.next().is_some_and(|token| token != "moves") {
+            return Err(MissingPositionMovesToken);
+        }
+
+        let mut current = startpos.clone();
+        let mut moves = Vec::new();
+
+        for token in reader {
+            let mv = Move::parse(&current, frc, token.trim())
+                .ok_or_else(|| InvalidMove(token.to_string()))?;
+
+            if !current.is_legal(mv) {
+                return Err(InvalidMove(token.to_string()));
+            }
+
+            moves.push(mv);
+            current.make_move(mv);
+        }
+
+        Ok(Position {
+            board: startpos,
+            moves,
+        })
+    }
+
+    fn parse_go(
+        reader: SplitAsciiWhitespace,
+        board: &Board,
+        frc: bool,
+    ) -> Result<UciCommand, UciParseError> {
+        use SearchLimit::*;
+        use UciCommand::*;
+        use UciParseError::*;
+
+        let keywords = &[
+            "searchmoves",
+            "wtime",
+            "btime",
+            "winc",
+            "binc",
+            "movetime",
+            "movestogo",
+            "depth",
+            "nodes",
+            "infinite",
+            "ponder",
+        ];
+
+        let mut reader = reader.peekable();
+        let mut limits = Vec::new();
+
+        #[inline]
+        fn parse_int<T: FromStr<Err = ParseIntError>>(
+            reader: &mut Peekable<SplitAsciiWhitespace>,
+            token: &str,
+        ) -> Result<T, UciParseError> {
+            Ok(reader
+                .next()
+                .ok_or_else(|| MissingLimitValue(token.to_string()))?
+                .parse::<T>()?)
+        }
+
+        while let Some(token) = reader.next() {
+            match token {
+                "infinite" => {}
+                "ponder" => limits.push(Ponder),
+                "wtime" => limits.push(WhiteTime(
+                    parse_int::<i64>(&mut reader, token)?.max(0) as u64
+                )),
+                "btime" => limits.push(BlackTime(
+                    parse_int::<i64>(&mut reader, token)?.max(0) as u64
+                )),
+                "winc" => limits.push(WhiteInc(parse_int(&mut reader, token)?)),
+                "binc" => limits.push(BlackInc(parse_int(&mut reader, token)?)),
+                "movetime" => limits.push(MoveTime(parse_int(&mut reader, token)?)),
+                "movestogo" => limits.push(MovesToGo(parse_int(&mut reader, token)?)),
+                "depth" => limits.push(MaxDepth(parse_int(&mut reader, token)?)),
+                "nodes" => limits.push(MaxNodes(parse_int(&mut reader, token)?)),
+                "searchmoves" => {
+                    let mut moves = MoveList::empty();
+                    while let Some(token) = reader.peek()
+                        && !keywords.contains(token)
+                    {
+                        let mv = Move::parse(board, frc, token.trim())
+                            .ok_or_else(|| InvalidMove(token.to_string()))?;
+                        if !board.is_legal(mv) {
+                            return Err(InvalidMove(token.to_string()));
+                        }
+
+                        moves.push(mv);
+                        reader.next();
+                    }
+
+                    limits.push(SearchMoves(moves))
+                }
+                _ => return Err(UnknownLimit(token.to_string())),
+            }
+        }
+
+        Ok(Go(limits))
     }
 }

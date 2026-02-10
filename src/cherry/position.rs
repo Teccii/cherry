@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -12,7 +14,7 @@ pub struct Position {
 
 impl Position {
     #[inline]
-    pub fn new(board: Board, weights: &NetworkWeights) -> Position {
+    pub fn new(board: Board, weights: Arc<NetworkWeights>) -> Position {
         let nnue = Nnue::new(&board, weights);
 
         Position {
@@ -24,16 +26,16 @@ impl Position {
     }
 
     #[inline]
-    pub fn set_board(&mut self, board: Board, weights: &NetworkWeights) {
-        self.nnue.full_reset(&board, weights);
+    pub fn set_board(&mut self, board: Board) {
+        self.nnue.full_reset(&board);
         self.boards.clear();
         self.moves.clear();
         self.current = board;
     }
 
     #[inline]
-    pub fn reset(&mut self, weights: &NetworkWeights) {
-        self.nnue.full_reset(&self.current, weights);
+    pub fn reset_nnue(&mut self) {
+        self.nnue.full_reset(&self.current);
     }
 
     /*----------------------------------------------------------------*/
@@ -64,13 +66,13 @@ impl Position {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn make_move(&mut self, mv: Move, weights: &NetworkWeights) {
+    pub fn make_move(&mut self, mv: Move) {
         self.boards.push(self.current.clone());
         self.moves.push(Some(MoveData::new(&self.current, mv)));
         self.current.make_move(mv);
 
         let prev_board = self.boards.last().unwrap();
-        self.nnue.make_move(prev_board, &self.current, weights, mv);
+        self.nnue.make_move(prev_board, &self.current, mv);
     }
 
     #[inline]
@@ -103,34 +105,13 @@ impl Position {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    #[cfg(not(feature = "datagen"))]
-    pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
-        self.nnue.apply_updates(&self.current, weights);
+    pub fn eval(&mut self) -> Score {
+        self.nnue.apply_updates(&self.current);
 
         let bucket = OUTPUT_BUCKETS[self.current.occupied().popcnt()];
-        let mut eval = self.nnue.eval(weights, bucket, self.stm());
-
-        let material = W::pawn_mat_scale() * self.current.pieces(Piece::Pawn).popcnt() as i32
-            + W::knight_mat_scale() * self.current.pieces(Piece::Knight).popcnt() as i32
-            + W::bishop_mat_scale() * self.current.pieces(Piece::Bishop).popcnt() as i32
-            + W::rook_mat_scale() * self.current.pieces(Piece::Rook).popcnt() as i32
-            + W::queen_mat_scale() * self.current.pieces(Piece::Queen).popcnt() as i32;
-        eval = eval * (W::mat_scale_base() + material) / 32768;
-
-        Score(eval).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+        Score(self.nnue.eval(bucket, self.stm()))
+            .clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
     }
-
-    #[inline]
-    #[cfg(feature = "datagen")]
-    pub fn eval(&mut self, weights: &NetworkWeights) -> Score {
-        self.nnue.apply_updates(&self.current, weights);
-
-        let bucket = OUTPUT_BUCKETS[self.current.occupied().popcnt()];
-        let eval = self.nnue.eval(weights, bucket, self.stm());
-
-        Score(eval).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
-    }
-
     #[inline]
     pub fn cmp_see(&self, mv: Move, threshold: i32) -> bool {
         if mv.is_castling() {

@@ -6,8 +6,8 @@ use crate::*;
 
 #[derive(Debug, Clone)]
 pub struct Accumulator {
-    pub white: Align64<[i16; HL]>,
-    pub black: Align64<[i16; HL]>,
+    pub white: [i16; HL],
+    pub black: [i16; HL],
 
     pub update_buffer: UpdateBuffer,
     pub dirty: [bool; Color::COUNT],
@@ -15,7 +15,7 @@ pub struct Accumulator {
 
 impl Accumulator {
     #[inline]
-    pub fn select(&self, color: Color) -> &Align64<[i16; HL]> {
+    pub fn select(&self, color: Color) -> &[i16; HL] {
         match color {
             Color::White => &self.white,
             Color::Black => &self.black,
@@ -23,7 +23,7 @@ impl Accumulator {
     }
 
     #[inline]
-    pub fn select_mut(&mut self, color: Color) -> &mut Align64<[i16; HL]> {
+    pub fn select_mut(&mut self, color: Color) -> &mut [i16; HL] {
         match color {
             Color::White => &mut self.white,
             Color::Black => &mut self.black,
@@ -33,7 +33,7 @@ impl Accumulator {
 
 /*----------------------------------------------------------------*/
 
-pub fn vec_add(acc: &mut Align64<[i16; HL]>, weights: &NetworkWeights, adds: &[usize]) {
+pub fn vec_add(acc: &mut [i16; HL], weights: &NetworkWeights, adds: &[usize]) {
     for i in 0..(HL / 32) {
         let offset = i * 32;
 
@@ -55,8 +55,8 @@ pub fn vec_add(acc: &mut Align64<[i16; HL]>, weights: &NetworkWeights, adds: &[u
 }
 
 pub fn vec_add_sub(
-    input: &Align64<[i16; HL]>,
-    output: &mut Align64<[i16; HL]>,
+    input: &[i16; HL],
+    output: &mut [i16; HL],
     weights: &NetworkWeights,
     add: usize,
     sub: usize,
@@ -82,8 +82,8 @@ pub fn vec_add_sub(
 }
 
 pub fn vec_add_sub2(
-    input: &Align64<[i16; HL]>,
-    output: &mut Align64<[i16; HL]>,
+    input: &[i16; HL],
+    output: &mut [i16; HL],
     weights: &NetworkWeights,
     add: usize,
     sub1: usize,
@@ -112,8 +112,8 @@ pub fn vec_add_sub2(
 }
 
 pub fn vec_add2_sub2(
-    input: &Align64<[i16; HL]>,
-    output: &mut Align64<[i16; HL]>,
+    input: &[i16; HL],
+    output: &mut [i16; HL],
     weights: &NetworkWeights,
     add1: usize,
     add2: usize,

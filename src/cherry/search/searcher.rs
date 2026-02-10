@@ -1,10 +1,7 @@
 use std::{
     fmt::Write,
-    sync::{
-        Arc,
-        atomic::{AtomicU8, AtomicUsize, Ordering},
-    },
-    time::Duration,
+    sync::{Arc, atomic::*},
+    thread::JoinHandle,
 };
 
 use pyrrhic_rs::DtzProbeValue;
@@ -13,59 +10,81 @@ use crate::*;
 
 /*----------------------------------------------------------------*/
 
-#[derive(Clone)]
+pub const MAX_THREADS: u32 = 2048;
+
 pub struct SharedData {
-    pub ttable: Arc<TTable>,
-    pub time_man: Arc<TimeManager>,
-    pub nnue_weights: Arc<NetworkWeights>,
-    pub syzygy_depth: Arc<AtomicU8>,
-    pub multipv: Arc<AtomicUsize>,
+    pub ttable: TTable,
+    pub time_man: TimeManager,
+    pub num_searching: AtomicU32,
+    pub nodes: Arc<AtomicU64>,
+}
+
+impl Default for SharedData {
+    #[inline]
+    fn default() -> Self {
+        SharedData {
+            ttable: TTable::new(16),
+            time_man: TimeManager::new(),
+            num_searching: AtomicU32::new(0),
+            nodes: Arc::new(AtomicU64::new(0)),
+        }
+    }
 }
 
 #[derive(Clone)]
 pub struct ThreadData {
+    pub abort_now: bool,
     pub nodes: BatchedAtomicCounter,
     pub search_stack: Vec<SearchStack>,
-    pub windows: Vec<Window>,
-    pub root_moves: Vec<Move>,
-    pub exclude_moves: Vec<Move>,
-    pub root_nodes: Box<[[u64; Square::COUNT]; Square::COUNT]>,
+    pub root_nodes: [[u64; Square::COUNT]; Square::COUNT],
     pub root_pv: PrincipalVariation,
+    pub exclude_moves: MoveList,
+    pub root_moves: MoveList,
+    pub windows: Vec<Window>,
     pub history: Box<History>,
     pub sel_depth: u16,
-    pub abort_now: bool,
+    pub multipv: u8,
+    pub eval_scaling: bool,
+    pub ponder: bool,
+    pub frc: bool,
 }
 
 impl ThreadData {
     #[inline]
-    pub fn reset(&mut self) {
-        self.nodes.reset();
-        self.search_stack = vec![SearchStack::default(); MAX_PLY as usize + 1];
-        self.windows.clear();
-        self.root_moves.clear();
-        self.exclude_moves.clear();
-        self.root_nodes = new_zeroed();
-        self.root_pv = PrincipalVariation::default();
-        self.sel_depth = 0;
-        self.abort_now = false;
-    }
-}
-
-impl Default for ThreadData {
-    #[inline]
-    fn default() -> Self {
+    pub fn new(nodes: Arc<AtomicU64>) -> ThreadData {
         ThreadData {
-            nodes: BatchedAtomicCounter::new(),
+            abort_now: false,
+            nodes: BatchedAtomicCounter::new(nodes),
             search_stack: vec![SearchStack::default(); MAX_PLY as usize + 1],
             windows: Vec::new(),
-            root_moves: Vec::new(),
-            exclude_moves: Vec::new(),
-            root_nodes: new_zeroed(),
+            root_moves: MoveList::empty(),
+            exclude_moves: MoveList::empty(),
+            root_nodes: [[0; Square::COUNT]; Square::COUNT],
             root_pv: PrincipalVariation::default(),
-            history: new_zeroed(),
+            history: unsafe { Box::new_zeroed().assume_init() },
             sel_depth: 0,
-            abort_now: false,
+            eval_scaling: true,
+            multipv: 1,
+            ponder: false,
+            frc: false,
         }
+    }
+
+    #[inline]
+    pub fn reset(&mut self) {
+        self.abort_now = false;
+        self.nodes.reset();
+        self.search_stack = vec![SearchStack::default(); MAX_PLY as usize + 1];
+        self.root_nodes = [[0; Square::COUNT]; Square::COUNT];
+        self.root_pv = PrincipalVariation::default();
+        self.exclude_moves.clear();
+        self.root_moves.clear();
+        self.windows.clear();
+        self.sel_depth = 0;
+        self.eval_scaling = true;
+        self.multipv = 1;
+        self.ponder = false;
+        self.frc = false;
     }
 }
 
@@ -141,337 +160,255 @@ impl MoveData {
 
 /*----------------------------------------------------------------*/
 
+#[derive(Clone)]
+pub enum ThreadCommand {
+    Go {
+        pos: Position,
+        options: EngineOptions,
+        root_moves: MoveList,
+        info: SearchInfo,
+    },
+    SetShared(Arc<SharedData>),
+    NewGame,
+    Quit,
+}
+
 pub struct Searcher {
-    pub pos: Position,
-    pub shared_data: SharedData,
-    pub thread_data: ThreadData,
-    pub threads: u16,
-    pub ponder: bool,
-    pub frc: bool,
+    pub shared: Arc<SharedData>,
+    command_sender: Sender<ThreadCommand>,
+    search_threads: Vec<JoinHandle<()>>,
 }
 
 impl Searcher {
-    #[inline]
-    pub fn new(board: Board, time_man: Arc<TimeManager>) -> Searcher {
-        let nnue_weights = NetworkWeights::default();
-
-        Searcher {
-            pos: Position::new(board, &nnue_weights),
-            shared_data: SharedData {
-                ttable: Arc::new(TTable::new(16)),
-                time_man,
-                nnue_weights,
-                syzygy_depth: Arc::new(AtomicU8::new(0)),
-                multipv: Arc::new(AtomicUsize::new(1)),
-            },
-            thread_data: ThreadData::default(),
-            threads: 1,
-            ponder: false,
-            frc: false,
-        }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    pub fn search<Info: SearchInfo>(
+    pub fn search(
         &mut self,
+        pos: Position,
         limits: Vec<SearchLimit>,
-    ) -> (Move, Option<Move>, Score, u8, u64) {
-        self.thread_data.reset();
-        self.shared_data.time_man.init(self.pos.stm(), &limits);
-        self.reset_nnue();
+        options: EngineOptions,
+        info: SearchInfo,
+    ) {
+        self.shared.num_searching.store(1, Ordering::Relaxed);
+        self.shared.time_man.init(
+            pos.stm(),
+            &limits,
+            options.move_overhead,
+            options.soft_target,
+        );
 
-        let mut focused = false;
-        for limit in &limits {
-            if let SearchLimit::SearchMoves(root_moves) = limit {
-                let board = self.pos.board();
-                let parsed_moves = root_moves
-                    .iter()
-                    .map(|s| Move::parse(board, self.frc, s).unwrap());
-                focused = true;
-
-                self.thread_data.root_moves.extend(parsed_moves);
-            }
-        }
+        let focused = limits
+            .iter()
+            .any(|l| matches!(l, SearchLimit::SearchMoves(_)));
+        let mut root_moves = limits
+            .iter()
+            .find_map(|l| match l {
+                SearchLimit::SearchMoves(moves) => Some(moves.clone()),
+                _ => None,
+            })
+            .unwrap_or_else(|| pos.board().gen_moves());
 
         if !focused
             && is_syzygy_enabled()
-            && let Some(dtz) = probe_dtz(self.pos.board())
+            && let Some(dtz) = probe_dtz(pos.board())
         {
-            let mut scored_moves: Vec<(Move, u8)> = Vec::new();
+            let mut best_moves = MoveList::empty();
+            let mut best_score = 0u8;
 
             for value in &dtz.moves[..dtz.num_moves] {
                 if let DtzProbeValue::DtzResult(result) = value {
-                    let board = self.pos.board();
+                    let move_score = result.wdl as u8;
+                    if move_score < best_score {
+                        continue;
+                    }
+                    if move_score > best_score {
+                        best_score = move_score;
+                        best_moves.clear();
+                    }
+
                     let src = Square::index(result.from_square as usize);
                     let dest = Square::index(result.to_square as usize);
-                    let is_capture = board.piece_on(dest).is_some();
                     let promotion = match Piece::index(result.promotion as usize) {
                         Piece::Pawn => None,
                         piece => Some(piece),
                     };
+                    let move_str = format!(
+                        "{}{}{}",
+                        src,
+                        dest,
+                        match promotion {
+                            Some(piece) => piece.to_string(),
+                            None => String::from(""),
+                        }
+                    );
 
-                    //no way king can castle
-                    let flag = match board.piece_on(src).unwrap() {
-                        Piece::Pawn =>
-                            Move::parse_pawn_flag(board, src, dest, is_capture, promotion).unwrap(),
-                        _ if is_capture => MoveFlag::Capture,
-                        _ => MoveFlag::Normal,
-                    };
-
-                    //WdlProbeResult does not impl PartialOrd + Ord
-                    scored_moves.push((Move::new(src, dest, flag), result.wdl as u8));
+                    if let Some(mv) = Move::parse(pos.board(), options.frc, &move_str)
+                        && root_moves.contains(&mv)
+                    {
+                        best_moves.push(mv);
+                    }
                 }
             }
 
-            let best_score = scored_moves.iter().map(|e| e.1).max().unwrap();
-            scored_moves.retain(|e| e.1 == best_score);
-
-            self.thread_data
-                .root_moves
-                .extend(scored_moves.iter().map(|e| e.0));
+            root_moves = best_moves;
         }
 
-        let mut result = (None, None, Score::ZERO, 0u8, 0u64);
-
-        std::thread::scope(|s| {
-            let frc = self.frc;
-
-            for i in 1..self.threads {
-                let pos = self.pos.clone();
-                let mut thread = self.thread_data.clone();
-                let shared = self.shared_data.clone();
-
-                s.spawn(move || {
-                    search_worker(pos, &mut thread, &shared, Info::new(frc), i);
-                });
-            }
-
-            let pos = self.pos.clone();
-            let mut thread = self.thread_data.clone();
-            let shared = self.shared_data.clone();
-
-            result = search_worker(pos, &mut thread, &shared, Info::new(frc), 0);
-
-            self.thread_data = thread;
-        });
-
-        self.shared_data.ttable.age();
-        let (best_move, ponder_move, score, depth, nodes) = result;
-
-        (
-            best_move.unwrap(),
-            ponder_move.filter(|_| self.ponder),
-            score,
-            depth,
-            nodes,
-        )
+        self.command_sender.send(ThreadCommand::Go {
+            pos,
+            options,
+            root_moves,
+            info,
+        })
     }
 
-    /*----------------------------------------------------------------*/
+    #[inline]
+    pub fn set_threads(&mut self, threads: u32) {
+        assert!(
+            !self.is_searching(),
+            "Called `set_threads() while searching"
+        );
+        assert!(threads > 0, "Threads must be greater than 0");
+
+        self.command_sender.send(ThreadCommand::Quit);
+        self.search_threads
+            .drain(..)
+            .for_each(|t| t.join().unwrap());
+
+        let (tx, rx) = channel(threads);
+        self.search_threads = rx
+            .enumerate()
+            .map(|(i, rx)| {
+                std::thread::spawn({
+                    let shared = self.shared.clone();
+                    move || {
+                        if std::panic::catch_unwind(move || thread_loop(rx, shared, i)).is_err() {
+                            std::process::exit(1);
+                        }
+                    }
+                })
+            })
+            .collect();
+        self.command_sender = tx;
+    }
 
     #[inline]
     pub fn resize_ttable(&mut self, mb: u64) {
-        self.shared_data.ttable = Arc::new(TTable::new(mb));
-        self.shared_data.ttable.clear(self.threads as usize);
+        assert!(
+            !self.is_searching(),
+            "Called `resize_ttable()` while searching"
+        );
+
+        self.shared = Arc::new(SharedData {
+            ttable: TTable::new(mb),
+            time_man: TimeManager::new(),
+            nodes: Arc::new(AtomicU64::new(0)),
+            num_searching: AtomicU32::new(0),
+        });
+        self.command_sender
+            .send(ThreadCommand::SetShared(self.shared.clone()));
     }
 
     #[inline]
-    pub fn new_game(&mut self) {
-        self.shared_data.ttable.clear(self.threads as usize);
-        self.thread_data.history = new_zeroed();
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn set_board(&mut self, board: Board) {
-        self.pos.set_board(board, &self.shared_data.nnue_weights);
+    pub fn ponderhit(&mut self) {
+        assert!(
+            self.is_searching(),
+            "Called `ponderhit()` while not searching"
+        );
+        self.shared.time_man.ponderhit();
     }
 
     #[inline]
-    pub fn reset_nnue(&mut self) {
-        self.pos.reset(&self.shared_data.nnue_weights);
+    pub fn newgame(&mut self) {
+        assert!(!self.is_searching(), "Called `newgame()` while searching");
+
+        self.shared.ttable.clear(self.search_threads.len());
+        self.command_sender.send(ThreadCommand::NewGame);
     }
 
     #[inline]
-    pub fn make_move(&mut self, mv: Move) {
-        self.pos.make_move(mv, &self.shared_data.nnue_weights);
+    pub fn quit(&mut self) {
+        self.shared.time_man.set_abort(true);
+        self.command_sender.send(ThreadCommand::Quit);
+        self.search_threads
+            .drain(..)
+            .for_each(|t| t.join().unwrap());
+    }
+
+    #[inline]
+    pub fn stop(&self) {
+        assert!(self.is_searching(), "Called `stop()` while not searching");
+        self.shared.time_man.set_abort(true);
+    }
+
+    #[inline]
+    pub fn wait(&self) {
+        let mut num_searching = self.shared.num_searching.load(Ordering::Relaxed);
+        while num_searching != 0 {
+            atomic_wait::wait(&self.shared.num_searching, num_searching);
+            num_searching = self.shared.num_searching.load(Ordering::Relaxed);
+        }
+    }
+
+    #[inline]
+    pub fn is_searching(&self) -> bool {
+        self.shared.num_searching.load(Ordering::Relaxed) != 0
     }
 }
 
-pub fn search_worker<Info: SearchInfo>(
-    mut pos: Position,
-    thread: &mut ThreadData,
-    shared: &SharedData,
-    mut info: Info,
-    worker: u16,
-) -> (Option<Move>, Option<Move>, Score, u8, u64) {
-    let legal_moves = pos.board().gen_moves().len();
-    let mut multipv = shared.multipv.load(Ordering::Relaxed).min(legal_moves);
+impl Default for Searcher {
+    #[inline]
+    fn default() -> Self {
+        let shared = Arc::new(SharedData::default());
+        let (tx, mut rx) = channel(1);
+        let search_thread = std::thread::spawn({
+            let shared = shared.clone();
 
-    if !thread.root_moves.is_empty() {
-        multipv = multipv.min(thread.root_moves.len());
-    }
-
-    thread
-        .windows
-        .extend((0..multipv).map(|_| Window::new(W::asp_window_initial())));
-
-    let static_eval = pos.eval(&shared.nnue_weights);
-    let mut average_score = Score::NONE;
-    let mut move_stability = 0u8;
-    let mut score_stability = 0u8;
-    let mut prev_move: Option<Move>;
-    let mut best_move: Option<Move> = None;
-    let mut ponder_move: Option<Move> = None;
-    let mut score = -Score::INFINITE;
-    let mut depth = 1;
-
-    'id: loop {
-        thread.exclude_moves.clear();
-
-        for pv_index in 0..multipv {
-            thread.windows[pv_index].reset();
-
-            'asp: loop {
-                let (alpha, beta) = if depth >= 3 {
-                    thread.windows[pv_index].get()
-                } else {
-                    (-Score::INFINITE, Score::INFINITE)
-                };
-
-                thread.sel_depth = 0;
-                let new_score = search::<Root>(
-                    &mut pos,
-                    thread,
-                    shared,
-                    depth as i32 * DEPTH_SCALE,
-                    0,
-                    alpha,
-                    beta,
-                    false,
-                );
-                thread.nodes.flush();
-
-                if depth > 1 && thread.abort_now {
-                    break 'id;
+            move || {
+                if std::panic::catch_unwind(move || thread_loop(rx.next().unwrap(), shared, 0))
+                    .is_err()
+                {
+                    std::process::exit(1);
                 }
-
-                thread.windows[pv_index].set_center(new_score);
-                if new_score > alpha && new_score < beta {
-                    thread
-                        .exclude_moves
-                        .push(thread.search_stack[0].pv.moves[0].unwrap());
-
-                    if pv_index == 0 {
-                        thread.root_pv = thread.search_stack[0].pv.clone();
-                        prev_move = best_move;
-                        best_move = thread.root_pv.moves[0];
-                        ponder_move = thread.root_pv.moves[1];
-                        score = new_score;
-
-                        if average_score == Score::NONE {
-                            average_score = score;
-                        } else {
-                            average_score = (average_score + score) / 2;
-                        }
-
-                        move_stability = move_stability.saturating_add(1);
-                        if prev_move != best_move {
-                            move_stability = 0;
-                        }
-
-                        score_stability = score_stability.saturating_add(1);
-                        if (score - average_score).abs().0 >= W::score_stability_edge() {
-                            score_stability = 0;
-                        }
-                    }
-
-                    if worker == 0 {
-                        info.update(
-                            pos.board(),
-                            &thread,
-                            &shared,
-                            multipv,
-                            pv_index,
-                            &thread.search_stack[0].pv,
-                            TTFlag::Exact,
-                            new_score,
-                            depth,
-                        );
-                    }
-
-                    break 'asp;
-                }
-
-                let (score, bound) = if new_score <= alpha {
-                    thread.windows[pv_index].fail_low();
-                    (alpha, TTFlag::UpperBound)
-                } else {
-                    thread.windows[pv_index].fail_high();
-                    (beta, TTFlag::LowerBound)
-                };
-
-                if worker == 0 && shared.time_man.elapsed() >= 1000 {
-                    info.update(
-                        pos.board(),
-                        &thread,
-                        &shared,
-                        multipv,
-                        pv_index,
-                        &thread.search_stack[0].pv,
-                        bound,
-                        score,
-                        depth,
-                    );
-                }
-
-                thread.windows[pv_index].expand();
             }
+        });
+
+        Searcher {
+            shared,
+            search_threads: vec![search_thread],
+            command_sender: tx,
         }
+    }
+}
 
-        if depth >= MAX_DEPTH || shared.time_man.abort_id(depth, thread.nodes.global()) {
-            break 'id;
+/*----------------------------------------------------------------*/
+
+fn thread_loop(mut rx: Receiver<ThreadCommand>, mut shared: Arc<SharedData>, id: usize) {
+    let mut thread = ThreadData::new(shared.nodes.clone());
+    loop {
+        match rx.recv(|cmd| cmd.clone()) {
+            ThreadCommand::Go {
+                pos,
+                options,
+                root_moves,
+                info,
+            } => {
+                shared.num_searching.fetch_add(1, Ordering::Relaxed);
+
+                thread.reset();
+                thread.root_moves = root_moves;
+                thread.multipv = options.multipv;
+                thread.eval_scaling = options.eval_scaling;
+                thread.ponder = options.ponder;
+                thread.frc = options.frc;
+
+                id_loop(pos, &mut thread, &shared, info, id);
+            }
+            ThreadCommand::SetShared(new_shared) => {
+                shared = new_shared;
+                thread.nodes = BatchedAtomicCounter::new(shared.nodes.clone());
+            }
+            ThreadCommand::NewGame => {
+                thread.history = unsafe { Box::new_zeroed().assume_init() };
+            }
+            ThreadCommand::Quit => return,
         }
-
-        if worker == 0 {
-            let best_move = best_move.unwrap();
-
-            shared.time_man.deepen(
-                depth,
-                score,
-                static_eval,
-                move_stability,
-                score_stability,
-                thread.root_nodes[best_move.src()][best_move.dest()],
-                thread.nodes.local(),
-            );
-        }
-
-        depth += 1;
     }
-
-    while shared.time_man.is_infinite()
-        && !(shared.time_man.use_max_depth() || shared.time_man.use_max_nodes())
-        && !shared.time_man.abort_now()
-    {
-        std::thread::sleep(Duration::from_millis(10));
-    }
-
-    if worker == 0 {
-        info.update(
-            pos.board(),
-            &thread,
-            &shared,
-            multipv,
-            0,
-            &thread.root_pv,
-            TTFlag::Exact,
-            score,
-            depth,
-        );
-    }
-
-    (best_move, ponder_move, score, depth, thread.nodes.global())
 }

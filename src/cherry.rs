@@ -10,13 +10,13 @@ mod nnue {
 
     mod accumulator;
     mod features;
+    mod inference;
     mod network;
-    mod util;
 
     pub use accumulator::*;
     pub use features::*;
+    pub use inference::*;
     pub use network::*;
-    pub use util::*;
 }
 
 mod search {
@@ -41,19 +41,24 @@ mod search {
     pub use window::*;
 }
 
+mod util {
+    mod atomic_instant;
+    mod batched_atomic;
+    mod command_channel;
+
+    pub use atomic_instant::*;
+    pub use batched_atomic::*;
+    pub use command_channel::*;
+}
+
 mod attacks;
-#[cfg(feature = "datagen")]
-mod datagen;
 mod engine;
 mod position;
 mod score;
 mod syzygy;
 mod uci;
-mod util;
 
 pub use attacks::*;
-#[cfg(feature = "datagen")]
-pub use datagen::*;
 pub use engine::*;
 pub use nnue::*;
 pub use position::*;

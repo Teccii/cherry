@@ -1,27 +1,5 @@
 use crate::*;
 
-/*----------------------------------------------------------------*/
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(C, align(64))]
-pub struct Align64<T>(pub T);
-
-impl<T> std::ops::Deref for Align64<T> {
-    type Target = T;
-
-    fn deref(&self) -> &T {
-        &self.0
-    }
-}
-
-impl<T> std::ops::DerefMut for Align64<T> {
-    fn deref_mut(&mut self) -> &mut T {
-        &mut self.0
-    }
-}
-
-/*----------------------------------------------------------------*/
-
 pub fn feed_forward(
     stm: &[i16; HL],
     ntm: &[i16; HL],
