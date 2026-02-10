@@ -147,7 +147,7 @@ impl Engine {
         match cmd {
             UciCommand::Uci => self.uci(),
             UciCommand::NewGame => self.searcher.newgame(),
-            UciCommand::IsReady => self.isready(),
+            UciCommand::IsReady => println!("readyok"),
             UciCommand::PonderHit => self.searcher.ponderhit(),
             UciCommand::Eval => self.eval(),
             UciCommand::Display => self.display(),
@@ -179,11 +179,6 @@ impl Engine {
         println!("option name Ponder type check default false");
         println!("option name UCI_Chess960 type check default false");
         println!("uciok");
-    }
-
-    #[inline]
-    fn isready(&self) {
-        println!("readyok");
     }
 
     #[inline]

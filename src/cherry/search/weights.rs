@@ -188,7 +188,9 @@ weights! {
     asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 48,
 
     soft_time_div         | SOFT_TIME_DIV:         u64 => 262144,
+    soft_time_inc         | SOFT_TIME_INC:         u64 => 4096,
     hard_time_div         | HARD_TIME_DIV:         u64 => 12288,
+    hard_time_inc         | HARD_TIME_INC:         u64 => 4096,
     subtree_base          | SUBTREE_BASE:          i64 => 10240,
     subtree_scale         | SUBTREE_SCALE:         i64 => 6144,
     subtree_min           | SUBTREE_MIN:           i64 => 4096,

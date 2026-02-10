@@ -132,9 +132,9 @@ impl TimeManager {
             };
 
             let hard_time =
-                ((time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64 + inc).min(time);
+                ((time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64 + inc * W::hard_time_inc() / 4096).min(time);
             let soft_time =
-                ((time as f64 / (W::soft_time_div() as f64 / 4096.0)) as u64 + inc).min(hard_time);
+                ((time as f64 / (W::soft_time_div() as f64 / 4096.0)) as u64 + inc * W::soft_time_inc() / 4096).min(hard_time);
 
             self.base_time.store(soft_time, Ordering::Relaxed);
             self.soft_time.store(soft_time, Ordering::Relaxed);
