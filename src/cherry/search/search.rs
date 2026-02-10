@@ -753,11 +753,17 @@ fn q_search<Node: NodeType>(
     let cont_indices = ContIndices::new(&pos);
 
     if !in_check {
-        move_picker.skip_bad_tactics();
         move_picker.skip_quiets();
     }
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
+        if !best_score.is_loss() {
+            move_picker.skip_bad_tactics();
+            if move_picker.stage() >= Stage::YieldBadTactics {
+                break;
+            }
+        }
+
         pos.make_move(mv);
         shared.ttable.prefetch(pos.board());
         let score = -q_search::<Node::Next>(pos, thread, shared, ply + 1, -beta, -alpha);
