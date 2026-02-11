@@ -189,7 +189,11 @@ pub fn id_loop(
             }
         }
 
-        if depth >= MAX_DEPTH || shared.time_man.abort_id(depth, thread.nodes.global()) {
+        if shared.time_man.abort_id(depth, thread.nodes.global()) {
+            if id == 0 {
+                shared.time_man.set_abort(true);
+            }
+
             break 'id;
         }
 
@@ -208,6 +212,10 @@ pub fn id_loop(
         }
 
         depth += 1;
+    }
+
+    if shared.time_man.is_infinite() {
+        shared.time_man.wait_for_abort();
     }
 
     let last_thread = shared.num_searching.fetch_sub(1, Ordering::Relaxed) == 2;
