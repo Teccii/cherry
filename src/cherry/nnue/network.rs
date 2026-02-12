@@ -31,7 +31,7 @@ pub const QB: i32 = 64;
 
 /*----------------------------------------------------------------*/
 
-const NETWORK_BYTES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/network.bin"));
+const NETWORK_BYTES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/network.nnue"));
 
 #[derive(Debug, Clone)]
 #[repr(C, align(64))]
