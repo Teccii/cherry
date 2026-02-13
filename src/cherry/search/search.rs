@@ -254,6 +254,12 @@ pub fn id_loop(
             ponder_move.filter(|_| thread.ponder),
         );
 
+        shared.best_score.store(score.0, Ordering::Relaxed);
+        shared.best_move.store(
+            best_move.map(|mv| mv.bits()).unwrap_or(0),
+            Ordering::Relaxed,
+        );
+
         atomic_wait::wake_all(&shared.num_searching);
         shared.ttable.age();
     }

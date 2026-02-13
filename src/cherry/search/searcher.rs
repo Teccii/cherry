@@ -16,7 +16,27 @@ pub struct SharedData {
     pub ttable: TTable,
     pub time_man: TimeManager,
     pub num_searching: AtomicU32,
+    pub best_score: AtomicI32,
+    pub best_move: AtomicU16,
     pub nodes: Arc<AtomicU64>,
+}
+
+impl SharedData {
+    #[inline]
+    pub fn best_score(&self) -> Score {
+        Score(self.best_score.load(Ordering::Relaxed))
+    }
+
+    #[inline]
+    pub fn best_move(&self) -> Option<Move> {
+        let bits = self.best_move.load(Ordering::Relaxed);
+
+        if bits != 0 {
+            Some(Move::from_bits(bits))
+        } else {
+            None
+        }
+    }
 }
 
 impl Default for SharedData {
@@ -26,6 +46,8 @@ impl Default for SharedData {
             ttable: TTable::new(16),
             time_man: TimeManager::new(),
             num_searching: AtomicU32::new(0),
+            best_score: AtomicI32::new(Score::NONE.0),
+            best_move: AtomicU16::new(0),
             nodes: Arc::new(AtomicU64::new(0)),
         }
     }
@@ -256,7 +278,7 @@ impl Searcher {
             options,
             root_moves,
             info,
-        })
+        });
     }
 
     #[inline]
@@ -299,8 +321,10 @@ impl Searcher {
         self.shared = Arc::new(SharedData {
             ttable: TTable::new(mb),
             time_man: TimeManager::new(),
-            nodes: Arc::new(AtomicU64::new(0)),
             num_searching: AtomicU32::new(0),
+            best_score: AtomicI32::new(Score::NONE.0),
+            best_move: AtomicU16::new(0),
+            nodes: Arc::new(AtomicU64::new(0)),
         });
         self.command_sender
             .send(ThreadCommand::SetShared(self.shared.clone()));

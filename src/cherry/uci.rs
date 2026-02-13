@@ -16,12 +16,32 @@ pub enum UciCommand {
     PonderHit,
     Eval,
     Display,
-    Position { board: Board, moves: Vec<Move> },
+    Position {
+        board: Board,
+        moves: Vec<Move>,
+    },
     Go(Vec<SearchLimit>),
-    Perft { depth: u8, bulk: bool },
-    SplitPerft { depth: u8, bulk: bool },
-    Bench { depth: u8 },
-    SetOption { name: String, value: String },
+    Perft {
+        depth: u8,
+        bulk: bool,
+    },
+    SplitPerft {
+        depth: u8,
+        bulk: bool,
+    },
+    Bench {
+        depth: u8,
+    },
+    GenFens {
+        num: usize,
+        seed: u64,
+        dfrc: bool,
+        moves: usize,
+    },
+    SetOption {
+        name: String,
+        value: String,
+    },
     Wait,
     Stop,
     Quit,
@@ -57,6 +77,24 @@ pub enum UciParseError {
     MissingPerftDepth,
     #[error("Missing bulk option in `perft` or `splitperft` command")]
     MissingPerftBulk,
+    #[error("Missing Number of Fens")]
+    MissingGenFensNumber,
+    #[error("Missing `seed` token in `genfens` command")]
+    MissingGenFensSeedToken,
+    #[error("Missing `book` token in `genfens` command")]
+    MissingGenFensBookToken,
+    #[error("Missing `dfrc` token in `genfens` command")]
+    MissingGenFensDfrcToken,
+    #[error("Missing `moves` token in `genfens` command")]
+    MissingGenFensMovesToken,
+    #[error("Missing `seed` value in `genfens` command")]
+    MissingGenFensSeedValue,
+    #[error("Missing `book` value in `genfens` command")]
+    MissingGenFensBookValue,
+    #[error("Missing `dfrc` value in `genfens` command")]
+    MissingGenFensDfrcValue,
+    #[error("Missing `moves` value in `genfens` command")]
+    MissingGenFensMovesValue,
     #[error("Missing `name` token in `setoption` command")]
     MissingOptionNameToken,
     #[error("Missing `value` token in `setoption` command")]
@@ -103,12 +141,54 @@ impl UciCommand {
                 let depth = reader.next().ok_or(MissingPerftDepth)?.parse::<u8>()?;
                 let bulk = reader.next().ok_or(MissingPerftBulk)?.parse::<bool>()?;
 
-                Ok(Perft { depth, bulk })
+                Ok(SplitPerft { depth, bulk })
             }
             "bench" => {
                 let depth = reader.next().map_or(Ok(12), str::parse)?;
 
                 Ok(Bench { depth })
+            }
+            "genfens" => {
+                let num = reader
+                    .next()
+                    .ok_or(MissingGenFensNumber)?
+                    .parse::<usize>()?;
+
+                if reader.next() != Some("seed") {
+                    return Err(MissingGenFensSeedToken);
+                }
+
+                let seed = reader
+                    .next()
+                    .ok_or(MissingGenFensSeedValue)?
+                    .parse::<u64>()?;
+                if reader.next() != Some("book") {
+                    return Err(MissingGenFensBookToken);
+                }
+                if reader.next().is_none() {
+                    return Err(MissingGenFensBookValue);
+                }
+                if reader.next() != Some("dfrc") {
+                    return Err(MissingGenFensDfrcToken);
+                }
+                let dfrc = reader
+                    .next()
+                    .ok_or(MissingGenFensDfrcValue)?
+                    .parse::<bool>()?;
+                if reader.next() != Some("moves") {
+                    return Err(MissingGenFensMovesToken);
+                }
+                let moves = reader
+                    .next()
+                    .ok_or(MissingGenFensMovesValue)?
+                    .parse::<usize>()?;
+
+                Ok(GenFens {
+                    num,
+                    seed,
+                    dfrc,
+                    moves,
+                })
             }
             "setoption" => {
                 if reader.next() != Some("name") {

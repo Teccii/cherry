@@ -48,6 +48,8 @@ mod util {
 }
 
 mod attacks;
+mod bench;
+mod datagen;
 mod engine;
 mod position;
 mod score;
