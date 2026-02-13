@@ -8,14 +8,10 @@ mod nnue {
     https://github.com/jnlt3/blackmarlin
     */
 
-    mod accumulator;
-    mod features;
-    mod inference;
+    mod arch;
     mod network;
 
-    pub use accumulator::*;
-    pub use features::*;
-    pub use inference::*;
+    pub use arch::*;
     pub use network::*;
 }
 

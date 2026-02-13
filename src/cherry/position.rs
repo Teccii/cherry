@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::*;
 
 /*----------------------------------------------------------------*/
@@ -14,8 +12,8 @@ pub struct Position {
 
 impl Position {
     #[inline]
-    pub fn new(board: Board, weights: Arc<NetworkWeights>) -> Position {
-        let nnue = Nnue::new(&board, weights);
+    pub fn new(board: Board) -> Position {
+        let nnue = Nnue::new(&board);
 
         Position {
             current: board,
@@ -107,11 +105,9 @@ impl Position {
     #[inline]
     pub fn eval(&mut self) -> Score {
         self.nnue.apply_updates(&self.current);
-
-        let bucket = OUTPUT_BUCKETS[self.current.occupied().popcnt()];
-        Score(self.nnue.eval(bucket, self.stm()))
-            .clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+        Score(self.nnue.eval(&self.current)).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
     }
+
     #[inline]
     pub fn cmp_see(&self, mv: Move, threshold: i32) -> bool {
         if mv.is_castling() {

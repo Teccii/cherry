@@ -128,7 +128,7 @@ impl Engine {
     #[inline]
     pub fn new() -> Engine {
         Engine {
-            pos: Position::new(Board::startpos(), NetworkWeights::default()),
+            pos: Position::new(Board::startpos()),
             searcher: Searcher::default(),
             options: EngineOptions::default(),
         }
