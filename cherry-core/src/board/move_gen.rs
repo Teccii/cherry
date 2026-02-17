@@ -192,7 +192,7 @@ impl Board {
 
     /*----------------------------------------------------------------*/
 
-    #[inline]
+    #[cfg(target_feature = "avx512f")]
     fn gen_moves_to<const KING_MOVES: bool, const TACTICS: bool>(
         &self,
         moves: &mut MoveList,
@@ -307,6 +307,177 @@ impl Board {
                     king_dest & empty,
                     src,
                 );
+
+                let blockers = self.occupied();
+                let our_backrank = Rank::First.relative_to(self.stm);
+                let rights = self.castle_rights(self.stm);
+                let king_src = self.king(self.stm);
+
+                macro_rules! write_castling_moves {
+                    ($king_dest:expr, $rook_dest:expr, $rights:expr, $flag:expr) => {
+                        if let Some(rook_src) = $rights.map(|f| Square::new(f, our_backrank)) {
+                            let king_dest = Square::new($king_dest, our_backrank);
+                            let rook_dest = Square::new($rook_dest, our_backrank);
+                            let king_to_rook = between(king_src, rook_src);
+                            let king_to_dest = between(king_src, king_dest);
+                            let must_be_safe = king_to_dest | king_dest;
+                            let must_be_empty = must_be_safe | king_to_rook | rook_dest;
+                            let blockers = blockers ^ king_src ^ rook_src;
+
+                            if !self.pinned.has(rook_src)
+                                && blockers.is_disjoint(must_be_empty)
+                                && their_attacks.is_disjoint(must_be_safe)
+                            {
+                                moves.push(Move::new(king_src, rook_src, $flag));
+                            }
+                        }
+                    };
+                }
+
+                write_castling_moves!(File::G, File::F, rights.short, MoveFlag::ShortCastling);
+                write_castling_moves!(File::C, File::D, rights.long, MoveFlag::LongCastling);
+            }
+        }
+    }
+
+    #[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
+    fn gen_moves_to<const KING_MOVES: bool, const TACTICS: bool>(
+        &self,
+        moves: &mut MoveList,
+        valid: Bitboard,
+    ) {
+        let masked_attacks = Wordboard(self.attack_table(self.stm).0 & self.pinned_mask.0);
+
+        let valid_pieces = self.index_to_piece[self.stm].valid();
+        let pawn_mask = self.index_to_piece[self.stm].mask_eq(Piece::Pawn);
+        let non_pawn_mask = valid_pieces & !pawn_mask & !PieceMask::KING;
+
+        let empty = self.empty();
+        let their_pieces = self.colors(!self.stm);
+        let their_attacks = self.attack_table(!self.stm).all();
+        let their_backrank = Rank::Eighth.relative_to(self.stm).bitboard();
+
+        let pawn_dest = valid & masked_attacks.for_mask(pawn_mask);
+        let non_pawn_dest = valid & masked_attacks.for_mask(non_pawn_mask);
+        let king_dest = valid & masked_attacks.for_mask(PieceMask::KING) & !their_attacks;
+
+        if TACTICS {
+            moves.write_capt_promos(
+                self,
+                &masked_attacks,
+                pawn_mask,
+                pawn_dest & their_pieces & their_backrank,
+            );
+
+            //Pawn Captures
+            for dest in pawn_dest & their_pieces & !their_backrank {
+                let mask = masked_attacks.get(dest) & pawn_mask;
+
+                for index in mask {
+                    moves.push(Move::new(
+                        self.index_to_square[self.stm][index].unwrap(),
+                        dest,
+                        MoveFlag::Capture
+                    ));
+                }
+            }
+
+            if let Some(ep_sq) = self.ep_square() {
+                let mask = masked_attacks.get(ep_sq) & pawn_mask;
+                let ep_info = self.en_passant.unwrap();
+
+                for index in mask {
+                    let src = self.index_to_square[self.stm][index].unwrap();
+                    let left = src.file() < ep_sq.file();
+
+                    if (left && ep_info.left()) || (!left && ep_info.right()) {
+                        moves.push(Move::new(src, ep_sq, MoveFlag::EnPassant));
+                    }
+                }
+            }
+
+            //Non-Pawn Captures
+            for dest in non_pawn_dest & their_pieces {
+                let mask = masked_attacks.get(dest) & non_pawn_mask;
+
+                for index in mask {
+                    moves.push(Move::new(
+                        self.index_to_square[self.stm][index].unwrap(),
+                        dest,
+                        MoveFlag::Capture
+                    ));
+                }
+            }
+
+            if KING_MOVES {
+                //King Captures
+                for dest in king_dest & their_pieces {
+                    if masked_attacks.get(dest).has(PieceIndex::KING) {
+                        moves.push(Move::new(
+                            self.index_to_square[self.stm][PieceIndex::KING].unwrap(),
+                            dest,
+                            MoveFlag::Capture
+                        ));
+                    }
+                }
+            }
+        }
+
+        let pinned_pawn_mask = self.pinned & !self.king(self.stm).file().bitboard();
+        let valid_pawns = self.color_pieces(self.stm, Piece::Pawn) & !pinned_pawn_mask;
+        let (normal_empty, double_empty) = pawn_empty(self.stm, empty, valid);
+
+        let pawn_normal = valid_pawns & normal_empty;
+        let pawn_double = valid_pawns & double_empty;
+
+        if TACTICS {
+            let mut promo_mask = (pawn_normal >> PAWN_PROMO_SHIFT[self.stm]).0 as u8;
+            while promo_mask != 0 {
+                let index = promo_mask.trailing_zeros() as usize;
+
+                moves.extend(PAWN_PROMOS[self.stm].into_iter().skip(index * 4).take(4));
+                promo_mask &= promo_mask.wrapping_sub(1);
+            }
+        } else {
+            let normal_mask = (pawn_normal >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
+            let double_mask = (pawn_double >> PAWN_DOUBLE_SHIFT[self.stm]).0 as u8;
+            let mut double_mask = double_mask as u16 | ((normal_mask as u16) << 8);
+
+            while double_mask != 0 {
+                moves.push(PAWN_DOUBLE[self.stm][double_mask.trailing_zeros() as usize]);
+                double_mask &= double_mask.wrapping_sub(1);
+            }
+
+            let mut normal_mask = (pawn_normal >> PAWN_NORMAL_SHIFT).0 as u32;
+            while normal_mask != 0 {
+                moves.push(PAWN_NORMAL[self.stm][normal_mask.trailing_zeros() as usize]);
+                normal_mask &= normal_mask.wrapping_sub(1);
+            }
+
+            //Non-Pawn Quiets
+            for dest in non_pawn_dest & empty {
+                let mask = masked_attacks.get(dest) & non_pawn_mask;
+
+                for index in mask {
+                    moves.push(Move::new(
+                        self.index_to_square[self.stm][index].unwrap(),
+                        dest,
+                        MoveFlag::Normal
+                    ));
+                }
+            }
+
+            if KING_MOVES {
+                //King Quiets
+                for dest in king_dest & empty {
+                    if masked_attacks.get(dest).has(PieceIndex::KING) {
+                        moves.push(Move::new(
+                            self.index_to_square[self.stm][PieceIndex::KING].unwrap(),
+                            dest,
+                            MoveFlag::Normal
+                        ));
+                    }
+                }
 
                 let blockers = self.occupied();
                 let our_backrank = Rank::First.relative_to(self.stm);
