@@ -64,6 +64,7 @@ pub struct ThreadData {
     pub root_moves: MoveList,
     pub windows: Vec<Window>,
     pub history: Box<History>,
+    pub nmp_min_ply: u16,
     pub sel_depth: u16,
     pub multipv: u8,
     pub eval_scaling: bool,
@@ -84,6 +85,7 @@ impl ThreadData {
             root_nodes: [[0; Square::COUNT]; Square::COUNT],
             root_pv: PrincipalVariation::default(),
             history: unsafe { Box::new_zeroed().assume_init() },
+            nmp_min_ply: 0,
             sel_depth: 0,
             eval_scaling: true,
             multipv: 1,
@@ -101,6 +103,7 @@ impl ThreadData {
         self.root_pv = PrincipalVariation::default();
         self.exclude_moves.clear();
         self.root_moves.clear();
+        self.nmp_min_ply = 0;
         self.windows.clear();
         self.sel_depth = 0;
         self.eval_scaling = true;
