@@ -1,4 +1,4 @@
-use rand::{RngExt, SeedableRng, rngs::SmallRng};
+use rand::{RngExt, SeedableRng, random_bool, rngs::SmallRng};
 
 use crate::*;
 
@@ -10,6 +10,7 @@ fn gen_opening(rng: &mut SmallRng, dfrc: bool, moves: usize) -> Option<Board> {
         Board::startpos()
     };
 
+    let moves = moves + random_bool(0.5) as usize;
     for _ in 0..moves {
         let legal_moves = board.gen_moves();
         if legal_moves.is_empty() {
