@@ -330,7 +330,7 @@ pub fn search<Node: NodeType>(
         let raw_eval = tt_entry
             .map(|e| e.eval)
             .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
-        let corr = thread.history.corr(pos.board());
+        let corr = thread.history.corr(pos);
         let static_eval = adjust_eval(raw_eval, corr);
 
         (raw_eval, static_eval, corr)
@@ -668,7 +668,7 @@ pub fn search<Node: NodeType>(
         );
 
         let static_eval = if !in_check {
-            adjust_eval(raw_eval, thread.history.corr(pos.board()))
+            adjust_eval(raw_eval, thread.history.corr(pos))
         } else {
             Score::NONE
         };
@@ -684,7 +684,7 @@ pub fn search<Node: NodeType>(
         {
             thread
                 .history
-                .update_corr(pos.board(), depth, best_score, static_eval);
+                .update_corr(pos, depth, best_score, static_eval);
         }
     }
 
@@ -717,7 +717,7 @@ fn q_search<Node: NodeType>(
 
     if ply >= MAX_PLY {
         let raw_eval = scale_eval(pos.eval(), pos.board(), thread.eval_scaling);
-        let corr = thread.history.corr(pos.board());
+        let corr = thread.history.corr(pos);
 
         return adjust_eval(raw_eval, corr);
     }
@@ -752,7 +752,7 @@ fn q_search<Node: NodeType>(
         let raw_eval = tt_entry
             .map(|e| e.eval)
             .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
-        let corr = thread.history.corr(pos.board());
+        let corr = thread.history.corr(pos);
         static_eval = adjust_eval(raw_eval, corr);
 
         if static_eval >= beta {

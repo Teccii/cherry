@@ -9,16 +9,16 @@ pub const MAX_HISTORY: i32 = 16384;
 
 #[derive(Clone)]
 pub struct ContIndices {
-    pub counter_move: Option<MoveData>,
-    pub follow_up: Option<MoveData>,
+    pub cont1: Option<MoveData>,
+    pub cont2: Option<MoveData>,
 }
 
 impl ContIndices {
     #[inline]
     pub fn new(pos: &Position) -> ContIndices {
         ContIndices {
-            counter_move: pos.prev_move(1),
-            follow_up: pos.prev_move(2),
+            cont1: pos.prev_move(1),
+            cont2: pos.prev_move(2),
         }
     }
 }
@@ -379,6 +379,68 @@ impl<const SIZE: usize> CorrHistory<SIZE> {
 
 /*----------------------------------------------------------------*/
 
+#[derive(Debug, Copy, Clone)]
+pub struct ContCorrEntry(i16);
+
+#[derive(Debug, Copy, Clone)]
+pub struct ContCorrHistory {
+    entries:
+        [[[[[ContEntry; Square::COUNT]; Piece::COUNT]; Square::COUNT]; Piece::COUNT]; Color::COUNT], // [stm][prev piece][prev dest][piece][dest]
+}
+
+impl ContCorrHistory {
+    #[inline]
+    pub fn bonus(depth: i32, diff: i64) -> i32 {
+        (diff * depth as i64 * W::corr_bonus_scale() / (DEPTH_SCALE as i64 * 1024)) as i32
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn entry(
+        &self,
+        stm: Color,
+        mv: Option<MoveData>,
+        prev_mv: Option<MoveData>,
+    ) -> Option<i32> {
+        let mv = mv?;
+        let prev_mv = prev_mv?;
+
+        Some(self.entries[stm][prev_mv.piece][prev_mv.mv.dest()][mv.piece][mv.mv.dest()].0 as i32)
+    }
+
+    #[inline]
+    pub fn entry_mut(
+        &mut self,
+        stm: Color,
+        mv: Option<MoveData>,
+        prev_mv: Option<MoveData>,
+    ) -> Option<&mut i16> {
+        let mv = mv?;
+        let prev_mv = prev_mv?;
+
+        Some(&mut self.entries[stm][prev_mv.piece][prev_mv.mv.dest()][mv.piece][mv.mv.dest()].0)
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
+    pub fn update(
+        &mut self,
+        stm: Color,
+        mv: Option<MoveData>,
+        prev_mv: Option<MoveData>,
+        depth: i32,
+        diff: i64,
+    ) {
+        if let Some(entry) = self.entry_mut(stm, mv, prev_mv) {
+            gravity::<{ MAX_CORR / 4 }, MAX_CORR>(entry, Self::bonus(depth, diff));
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
 pub const PAWN_HIST_SIZE: usize = 4096;
 
 pub const PAWN_CORR_SIZE: usize = 4096;
@@ -391,13 +453,14 @@ pub struct History {
     quiet: QuietHistory,
     tactic: TacticHistory,
     pawn: PawnHistory<PAWN_HIST_SIZE>,
-    counter_move: ContHistory,
-    follow_up: ContHistory,
+    cont_odd: ContHistory,
+    cont_even: ContHistory,
     pawn_corr: CorrHistory<PAWN_CORR_SIZE>,
     minor_corr: CorrHistory<MINOR_CORR_SIZE>,
     major_corr: CorrHistory<MAJOR_CORR_SIZE>,
     white_corr: CorrHistory<NONPAWN_CORR_SIZE>,
     black_corr: CorrHistory<NONPAWN_CORR_SIZE>,
+    cont1_corr: ContCorrHistory,
 }
 
 impl History {
@@ -406,12 +469,12 @@ impl History {
         let mut result = self.quiet.entry(board, mv);
         result += self.pawn.entry(board, mv);
         result += self
-            .counter_move
-            .entry(board, mv, indices.counter_move)
+            .cont_odd
+            .entry(board, mv, indices.cont1)
             .unwrap_or_default();
         result += self
-            .follow_up
-            .entry(board, mv, indices.follow_up)
+            .cont_even
+            .entry(board, mv, indices.cont2)
             .unwrap_or_default();
 
         result
@@ -423,7 +486,8 @@ impl History {
     }
 
     #[inline]
-    pub fn corr(&self, board: &Board) -> i32 {
+    pub fn corr(&self, pos: &Position) -> i32 {
+        let board = pos.board();
         let stm = board.stm();
         let (white_frac, black_frac) = match stm {
             Color::White => (W::stm_corr_frac(), W::ntm_corr_frac()),
@@ -437,6 +501,7 @@ impl History {
         corr += W::major_corr_frac() * self.major_corr.entry(stm, board.major_hash());
         corr += white_frac * self.white_corr.entry(stm, board.white_hash());
         corr += black_frac * self.black_corr.entry(stm, board.black_hash());
+        corr += W::cont1_corr_frac() * self.cont1_corr.entry(stm, pos.prev_move(1), pos.prev_move(2)).unwrap_or_default();
 
         corr / MAX_CORR
     }
@@ -479,10 +544,10 @@ impl History {
         self.quiet.update(board, depth, mv, bonus);
         self.pawn.update(board, depth, mv, bonus);
 
-        self.counter_move
-            .update::<1>(board, depth, mv, indices.counter_move, bonus);
-        self.follow_up
-            .update::<2>(board, depth, mv, indices.follow_up, bonus);
+        self.cont_odd
+            .update::<1>(board, depth, mv, indices.cont1, bonus);
+        self.cont_even
+            .update::<2>(board, depth, mv, indices.cont2, bonus);
     }
 
     #[inline]
@@ -491,13 +556,16 @@ impl History {
     }
 
     #[inline]
-    pub fn update_corr(&mut self, board: &Board, depth: i32, score: Score, static_eval: Score) {
+    pub fn update_corr(&mut self, pos: &Position, depth: i32, score: Score, static_eval: Score) {
+        let board = pos.board();
         let stm = board.stm();
         let diff = score.0 as i64 - static_eval.0 as i64;
+
         self.pawn_corr.update(stm, board.pawn_hash(), depth, diff);
         self.minor_corr.update(stm, board.minor_hash(), depth, diff);
         self.major_corr.update(stm, board.major_hash(), depth, diff);
         self.white_corr.update(stm, board.white_hash(), depth, diff);
         self.black_corr.update(stm, board.black_hash(), depth, diff);
+        self.cont1_corr.update(stm, pos.prev_move(1), pos.prev_move(2), depth, diff);
     }
 }
