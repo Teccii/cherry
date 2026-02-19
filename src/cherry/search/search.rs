@@ -338,7 +338,7 @@ pub fn search<Node: NodeType>(
         (Score::NONE, Score::NONE, 0)
     };
 
-    let improving = !in_check && skip_move.is_none() && {
+    let improving = !in_check && {
         let ss = &thread.search_stack;
         let prev2 = ply.wrapping_sub(2) as usize;
         let prev4 = ply.wrapping_sub(4) as usize;
