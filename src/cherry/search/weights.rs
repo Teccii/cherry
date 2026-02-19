@@ -72,6 +72,7 @@ weights! {
     stm_corr_frac    | STM_CORR_FRAC:    i32 => 64,
     ntm_corr_frac    | NTM_CORR_FRAC:    i32 => 64,
     cont1_corr_frac  | CONT1_CORR_FRAC:  i32 => 64,
+    cont2_corr_frac  | CONT2_CORR_FRAC:  i32 => 64,
     corr_bonus_scale | CORR_BONUS_SCALE: i64 => 128,
 
     quiet_bonus_base  | QUIET_BONUS_BASE:  i32 => 128,

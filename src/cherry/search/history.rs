@@ -461,6 +461,7 @@ pub struct History {
     white_corr: CorrHistory<NONPAWN_CORR_SIZE>,
     black_corr: CorrHistory<NONPAWN_CORR_SIZE>,
     cont1_corr: ContCorrHistory,
+    cont2_corr: ContCorrHistory,
 }
 
 impl History {
@@ -502,6 +503,7 @@ impl History {
         corr += white_frac * self.white_corr.entry(stm, board.white_hash());
         corr += black_frac * self.black_corr.entry(stm, board.black_hash());
         corr += W::cont1_corr_frac() * self.cont1_corr.entry(stm, pos.prev_move(1), pos.prev_move(2)).unwrap_or_default();
+        corr += W::cont2_corr_frac() * self.cont2_corr.entry(stm, pos.prev_move(1), pos.prev_move(3)).unwrap_or_default();
 
         corr / MAX_CORR
     }
@@ -567,5 +569,6 @@ impl History {
         self.white_corr.update(stm, board.white_hash(), depth, diff);
         self.black_corr.update(stm, board.black_hash(), depth, diff);
         self.cont1_corr.update(stm, pos.prev_move(1), pos.prev_move(2), depth, diff);
+        self.cont2_corr.update(stm, pos.prev_move(1), pos.prev_move(3), depth, diff);
     }
 }
