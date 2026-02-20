@@ -173,7 +173,7 @@ impl Move {
     }
 
     #[inline]
-    pub fn parse(board: &Board, frc: bool, mv: &str) -> Option<Move> {
+    pub fn parse(board: &Board, mv: &str) -> Option<Move> {
         let src = mv.get(0..2)?.parse::<Square>().ok()?;
         let mut dest = mv.get(2..4)?.parse::<Square>().ok()?;
         let promotion = if let Some(s) = mv.get(4..5) {
@@ -188,7 +188,8 @@ impl Move {
         let is_capture = board.piece_on(dest).is_some();
         let flag = match board.piece_on(src)? {
             Piece::Pawn => Move::parse_pawn_flag(board, src, dest, is_capture, promotion)?,
-            Piece::King => Move::parse_king_flag(board, frc, src, &mut dest, is_capture),
+            Piece::King => Move::parse_king_flag(board, src, &mut dest, is_capture)?,
+
             _ if is_capture => MoveFlag::Capture,
             _ => MoveFlag::Normal,
         };
@@ -228,27 +229,26 @@ impl Move {
     #[inline]
     fn parse_king_flag(
         board: &Board,
-        chess960: bool,
         src: Square,
         dest: &mut Square,
         is_capture: bool,
-    ) -> MoveFlag {
+    ) -> Option<MoveFlag> {
         let stm = board.stm();
-        if chess960 && is_capture {
-            let rights = board.castle_rights(stm);
-            let our_backrank = Rank::First.relative_to(stm);
-
-            return if Some(*dest) == rights.short.map(|f| Square::new(f, our_backrank)) {
-                MoveFlag::ShortCastling
-            } else if Some(*dest) == rights.long.map(|f| Square::new(f, our_backrank)) {
-                MoveFlag::LongCastling
-            } else {
-                MoveFlag::Capture
-            };
-        }
-
         if is_capture {
-            return MoveFlag::Capture;
+            return if board.color_on(*dest) == Some(board.stm()) {
+                let rights = board.castle_rights(stm);
+                let our_backrank = Rank::First.relative_to(stm);
+
+                if Some(*dest) == rights.short.map(|f| Square::new(f, our_backrank)) {
+                    Some(MoveFlag::ShortCastling)
+                } else if Some(*dest) == rights.long.map(|f| Square::new(f, our_backrank)) {
+                    Some(MoveFlag::LongCastling)
+                } else {
+                    None
+                }
+            } else {
+                Some(MoveFlag::Capture)
+            }
         }
 
         let our_backrank = Rank::First.relative_to(stm);
@@ -263,16 +263,16 @@ impl Move {
                 && *dest == castle_short
             {
                 *dest = Square::new(rook, our_backrank);
-                return MoveFlag::ShortCastling;
+                return Some(MoveFlag::ShortCastling);
             } else if let Some(rook) = rights.long
                 && *dest == castle_long
             {
                 *dest = Square::new(rook, our_backrank);
-                return MoveFlag::LongCastling;
+                return Some(MoveFlag::LongCastling);
             }
         }
 
-        MoveFlag::Normal
+        Some(MoveFlag::Normal)
     }
 }
 

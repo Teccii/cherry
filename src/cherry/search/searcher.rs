@@ -265,7 +265,7 @@ impl Searcher {
                         }
                     );
 
-                    if let Some(mv) = Move::parse(pos.board(), options.frc, &move_str)
+                    if let Some(mv) = Move::parse(pos.board(), &move_str)
                         && root_moves.contains(&mv)
                     {
                         best_moves.push(mv);

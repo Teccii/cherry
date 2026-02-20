@@ -130,7 +130,7 @@ impl UciCommand {
             "stop" => Ok(Stop),
             "quit" | "q" => Ok(Quit),
             "position" => Self::parse_position(reader, frc),
-            "go" => Self::parse_go(reader, board, frc),
+            "go" => Self::parse_go(reader, board),
             "perft" => {
                 let depth = reader.next().ok_or(MissingPerftDepth)?.parse::<u8>()?;
                 let bulk = reader.next().ok_or(MissingPerftBulk)?.parse::<bool>()?;
@@ -272,7 +272,7 @@ impl UciCommand {
         let mut moves = Vec::new();
 
         for token in reader {
-            let mv = Move::parse(&current, frc, token.trim())
+            let mv = Move::parse(&current, token.trim())
                 .ok_or_else(|| InvalidMove(token.to_string()))?;
 
             if !current.is_legal(mv) {
@@ -292,7 +292,6 @@ impl UciCommand {
     fn parse_go(
         reader: SplitAsciiWhitespace,
         board: &Board,
-        frc: bool,
     ) -> Result<UciCommand, UciParseError> {
         use SearchLimit::*;
         use UciCommand::*;
@@ -347,7 +346,7 @@ impl UciCommand {
                     while let Some(token) = reader.peek()
                         && !keywords.contains(token)
                     {
-                        let mv = Move::parse(board, frc, token.trim())
+                        let mv = Move::parse(board, token.trim())
                             .ok_or_else(|| InvalidMove(token.to_string()))?;
                         if !board.is_legal(mv) {
                             return Err(InvalidMove(token.to_string()));
