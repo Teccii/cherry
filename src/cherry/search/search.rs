@@ -84,6 +84,7 @@ pub fn id_loop(
     let mut best_move: Option<Move> = None;
     let mut ponder_move: Option<Move> = None;
     let mut score = -Score::INFINITE;
+    let mut completed_depth = 0;
     let mut depth = 1;
 
     'id: loop {
@@ -157,6 +158,7 @@ pub fn id_loop(
                             TTFlag::Exact,
                             new_score,
                             depth,
+                            false,
                         );
                     }
 
@@ -182,6 +184,7 @@ pub fn id_loop(
                         bound,
                         score,
                         depth,
+                        false,
                     );
                 }
 
@@ -211,6 +214,7 @@ pub fn id_loop(
             );
         }
 
+        completed_depth += 1;
         depth += 1;
     }
 
@@ -245,7 +249,8 @@ pub fn id_loop(
             &thread.root_pv,
             TTFlag::Exact,
             score,
-            depth,
+            completed_depth,
+            true,
         );
 
         info.best_move(

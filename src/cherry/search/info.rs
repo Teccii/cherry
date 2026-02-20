@@ -4,7 +4,10 @@ use crate::*;
 
 #[derive(Debug, Clone)]
 pub enum SearchInfo {
-    Uci { frc: bool },
+    Uci {
+        frc: bool,
+        minimal: bool,
+    },
     None,
 }
 
@@ -20,11 +23,16 @@ impl SearchInfo {
         bound: TTFlag,
         score: Score,
         depth: u8,
+        last: bool,
     ) {
         match self {
-            SearchInfo::Uci { frc } => {
+            SearchInfo::Uci { frc, minimal } => {
                 let nodes = thread.nodes.global();
                 let time = shared.time_man.elapsed();
+
+                if *minimal && !last {
+                    return;
+                }
 
                 println!(
                     "info depth {} seldepth {} {}score {} {}hashfull {} time {} nodes {} nps {} pv {}",
@@ -56,7 +64,7 @@ impl SearchInfo {
     #[inline]
     pub fn best_move(&mut self, board: &Board, best_move: Move, ponder_move: Option<Move>) {
         match self {
-            SearchInfo::Uci { frc } => {
+            SearchInfo::Uci { frc, minimal: _minimal } => {
                 let mut output = String::new();
 
                 write!(output, "bestmove {}", best_move.display(board, *frc)).unwrap();

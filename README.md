@@ -70,12 +70,42 @@ and for writing [an amazing blog series][attack-table-blog] about it.
   - Major Pieces
   - White Non-Pawns
   - Black Non-Pawns
+  - Continuation Correction (1 and 2 plies)
 - Material Scaling
 
 ### Time Management
 - Move Stability
 - Score Stability
 - Subtree Ratio
+
+### UCI Options
+
+| Name         | Type    | Default   | Valid Values      | Description                                                                                           |
+|--------------|---------|-----------|-------------------|-------------------------------------------------------------------------------------------------------|
+| Threads      | Integer | 1         | `1..=2048`        | Number of Search Threads                                                                              |
+| Hash         | Integer | 16        | `1..=67108864`    | Memory Allocated to the Transposition Table (in MiB)                                                  |
+| MultiPV      | Integer | 1         | `1..=218`         | Number of Variations to Display                                                                       |
+| Minimal      | Boolean | `false`   | `true` or `false` | When enabled, Cherry outputs only the final info line and best move                                   |
+| EvalScaling  | Boolean | `true`    | `true` or `false` | When enabled, Cherry's evaluation function is scaled according to internal heuristics                 |
+| SyzygyPath   | String  | `<empty>` | Any Path          | File path of Syzygy Tablebases (Can only be configured once during the runtime of the program)        |
+| MoveOverhead | Integer | 100       | `0..=5000`        | Time in milliseconds used to compensate for the delay between engine and interface communication      |
+| SoftTarget   | Boolean | `false`   | `true` or `false` | When enabled, `go nodes <n>` and `go movetime <ms>` will only stop after a completed depth            |
+| Ponder       | Boolean | `false`   | `true` or `false` | When enabled, Cherry will think on the opponent's time                                                |
+| UCI_Chess960 | Boolean | `false`   | `true` or `false` | Whether to parse UCI moves using standard notation (e1g1/e1c1) or Chess960 notation (e.g. e1h1, e1a1) |
+
+### Building
+Cherry requires Make and any version of Rust.
+The required toolchain and version will be automatically installed.
+
+```bash
+> make EXE=<NAME>
+```
+- Replace `<NAME>` with the desired name for the binary. The default name is `Cherry`.
+- `EVALFILE=<FILE>` can also be passed into build a binary with a specific neural network embedded, though the code must be changed to reflect this network's architecture.
+
+Since neural networks are extremely large files,
+Cherry's neural networks are stored in [a separate repository][cherry-nets] to avoid bloating this repository's size.
+Because of this, you need to run `make` **at least once** before you can use `cargo` to build and run Cherry.
 
 ### Credit
 These engines have been notable sources of ideas or inspiration:
@@ -117,6 +147,7 @@ Additionally, these individuals have made developing Cherry easier and a more en
 [openbench]: https://github.com/AndyGrant/OpenBench/
 [mattbench]: https://chess.n9x.co/
 [attack-table-blog]: https://87flowers.com/byteboard-attack-tables-1/
+[cherry-nets]: https://github.com/Teccii/cherry-networks/
 
 [stormphrax]: https://github.com/Ciekce/Stormphrax
 [viridithas]: https://github.com/cosmobobak/viridithas

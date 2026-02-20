@@ -39,6 +39,7 @@ pub enum Abort {
 #[derive(Copy, Clone)]
 pub struct EngineOptions {
     pub multipv: u8,
+    pub minimal: bool,
     pub eval_scaling: bool,
     pub move_overhead: u64,
     pub soft_target: bool,
@@ -51,6 +52,7 @@ impl Default for EngineOptions {
     fn default() -> Self {
         EngineOptions {
             multipv: 1,
+            minimal: false,
             eval_scaling: true,
             move_overhead: DEFAULT_OVERHEAD,
             soft_target: false,
@@ -120,6 +122,7 @@ impl Engine {
         println!("option name Threads type spin default 1 min 1 max {MAX_THREADS}");
         println!("option name Hash type spin default 16 min 1 max {MAX_TT_SIZE}");
         println!("option name MultiPV type spin default 1 min 1 max 218");
+        println!("option name Minimal type check default false");
         println!("option name EvalScaling type check default true");
         println!("option name SyzygyPath type string default <empty>");
         println!("option name MoveOverhead type spin default {DEFAULT_OVERHEAD} min 0 max 5000");
@@ -165,6 +168,7 @@ impl Engine {
             self.options,
             SearchInfo::Uci {
                 frc: self.options.frc,
+                minimal: self.options.minimal,
             },
         );
     }
@@ -294,6 +298,18 @@ impl Engine {
 
                 self.options.multipv = value;
                 println!("info string Set MultiPV to {value}");
+            }
+            "Minimal" => {
+                let value = match value.parse::<bool>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidBoolean(e));
+                        return;
+                    }
+                };
+
+                self.options.minimal = value;
+                println!("info string Set Minimal to {value}");
             }
             "EvalScaling" => {
                 let value = match value.parse::<bool>() {
