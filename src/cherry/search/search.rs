@@ -325,12 +325,15 @@ pub fn search<Node: NodeType>(
         }
     }
 
+    let cont_indices = ContIndices::new(&pos);
+    let cont_corr_indices = ContCorrIndices::new(&pos);
+
     let in_check = pos.board().in_check();
     let (raw_eval, static_eval, _corr) = if !in_check && skip_move.is_none() {
         let raw_eval = tt_entry
             .map(|e| e.eval)
             .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
-        let corr = thread.history.corr(pos);
+        let corr = thread.history.corr(pos, &cont_corr_indices);
         let static_eval = adjust_eval(raw_eval, corr);
 
         (raw_eval, static_eval, corr)
@@ -416,7 +419,6 @@ pub fn search<Node: NodeType>(
     let mut move_picker = MovePicker::new(tt_entry.and_then(|e| e.mv));
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
-    let cont_indices = ContIndices::new(&pos);
 
     let lmr_depth_bias = if tt_pv {
         W::lmr_depth_pv_bias()
@@ -668,7 +670,7 @@ pub fn search<Node: NodeType>(
         );
 
         let static_eval = if !in_check {
-            adjust_eval(raw_eval, thread.history.corr(pos))
+            adjust_eval(raw_eval, thread.history.corr(pos, &cont_corr_indices))
         } else {
             Score::NONE
         };
@@ -684,7 +686,7 @@ pub fn search<Node: NodeType>(
         {
             thread
                 .history
-                .update_corr(pos, depth, best_score, static_eval);
+                .update_corr(pos, &cont_corr_indices, depth, best_score, static_eval);
         }
     }
 
@@ -717,7 +719,7 @@ fn q_search<Node: NodeType>(
 
     if ply >= MAX_PLY {
         let raw_eval = scale_eval(pos.eval(), pos.board(), thread.eval_scaling);
-        let corr = thread.history.corr(pos);
+        let corr = thread.history.corr(pos, &ContCorrIndices::new(&pos));
 
         return adjust_eval(raw_eval, corr);
     }
@@ -752,7 +754,7 @@ fn q_search<Node: NodeType>(
         let raw_eval = tt_entry
             .map(|e| e.eval)
             .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
-        let corr = thread.history.corr(pos);
+        let corr = thread.history.corr(pos, &ContCorrIndices::new(&pos));
         static_eval = adjust_eval(raw_eval, corr);
 
         if static_eval >= beta {

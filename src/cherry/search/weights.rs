@@ -204,9 +204,6 @@ weights! {
     score_stability_base  | SCORE_STABILITY_BASE:  i64 => 7373,
     score_stability_scale | SCORE_STABILITY_SCALE: i64 => 410,
     score_stability_min   | SCORE_STABILITY_MIN:   i64 => 3686,
-    score_trend_base      | SCORE_TREND_BASE:      i64 => 3277,
-    score_trend_scale     | SCORE_TREND_SCALE:     i64 => 205,
-    score_trend_max       | SCORE_TREND_MAX:       i64 => 5939,
 }
 
 impl W {
