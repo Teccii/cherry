@@ -70,11 +70,12 @@ pub struct ThreadData {
     pub eval_scaling: bool,
     pub ponder: bool,
     pub frc: bool,
+    pub id: usize,
 }
 
 impl ThreadData {
     #[inline]
-    pub fn new(nodes: Arc<AtomicU64>) -> ThreadData {
+    pub fn new(nodes: Arc<AtomicU64>, id: usize) -> ThreadData {
         ThreadData {
             abort_now: false,
             nodes: BatchedAtomicCounter::new(nodes),
@@ -91,6 +92,7 @@ impl ThreadData {
             multipv: 1,
             ponder: false,
             frc: false,
+            id,
         }
     }
 
@@ -408,7 +410,7 @@ impl Default for Searcher {
 /*----------------------------------------------------------------*/
 
 fn thread_loop(mut rx: Receiver<ThreadCommand>, mut shared: Arc<SharedData>, id: usize) {
-    let mut thread = ThreadData::new(shared.nodes.clone());
+    let mut thread = ThreadData::new(shared.nodes.clone(), id);
     loop {
         match rx.recv(|cmd| cmd.clone()) {
             ThreadCommand::Go {
@@ -426,7 +428,7 @@ fn thread_loop(mut rx: Receiver<ThreadCommand>, mut shared: Arc<SharedData>, id:
                 thread.ponder = options.ponder;
                 thread.frc = options.frc;
 
-                id_loop(pos, &mut thread, &shared, info, id);
+                id_loop(pos, &mut thread, &shared, info);
             }
             ThreadCommand::SetShared(new_shared) => {
                 shared = new_shared;

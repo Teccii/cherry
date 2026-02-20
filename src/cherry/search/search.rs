@@ -69,7 +69,6 @@ pub fn id_loop(
     thread: &mut ThreadData,
     shared: &SharedData,
     mut info: SearchInfo,
-    id: usize,
 ) {
     thread.multipv = thread.multipv.min(thread.root_moves.len() as u8);
     thread
@@ -147,7 +146,7 @@ pub fn id_loop(
                         }
                     }
 
-                    if id == 0 {
+                    if thread.id == 0 {
                         info.update(
                             pos.board(),
                             &thread,
@@ -173,7 +172,7 @@ pub fn id_loop(
                     (beta, TTFlag::LowerBound)
                 };
 
-                if id == 0 && shared.time_man.elapsed() >= 1000 {
+                if thread.id == 0 && shared.time_man.elapsed() >= 1000 {
                     info.update(
                         pos.board(),
                         &thread,
@@ -193,14 +192,14 @@ pub fn id_loop(
         }
 
         if shared.time_man.abort_id(depth, thread.nodes.global()) {
-            if id == 0 {
+            if thread.id == 0 {
                 shared.time_man.set_abort(true);
             }
 
             break 'id;
         }
 
-        if id == 0 {
+        if thread.id == 0 {
             let best_move = best_move.unwrap();
 
             shared.time_man.deepen(
@@ -223,11 +222,11 @@ pub fn id_loop(
     }
 
     let last_thread = shared.num_searching.fetch_sub(1, Ordering::Relaxed) == 2;
-    if last_thread && id != 0 {
+    if last_thread && thread.id != 0 {
         atomic_wait::wake_all(&shared.num_searching);
     }
 
-    if id == 0 {
+    if thread.id == 0 {
         if !last_thread {
             let mut num_searching = shared.num_searching.load(Ordering::Relaxed);
             while num_searching != 1 {
@@ -239,7 +238,7 @@ pub fn id_loop(
         shared.num_searching.store(0, Ordering::Relaxed);
     }
 
-    if id == 0 {
+    if thread.id == 0 {
         info.update(
             pos.board(),
             &thread,
@@ -283,6 +282,10 @@ pub fn search<Node: NodeType>(
     cut_node: bool,
 ) -> Score {
     if !Node::ROOT && (thread.abort_now || shared.time_man.abort_search(&thread.nodes)) {
+        if thread.id == 0 {
+            shared.time_man.set_abort(true);
+        }
+
         thread.abort_now = true;
         return Score::ZERO;
     }
