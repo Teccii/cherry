@@ -272,7 +272,7 @@ fn acc_add2_sub2(
 impl Nnue {
     pub fn make_move(&mut self, old_board: &Board, new_board: &Board, mv: Move) {
         let mut update = FeatureUpdate::default();
-        let (src, dest) = (mv.src(), mv.dest());
+        let (src, mut dest) = (mv.src(), mv.dest());
         let piece = old_board.piece_on(src).unwrap();
         let stm = old_board.stm();
 
@@ -283,19 +283,15 @@ impl Nnue {
             } else {
                 (File::C, File::D)
             };
+            let king_dest = Square::new(king, our_backrank);
+            let rook_dest = Square::new(rook, our_backrank);
 
             update.sub = Some(Feature::new(Piece::King, stm, src));
             update.sub2 = Some(Feature::new(Piece::Rook, stm, dest));
-            update.add = Some(Feature::new(
-                Piece::King,
-                stm,
-                Square::new(king, our_backrank),
-            ));
-            update.add2 = Some(Feature::new(
-                Piece::Rook,
-                stm,
-                Square::new(rook, our_backrank),
-            ));
+            update.add = Some(Feature::new(Piece::King, stm, king_dest));
+            update.add2 = Some(Feature::new(Piece::Rook, stm, rook_dest));
+
+            dest = king_dest;
         } else if let Some(promotion) = mv.promotion() {
             update.sub = Some(Feature::new(piece, stm, src));
             update.add = Some(Feature::new(promotion, stm, dest));

@@ -38,7 +38,7 @@ impl Nnue {
     #[inline]
     pub fn apply_updates(&mut self, board: &Board) {
         for &color in &Color::ALL {
-            if self.acc_stack[self.acc_index].dirty[color as usize] {
+            if self.acc_stack[self.acc_index].dirty[color] {
                 self.lazy_update(board, color);
             }
         }
