@@ -32,7 +32,7 @@ pub const QB: i32 = 64;
 pub struct NetworkWeights {
     pub ft_weights: [i16; INPUT * HL],
     pub ft_bias: [i16; HL],
-    pub out_weights: [i16; HL * NUM_OUTPUT_BUCKETS * (2 - PAIRWISE_MUL as usize)],
+    pub out_weights: [[i16; HL * (2 - PAIRWISE_MUL as usize)]; NUM_OUTPUT_BUCKETS],
     pub out_bias: [i16; NUM_OUTPUT_BUCKETS],
 }
 
@@ -351,7 +351,7 @@ impl Nnue {
 
 #[inline]
 fn feed_forward(stm: &[i16; HL], ntm: &[i16; HL], bucket: usize, output: &mut i32) {
-    let out_weights = &NETWORK.out_weights;
+    let out_weights = &NETWORK.out_weights[bucket];
     let (zero, qa) = (i16x32::splat(0), i16x32::splat(QA as i16));
     let mut sum = i32x16::splat(0);
 
@@ -361,8 +361,8 @@ fn feed_forward(stm: &[i16; HL], ntm: &[i16; HL], bucket: usize, output: &mut i3
         unsafe {
             let stm = i16x32::load(stm.as_ptr().add(offset)).clamp(zero, qa);
             let ntm = i16x32::load(ntm.as_ptr().add(offset)).clamp(zero, qa);
-            let stm_weight = i16x32::load(out_weights.as_ptr().add(bucket * HL * 2 + offset));
-            let ntm_weight = i16x32::load(out_weights.as_ptr().add(bucket * HL * 2 + HL + offset));
+            let stm_weight = i16x32::load(out_weights.as_ptr().add(offset));
+            let ntm_weight = i16x32::load(out_weights.as_ptr().add(HL + offset));
 
             sum += (stm * stm_weight).madd(stm);
             sum += (ntm * ntm_weight).madd(ntm);
@@ -374,7 +374,7 @@ fn feed_forward(stm: &[i16; HL], ntm: &[i16; HL], bucket: usize, output: &mut i3
 
 #[inline]
 fn feed_forward_pairwise(stm: &[i16; HL], ntm: &[i16; HL], bucket: usize, output: &mut i32) {
-    let out_weights = &NETWORK.out_weights;
+    let out_weights = &NETWORK.out_weights[bucket];
     let (zero, qa) = (i16x32::splat(0), i16x32::splat(QA as i16));
     let mut sum = i32x16::splat(0);
 
@@ -387,8 +387,8 @@ fn feed_forward_pairwise(stm: &[i16; HL], ntm: &[i16; HL], bucket: usize, output
             let ntm0 = i16x32::load(ntm.as_ptr().add(offset)).clamp(zero, qa);
             let ntm1 = i16x32::load(ntm.as_ptr().add(offset + HL / 2)).clamp(zero, qa);
 
-            let stm_weight = i16x32::load(out_weights.as_ptr().add(bucket * HL + offset));
-            let ntm_weight = i16x32::load(out_weights.as_ptr().add(bucket * HL + HL / 2 + offset));
+            let stm_weight = i16x32::load(out_weights.as_ptr().add(offset));
+            let ntm_weight = i16x32::load(out_weights.as_ptr().add(HL / 2 + offset));
 
             sum += (stm0 * stm_weight).madd(stm1);
             sum += (ntm0 * ntm_weight).madd(ntm1);
