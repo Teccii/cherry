@@ -73,7 +73,7 @@ pub struct QuietEntry {
 
 #[derive(Debug, Copy, Clone)]
 pub struct QuietHistory {
-    entries: [[[QuietEntry; Square::COUNT]; Square::COUNT]; Color::COUNT], // [stm][src][dest][threat bucket]
+    entries: [[[[QuietEntry; Square::COUNT]; Square::COUNT]; Square::COUNT]; Color::COUNT], // [stm][king][src][dest][threat bucket]
 }
 
 impl QuietHistory {
@@ -100,19 +100,21 @@ impl QuietHistory {
     #[inline]
     pub fn entry(&self, board: &Board, mv: Move) -> i32 {
         let stm = board.stm();
+        let king = board.king(stm);
         let (src, dest) = (mv.src(), mv.dest());
         let threat_index = threat_index(board, mv);
 
-        self.entries[stm][src][dest].buckets[threat_index] as i32
+        self.entries[stm][king][src][dest].buckets[threat_index] as i32
     }
 
     #[inline]
     pub fn entry_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
         let stm = board.stm();
+        let king = board.king(stm);
         let (src, dest) = (mv.src(), mv.dest());
         let threat_index = threat_index(board, mv);
 
-        &mut self.entries[stm][src][dest].buckets[threat_index]
+        &mut self.entries[stm][king][src][dest].buckets[threat_index]
     }
 
     /*----------------------------------------------------------------*/
