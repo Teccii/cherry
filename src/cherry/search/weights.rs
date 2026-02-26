@@ -125,10 +125,12 @@ weights! {
     eval_scale       | EVAL_SCALE:       i32 => 400,
 
     rfp_depth     | RFP_DEPTH:     i32 => 6144,
-    rfp_base      | RFP_BASE:      i32 => 0,
-    rfp_scale     | RFP_SCALE:     i32 => 80,
-    rfp_imp_base  | RFP_IMP_BASE:  i32 => -80,
-    rfp_imp_scale | RFP_IMP_SCALE: i32 => 80,
+    rfp_base      | RFP_BASE:      i64 => 0,
+    rfp_scale     | RFP_SCALE:     i64 => 50,
+    rfp_quad      | RFP_QUAD:      i64 => 6,
+    rfp_imp_base  | RFP_IMP_BASE:  i64 => -44,
+    rfp_imp_scale | RFP_IMP_SCALE: i64 => 38,
+    rfp_imp_quad  | RFP_IMP_QUAD:  i64 => 6,
     rfp_lerp      | RFP_LERP:      i32 => 512,
 
     nmp_depth       | NMP_DEPTH:       i32 => 3072,
@@ -223,13 +225,16 @@ impl W {
 
     #[inline]
     pub const fn rfp_margin(improving: bool, depth: i32) -> i32 {
-        let (base, scale) = if improving {
-            (W::rfp_imp_base(), W::rfp_imp_scale())
+        let depth = depth as i64;
+        let (base, scale, quad) = if improving {
+            (W::rfp_imp_base(), W::rfp_imp_scale(), W::rfp_imp_quad())
         } else {
-            (W::rfp_base(), W::rfp_scale())
+            (W::rfp_base(), W::rfp_scale(), W::rfp_quad())
         };
 
-        base + scale * depth / DEPTH_SCALE
+        let scale = scale * depth / DEPTH_SCALE as i64;
+        let quad = quad * depth * depth / (DEPTH_SCALE * DEPTH_SCALE) as i64;
+        (base + scale + quad) as i32
     }
 
     #[inline]
