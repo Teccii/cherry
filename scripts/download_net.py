@@ -5,8 +5,8 @@ import hashlib
 import os
 
 def main():
-    name = "lychee"
-    hash = "223d37c98c1ffe486648f2e446fce0634231682148085aef99d71ece9534f1f6"
+    name = "lychee-v2"
+    hash = "920e695ad495ba8fb8a9e28afad1644e03d26ae471e29267aea630615be22b2d"
     path = "./networks/default.nnue"
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
