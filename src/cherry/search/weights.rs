@@ -177,6 +177,7 @@ weights! {
 
     lmr_depth     | LMR_DEPTH:     i32 => 2048,
     cut_lmr       | CUT_LMR:       i32 => 1024,
+    cut_move_lmr  | CUT_MOVE_LMR:  i32 => 1024,
     improving_lmr | IMPROVING_LMR: i32 => 1024,
     non_pv_lmr    | NON_PV_LMR:    i32 => 1024,
     tt_pv_lmr     | TT_PV_LMR:     i32 => 1024,

@@ -314,6 +314,7 @@ pub fn search<Node: NodeType>(
         None => shared.ttable.fetch(pos.board(), ply),
     };
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
+    let tt_move = tt_entry.and_then(|e| e.mv);
 
     if !Node::PV
         && let Some(entry) = tt_entry
@@ -424,7 +425,7 @@ pub fn search<Node: NodeType>(
     let mut best_score = -Score::INFINITE;
     let mut moves_seen = 0;
     let mut flag = TTFlag::UpperBound;
-    let mut move_picker = MovePicker::new(tt_entry.and_then(|e| e.mv));
+    let mut move_picker = MovePicker::new(tt_move);
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
 
@@ -549,7 +550,10 @@ pub fn search<Node: NodeType>(
             );
         } else {
             if depth >= W::lmr_depth() {
-                lmr += W::cut_lmr() * cut_node as i32;
+                if cut_node {
+                    lmr += W::cut_lmr() + W::cut_move_lmr() * tt_move.is_none() as i32;
+                }
+
                 lmr -= W::improving_lmr() * improving as i32;
                 lmr += W::non_pv_lmr() * !Node::PV as i32;
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
