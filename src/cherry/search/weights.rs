@@ -82,6 +82,13 @@ weights! {
     quiet_malus_scale | QUIET_MALUS_SCALE: i32 => 128,
     quiet_malus_max   | QUIET_MALUS_MAX:   i32 => 2048,
 
+    quiet_factoriser_bonus_base  | QUIET_FACTORISER_BONUS_BASE:  i32 => 128,
+    quiet_factoriser_bonus_scale | QUIET_FACTORISER_BONUS_SCALE: i32 => 128,
+    quiet_factoriser_bonus_max   | QUIET_FACTORISER_BONUS_MAX:   i32 => 2048,
+    quiet_factoriser_malus_base  | QUIET_FACTORISER_MALUS_BASE:  i32 => 128,
+    quiet_factoriser_malus_scale | QUIET_FACTORISER_MALUS_SCALE: i32 => 128,
+    quiet_factoriser_malus_max   | QUIET_FACTORISER_MALUS_MAX:   i32 => 2048,
+
     tactic_bonus_base  | TACTIC_BONUS_BASE:  i32 => 128,
     tactic_bonus_scale | TACTIC_BONUS_SCALE: i32 => 128,
     tactic_bonus_max   | TACTIC_BONUS_MAX:   i32 => 2048,

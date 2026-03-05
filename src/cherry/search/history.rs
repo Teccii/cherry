@@ -69,6 +69,7 @@ fn threat_index(board: &Board, mv: Move) -> usize {
 #[derive(Debug, Copy, Clone)]
 pub struct QuietEntry {
     buckets: ThreatBuckets<i16>,
+    factoriser: i16,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -87,10 +88,28 @@ impl QuietHistory {
     }
 
     #[inline]
+    pub fn factoriser_bonus(depth: i32) -> i32 {
+        let base = W::quiet_factoriser_bonus_base();
+        let scale = W::quiet_factoriser_bonus_scale();
+        let max = W::quiet_factoriser_bonus_max();
+
+        (base + scale * depth / DEPTH_SCALE).min(max)
+    }
+
+    #[inline]
     pub fn malus(depth: i32) -> i32 {
         let base = W::quiet_malus_base();
         let scale = W::quiet_malus_scale();
         let max = W::quiet_malus_max();
+
+        (base + scale * depth / DEPTH_SCALE).min(max)
+    }
+
+    #[inline]
+    pub fn factoriser_malus(depth: i32) -> i32 {
+        let base = W::quiet_factoriser_malus_base();
+        let scale = W::quiet_factoriser_malus_scale();
+        let max = W::quiet_factoriser_malus_max();
 
         (base + scale * depth / DEPTH_SCALE).min(max)
     }
@@ -120,13 +139,34 @@ impl QuietHistory {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub fn factoriser(&self, board: &Board, mv: Move) -> i32 {
+        let stm = board.stm();
+        let king = board.king(stm);
+        let (src, dest) = (mv.src(), mv.dest());
+
+        self.entries[stm][king][src][dest].factoriser as i32
+    }
+
+    #[inline]
+    pub fn factoriser_mut(&mut self, board: &Board, mv: Move) -> &mut i16 {
+        let stm = board.stm();
+        let king = board.king(stm);
+        let (src, dest) = (mv.src(), mv.dest());
+
+        &mut self.entries[stm][king][src][dest].factoriser
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
     pub fn update(&mut self, board: &Board, depth: i32, mv: Move, bonus: bool) {
-        let amount = if bonus {
-            Self::bonus(depth)
+        let (amount, factoriser_amount) = if bonus {
+            (Self::bonus(depth), Self::factoriser_bonus(depth))
         } else {
-            -Self::malus(depth)
+            (-Self::malus(depth), -Self::factoriser_malus(depth))
         };
 
+        gravity::<MAX_HISTORY, MAX_HISTORY>(self.factoriser_mut(board, mv), factoriser_amount);
         gravity::<MAX_HISTORY, MAX_HISTORY>(self.entry_mut(board, mv), amount);
     }
 }
@@ -490,6 +530,7 @@ impl History {
     #[inline]
     pub fn quiet(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
         let mut result = self.quiet.entry(board, mv);
+        result += self.quiet.factoriser(board, mv);
         result += self.pawn.entry(board, mv);
         result += self
             .cont_odd
