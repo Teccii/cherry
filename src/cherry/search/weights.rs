@@ -145,7 +145,7 @@ weights! {
     fp_depth     | FP_DEPTH:     i32 => 8192,
     fp_base      | FP_BASE:      i32 => 93,
     fp_scale     | FP_SCALE:     i32 => 79,
-    fp_imp_base  | FP_IMP_BASE:  i32 => 93,
+    fp_imp_base  | FP_IMP_BASE:  i32 => 14,
     fp_imp_scale | FP_IMP_SCALE: i32 => 79,
 
     hist_depth | HIST_DEPTH: i32 => 6144,
