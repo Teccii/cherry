@@ -165,8 +165,10 @@ weights! {
     singular_beta_margin  | SINGULAR_BETA_MARGIN:  i32 => 96,
     singular_search_depth | SINGULAR_SEARCH_DEPTH: i32 => 512,
     singular_dext_margin  | SINGULAR_DEXT_MARGIN:  i32 => 30,
+    singular_text_margin  | SINGULAR_TEXT_MARGIN:  i32 => 67,
     singular_ext          | SINGULAR_EXT:          i32 => 1024,
     singular_dext         | SINGULAR_DEXT:         i32 => 2048,
+    singular_text         | SINGULAR_TEXT:         i32 => 3072,
     singular_tt_ext       | SINGULAR_TT_EXT:       i32 => -1024,
     singular_cut_ext      | SINGULAR_CUT_EXT:      i32 => -1024,
 
