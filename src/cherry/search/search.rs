@@ -404,6 +404,7 @@ pub fn search<Node: NodeType>(
                     return if score.is_win() { beta } else { score };
                 }
 
+                shared.ttable.prefetch(pos.board());
                 thread.nmp_min_ply = ply + (nmp_depth.max(0) * 3 / (4 * DEPTH_SCALE)) as u16;
                 let v_score =
                     search::<NonPV>(pos, thread, shared, nmp_depth, ply, beta - 1, beta, true);
