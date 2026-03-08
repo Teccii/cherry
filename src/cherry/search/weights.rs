@@ -148,9 +148,13 @@ weights! {
     fp_imp_base  | FP_IMP_BASE:  i32 => 93,
     fp_imp_scale | FP_IMP_SCALE: i32 => 79,
 
-    hist_depth | HIST_DEPTH: i32 => 6144,
-    hist_base  | HIST_BASE:  i32 => 0,
-    hist_scale | HIST_SCALE: i32 => -2000,
+    hist_quiet_depth | HIST_QUIET_DEPTH: i32 => 6144,
+    hist_quiet_base  | HIST_QUIET_BASE:  i32 => 0,
+    hist_quiet_scale | HIST_QUIET_SCALE: i32 => -2000,
+
+    hist_tactic_depth | HIST_TACTIC_DEPTH: i32 => 4096,
+    hist_tactic_base  | HIST_TACTIC_BASE:  i32 => -1000,
+    hist_tactic_scale | HIST_TACTIC_SCALE: i32 => -2000,
 
     see_quiet_depth | SEE_QUIET_DEPTH: i32 => 10240,
     see_quiet_base  | SEE_QUIET_BASE:  i32 => 0,
@@ -262,8 +266,13 @@ impl W {
     }
 
     #[inline]
-    pub const fn hist_margin(depth: i32) -> i32 {
-        W::hist_base() + W::hist_scale() * depth / DEPTH_SCALE
+    pub const fn hist_quiet_margin(depth: i32) -> i32 {
+        W::hist_quiet_base() + W::hist_quiet_scale() * depth / DEPTH_SCALE
+    }
+
+    #[inline]
+    pub const fn hist_tactic_margin(depth: i32) -> i32 {
+        W::hist_tactic_base() + W::hist_tactic_scale() * depth / DEPTH_SCALE
     }
 
     #[inline]

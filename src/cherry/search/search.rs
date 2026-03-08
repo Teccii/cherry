@@ -464,6 +464,11 @@ pub fn search<Node: NodeType>(
                 {
                     continue;
                 }
+
+                let hist_margin = W::hist_tactic_margin(depth);
+                if depth <= W::hist_tactic_depth() && hist_score < hist_margin {
+                    continue;
+                }
             } else {
                 let lmp_margin = W::lmp_margin(improving, depth);
                 if moves_seen as i64 * 1024 >= lmp_margin {
@@ -480,8 +485,8 @@ pub fn search<Node: NodeType>(
                     move_picker.skip_quiets();
                 }
 
-                let hist_margin = W::hist_margin(depth);
-                if depth <= W::hist_depth() && hist_score < hist_margin {
+                let hist_margin = W::hist_quiet_margin(depth);
+                if depth <= W::hist_quiet_depth() && hist_score < hist_margin {
                     move_picker.skip_quiets();
                 }
 
