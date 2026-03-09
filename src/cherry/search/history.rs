@@ -524,8 +524,16 @@ impl History {
         corr += W::major_corr_frac() * self.major_corr.entry(stm, board.major_hash());
         corr += white_frac * self.white_corr.entry(stm, board.white_hash());
         corr += black_frac * self.black_corr.entry(stm, board.black_hash());
-        corr += W::cont1_corr_frac() * self.cont_corr_odd.entry(stm, indices.prev_move, indices.cont1).unwrap_or_default();
-        corr += W::cont2_corr_frac() * self.cont_corr_even.entry(stm, indices.prev_move, indices.cont2).unwrap_or_default();
+        corr += W::cont1_corr_frac()
+            * self
+                .cont_corr_odd
+                .entry(stm, indices.prev_move, indices.cont1)
+                .unwrap_or_default();
+        corr += W::cont2_corr_frac()
+            * self
+                .cont_corr_even
+                .entry(stm, indices.prev_move, indices.cont2)
+                .unwrap_or_default();
 
         corr / MAX_CORR
     }
@@ -580,7 +588,14 @@ impl History {
     }
 
     #[inline]
-    pub fn update_corr(&mut self, pos: &Position, indices: &ContCorrIndices, depth: i32, score: Score, static_eval: Score) {
+    pub fn update_corr(
+        &mut self,
+        pos: &Position,
+        indices: &ContCorrIndices,
+        depth: i32,
+        score: Score,
+        static_eval: Score,
+    ) {
         let board = pos.board();
         let stm = board.stm();
         let diff = score.0 as i64 - static_eval.0 as i64;
@@ -590,7 +605,9 @@ impl History {
         self.major_corr.update(stm, board.major_hash(), depth, diff);
         self.white_corr.update(stm, board.white_hash(), depth, diff);
         self.black_corr.update(stm, board.black_hash(), depth, diff);
-        self.cont_corr_odd.update(stm, indices.prev_move, indices.cont1, depth, diff);
-        self.cont_corr_even.update(stm, indices.prev_move, indices.cont2, depth, diff);
+        self.cont_corr_odd
+            .update(stm, indices.prev_move, indices.cont1, depth, diff);
+        self.cont_corr_even
+            .update(stm, indices.prev_move, indices.cont2, depth, diff);
     }
 }

@@ -289,10 +289,7 @@ impl UciCommand {
         })
     }
 
-    fn parse_go(
-        reader: SplitAsciiWhitespace,
-        board: &Board,
-    ) -> Result<UciCommand, UciParseError> {
+    fn parse_go(reader: SplitAsciiWhitespace, board: &Board) -> Result<UciCommand, UciParseError> {
         use SearchLimit::*;
         use UciCommand::*;
         use UciParseError::*;

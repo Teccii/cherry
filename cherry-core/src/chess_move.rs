@@ -248,7 +248,7 @@ impl Move {
                 }
             } else {
                 Some(MoveFlag::Capture)
-            }
+            };
         }
 
         let our_backrank = Rank::First.relative_to(stm);
