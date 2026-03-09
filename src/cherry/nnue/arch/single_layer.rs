@@ -4,10 +4,26 @@ use arrayvec::ArrayVec;
 
 use crate::*;
 
+pub const QA: i32 = 255;
+pub const QB: i32 = 64;
+
 pub const INPUT: usize = 768;
 pub const HL: usize = 1024;
 pub const HORIZONTAL_MIRRORING: bool = true;
 pub const PAIRWISE_MUL: bool = false;
+
+pub const NUM_INPUT_BUCKETS: usize = 4;
+#[rustfmt::skip]
+pub const INPUT_BUCKETS: [usize; Square::COUNT] = [
+    0, 0, 1, 1, 1, 1, 0, 0,
+    2, 2, 2, 2, 2, 2, 2, 2,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3,
+];
 
 pub const NUM_OUTPUT_BUCKETS: usize = 8;
 #[rustfmt::skip]
@@ -24,13 +40,20 @@ pub const OUTPUT_BUCKETS: [usize; 32] = [
     7, 7, 7, 7, // 29, 30, 31, 32
 ];
 
-pub const QA: i32 = 255;
-pub const QB: i32 = 64;
+#[inline]
+pub fn king_bucket(sq: Square, perspective: Color) -> usize {
+    INPUT_BUCKETS[sq.relative_to(perspective)]
+}
+
+#[inline]
+pub fn should_mirror(sq: Square) -> bool {
+    sq.file() > File::D
+}
 
 #[derive(Debug, Clone)]
 #[repr(C, align(64))]
 pub struct NetworkWeights {
-    pub ft_weights: [i16; INPUT * HL],
+    pub ft_weights: [[i16; INPUT * HL]; NUM_INPUT_BUCKETS],
     pub ft_bias: [i16; HL],
     pub out_weights: [[i16; HL * (2 - PAIRWISE_MUL as usize)]; NUM_OUTPUT_BUCKETS],
     pub out_bias: [i16; NUM_OUTPUT_BUCKETS],
@@ -105,39 +128,22 @@ pub struct FeatureUpdate {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Accumulator {
-    pub white: [i16; HL],
-    pub black: [i16; HL],
+    pub values: [[i16; HL]; Color::COUNT],
     pub dirty: [bool; Color::COUNT],
     pub update: FeatureUpdate,
 }
 
 impl Accumulator {
     #[inline]
-    pub fn select(&self, color: Color) -> &[i16; HL] {
-        match color {
-            Color::White => &self.white,
-            Color::Black => &self.black,
-        }
-    }
-
-    #[inline]
-    pub fn select_mut(&mut self, color: Color) -> &mut [i16; HL] {
-        match color {
-            Color::White => &mut self.white,
-            Color::Black => &mut self.black,
-        }
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
     pub fn extrapolate(&mut self, prev: &Accumulator, king: Square, perspective: Color) {
         let (add, sub) = (prev.update.add.unwrap(), prev.update.sub.unwrap());
+        let bucket = king_bucket(king, perspective);
 
         match (prev.update.add2, prev.update.sub2) {
             (Some(add2), Some(sub2)) => acc_add2_sub2(
-                prev.select(perspective),
-                self.select_mut(perspective),
+                &prev.values[perspective],
+                &mut self.values[perspective],
+                bucket,
                 add.to_index(king, perspective),
                 add2.to_index(king, perspective),
                 sub.to_index(king, perspective),
@@ -145,15 +151,17 @@ impl Accumulator {
             ),
             (Some(_), None) => unreachable!(),
             (None, Some(sub2)) => acc_add_sub2(
-                prev.select(perspective),
-                self.select_mut(perspective),
+                &prev.values[perspective],
+                &mut self.values[perspective],
+                bucket,
                 add.to_index(king, perspective),
                 sub.to_index(king, perspective),
                 sub2.to_index(king, perspective),
             ),
             (None, None) => acc_add_sub(
-                prev.select(perspective),
-                self.select_mut(perspective),
+                &prev.values[perspective],
+                &mut self.values[perspective],
+                bucket,
                 add.to_index(king, perspective),
                 sub.to_index(king, perspective),
             ),
@@ -165,34 +173,47 @@ impl Accumulator {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub fn reset(&mut self, board: &Board, perspective: Color) {
-        let acc = self.select_mut(perspective);
-        acc.copy_from_slice(&NETWORK.ft_bias);
-
+    pub fn reset(&mut self, board: &Board, cache: &mut AccumulatorCache, perspective: Color) {
         let king = board.king(perspective);
-        let updates: ArrayVec<usize, 32> = board
-            .occupied()
-            .iter()
-            .map(|sq| {
-                Feature::new(board.piece_on(sq).unwrap(), board.color_on(sq).unwrap(), sq)
-                    .to_index(king, perspective)
-            })
-            .collect();
+        let mirror = HORIZONTAL_MIRRORING && should_mirror(king);
+        let bucket = king_bucket(king, perspective);
+        let entry = &mut cache.entries[perspective][mirror as usize][bucket];
 
-        let ft_weights = &NETWORK.ft_weights;
+        let mut adds: ArrayVec<usize, 32> = ArrayVec::new();
+        let mut subs: ArrayVec<usize, 32> = ArrayVec::new();
+        let board_diff = Bitboard(u8x64::neq(board.0, entry.board.0).to_bitmask());
+        for sq in board_diff {
+            let new_place = board.get(sq);
+            let old_place = entry.board.get(sq);
+
+            if let Some((piece, color)) = new_place.piece().zip(new_place.color()) {
+                adds.push(Feature::new(piece, color, sq).to_index(king, perspective));
+            }
+
+            if let Some((piece, color)) = old_place.piece().zip(old_place.color()) {
+                subs.push(Feature::new(piece, color, sq).to_index(king, perspective));
+            }
+        }
+
+        let ft_weights = &NETWORK.ft_weights[bucket];
+        let acc = &mut entry.values;
         for i in 0..(HL / 32) {
             let offset = i * 32;
-
             unsafe {
                 let mut value = i16x32::load(acc.as_ptr().add(offset));
-                for &index in &updates {
+                for &index in &adds {
                     value += i16x32::load(ft_weights.as_ptr().add(index * HL + offset));
+                }
+                for &index in &subs {
+                    value -= i16x32::load(ft_weights.as_ptr().add(index * HL + offset));
                 }
 
                 value.store(acc.as_mut_ptr().add(offset));
             }
         }
 
+        entry.board = board.inner;
+        self.values[perspective].copy_from_slice(&entry.values);
         self.dirty[perspective] = false;
     }
 }
@@ -201,8 +222,7 @@ impl Default for Accumulator {
     #[inline]
     fn default() -> Self {
         Accumulator {
-            white: [0; HL],
-            black: [0; HL],
+            values: [[0; HL]; Color::COUNT],
             dirty: [false; Color::COUNT],
             update: FeatureUpdate::default(),
         }
@@ -210,8 +230,8 @@ impl Default for Accumulator {
 }
 
 #[inline]
-fn acc_add_sub(input: &[i16; HL], output: &mut [i16; HL], add: usize, sub: usize) {
-    let ft_weights = &NETWORK.ft_weights;
+fn acc_add_sub(input: &[i16; HL], output: &mut [i16; HL], bucket: usize, add: usize, sub: usize) {
+    let ft_weights = &NETWORK.ft_weights[bucket];
     for i in 0..(HL / 32) {
         let offset = i * 32;
 
@@ -226,8 +246,15 @@ fn acc_add_sub(input: &[i16; HL], output: &mut [i16; HL], add: usize, sub: usize
 }
 
 #[inline]
-fn acc_add_sub2(input: &[i16; HL], output: &mut [i16; HL], add: usize, sub1: usize, sub2: usize) {
-    let ft_weights = &NETWORK.ft_weights;
+fn acc_add_sub2(
+    input: &[i16; HL],
+    output: &mut [i16; HL],
+    bucket: usize,
+    add: usize,
+    sub1: usize,
+    sub2: usize,
+) {
+    let ft_weights = &NETWORK.ft_weights[bucket];
     for i in 0..(HL / 32) {
         let offset = i * 32;
 
@@ -246,12 +273,13 @@ fn acc_add_sub2(input: &[i16; HL], output: &mut [i16; HL], add: usize, sub1: usi
 fn acc_add2_sub2(
     input: &[i16; HL],
     output: &mut [i16; HL],
+    bucket: usize,
     add1: usize,
     add2: usize,
     sub1: usize,
     sub2: usize,
 ) {
-    let ft_weights = NETWORK.ft_weights;
+    let ft_weights = &NETWORK.ft_weights[bucket];
     for i in 0..(HL / 32) {
         let offset = i * 32;
 
@@ -263,6 +291,30 @@ fn acc_add2_sub2(
             value -= i16x32::load(ft_weights.as_ptr().add(sub2 * HL + offset));
 
             value.store(output.as_mut_ptr().add(offset));
+        }
+    }
+}
+
+/*----------------------------------------------------------------*/
+
+#[derive(Debug, Copy, Clone, Default)]
+pub struct AccumulatorCache {
+    pub entries: [[[AccumulatorCacheEntry; NUM_INPUT_BUCKETS]; 1 + HORIZONTAL_MIRRORING as usize];
+        Color::COUNT],
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct AccumulatorCacheEntry {
+    pub values: [i16; HL],
+    pub board: Byteboard,
+}
+
+impl Default for AccumulatorCacheEntry {
+    #[inline]
+    fn default() -> Self {
+        AccumulatorCacheEntry {
+            values: NETWORK.ft_bias,
+            board: Byteboard(u8x64::splat(0)),
         }
     }
 }
@@ -319,9 +371,10 @@ impl Nnue {
         self.acc_stack[self.acc_index + 1].dirty = [true; Color::COUNT];
         self.acc_index += 1;
 
-        if HORIZONTAL_MIRRORING
-            && piece == Piece::King
-            && (src.file() > File::D) != (dest.file() > File::D)
+        let (old_bucket, new_bucket) = (king_bucket(src, stm), king_bucket(dest, stm));
+        let (old_mirror, new_mirror) = (should_mirror(src), should_mirror(dest));
+        if piece == Piece::King
+            && ((old_bucket != new_bucket) || (HORIZONTAL_MIRRORING && (old_mirror != new_mirror)))
         {
             self.reset(new_board, stm);
         }
@@ -331,12 +384,11 @@ impl Nnue {
     pub fn eval(&self, board: &Board) -> i32 {
         let bucket = OUTPUT_BUCKETS[board.occupied().popcnt() - 1];
         let (stm, ntm) = (
-            self.acc_stack[self.acc_index].select(board.stm()),
-            self.acc_stack[self.acc_index].select(!board.stm()),
+            &self.acc_stack[self.acc_index].values[board.stm()],
+            &self.acc_stack[self.acc_index].values[!board.stm()],
         );
 
         let mut output = 0;
-
         if PAIRWISE_MUL {
             feed_forward_pairwise(stm, ntm, bucket, &mut output);
         } else {

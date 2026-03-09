@@ -6,6 +6,7 @@ pub static NETWORK: NetworkWeights =
 #[derive(Debug, Clone)]
 pub struct Nnue {
     pub acc_stack: Box<[Accumulator; MAX_PLY as usize + 1]>,
+    pub acc_cache: AccumulatorCache,
     pub acc_index: usize,
 }
 
@@ -16,6 +17,7 @@ impl Nnue {
                 .into_boxed_slice()
                 .try_into()
                 .unwrap(),
+            acc_cache: AccumulatorCache::default(),
             acc_index: 0,
         };
 
@@ -32,7 +34,7 @@ impl Nnue {
 
     #[inline]
     pub fn reset(&mut self, board: &Board, perspective: Color) {
-        self.acc_stack[self.acc_index].reset(board, perspective);
+        self.acc_stack[self.acc_index].reset(board, &mut self.acc_cache, perspective);
     }
 
     #[inline]
@@ -52,9 +54,8 @@ impl Nnue {
             .find(|&i| !self.acc_stack[i].dirty[perspective])
             .unwrap();
 
-        let king = board.king(perspective);
-
         //Extrapolate all accumulators from thereon
+        let king = board.king(perspective);
         for index in clean_index..self.acc_index {
             let [clean, dirty] = self.acc_stack.get_disjoint_mut([index, index + 1]).unwrap();
             dirty.extrapolate(clean, king, perspective);
