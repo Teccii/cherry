@@ -178,7 +178,7 @@ weights! {
     lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688,
 
     lmr_depth     | LMR_DEPTH:     i32 => 2048,
-    cut_lmr       | CUT_LMR:       i32 => 1024,
+    cut_lmr       | CUT_LMR:       i32 => 2048,
     improving_lmr | IMPROVING_LMR: i32 => 1024,
     non_pv_lmr    | NON_PV_LMR:    i32 => 1024,
     tt_pv_lmr     | TT_PV_LMR:     i32 => 1024,
