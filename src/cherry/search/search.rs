@@ -191,7 +191,10 @@ pub fn id_loop(
             }
         }
 
-        if shared.time_man.abort_id(depth, thread.nodes.global()) {
+        depth += 1;
+        completed_depth += 1;
+
+        if shared.time_man.abort_id(depth - 1, thread.nodes.global()) {
             if thread.id == 0 {
                 shared.time_man.set_abort(true);
             }
@@ -203,7 +206,7 @@ pub fn id_loop(
             let best_move = best_move.unwrap();
 
             shared.time_man.deepen(
-                depth,
+                depth - 1,
                 score,
                 static_eval,
                 move_stability,
@@ -212,9 +215,6 @@ pub fn id_loop(
                 thread.nodes.local(),
             );
         }
-
-        completed_depth += 1;
-        depth += 1;
     }
 
     if shared.time_man.is_infinite() {
