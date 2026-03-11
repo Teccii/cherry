@@ -457,8 +457,7 @@ pub fn search<Node: NodeType>(
         if !Node::ROOT && !best_score.is_loss() {
             if is_tactic {
                 let see_margin = W::see_tactic_margin(depth);
-                if !Node::PV
-                    && depth <= W::see_tactic_depth()
+                if depth <= W::see_tactic_depth()
                     && move_picker.stage() > Stage::YieldGoodTactics
                     && !pos.cmp_see(mv, see_margin)
                 {
@@ -482,7 +481,7 @@ pub fn search<Node: NodeType>(
                 }
 
                 let see_margin = W::see_quiet_margin(lmr_depth);
-                if !Node::PV && lmr_depth <= W::see_quiet_depth() && !pos.cmp_see(mv, see_margin) {
+                if lmr_depth <= W::see_quiet_depth() && !pos.cmp_see(mv, see_margin) {
                     continue;
                 }
             }
