@@ -124,6 +124,9 @@ weights! {
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 25100,
     eval_scale       | EVAL_SCALE:       i32 => 400,
 
+    hindsight_ext_red_margin | HINDSIGHT_EXT_RED_MARGIN: i32 => 3072,
+    hindsight_ext_ext        | HINDSIGHT_EXT_EXT:        i32 => 1024,
+
     rfp_depth     | RFP_DEPTH:     i32 => 6144,
     rfp_base      | RFP_BASE:      i32 => 0,
     rfp_scale     | RFP_SCALE:     i32 => 80,
