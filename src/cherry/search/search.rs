@@ -420,9 +420,9 @@ pub fn search<Node: NodeType>(
         }
     }
 
+    let mut moves_seen = 0;
     let mut best_move = None;
     let mut best_score = -Score::INFINITE;
-    let mut moves_seen = 0;
     let mut flag = TTFlag::UpperBound;
     let mut move_picker = MovePicker::new(tt_entry.and_then(|e| e.mv));
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
@@ -773,8 +773,8 @@ fn q_search<Node: NodeType>(
         }
     }
 
-    let mut best_score = static_eval;
     let mut moves_seen = 0;
+    let mut best_score = static_eval;
     let mut move_picker = MovePicker::new(None);
     let cont_indices = ContIndices::new(&pos);
 
@@ -784,8 +784,9 @@ fn q_search<Node: NodeType>(
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         if !best_score.is_loss() {
+            move_picker.skip_quiets();
             move_picker.skip_bad_tactics();
-            if move_picker.stage() >= Stage::YieldBadTactics {
+            if move_picker.stage() >= Stage::YieldQuiets {
                 break;
             }
         }
