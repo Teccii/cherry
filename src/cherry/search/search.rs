@@ -775,7 +775,7 @@ fn q_search<Node: NodeType>(
 
     let mut moves_seen = 0;
     let mut best_score = static_eval;
-    let mut move_picker = MovePicker::new(None);
+    let mut move_picker = MovePicker::new(tt_entry.and_then(|e| e.mv));
     let cont_indices = ContIndices::new(&pos);
 
     if !in_check {
