@@ -553,6 +553,10 @@ pub fn search<Node: NodeType>(
                 lmr += W::non_pv_lmr() * !Node::PV as i32;
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
                 lmr -= W::check_lmr() * pos.board().in_check() as i32;
+                
+                if !is_tactic {
+                    lmr -= W::quiet_hist_lmr() * hist_score / MAX_HISTORY;
+                }
             } else {
                 lmr = 0;
             }
