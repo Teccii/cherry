@@ -160,29 +160,30 @@ weights! {
     see_tactic_base  | SEE_TACTIC_BASE:  i32 => 0,
     see_tactic_scale | SEE_TACTIC_SCALE: i32 => -62,
 
-    singular_depth        | SINGULAR_DEPTH:        i32 => 6144,
-    singular_tt_depth     | SINGULAR_TT_DEPTH:     i32 => 3072,
-    singular_beta_margin  | SINGULAR_BETA_MARGIN:  i32 => 96,
-    singular_search_depth | SINGULAR_SEARCH_DEPTH: i32 => 512,
-    singular_dext_margin  | SINGULAR_DEXT_MARGIN:  i32 => 30,
-    singular_text_margin  | SINGULAR_TEXT_MARGIN:  i32 => 67,
-    singular_ext          | SINGULAR_EXT:          i32 => 1024,
-    singular_dext         | SINGULAR_DEXT:         i32 => 2048,
-    singular_text         | SINGULAR_TEXT:         i32 => 3072,
-    singular_tt_ext       | SINGULAR_TT_EXT:       i32 => -1024,
-    singular_cut_ext      | SINGULAR_CUT_EXT:      i32 => -1024,
+    se_depth        | SE_DEPTH:        i32 => 6144,
+    se_tt_depth     | SE_TT_DEPTH:     i32 => 3072,
+    se_beta_base    | SE_BETA_BASE:    i32 => 96,
+    se_beta_tt_pv   | SE_BETA_TT_PV:   i32 => 72,
+    se_search_depth | SE_SEARCH_DEPTH: i32 => 512,
+    se_dext_margin  | SE_DEXT_MARGIN:  i32 => 30,
+    se_text_margin  | SE_TEXT_MARGIN:  i32 => 67,
+    se_ext          | SE_EXT:          i32 => 1024,
+    se_dext         | SE_DEXT:         i32 => 2048,
+    se_text         | SE_TEXT:         i32 => 3072,
+    se_tt_ext       | SE_TT_EXT:       i32 => -1024,
+    se_cut_ext      | SE_CUT_EXT:      i32 => -1024,
 
     lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 579,
     lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1626,
     lmr_tactic_base | LMR_TACTIC_BASE: i32 => 450,
     lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688,
 
-    lmr_depth     | LMR_DEPTH:     i32 => 2048,
-    cut_lmr       | CUT_LMR:       i32 => 1024,
-    improving_lmr | IMPROVING_LMR: i32 => 1024,
-    non_pv_lmr    | NON_PV_LMR:    i32 => 1024,
-    tt_pv_lmr     | TT_PV_LMR:     i32 => 1024,
-    check_lmr     | CHECK_LMR:     i32 => 1024,
+    lmr_depth  | LMR_DEPTH:  i32 => 2048,
+    cut_lmr    | CUT_LMR:    i32 => 1024,
+    imp_lmr    | IMP_LMR:    i32 => 1024,
+    non_pv_lmr | NON_PV_LMR: i32 => 1024,
+    tt_pv_lmr  | TT_PV_LMR:  i32 => 1024,
+    check_lmr  | CHECK_LMR:  i32 => 1024,
 
     lmr_depth_bias    | LMR_DEPTH_BIAS:    i32 => 0,
     lmr_depth_pv_bias | LMR_DEPTH_PV_BIAS: i32 => 0,
@@ -274,6 +275,13 @@ impl W {
     #[inline]
     pub const fn see_tactic_margin(depth: i32) -> i32 {
         W::see_tactic_base() + W::see_tactic_scale() * depth / DEPTH_SCALE
+    }
+
+    #[inline]
+    pub const fn se_beta_margin<Node: NodeType>(depth: i32, tt_pv: bool) -> i32 {
+        let mut margin = W::se_beta_base() * depth / DEPTH_SCALE;
+        margin += W::se_beta_tt_pv() * (!Node::PV && tt_pv) as i32;
+        margin / 64
     }
 
     #[inline]

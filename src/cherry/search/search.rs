@@ -489,15 +489,15 @@ pub fn search<Node: NodeType>(
 
         let mut ext = 0;
         if !Node::ROOT
-            && depth >= W::singular_depth()
+            && depth >= W::se_depth()
             && skip_move.is_none()
             && let Some(entry) = tt_entry
             && entry.mv == Some(mv)
-            && entry.depth as i32 * DEPTH_SCALE + W::singular_tt_depth() >= depth
+            && entry.depth as i32 * DEPTH_SCALE + W::se_tt_depth() >= depth
             && entry.flag != TTFlag::UpperBound
         {
-            let s_beta = entry.score - depth * W::singular_beta_margin() / (DEPTH_SCALE * 64);
-            let s_depth = depth * W::singular_search_depth() / DEPTH_SCALE;
+            let s_beta = entry.score - W::se_beta_margin::<Node>(depth, tt_pv);
+            let s_depth = depth * W::se_search_depth() / DEPTH_SCALE;
 
             thread.search_stack[ply as usize].skip_move = Some(mv);
             let s_score = search::<NonPV>(
@@ -513,21 +513,21 @@ pub fn search<Node: NodeType>(
             thread.search_stack[ply as usize].skip_move = None;
 
             if s_score < s_beta {
-                ext = W::singular_ext();
+                ext = W::se_ext();
 
-                if !Node::PV && s_score + W::singular_dext_margin() < s_beta {
-                    ext = W::singular_dext();
+                if !Node::PV && s_score + W::se_dext_margin() < s_beta {
+                    ext = W::se_dext();
                 }
 
-                if !Node::PV && s_score + W::singular_text_margin() < s_beta {
-                    ext = W::singular_text();
+                if !Node::PV && s_score + W::se_text_margin() < s_beta {
+                    ext = W::se_text();
                 }
             } else if s_beta >= beta {
                 return s_beta;
             } else if entry.score >= beta {
-                ext = W::singular_tt_ext();
+                ext = W::se_tt_ext();
             } else if cut_node {
-                ext = W::singular_cut_ext();
+                ext = W::se_cut_ext();
             }
         }
 
@@ -549,7 +549,7 @@ pub fn search<Node: NodeType>(
         } else {
             if depth >= W::lmr_depth() {
                 lmr += W::cut_lmr() * cut_node as i32;
-                lmr -= W::improving_lmr() * improving as i32;
+                lmr -= W::imp_lmr() * improving as i32;
                 lmr += W::non_pv_lmr() * !Node::PV as i32;
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
                 lmr -= W::check_lmr() * pos.board().in_check() as i32;
