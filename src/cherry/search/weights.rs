@@ -142,11 +142,12 @@ weights! {
     lmp_imp_base  | LMP_IMP_BASE:  i64 => 4096,
     lmp_imp_scale | LMP_IMP_SCALE: i64 => 1024,
 
-    fp_depth     | FP_DEPTH:     i32 => 8192,
-    fp_base      | FP_BASE:      i32 => 93,
-    fp_scale     | FP_SCALE:     i32 => 79,
-    fp_imp_base  | FP_IMP_BASE:  i32 => 93,
-    fp_imp_scale | FP_IMP_SCALE: i32 => 79,
+    fp_depth      | FP_DEPTH:      i32 => 8192,
+    fp_base       | FP_BASE:       i32 => 93,
+    fp_scale      | FP_SCALE:      i32 => 79,
+    fp_imp_base   | FP_IMP_BASE:   i32 => 93,
+    fp_imp_scale  | FP_IMP_SCALE:  i32 => 79,
+    fp_hist_scale | FP_HIST_SCALE: i32 => 128,
 
     hist_depth | HIST_DEPTH: i32 => 6144,
     hist_base  | HIST_BASE:  i32 => 0,
@@ -224,7 +225,7 @@ impl W {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub const fn rfp_margin(improving: bool, depth: i32) -> i32 {
+    pub const fn rfp_margin(depth: i32, improving: bool) -> i32 {
         let (base, scale) = if improving {
             (W::rfp_imp_base(), W::rfp_imp_scale())
         } else {
@@ -240,7 +241,7 @@ impl W {
     }
 
     #[inline]
-    pub const fn lmp_margin(improving: bool, depth: i32) -> i64 {
+    pub const fn lmp_margin(depth: i32, improving: bool) -> i64 {
         let (base, scale) = if improving {
             (W::lmp_imp_base(), W::lmp_imp_scale())
         } else {
@@ -251,14 +252,15 @@ impl W {
     }
 
     #[inline]
-    pub const fn fp_margin(improving: bool, depth: i32) -> i32 {
+    pub const fn fp_margin(depth: i32, hist_score: i32, improving: bool) -> i32 {
         let (base, scale) = if improving {
             (W::fp_imp_base(), W::fp_imp_scale())
         } else {
             (W::fp_base(), W::fp_scale())
         };
+        let hist_scale = W::fp_hist_scale();
 
-        base + scale * depth / DEPTH_SCALE
+        base + scale * depth / DEPTH_SCALE + hist_scale * hist_score / MAX_HISTORY
     }
 
     #[inline]

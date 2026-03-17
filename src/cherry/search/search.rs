@@ -365,7 +365,7 @@ pub fn search<Node: NodeType>(
 
     thread.search_stack[ply as usize].static_eval = static_eval;
     if !Node::PV && !in_check && skip_move.is_none() {
-        let rfp_margin = W::rfp_margin(improving, depth);
+        let rfp_margin = W::rfp_margin(depth, improving);
         if depth < W::rfp_depth() && static_eval - rfp_margin >= beta {
             return if !static_eval.is_win() && !beta.is_win() {
                 Score(static_eval.0 + W::rfp_lerp() * (beta.0 - static_eval.0) / 1024)
@@ -464,13 +464,13 @@ pub fn search<Node: NodeType>(
                     continue;
                 }
             } else {
-                let lmp_margin = W::lmp_margin(improving, depth);
+                let lmp_margin = W::lmp_margin(depth, improving);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
 
                 let lmr_depth = (depth - lmr).max(0);
-                let fp_margin = W::fp_margin(improving, lmr_depth);
+                let fp_margin = W::fp_margin(lmr_depth, hist_score, improving);
                 if lmr_depth <= W::fp_depth() && !in_check && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }
