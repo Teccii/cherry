@@ -44,10 +44,19 @@ impl ContCorrIndices {
 /*----------------------------------------------------------------*/
 
 #[inline]
-fn gravity<const MAX_BONUS: i32, const MAX_VALUE: i32>(entry: &mut i16, amount: i32) {
+fn gravity_with_decay<const MAX_BONUS: i32, const MAX_VALUE: i32>(
+    entry: &mut i16,
+    decay: i32,
+    amount: i32,
+) {
     let amount = amount.clamp(-MAX_BONUS, MAX_BONUS);
-    let decay = (*entry as i32 * amount.abs() / MAX_VALUE) as i16;
+    let decay = (decay * amount.abs() / MAX_VALUE) as i16;
     *entry += amount as i16 - decay;
+}
+
+#[inline]
+fn gravity<const MAX_BONUS: i32, const MAX_VALUE: i32>(entry: &mut i16, amount: i32) {
+    gravity_with_decay::<MAX_BONUS, MAX_VALUE>(entry, *entry as i32, amount);
 }
 
 /*----------------------------------------------------------------*/
@@ -349,6 +358,7 @@ impl ContHistory {
         depth: i32,
         mv: Move,
         prev_mv: Option<MoveData>,
+        total: i32,
         bonus: bool,
     ) {
         let amount = if bonus {
@@ -358,7 +368,7 @@ impl ContHistory {
         };
 
         if let Some(entry) = self.entry_mut(board, mv, prev_mv) {
-            gravity::<MAX_HISTORY, MAX_HISTORY>(entry, amount);
+            gravity_with_decay::<MAX_HISTORY, MAX_HISTORY>(entry, total, amount);
         }
     }
 }
@@ -491,7 +501,13 @@ impl History {
     pub fn quiet(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
         let mut result = self.quiet.entry(board, mv);
         result += self.pawn.entry(board, mv);
-        result += self
+        result += self.cont(board, indices, mv);
+        result
+    }
+
+    #[inline]
+    pub fn cont(&self, board: &Board, indices: &ContIndices, mv: Move) -> i32 {
+        let mut result = self
             .cont_odd
             .entry(board, mv, indices.cont1)
             .unwrap_or_default();
@@ -499,7 +515,6 @@ impl History {
             .cont_even
             .entry(board, mv, indices.cont2)
             .unwrap_or_default();
-
         result
     }
 
@@ -518,7 +533,6 @@ impl History {
         };
 
         let mut corr = 0;
-
         corr += W::pawn_corr_frac() * self.pawn_corr.entry(stm, board.pawn_hash());
         corr += W::minor_corr_frac() * self.minor_corr.entry(stm, board.minor_hash());
         corr += W::major_corr_frac() * self.major_corr.entry(stm, board.major_hash());
@@ -534,7 +548,6 @@ impl History {
                 .cont_corr_even
                 .entry(stm, indices.prev_move, indices.cont2)
                 .unwrap_or_default();
-
         corr / MAX_CORR
     }
 
@@ -576,10 +589,11 @@ impl History {
         self.quiet.update(board, depth, mv, bonus);
         self.pawn.update(board, depth, mv, bonus);
 
+        let total_cont = self.cont(board, indices, mv);
         self.cont_odd
-            .update::<1>(board, depth, mv, indices.cont1, bonus);
+            .update::<1>(board, depth, mv, indices.cont1, total_cont, bonus);
         self.cont_even
-            .update::<2>(board, depth, mv, indices.cont2, bonus);
+            .update::<2>(board, depth, mv, indices.cont2, total_cont, bonus);
     }
 
     #[inline]
