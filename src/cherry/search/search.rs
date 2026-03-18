@@ -374,6 +374,14 @@ pub fn search<Node: NodeType>(
             };
         }
 
+        let razor_margin = W::razor_margin(improving, depth) as i32;
+        if static_eval + razor_margin <= alpha {
+            let score = q_search::<NonPV>(pos, thread, shared, ply, alpha, alpha + 1);
+            if score <= alpha {
+                return score;
+            }
+        }
+
         if depth >= W::nmp_depth()
             && ply >= thread.nmp_min_ply
             && pos.prev_move(1).is_some()

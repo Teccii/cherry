@@ -131,6 +131,11 @@ weights! {
     rfp_imp_scale | RFP_IMP_SCALE: i32 => 80,
     rfp_lerp      | RFP_LERP:      i32 => 512,
 
+    razor_base      | RAZOR_BASE:      i64 => 320,
+    razor_scale     | RAZOR_SCALE:     i64 => 270,
+    razor_imp_base  | RAZOR_IMP_BASE:  i64 => 320,
+    razor_imp_scale | RAZOR_IMP_SCALE: i64 => 270,
+
     nmp_depth       | NMP_DEPTH:       i32 => 3072,
     nmp_base        | NMP_BASE:        i64 => 6144,
     nmp_scale       | NMP_SCALE:       i64 => 205,
@@ -232,6 +237,17 @@ impl W {
         };
 
         base + scale * depth / DEPTH_SCALE
+    }
+
+    #[inline]
+    pub const fn razor_margin(improving: bool, depth: i32) -> i64 {
+        let (base, scale) = if improving {
+            (W::razor_imp_base(), W::razor_imp_scale())
+        } else {
+            (W::razor_base(), W::razor_scale())
+        };
+
+        base + scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)
     }
 
     #[inline]
