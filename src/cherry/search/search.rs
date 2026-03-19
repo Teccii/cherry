@@ -382,7 +382,8 @@ pub fn search<Node: NodeType>(
             }
         }
 
-        if depth >= W::nmp_depth()
+        if cut_node
+            && depth >= W::nmp_depth()
             && ply >= thread.nmp_min_ply
             && pos.prev_move(1).is_some()
             && static_eval >= beta
