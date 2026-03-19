@@ -386,7 +386,7 @@ pub struct CorrHistory<const SIZE: usize> {
 impl<const SIZE: usize> CorrHistory<SIZE> {
     #[inline]
     pub fn bonus(depth: i32, diff: i64) -> i32 {
-        (diff * depth as i64 * W::corr_bonus_scale() / (DEPTH_SCALE as i64 * 1024)) as i32
+        (diff * depth as i64 * W::corr_bonus() / (DEPTH_SCALE as i64 * 1024)) as i32
     }
 
     /*----------------------------------------------------------------*/
@@ -423,7 +423,7 @@ pub struct ContCorrHistory {
 impl ContCorrHistory {
     #[inline]
     pub fn bonus(depth: i32, diff: i64) -> i32 {
-        (diff * depth as i64 * W::corr_bonus_scale() / (DEPTH_SCALE as i64 * 1024)) as i32
+        (diff * depth as i64 * W::corr_bonus() / (DEPTH_SCALE as i64 * 1024)) as i32
     }
 
     /*----------------------------------------------------------------*/
@@ -528,22 +528,22 @@ impl History {
         let board = pos.board();
         let stm = board.stm();
         let (white_frac, black_frac) = match stm {
-            Color::White => (W::stm_corr_frac(), W::ntm_corr_frac()),
-            Color::Black => (W::ntm_corr_frac(), W::stm_corr_frac()),
+            Color::White => (W::stm_corr(), W::ntm_corr()),
+            Color::Black => (W::ntm_corr(), W::stm_corr()),
         };
 
         let mut corr = 0;
-        corr += W::pawn_corr_frac() * self.pawn_corr.entry(stm, board.pawn_hash());
-        corr += W::minor_corr_frac() * self.minor_corr.entry(stm, board.minor_hash());
-        corr += W::major_corr_frac() * self.major_corr.entry(stm, board.major_hash());
+        corr += W::pawn_corr() * self.pawn_corr.entry(stm, board.pawn_hash());
+        corr += W::minor_corr() * self.minor_corr.entry(stm, board.minor_hash());
+        corr += W::major_corr() * self.major_corr.entry(stm, board.major_hash());
         corr += white_frac * self.white_corr.entry(stm, board.white_hash());
         corr += black_frac * self.black_corr.entry(stm, board.black_hash());
-        corr += W::cont1_corr_frac()
+        corr += W::cont1_corr()
             * self
                 .cont_corr_odd
                 .entry(stm, indices.prev_move, indices.cont1)
                 .unwrap_or_default();
-        corr += W::cont2_corr_frac()
+        corr += W::cont2_corr()
             * self
                 .cont_corr_even
                 .entry(stm, indices.prev_move, indices.cont2)

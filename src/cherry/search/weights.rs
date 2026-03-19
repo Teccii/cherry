@@ -66,14 +66,14 @@ macro_rules! weights {
 /*----------------------------------------------------------------*/
 
 weights! {
-    pawn_corr_frac   | PAWN_CORR_FRAC:   i32 => 64,
-    minor_corr_frac  | MINOR_CORR_FRAC:  i32 => 64,
-    major_corr_frac  | MAJOR_CORR_FRAC:  i32 => 64,
-    stm_corr_frac    | STM_CORR_FRAC:    i32 => 64,
-    ntm_corr_frac    | NTM_CORR_FRAC:    i32 => 64,
-    cont1_corr_frac  | CONT1_CORR_FRAC:  i32 => 64,
-    cont2_corr_frac  | CONT2_CORR_FRAC:  i32 => 64,
-    corr_bonus_scale | CORR_BONUS_SCALE: i64 => 128,
+    pawn_corr  | PAWN_CORR:  i32 => 64,
+    minor_corr | MINOR_CORR: i32 => 64,
+    major_corr | MAJOR_CORR: i32 => 64,
+    stm_corr   | STM_CORR:   i32 => 64,
+    ntm_corr   | NTM_CORR:   i32 => 64,
+    cont1_corr | CONT1_CORR: i32 => 64,
+    cont2_corr | CONT2_CORR: i32 => 64,
+    corr_bonus | CORR_BONUS: i64 => 128,
 
     quiet_bonus_base  | QUIET_BONUS_BASE:  i32 => 128,
     quiet_bonus_scale | QUIET_BONUS_SCALE: i32 => 128,
@@ -121,7 +121,7 @@ weights! {
     bishop_mat_scale | BISHOP_MAT_SCALE: i32 => 338,
     rook_mat_scale   | ROOK_MAT_SCALE:   i32 => 590,
     queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973,
-    mat_scale_base   | MAT_SCALE_BASE:   i32 => 25100,
+    base_mat_scale   | BASE_MAT_SCALE:   i32 => 25100,
     eval_scale       | EVAL_SCALE:       i32 => 400,
 
     rfp_depth     | RFP_DEPTH:     i32 => 6144,
@@ -165,29 +165,29 @@ weights! {
     see_tactic_base  | SEE_TACTIC_BASE:  i32 => 0,
     see_tactic_scale | SEE_TACTIC_SCALE: i32 => -62,
 
-    singular_depth        | SINGULAR_DEPTH:        i32 => 6144,
-    singular_tt_depth     | SINGULAR_TT_DEPTH:     i32 => 3072,
-    singular_beta_margin  | SINGULAR_BETA_MARGIN:  i32 => 96,
-    singular_search_depth | SINGULAR_SEARCH_DEPTH: i32 => 512,
-    singular_dext_margin  | SINGULAR_DEXT_MARGIN:  i32 => 30,
-    singular_text_margin  | SINGULAR_TEXT_MARGIN:  i32 => 67,
-    singular_ext          | SINGULAR_EXT:          i32 => 1024,
-    singular_dext         | SINGULAR_DEXT:         i32 => 2048,
-    singular_text         | SINGULAR_TEXT:         i32 => 3072,
-    singular_tt_ext       | SINGULAR_TT_EXT:       i32 => -1024,
-    singular_cut_ext      | SINGULAR_CUT_EXT:      i32 => -1024,
+    se_depth        | SE_DEPTH:        i32 => 6144,
+    se_tt_depth     | SE_TT_DEPTH:     i32 => 3072,
+    se_beta_margin  | SE_BETA_MARGIN:  i32 => 96,
+    se_search_depth | SE_SEARCH_DEPTH: i32 => 512,
+    se_dext_margin  | SE_DEXT_MARGIN:  i32 => 30,
+    se_text_margin  | SE_TEXT_MARGIN:  i32 => 67,
+    se_ext          | SE_EXT:          i32 => 1024,
+    se_dext         | SE_DEXT:         i32 => 2048,
+    se_text         | SE_TEXT:         i32 => 3072,
+    se_tt_ext       | SE_TT_EXT:       i32 => -1024,
+    se_cut_ext      | SE_CUT_EXT:      i32 => -1024,
 
     lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 579,
     lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1626,
     lmr_tactic_base | LMR_TACTIC_BASE: i32 => 450,
     lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688,
 
-    lmr_depth     | LMR_DEPTH:     i32 => 2048,
-    cut_lmr       | CUT_LMR:       i32 => 1024,
-    improving_lmr | IMPROVING_LMR: i32 => 1024,
-    non_pv_lmr    | NON_PV_LMR:    i32 => 1024,
-    tt_pv_lmr     | TT_PV_LMR:     i32 => 1024,
-    check_lmr     | CHECK_LMR:     i32 => 1024,
+    lmr_depth  | LMR_DEPTH:  i32 => 2048,
+    check_lmr  | CHECK_LMR:  i32 => 1024,
+    non_pv_lmr | NON_PV_LMR: i32 => 1024,
+    tt_pv_lmr  | TT_PV_LMR:  i32 => 1024,
+    cut_lmr    | CUT_LMR:    i32 => 1024,
+    imp_lmr    | IMP_LMR:    i32 => 1024,
 
     lmr_depth_bias    | LMR_DEPTH_BIAS:    i32 => 0,
     lmr_depth_pv_bias | LMR_DEPTH_PV_BIAS: i32 => 0,
@@ -293,7 +293,13 @@ impl W {
     }
 
     #[inline]
-    pub fn lmr(is_tactic: bool, depth: u8, moves_seen: u8) -> i32 {
+    pub fn lmr(is_tactic: bool, tt_pv: bool, depth: i32, moves_seen: u8) -> i32 {
+        let depth_bias = if tt_pv {
+            W::lmr_depth_pv_bias()
+        } else {
+            W::lmr_depth_bias()
+        };
+        let depth = ((depth + depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8;
         let (base, div) = if is_tactic {
             (W::lmr_tactic_base(), W::lmr_tactic_div())
         } else {
@@ -302,5 +308,16 @@ impl W {
         let (base, div) = (base as f32 / 1024.0, div as f32 / 1024.0);
 
         DEPTH_SCALE * (base + LOG[depth as usize] * LOG[moves_seen as usize] / div) as i32
+    }
+
+    #[inline]
+    pub fn tt_depth(depth: i32, tt_pv: bool) -> u8 {
+        let depth_bias = if tt_pv {
+            W::tt_depth_pv_bias()
+        } else {
+            W::tt_depth_bias()
+        };
+
+        ((depth + depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8
     }
 }

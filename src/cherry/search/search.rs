@@ -51,7 +51,7 @@ pub fn scale_eval(mut raw_eval: Score, board: &Board, scale: bool) -> Score {
             + W::bishop_mat_scale() * board.pieces(Piece::Bishop).popcnt() as i32
             + W::rook_mat_scale() * board.pieces(Piece::Rook).popcnt() as i32
             + W::queen_mat_scale() * board.pieces(Piece::Queen).popcnt() as i32;
-        raw_eval = raw_eval * (W::mat_scale_base() + material) / 32768;
+        raw_eval = raw_eval * (W::base_mat_scale() + material) / 32768;
     }
 
     raw_eval
@@ -436,13 +436,6 @@ pub fn search<Node: NodeType>(
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
 
-    let lmr_depth_bias = if tt_pv {
-        W::lmr_depth_pv_bias()
-    } else {
-        W::lmr_depth_bias()
-    };
-    let lmr_lookup_depth = ((depth + lmr_depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8;
-
     while let Some(ScoredMove(mv, hist_score)) =
         move_picker.next(pos, &thread.history, &cont_indices)
     {
@@ -459,7 +452,7 @@ pub fn search<Node: NodeType>(
 
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
-        let mut lmr = W::lmr(is_tactic, lmr_lookup_depth, moves_seen);
+        let mut lmr = W::lmr(is_tactic, tt_pv, depth, moves_seen);
         let mut score;
 
         if !Node::ROOT && !best_score.is_loss() {
@@ -479,7 +472,7 @@ pub fn search<Node: NodeType>(
 
                 let lmr_depth = (depth - lmr).max(0);
                 let fp_margin = W::fp_margin(improving, lmr_depth);
-                if lmr_depth <= W::fp_depth() && !in_check && static_eval + fp_margin <= alpha {
+                if !in_check && lmr_depth <= W::fp_depth() && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }
 
@@ -497,15 +490,15 @@ pub fn search<Node: NodeType>(
 
         let mut ext = 0;
         if !Node::ROOT
-            && depth >= W::singular_depth()
+            && depth >= W::se_depth()
             && skip_move.is_none()
             && let Some(entry) = tt_entry
             && entry.mv == Some(mv)
-            && entry.depth as i32 * DEPTH_SCALE + W::singular_tt_depth() >= depth
+            && entry.depth as i32 * DEPTH_SCALE + W::se_tt_depth() >= depth
             && entry.flag != TTFlag::UpperBound
         {
-            let s_beta = entry.score - depth * W::singular_beta_margin() / (DEPTH_SCALE * 64);
-            let s_depth = depth * W::singular_search_depth() / DEPTH_SCALE;
+            let s_beta = entry.score - depth * W::se_beta_margin() / (DEPTH_SCALE * 64);
+            let s_depth = depth * W::se_search_depth() / DEPTH_SCALE;
 
             thread.search_stack[ply as usize].skip_move = Some(mv);
             let s_score = search::<NonPV>(
@@ -521,21 +514,21 @@ pub fn search<Node: NodeType>(
             thread.search_stack[ply as usize].skip_move = None;
 
             if s_score < s_beta {
-                ext = W::singular_ext();
+                ext = W::se_ext();
 
-                if !Node::PV && s_score + W::singular_dext_margin() < s_beta {
-                    ext = W::singular_dext();
+                if !Node::PV && s_score + W::se_dext_margin() < s_beta {
+                    ext = W::se_dext();
                 }
 
-                if !Node::PV && s_score + W::singular_text_margin() < s_beta {
-                    ext = W::singular_text();
+                if !Node::PV && s_score + W::se_text_margin() < s_beta {
+                    ext = W::se_text();
                 }
             } else if s_beta >= beta {
                 return s_beta;
             } else if entry.score >= beta {
-                ext = W::singular_tt_ext();
+                ext = W::se_tt_ext();
             } else if cut_node {
-                ext = W::singular_cut_ext();
+                ext = W::se_cut_ext();
             }
         }
 
@@ -556,11 +549,11 @@ pub fn search<Node: NodeType>(
             );
         } else {
             if depth >= W::lmr_depth() {
-                lmr += W::cut_lmr() * cut_node as i32;
-                lmr -= W::improving_lmr() * improving as i32;
+                lmr -= W::check_lmr() * pos.board().in_check() as i32;
                 lmr += W::non_pv_lmr() * !Node::PV as i32;
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
-                lmr -= W::check_lmr() * pos.board().in_check() as i32;
+                lmr += W::cut_lmr() * cut_node as i32;
+                lmr -= W::imp_lmr() * improving as i32;
             } else {
                 lmr = 0;
             }
@@ -667,15 +660,9 @@ pub fn search<Node: NodeType>(
     }
 
     if skip_move.is_none() {
-        let tt_depth_bias = if tt_pv {
-            W::tt_depth_pv_bias()
-        } else {
-            W::tt_depth_bias()
-        };
-
         shared.ttable.store(
             pos.board(),
-            ((depth + tt_depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8,
+            W::tt_depth(depth, tt_pv),
             ply,
             raw_eval,
             best_score,
