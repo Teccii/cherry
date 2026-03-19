@@ -554,6 +554,10 @@ pub fn search<Node: NodeType>(
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
                 lmr += W::cut_lmr() * cut_node as i32;
                 lmr -= W::imp_lmr() * improving as i32;
+
+                if !is_tactic {
+                    lmr -= W::quiet_hist_lmr() * hist_score / MAX_HISTORY;
+                }
             } else {
                 lmr = 0;
             }
