@@ -452,7 +452,7 @@ pub fn search<Node: NodeType>(
 
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
-        let mut lmr = W::lmr(is_tactic, tt_pv, depth, moves_seen);
+        let mut lmr = W::lmr(is_tactic, depth, moves_seen);
         let mut score;
 
         if !Node::ROOT && !best_score.is_loss() {
@@ -498,7 +498,7 @@ pub fn search<Node: NodeType>(
             && entry.flag != TTFlag::UpperBound
         {
             let s_beta = entry.score - depth * W::se_beta_margin() / (DEPTH_SCALE * 64);
-            let s_depth = depth * W::se_search_depth() / DEPTH_SCALE;
+            let s_depth = depth / 2;
 
             thread.search_stack[ply as usize].skip_move = Some(mv);
             let s_score = search::<NonPV>(
@@ -662,7 +662,7 @@ pub fn search<Node: NodeType>(
     if skip_move.is_none() {
         shared.ttable.store(
             pos.board(),
-            W::tt_depth(depth, tt_pv),
+            (depth / DEPTH_SCALE) as u8,
             ply,
             raw_eval,
             best_score,
