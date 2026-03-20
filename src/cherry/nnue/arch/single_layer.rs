@@ -4,6 +4,7 @@ use arrayvec::ArrayVec;
 
 use crate::*;
 
+pub const EVAL_SCALE: i32 = 400;
 pub const QA: i32 = 255;
 pub const QB: i32 = 64;
 
@@ -395,7 +396,7 @@ impl Nnue {
             feed_forward(stm, ntm, bucket, &mut output);
         }
 
-        (output / QA + i32::from(NETWORK.out_bias[bucket])) * W::eval_scale() / (QA * QB)
+        (output / QA + i32::from(NETWORK.out_bias[bucket])) * EVAL_SCALE / (QA * QB)
     }
 }
 

@@ -43,7 +43,7 @@ static LOG: [f32; MAX_PLY as usize] = [
 /*----------------------------------------------------------------*/
 
 macro_rules! weights {
-    ($($name:ident | $tunable:ident : $ty:ty => $default:expr,)*) => {
+    ($($name:ident | $tunable:ident : $ty:ty => $default:literal | $min:literal..=$max:literal;)*) => {
         pub struct W;
 
         $(
@@ -59,6 +59,55 @@ macro_rules! weights {
                 #[cfg(feature = "tune")]
                 pub const fn $name() -> $ty { unsafe { *$tunable.get() } }
             )*
+
+            #[cfg(feature = "tune")]
+            pub fn set_weight(name: &str, value: String) {
+                match name {
+                    $(
+                        stringify!($tunable) => {
+                            let value = match value.parse::<$ty>() {
+                                Ok(value) => value,
+                                Err(e) => {
+                                    println!("info string {:?}", UciParseError::InvalidInteger(e));
+                                    return;
+                                }
+                            };
+
+                            if value > $max || value < $min {
+                                println!("info string Invalid {} value: `{value}`", stringify!($tunable));
+                                return;
+                            }
+
+                            unsafe {
+                                *$tunable.get() = value;
+                            }
+                        },
+                    )*
+                    _ => println!("info string Unknown Option: `{name}`"),
+                }
+            }
+
+            #[cfg(feature = "tune")]
+            pub fn is_weight(name: &str) -> bool {
+                match name {
+                    $(stringify!($tunable) => true,)*
+                    _ => false
+                }
+            }
+
+            #[cfg(feature = "tune")]
+            pub fn print_spsa() {
+                $(
+                    println!("{}, int, {:.1}, {:.1}, {:.1}, {:.2}, 0.002", stringify!($tunable), $default as f32, $min as f32, $max as f32, ($max as f32 - $min as f32).abs() / 20.0);
+                )*
+            }
+
+            #[cfg(feature = "tune")]
+            pub fn print_uci() {
+                $(
+                    println!("option name {} type spin default {} min {} max {}", stringify!($tunable), $default, $min, $max);
+                )*
+            }
         }
     }
 }
@@ -66,151 +115,148 @@ macro_rules! weights {
 /*----------------------------------------------------------------*/
 
 weights! {
-    pawn_corr  | PAWN_CORR:  i32 => 64,
-    minor_corr | MINOR_CORR: i32 => 64,
-    major_corr | MAJOR_CORR: i32 => 64,
-    stm_corr   | STM_CORR:   i32 => 64,
-    ntm_corr   | NTM_CORR:   i32 => 64,
-    cont1_corr | CONT1_CORR: i32 => 64,
-    cont2_corr | CONT2_CORR: i32 => 64,
-    corr_bonus | CORR_BONUS: i64 => 128,
+    pawn_corr  | PAWN_CORR:  i32 => 64  | 0..=128;
+    minor_corr | MINOR_CORR: i32 => 64  | 0..=128;
+    major_corr | MAJOR_CORR: i32 => 64  | 0..=128;
+    stm_corr   | STM_CORR:   i32 => 64  | 0..=128;
+    ntm_corr   | NTM_CORR:   i32 => 64  | 0..=128;
+    cont1_corr | CONT1_CORR: i32 => 64  | 0..=128;
+    cont2_corr | CONT2_CORR: i32 => 64  | 0..=128;
+    corr_bonus | CORR_BONUS: i64 => 128 | 0..=256;
 
-    quiet_bonus_base  | QUIET_BONUS_BASE:  i32 => 128,
-    quiet_bonus_scale | QUIET_BONUS_SCALE: i32 => 128,
-    quiet_bonus_max   | QUIET_BONUS_MAX:   i32 => 2048,
-    quiet_malus_base  | QUIET_MALUS_BASE:  i32 => 128,
-    quiet_malus_scale | QUIET_MALUS_SCALE: i32 => 128,
-    quiet_malus_max   | QUIET_MALUS_MAX:   i32 => 2048,
+    quiet_bonus_base  | QUIET_BONUS_BASE:  i32 => 128  | 0..=256;
+    quiet_bonus_scale | QUIET_BONUS_SCALE: i32 => 128  | 0..=256;
+    quiet_bonus_max   | QUIET_BONUS_MAX:   i32 => 2048 | 1024..=4096;
+    quiet_malus_base  | QUIET_MALUS_BASE:  i32 => 128  | 0..=256;
+    quiet_malus_scale | QUIET_MALUS_SCALE: i32 => 128  | 0..=256;
+    quiet_malus_max   | QUIET_MALUS_MAX:   i32 => 2048 | 1024..=4096;
 
-    tactic_bonus_base  | TACTIC_BONUS_BASE:  i32 => 128,
-    tactic_bonus_scale | TACTIC_BONUS_SCALE: i32 => 128,
-    tactic_bonus_max   | TACTIC_BONUS_MAX:   i32 => 2048,
-    tactic_malus_base  | TACTIC_MALUS_BASE:  i32 => 128,
-    tactic_malus_scale | TACTIC_MALUS_SCALE: i32 => 128,
-    tactic_malus_max   | TACTIC_MALUS_MAX:   i32 => 2048,
+    tactic_bonus_base  | TACTIC_BONUS_BASE:  i32 => 128  | 0..=256;
+    tactic_bonus_scale | TACTIC_BONUS_SCALE: i32 => 128  | 0..=256;
+    tactic_bonus_max   | TACTIC_BONUS_MAX:   i32 => 2048 | 1024..=4096;
+    tactic_malus_base  | TACTIC_MALUS_BASE:  i32 => 128  | 0..=256;
+    tactic_malus_scale | TACTIC_MALUS_SCALE: i32 => 128  | 0..=256;
+    tactic_malus_max   | TACTIC_MALUS_MAX:   i32 => 2048 | 1024..=4096;
 
-    pawn_bonus_base  | PAWN_BONUS_BASE:  i32 => 128,
-    pawn_bonus_scale | PAWN_BONUS_SCALE: i32 => 128,
-    pawn_bonus_max   | PAWN_BONUS_MAX:   i32 => 2048,
-    pawn_malus_base  | PAWN_MALUS_BASE:  i32 => 128,
-    pawn_malus_scale | PAWN_MALUS_SCALE: i32 => 128,
-    pawn_malus_max   | PAWN_MALUS_MAX:   i32 => 2048,
+    pawn_bonus_base  | PAWN_BONUS_BASE:  i32 => 128  | 0..=256;
+    pawn_bonus_scale | PAWN_BONUS_SCALE: i32 => 128  | 0..=256;
+    pawn_bonus_max   | PAWN_BONUS_MAX:   i32 => 2048 | 1024..=4096;
+    pawn_malus_base  | PAWN_MALUS_BASE:  i32 => 128  | 0..=256;
+    pawn_malus_scale | PAWN_MALUS_SCALE: i32 => 128  | 0..=256;
+    pawn_malus_max   | PAWN_MALUS_MAX:   i32 => 2048 | 1024..=4096;
 
-    cont1_bonus_base  | CONT1_BONUS_BASE:  i32 => 128,
-    cont1_bonus_scale | CONT1_BONUS_SCALE: i32 => 128,
-    cont1_bonus_max   | CONT1_BONUS_MAX:   i32 => 2048,
-    cont1_malus_base  | CONT1_MALUS_BASE:  i32 => 128,
-    cont1_malus_scale | CONT1_MALUS_SCALE: i32 => 128,
-    cont1_malus_max   | CONT1_MALUS_MAX:   i32 => 2048,
+    cont1_bonus_base  | CONT1_BONUS_BASE:  i32 => 128  | 0..=256;
+    cont1_bonus_scale | CONT1_BONUS_SCALE: i32 => 128  | 0..=256;
+    cont1_bonus_max   | CONT1_BONUS_MAX:   i32 => 2048 | 1024..=4096;
+    cont1_malus_base  | CONT1_MALUS_BASE:  i32 => 128  | 0..=256;
+    cont1_malus_scale | CONT1_MALUS_SCALE: i32 => 128  | 0..=256;
+    cont1_malus_max   | CONT1_MALUS_MAX:   i32 => 2048 | 1024..=4096;
 
-    cont2_bonus_base  | CONT2_BONUS_BASE:  i32 => 128,
-    cont2_bonus_scale | CONT2_BONUS_SCALE: i32 => 128,
-    cont2_bonus_max   | CONT2_BONUS_MAX:   i32 => 2048,
-    cont2_malus_base  | CONT2_MALUS_BASE:  i32 => 128,
-    cont2_malus_scale | CONT2_MALUS_SCALE: i32 => 128,
-    cont2_malus_max   | CONT2_MALUS_MAX:   i32 => 2048,
+    cont2_bonus_base  | CONT2_BONUS_BASE:  i32 => 128  | 0..=256;
+    cont2_bonus_scale | CONT2_BONUS_SCALE: i32 => 128  | 0..=256;
+    cont2_bonus_max   | CONT2_BONUS_MAX:   i32 => 2048 | 1024..=4096;
+    cont2_malus_base  | CONT2_MALUS_BASE:  i32 => 128  | 0..=256;
+    cont2_malus_scale | CONT2_MALUS_SCALE: i32 => 128  | 0..=256;
+    cont2_malus_max   | CONT2_MALUS_MAX:   i32 => 2048 | 1024..=4096;
 
-    pawn_see_value   | PAWN_SEE_VALUE:   i32 => 101,
-    knight_see_value | KNIGHT_SEE_VALUE: i32 => 324,
-    bishop_see_value | BISHOP_SEE_VALUE: i32 => 332,
-    rook_see_value   | ROOK_SEE_VALUE:   i32 => 578,
-    queen_see_value  | QUEEN_SEE_VALUE:  i32 => 981,
+    pawn_see_value   | PAWN_SEE_VALUE:   i32 => 101 | 0..=200;
+    knight_see_value | KNIGHT_SEE_VALUE: i32 => 324 | 100..=500;
+    bishop_see_value | BISHOP_SEE_VALUE: i32 => 332 | 100..=500;
+    rook_see_value   | ROOK_SEE_VALUE:   i32 => 578 | 300..=1000;
+    queen_see_value  | QUEEN_SEE_VALUE:  i32 => 981 | 500..=1500;
 
-    pawn_mat_scale   | PAWN_MAT_SCALE:   i32 => 111,
-    knight_mat_scale | KNIGHT_MAT_SCALE: i32 => 349,
-    bishop_mat_scale | BISHOP_MAT_SCALE: i32 => 338,
-    rook_mat_scale   | ROOK_MAT_SCALE:   i32 => 590,
-    queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973,
-    base_mat_scale   | BASE_MAT_SCALE:   i32 => 25100,
-    eval_scale       | EVAL_SCALE:       i32 => 400,
+    pawn_mat_scale   | PAWN_MAT_SCALE:   i32 => 111   | 0..=200;
+    knight_mat_scale | KNIGHT_MAT_SCALE: i32 => 349   | 100..=500;
+    bishop_mat_scale | BISHOP_MAT_SCALE: i32 => 338   | 100..=500;
+    rook_mat_scale   | ROOK_MAT_SCALE:   i32 => 590   | 300..=1000;
+    queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973   | 500..=1500;
+    base_mat_scale   | BASE_MAT_SCALE:   i32 => 25100 | 20000..=30000;
 
-    rfp_depth     | RFP_DEPTH:     i32 => 6144,
-    rfp_base      | RFP_BASE:      i32 => 0,
-    rfp_scale     | RFP_SCALE:     i32 => 80,
-    rfp_imp_base  | RFP_IMP_BASE:  i32 => -80,
-    rfp_imp_scale | RFP_IMP_SCALE: i32 => 80,
-    rfp_lerp      | RFP_LERP:      i32 => 512,
+    rfp_depth     | RFP_DEPTH:     i32 => 6144 | 2048..=12288;
+    rfp_base      | RFP_BASE:      i32 => 0    | -150..=150;
+    rfp_scale     | RFP_SCALE:     i32 => 80   | 0..=300;
+    rfp_imp_base  | RFP_IMP_BASE:  i32 => -80  | -300..=0;
+    rfp_imp_scale | RFP_IMP_SCALE: i32 => 80   | 0..=300;
+    rfp_lerp      | RFP_LERP:      i32 => 512  | 0..=1024;
 
-    razor_base      | RAZOR_BASE:      i64 => 320,
-    razor_scale     | RAZOR_SCALE:     i64 => 270,
-    razor_imp_base  | RAZOR_IMP_BASE:  i64 => 320,
-    razor_imp_scale | RAZOR_IMP_SCALE: i64 => 270,
+    razor_base      | RAZOR_BASE:      i64 => 320 | 100..=500;
+    razor_scale     | RAZOR_SCALE:     i64 => 270 | 100..=500;
+    razor_imp_base  | RAZOR_IMP_BASE:  i64 => 320 | 100..=500;
+    razor_imp_scale | RAZOR_IMP_SCALE: i64 => 270 | 100..=500;
 
-    nmp_depth       | NMP_DEPTH:       i32 => 3072,
-    nmp_base        | NMP_BASE:        i64 => 6144,
-    nmp_scale       | NMP_SCALE:       i64 => 205,
-    nmp_verif_depth | NMP_VERIF_DEPTH: i32 => 14336,
-    nmp_verif_frac  | NMP_VERIF_FRAC:  i64 => 768,
+    nmp_depth       | NMP_DEPTH:       i32 => 3072  | 0..=6144;
+    nmp_base        | NMP_BASE:        i64 => 6144  | 2048..=16384;
+    nmp_scale       | NMP_SCALE:       i64 => 205   | 0..=1024;
+    nmp_verif_depth | NMP_VERIF_DEPTH: i32 => 14336 | 10240..=20480;
+    nmp_verif_frac  | NMP_VERIF_FRAC:  i64 => 768   | 0..=1024;
 
-    lmp_base      | LMP_BASE:      i64 => 2048,
-    lmp_scale     | LMP_SCALE:     i64 => 512,
-    lmp_imp_base  | LMP_IMP_BASE:  i64 => 4096,
-    lmp_imp_scale | LMP_IMP_SCALE: i64 => 1024,
+    lmp_base      | LMP_BASE:      i64 => 2048 | 0..=4096;
+    lmp_scale     | LMP_SCALE:     i64 => 512  | 0..=1024;
+    lmp_imp_base  | LMP_IMP_BASE:  i64 => 4096 | 2048..=8192;
+    lmp_imp_scale | LMP_IMP_SCALE: i64 => 1024 | 512..=2048;
 
-    fp_depth     | FP_DEPTH:     i32 => 8192,
-    fp_base      | FP_BASE:      i32 => 93,
-    fp_scale     | FP_SCALE:     i32 => 79,
-    fp_imp_base  | FP_IMP_BASE:  i32 => 93,
-    fp_imp_scale | FP_IMP_SCALE: i32 => 79,
+    fp_depth     | FP_DEPTH:     i32 => 8192 | 4096..=16384;
+    fp_base      | FP_BASE:      i32 => 93   | 0..=300;
+    fp_scale     | FP_SCALE:     i32 => 79   | 0..=300;
+    fp_imp_base  | FP_IMP_BASE:  i32 => 93   | 0..=300;
+    fp_imp_scale | FP_IMP_SCALE: i32 => 79   | 0..=300;
 
-    hist_depth | HIST_DEPTH: i32 => 6144,
-    hist_base  | HIST_BASE:  i32 => 0,
-    hist_scale | HIST_SCALE: i32 => -2000,
+    hist_depth | HIST_DEPTH: i32 => 6144   | 2048..=12288;
+    hist_base  | HIST_BASE:  i32 => 0      | -3000..=500;
+    hist_scale | HIST_SCALE: i32 => -2000  | -5000..=-1000;
 
-    see_quiet_depth | SEE_QUIET_DEPTH: i32 => 10240,
-    see_quiet_base  | SEE_QUIET_BASE:  i32 => 0,
-    see_quiet_scale | SEE_QUIET_SCALE: i32 => -89,
+    see_quiet_depth | SEE_QUIET_DEPTH: i32 => 10240 | 4096..=20480;
+    see_quiet_base  | SEE_QUIET_BASE:  i32 => 0     | -150..=150;
+    see_quiet_scale | SEE_QUIET_SCALE: i32 => -89   | -300..=0;
 
-    see_tactic_depth | SEE_TACTIC_DEPTH: i32 => 10240,
-    see_tactic_base  | SEE_TACTIC_BASE:  i32 => 0,
-    see_tactic_scale | SEE_TACTIC_SCALE: i32 => -62,
+    see_tactic_depth | SEE_TACTIC_DEPTH: i32 => 10240 | 4096..=20480;
+    see_tactic_base  | SEE_TACTIC_BASE:  i32 => 0     | -150..=150;
+    see_tactic_scale | SEE_TACTIC_SCALE: i32 => -62   | -300..=0;
 
-    se_depth        | SE_DEPTH:        i32 => 6144,
-    se_tt_depth     | SE_TT_DEPTH:     i32 => 3072,
-    se_beta_margin  | SE_BETA_MARGIN:  i32 => 96,
-    se_search_depth | SE_SEARCH_DEPTH: i32 => 512,
-    se_dext_margin  | SE_DEXT_MARGIN:  i32 => 30,
-    se_text_margin  | SE_TEXT_MARGIN:  i32 => 67,
-    se_ext          | SE_EXT:          i32 => 1024,
-    se_dext         | SE_DEXT:         i32 => 2048,
-    se_text         | SE_TEXT:         i32 => 3072,
-    se_tt_ext       | SE_TT_EXT:       i32 => -1024,
-    se_cut_ext      | SE_CUT_EXT:      i32 => -1024,
+    se_depth        | SE_DEPTH:        i32 => 6144 | 2048..=12288;
+    se_tt_depth     | SE_TT_DEPTH:     i32 => 3072 | 1024..=6144;
+    se_beta_margin  | SE_BETA_MARGIN:  i32 => 96   | 0..=128;
+    se_search_depth | SE_SEARCH_DEPTH: i32 => 512  | 0..=1024;
+    se_dext_margin  | SE_DEXT_MARGIN:  i32 => 30   | 0..=60;
+    se_text_margin  | SE_TEXT_MARGIN:  i32 => 67   | 0..=120;
+    se_ext          | SE_EXT:          i32 => 1024 | 512..=2048;
+    se_dext         | SE_DEXT:         i32 => 2048 | 1536..=3072;
+    se_text         | SE_TEXT:         i32 => 3072 | 2560..=4096;
+    se_tt_ext       | SE_TT_EXT:       i32 => -1024 | -3072..=-512;
+    se_cut_ext      | SE_CUT_EXT:      i32 => -1024 | -3072..=-512;
 
-    lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 579,
-    lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1626,
-    lmr_tactic_base | LMR_TACTIC_BASE: i32 => 450,
-    lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688,
+    lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 579  | -512..=1024;
+    lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1626 | 512..=3072;
+    lmr_tactic_base | LMR_TACTIC_BASE: i32 => 450  | -512..=1024;
+    lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688 | 1024..=6144;
 
-    lmr_depth  | LMR_DEPTH:  i32 => 2048,
-    check_lmr  | CHECK_LMR:  i32 => 1024,
-    non_pv_lmr | NON_PV_LMR: i32 => 1024,
-    tt_pv_lmr  | TT_PV_LMR:  i32 => 1024,
-    cut_lmr    | CUT_LMR:    i32 => 1024,
-    imp_lmr    | IMP_LMR:    i32 => 1024,
+    lmr_depth  | LMR_DEPTH:  i32 => 2048 | 1024..=8192;
+    check_lmr  | CHECK_LMR:  i32 => 1024 | 512..=3072;
+    non_pv_lmr | NON_PV_LMR: i32 => 1024 | 512..=3072;
+    tt_pv_lmr  | TT_PV_LMR:  i32 => 1024 | 512..=3072;
+    cut_lmr    | CUT_LMR:    i32 => 1024 | 512..=3072;
+    imp_lmr    | IMP_LMR:    i32 => 1024 | 512..=3072;
 
-    lmr_depth_bias    | LMR_DEPTH_BIAS:    i32 => 0,
-    lmr_depth_pv_bias | LMR_DEPTH_PV_BIAS: i32 => 0,
-    tt_depth_bias     | TT_DEPTH_BIAS:     i32 => 0,
-    tt_depth_pv_bias  | TT_DEPTH_PV_BIAS:  i32 => 0,
+    lmr_depth_bias    | LMR_DEPTH_BIAS:    i32 => 0 | -512..=512;
+    tt_depth_bias     | TT_DEPTH_BIAS:     i32 => 0 | -512..=512;
 
-    asp_window_initial | ASP_WINDOW_INITIAL: i32 => 20,
-    asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 48,
+    asp_window_initial | ASP_WINDOW_INITIAL: i32 => 20 | 10..=64;
+    asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 48 | 32..=128;
 
-    soft_time_div         | SOFT_TIME_DIV:         u64 => 262144,
-    soft_time_inc         | SOFT_TIME_INC:         u64 => 4096,
-    hard_time_div         | HARD_TIME_DIV:         u64 => 12288,
-    hard_time_inc         | HARD_TIME_INC:         u64 => 4096,
-    subtree_base          | SUBTREE_BASE:          i64 => 10240,
-    subtree_scale         | SUBTREE_SCALE:         i64 => 6144,
-    subtree_min           | SUBTREE_MIN:           i64 => 4096,
-    move_stability_base   | MOVE_STABILITY_BASE:   i64 => 7373,
-    move_stability_scale  | MOVE_STABILITY_SCALE:  i64 => 410,
-    move_stability_min    | MOVE_STABILITY_MIN:    i64 => 3686,
-    score_stability_edge  | SCORE_STABILITY_EDGE:  i32 => 20,
-    score_stability_base  | SCORE_STABILITY_BASE:  i64 => 7373,
-    score_stability_scale | SCORE_STABILITY_SCALE: i64 => 410,
-    score_stability_min   | SCORE_STABILITY_MIN:   i64 => 3686,
+    soft_time_div         | SOFT_TIME_DIV:         u64 => 262144 | 81920..=327680;
+    soft_time_inc         | SOFT_TIME_INC:         u64 => 4096   | 0..=4096;
+    hard_time_div         | HARD_TIME_DIV:         u64 => 12288  | 4096..=20480;
+    hard_time_inc         | HARD_TIME_INC:         u64 => 4096   | 0..=4096;
+    subtree_base          | SUBTREE_BASE:          i64 => 10240  | 4096..=16384;
+    subtree_scale         | SUBTREE_SCALE:         i64 => 6144   | 4096..=16384;
+    subtree_min           | SUBTREE_MIN:           i64 => 4096   | 0..=4096;
+    move_stability_base   | MOVE_STABILITY_BASE:   i64 => 7373   | 4096..=16384;
+    move_stability_scale  | MOVE_STABILITY_SCALE:  i64 => 410    | 0..=4096;
+    move_stability_min    | MOVE_STABILITY_MIN:    i64 => 3686   | 0..=4096;
+    score_stability_edge  | SCORE_STABILITY_EDGE:  i32 => 20     | 0..=60;
+    score_stability_base  | SCORE_STABILITY_BASE:  i64 => 7373   | 4096..=16384;
+    score_stability_scale | SCORE_STABILITY_SCALE: i64 => 410    | 0..=4096;
+    score_stability_min   | SCORE_STABILITY_MIN:   i64 => 3686   | 0..=4096;
 }
 
 impl W {
@@ -293,13 +339,8 @@ impl W {
     }
 
     #[inline]
-    pub fn lmr(is_tactic: bool, tt_pv: bool, depth: i32, moves_seen: u8) -> i32 {
-        let depth_bias = if tt_pv {
-            W::lmr_depth_pv_bias()
-        } else {
-            W::lmr_depth_bias()
-        };
-        let depth = ((depth + depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8;
+    pub fn lmr(is_tactic: bool, depth: i32, moves_seen: u8) -> i32 {
+        let depth = ((depth + W::lmr_depth_bias()).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8;
         let (base, div) = if is_tactic {
             (W::lmr_tactic_base(), W::lmr_tactic_div())
         } else {
@@ -311,13 +352,7 @@ impl W {
     }
 
     #[inline]
-    pub fn tt_depth(depth: i32, tt_pv: bool) -> u8 {
-        let depth_bias = if tt_pv {
-            W::tt_depth_pv_bias()
-        } else {
-            W::tt_depth_bias()
-        };
-
-        ((depth + depth_bias).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8
+    pub fn tt_depth(depth: i32) -> u8 {
+        ((depth + W::tt_depth_bias()).min(MAX_FRAC_DEPTH) / DEPTH_SCALE) as u8
     }
 }

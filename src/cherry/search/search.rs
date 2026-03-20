@@ -412,7 +412,7 @@ pub fn search<Node: NodeType>(
                     return if score.is_win() { beta } else { score };
                 }
 
-                thread.nmp_min_ply = ply + (nmp_depth.max(0) * 3 / (4 * DEPTH_SCALE)) as u16;
+                thread.nmp_min_ply = ply + (nmp_depth.max(0) as i64 * W::nmp_verif_frac() / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)) as u16;
                 let v_score =
                     search::<NonPV>(pos, thread, shared, nmp_depth, ply, beta - 1, beta, true);
                 thread.nmp_min_ply = 0;
@@ -452,7 +452,7 @@ pub fn search<Node: NodeType>(
 
         let is_tactic = mv.is_tactic();
         let nodes = thread.nodes.local();
-        let mut lmr = W::lmr(is_tactic, tt_pv, depth, moves_seen);
+        let mut lmr = W::lmr(is_tactic, depth, moves_seen);
         let mut score;
 
         if !Node::ROOT && !best_score.is_loss() {
@@ -662,7 +662,7 @@ pub fn search<Node: NodeType>(
     if skip_move.is_none() {
         shared.ttable.store(
             pos.board(),
-            W::tt_depth(depth, tt_pv),
+            W::tt_depth(depth),
             ply,
             raw_eval,
             best_score,
