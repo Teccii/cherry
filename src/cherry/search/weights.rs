@@ -335,14 +335,15 @@ impl W {
 
     #[inline]
     pub fn lmr(is_tactic: bool, depth: i32, moves_seen: u8) -> i32 {
-        let depth = (depth / DEPTH_SCALE) as u8;
+        let depth = (depth / DEPTH_SCALE) as usize;
+        let moves_seen = moves_seen as usize;
+
         let (base, div) = if is_tactic {
             (W::lmr_tactic_base(), W::lmr_tactic_div())
         } else {
             (W::lmr_quiet_base(), W::lmr_quiet_div())
         };
-        let (base, div) = (base as f32 / 1024.0, div as f32 / 1024.0);
 
-        DEPTH_SCALE * (base + LOG[depth as usize] * LOG[moves_seen as usize] / div) as i32
+        base + (DEPTH_SCALE as f32 * DEPTH_SCALE as f32 * LOG[depth] * LOG[moves_seen] / div as f32) as i32
     }
 }
