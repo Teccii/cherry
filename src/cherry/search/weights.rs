@@ -115,143 +115,143 @@ macro_rules! weights {
 /*----------------------------------------------------------------*/
 
 weights! {
-    pawn_corr  | PAWN_CORR:  i32 => 64  | 0..=128;
-    minor_corr | MINOR_CORR: i32 => 64  | 0..=128;
-    major_corr | MAJOR_CORR: i32 => 64  | 0..=128;
-    stm_corr   | STM_CORR:   i32 => 64  | 0..=128;
+    pawn_corr  | PAWN_CORR:  i32 => 57  | 0..=128;
+    minor_corr | MINOR_CORR: i32 => 50  | 0..=128;
+    major_corr | MAJOR_CORR: i32 => 79  | 0..=128;
+    stm_corr   | STM_CORR:   i32 => 52  | 0..=128;
     ntm_corr   | NTM_CORR:   i32 => 64  | 0..=128;
     cont1_corr | CONT1_CORR: i32 => 64  | 0..=128;
-    cont2_corr | CONT2_CORR: i32 => 64  | 0..=128;
-    corr_bonus | CORR_BONUS: i64 => 128 | 0..=256;
+    cont2_corr | CONT2_CORR: i32 => 55  | 0..=128;
+    corr_bonus | CORR_BONUS: i64 => 160 | 0..=256;
 
-    quiet_bonus_base  | QUIET_BONUS_BASE:  i32 => 128  | 0..=256;
-    quiet_bonus_scale | QUIET_BONUS_SCALE: i32 => 128  | 0..=256;
-    quiet_bonus_max   | QUIET_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    quiet_malus_base  | QUIET_MALUS_BASE:  i32 => 128  | 0..=256;
-    quiet_malus_scale | QUIET_MALUS_SCALE: i32 => 128  | 0..=256;
-    quiet_malus_max   | QUIET_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    quiet_bonus_base  | QUIET_BONUS_BASE:  i32 => 58   | 0..=256;
+    quiet_bonus_scale | QUIET_BONUS_SCALE: i32 => 122  | 0..=256;
+    quiet_bonus_max   | QUIET_BONUS_MAX:   i32 => 2293 | 1024..=4096;
+    quiet_malus_base  | QUIET_MALUS_BASE:  i32 => 107  | 0..=256;
+    quiet_malus_scale | QUIET_MALUS_SCALE: i32 => 155  | 0..=256;
+    quiet_malus_max   | QUIET_MALUS_MAX:   i32 => 1859 | 1024..=4096;
 
-    tactic_bonus_base  | TACTIC_BONUS_BASE:  i32 => 128  | 0..=256;
-    tactic_bonus_scale | TACTIC_BONUS_SCALE: i32 => 128  | 0..=256;
-    tactic_bonus_max   | TACTIC_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    tactic_malus_base  | TACTIC_MALUS_BASE:  i32 => 128  | 0..=256;
-    tactic_malus_scale | TACTIC_MALUS_SCALE: i32 => 128  | 0..=256;
-    tactic_malus_max   | TACTIC_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    tactic_bonus_base  | TACTIC_BONUS_BASE:  i32 => 160  | 0..=256;
+    tactic_bonus_scale | TACTIC_BONUS_SCALE: i32 => 153  | 0..=256;
+    tactic_bonus_max   | TACTIC_BONUS_MAX:   i32 => 2240 | 1024..=4096;
+    tactic_malus_base  | TACTIC_MALUS_BASE:  i32 => 104  | 0..=256;
+    tactic_malus_scale | TACTIC_MALUS_SCALE: i32 => 160  | 0..=256;
+    tactic_malus_max   | TACTIC_MALUS_MAX:   i32 => 2284 | 1024..=4096;
 
-    pawn_bonus_base  | PAWN_BONUS_BASE:  i32 => 128  | 0..=256;
-    pawn_bonus_scale | PAWN_BONUS_SCALE: i32 => 128  | 0..=256;
-    pawn_bonus_max   | PAWN_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    pawn_malus_base  | PAWN_MALUS_BASE:  i32 => 128  | 0..=256;
-    pawn_malus_scale | PAWN_MALUS_SCALE: i32 => 128  | 0..=256;
-    pawn_malus_max   | PAWN_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    pawn_bonus_base  | PAWN_BONUS_BASE:  i32 => 84   | 0..=256;
+    pawn_bonus_scale | PAWN_BONUS_SCALE: i32 => 130  | 0..=256;
+    pawn_bonus_max   | PAWN_BONUS_MAX:   i32 => 1372 | 1024..=4096;
+    pawn_malus_base  | PAWN_MALUS_BASE:  i32 => 120  | 0..=256;
+    pawn_malus_scale | PAWN_MALUS_SCALE: i32 => 155  | 0..=256;
+    pawn_malus_max   | PAWN_MALUS_MAX:   i32 => 2331 | 1024..=4096;
 
-    cont1_bonus_base  | CONT1_BONUS_BASE:  i32 => 128  | 0..=256;
-    cont1_bonus_scale | CONT1_BONUS_SCALE: i32 => 128  | 0..=256;
-    cont1_bonus_max   | CONT1_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    cont1_malus_base  | CONT1_MALUS_BASE:  i32 => 128  | 0..=256;
-    cont1_malus_scale | CONT1_MALUS_SCALE: i32 => 128  | 0..=256;
-    cont1_malus_max   | CONT1_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    cont1_bonus_base  | CONT1_BONUS_BASE:  i32 => 126  | 0..=256;
+    cont1_bonus_scale | CONT1_BONUS_SCALE: i32 => 113  | 0..=256;
+    cont1_bonus_max   | CONT1_BONUS_MAX:   i32 => 2084 | 1024..=4096;
+    cont1_malus_base  | CONT1_MALUS_BASE:  i32 => 134  | 0..=256;
+    cont1_malus_scale | CONT1_MALUS_SCALE: i32 => 127  | 0..=256;
+    cont1_malus_max   | CONT1_MALUS_MAX:   i32 => 2579 | 1024..=4096;
 
-    cont2_bonus_base  | CONT2_BONUS_BASE:  i32 => 128  | 0..=256;
-    cont2_bonus_scale | CONT2_BONUS_SCALE: i32 => 128  | 0..=256;
-    cont2_bonus_max   | CONT2_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    cont2_malus_base  | CONT2_MALUS_BASE:  i32 => 128  | 0..=256;
-    cont2_malus_scale | CONT2_MALUS_SCALE: i32 => 128  | 0..=256;
-    cont2_malus_max   | CONT2_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    cont2_bonus_base  | CONT2_BONUS_BASE:  i32 => 124  | 0..=256;
+    cont2_bonus_scale | CONT2_BONUS_SCALE: i32 => 122  | 0..=256;
+    cont2_bonus_max   | CONT2_BONUS_MAX:   i32 => 1881 | 1024..=4096;
+    cont2_malus_base  | CONT2_MALUS_BASE:  i32 => 154  | 0..=256;
+    cont2_malus_scale | CONT2_MALUS_SCALE: i32 => 102  | 0..=256;
+    cont2_malus_max   | CONT2_MALUS_MAX:   i32 => 2405 | 1024..=4096;
 
-    pawn_see_value   | PAWN_SEE_VALUE:   i32 => 101 | 0..=200;
-    knight_see_value | KNIGHT_SEE_VALUE: i32 => 324 | 100..=500;
-    bishop_see_value | BISHOP_SEE_VALUE: i32 => 332 | 100..=500;
-    rook_see_value   | ROOK_SEE_VALUE:   i32 => 578 | 300..=1000;
-    queen_see_value  | QUEEN_SEE_VALUE:  i32 => 981 | 500..=1500;
+    pawn_see_value   | PAWN_SEE_VALUE:   i32 => 122  | 0..=200;
+    knight_see_value | KNIGHT_SEE_VALUE: i32 => 312  | 100..=500;
+    bishop_see_value | BISHOP_SEE_VALUE: i32 => 326  | 100..=500;
+    rook_see_value   | ROOK_SEE_VALUE:   i32 => 569  | 300..=1000;
+    queen_see_value  | QUEEN_SEE_VALUE:  i32 => 1009 | 500..=1500;
 
-    pawn_mat_scale   | PAWN_MAT_SCALE:   i32 => 111   | 0..=200;
-    knight_mat_scale | KNIGHT_MAT_SCALE: i32 => 349   | 100..=500;
-    bishop_mat_scale | BISHOP_MAT_SCALE: i32 => 338   | 100..=500;
-    rook_mat_scale   | ROOK_MAT_SCALE:   i32 => 590   | 300..=1000;
-    queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973   | 500..=1500;
-    base_mat_scale   | BASE_MAT_SCALE:   i32 => 25100 | 20000..=30000;
+    pawn_mat_scale   | PAWN_MAT_SCALE:   i32 => 109   | 0..=200;
+    knight_mat_scale | KNIGHT_MAT_SCALE: i32 => 307   | 100..=500;
+    bishop_mat_scale | BISHOP_MAT_SCALE: i32 => 302   | 100..=500;
+    rook_mat_scale   | ROOK_MAT_SCALE:   i32 => 646   | 300..=1000;
+    queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 981   | 500..=1500;
+    base_mat_scale   | BASE_MAT_SCALE:   i32 => 26096 | 20000..=30000;
 
-    rfp_depth     | RFP_DEPTH:     i32 => 6144 | 2048..=12288;
-    rfp_base      | RFP_BASE:      i32 => 0    | -150..=150;
-    rfp_scale     | RFP_SCALE:     i32 => 80   | 0..=300;
-    rfp_imp_base  | RFP_IMP_BASE:  i32 => -80  | -300..=0;
-    rfp_imp_scale | RFP_IMP_SCALE: i32 => 80   | 0..=300;
-    rfp_lerp      | RFP_LERP:      i32 => 512  | 0..=1024;
+    rfp_depth     | RFP_DEPTH:     i32 => 7128 | 2048..=12288;
+    rfp_base      | RFP_BASE:      i32 => 10    | -150..=150;
+    rfp_scale     | RFP_SCALE:     i32 => 77   | 0..=300;
+    rfp_imp_base  | RFP_IMP_BASE:  i32 => -3  | -300..=0;
+    rfp_imp_scale | RFP_IMP_SCALE: i32 => 55   | 0..=300;
+    rfp_lerp      | RFP_LERP:      i32 => 264  | 0..=1024;
 
-    razor_base      | RAZOR_BASE:      i64 => 320 | 100..=500;
-    razor_scale     | RAZOR_SCALE:     i64 => 270 | 100..=500;
-    razor_imp_base  | RAZOR_IMP_BASE:  i64 => 320 | 100..=500;
-    razor_imp_scale | RAZOR_IMP_SCALE: i64 => 270 | 100..=500;
+    razor_base      | RAZOR_BASE:      i64 => 400 | 100..=500;
+    razor_scale     | RAZOR_SCALE:     i64 => 296 | 100..=500;
+    razor_imp_base  | RAZOR_IMP_BASE:  i64 => 280 | 100..=500;
+    razor_imp_scale | RAZOR_IMP_SCALE: i64 => 289 | 100..=500;
 
-    nmp_depth       | NMP_DEPTH:       i32 => 3072  | 0..=6144;
-    nmp_base        | NMP_BASE:        i64 => 6144  | 2048..=16384;
-    nmp_scale       | NMP_SCALE:       i64 => 205   | 0..=1024;
-    nmp_verif_depth | NMP_VERIF_DEPTH: i32 => 14336 | 10240..=20480;
+    nmp_depth       | NMP_DEPTH:       i32 => 1555  | 0..=6144;
+    nmp_base        | NMP_BASE:        i64 => 6919  | 2048..=16384;
+    nmp_scale       | NMP_SCALE:       i64 => 162   | 0..=1024;
+    nmp_verif_depth | NMP_VERIF_DEPTH: i32 => 14461 | 10240..=20480;
 
-    lmp_base      | LMP_BASE:      i64 => 2048 | 0..=4096;
-    lmp_scale     | LMP_SCALE:     i64 => 512  | 0..=1024;
-    lmp_imp_base  | LMP_IMP_BASE:  i64 => 4096 | 2048..=8192;
-    lmp_imp_scale | LMP_IMP_SCALE: i64 => 1024 | 512..=2048;
+    lmp_base      | LMP_BASE:      i64 => 2307 | 0..=4096;
+    lmp_scale     | LMP_SCALE:     i64 => 354  | 0..=1024;
+    lmp_imp_base  | LMP_IMP_BASE:  i64 => 4630 | 2048..=8192;
+    lmp_imp_scale | LMP_IMP_SCALE: i64 => 1012 | 512..=2048;
 
-    fp_depth     | FP_DEPTH:     i32 => 8192 | 4096..=16384;
-    fp_base      | FP_BASE:      i32 => 93   | 0..=300;
-    fp_scale     | FP_SCALE:     i32 => 79   | 0..=300;
-    fp_imp_base  | FP_IMP_BASE:  i32 => 93   | 0..=300;
-    fp_imp_scale | FP_IMP_SCALE: i32 => 79   | 0..=300;
+    fp_depth     | FP_DEPTH:     i32 => 8199 | 4096..=16384;
+    fp_base      | FP_BASE:      i32 => 72   | 0..=300;
+    fp_scale     | FP_SCALE:     i32 => 34   | 0..=300;
+    fp_imp_base  | FP_IMP_BASE:  i32 => 70   | 0..=300;
+    fp_imp_scale | FP_IMP_SCALE: i32 => 99   | 0..=300;
 
-    hist_depth | HIST_DEPTH: i32 => 6144   | 2048..=12288;
-    hist_base  | HIST_BASE:  i32 => 0      | -3000..=500;
-    hist_scale | HIST_SCALE: i32 => -2000  | -5000..=-1000;
+    hist_depth | HIST_DEPTH: i32 => 6684   | 2048..=12288;
+    hist_base  | HIST_BASE:  i32 => -283   | -3000..=500;
+    hist_scale | HIST_SCALE: i32 => -1570  | -5000..=-1000;
 
-    see_quiet_depth | SEE_QUIET_DEPTH: i32 => 10240 | 4096..=20480;
-    see_quiet_base  | SEE_QUIET_BASE:  i32 => 0     | -150..=150;
-    see_quiet_scale | SEE_QUIET_SCALE: i32 => -89   | -300..=0;
+    see_quiet_depth | SEE_QUIET_DEPTH: i32 => 9230 | 4096..=20480;
+    see_quiet_base  | SEE_QUIET_BASE:  i32 => -39  | -150..=150;
+    see_quiet_scale | SEE_QUIET_SCALE: i32 => -53  | -300..=0;
 
-    see_tactic_depth | SEE_TACTIC_DEPTH: i32 => 10240 | 4096..=20480;
-    see_tactic_base  | SEE_TACTIC_BASE:  i32 => 0     | -150..=150;
-    see_tactic_scale | SEE_TACTIC_SCALE: i32 => -62   | -300..=0;
+    see_tactic_depth | SEE_TACTIC_DEPTH: i32 => 10022 | 4096..=20480;
+    see_tactic_base  | SEE_TACTIC_BASE:  i32 => -24   | -150..=150;
+    see_tactic_scale | SEE_TACTIC_SCALE: i32 => -81   | -300..=0;
 
-    se_depth        | SE_DEPTH:        i32 => 6144 | 2048..=12288;
-    se_tt_depth     | SE_TT_DEPTH:     i32 => 3072 | 1024..=6144;
-    se_beta_margin  | SE_BETA_MARGIN:  i32 => 96   | 0..=128;
-    se_dext_margin  | SE_DEXT_MARGIN:  i32 => 30   | 0..=60;
-    se_text_margin  | SE_TEXT_MARGIN:  i32 => 67   | 0..=120;
-    se_ext          | SE_EXT:          i32 => 1024 | 512..=2048;
-    se_dext         | SE_DEXT:         i32 => 2048 | 1536..=3072;
-    se_text         | SE_TEXT:         i32 => 3072 | 2560..=4096;
-    se_tt_ext       | SE_TT_EXT:       i32 => -1024 | -3072..=-512;
-    se_cut_ext      | SE_CUT_EXT:      i32 => -1024 | -3072..=-512;
+    se_depth        | SE_DEPTH:        i32 => 7792  | 2048..=12288;
+    se_tt_depth     | SE_TT_DEPTH:     i32 => 3192  | 1024..=6144;
+    se_beta_margin  | SE_BETA_MARGIN:  i32 => 89    | 0..=128;
+    se_dext_margin  | SE_DEXT_MARGIN:  i32 => 36    | 0..=60;
+    se_text_margin  | SE_TEXT_MARGIN:  i32 => 81    | 0..=120;
+    se_ext          | SE_EXT:          i32 => 1195  | 512..=2048;
+    se_dext         | SE_DEXT:         i32 => 2003  | 1536..=3072;
+    se_text         | SE_TEXT:         i32 => 3201  | 2560..=4096;
+    se_tt_ext       | SE_TT_EXT:       i32 => -1216 | -3072..=-512;
+    se_cut_ext      | SE_CUT_EXT:      i32 => -630  | -3072..=-512;
 
-    lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 579  | -512..=1024;
-    lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1626 | 512..=3072;
-    lmr_tactic_base | LMR_TACTIC_BASE: i32 => 450  | -512..=1024;
-    lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688 | 1024..=6144;
+    lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 255  | -512..=1024;
+    lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1533 | 512..=3072;
+    lmr_tactic_base | LMR_TACTIC_BASE: i32 => 595  | -512..=1024;
+    lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3084 | 1024..=6144;
 
-    lmr_depth  | LMR_DEPTH:  i32 => 2048 | 1024..=8192;
-    check_lmr  | CHECK_LMR:  i32 => 1024 | 512..=3072;
-    non_pv_lmr | NON_PV_LMR: i32 => 1024 | 512..=3072;
-    tt_pv_lmr  | TT_PV_LMR:  i32 => 1024 | 512..=3072;
-    cut_lmr    | CUT_LMR:    i32 => 1024 | 512..=3072;
-    imp_lmr    | IMP_LMR:    i32 => 1024 | 512..=3072;
+    lmr_depth  | LMR_DEPTH:  i32 => 1805 | 1024..=8192;
+    check_lmr  | CHECK_LMR:  i32 => 1250 | 512..=3072;
+    non_pv_lmr | NON_PV_LMR: i32 => 861  | 512..=3072;
+    tt_pv_lmr  | TT_PV_LMR:  i32 => 1518 | 512..=3072;
+    cut_lmr    | CUT_LMR:    i32 => 575  | 512..=3072;
+    imp_lmr    | IMP_LMR:    i32 => 1181 | 512..=3072;
 
     asp_window_initial | ASP_WINDOW_INITIAL: i32 => 20 | 10..=64;
-    asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 64 | 32..=128;
+    asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 51 | 32..=128;
 
-    soft_time_div         | SOFT_TIME_DIV:         u64 => 262144 | 81920..=327680;
-    soft_time_inc         | SOFT_TIME_INC:         u64 => 4096   | 0..=4096;
-    hard_time_div         | HARD_TIME_DIV:         u64 => 12288  | 4096..=20480;
-    hard_time_inc         | HARD_TIME_INC:         u64 => 4096   | 0..=4096;
-    subtree_base          | SUBTREE_BASE:          i64 => 10240  | 4096..=16384;
-    subtree_scale         | SUBTREE_SCALE:         i64 => 6144   | 4096..=16384;
-    subtree_min           | SUBTREE_MIN:           i64 => 4096   | 0..=4096;
-    move_stability_base   | MOVE_STABILITY_BASE:   i64 => 7373   | 4096..=16384;
-    move_stability_scale  | MOVE_STABILITY_SCALE:  i64 => 410    | 0..=4096;
-    move_stability_min    | MOVE_STABILITY_MIN:    i64 => 3686   | 0..=4096;
-    score_stability_edge  | SCORE_STABILITY_EDGE:  i32 => 20     | 0..=60;
-    score_stability_base  | SCORE_STABILITY_BASE:  i64 => 7373   | 4096..=16384;
-    score_stability_scale | SCORE_STABILITY_SCALE: i64 => 410    | 0..=4096;
-    score_stability_min   | SCORE_STABILITY_MIN:   i64 => 3686   | 0..=4096;
+    soft_time_div         | SOFT_TIME_DIV:         u64 => 238199 | 81920..=327680;
+    soft_time_inc         | SOFT_TIME_INC:         u64 => 3633   | 0..=4096;
+    hard_time_div         | HARD_TIME_DIV:         u64 => 15525  | 4096..=20480;
+    hard_time_inc         | HARD_TIME_INC:         u64 => 3686   | 0..=4096;
+    subtree_base          | SUBTREE_BASE:          i64 => 11319  | 4096..=16384;
+    subtree_scale         | SUBTREE_SCALE:         i64 => 7879   | 4096..=16384;
+    subtree_min           | SUBTREE_MIN:           i64 => 3396   | 0..=4096;
+    move_stability_base   | MOVE_STABILITY_BASE:   i64 => 9575   | 4096..=16384;
+    move_stability_scale  | MOVE_STABILITY_SCALE:  i64 => 659    | 0..=4096;
+    move_stability_min    | MOVE_STABILITY_MIN:    i64 => 3912   | 0..=4096;
+    score_stability_edge  | SCORE_STABILITY_EDGE:  i32 => 17     | 0..=60;
+    score_stability_base  | SCORE_STABILITY_BASE:  i64 => 6092   | 4096..=16384;
+    score_stability_scale | SCORE_STABILITY_SCALE: i64 => 571    | 0..=4096;
+    score_stability_min   | SCORE_STABILITY_MIN:   i64 => 3093   | 0..=4096;
 }
 
 impl W {
