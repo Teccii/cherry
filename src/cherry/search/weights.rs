@@ -234,6 +234,8 @@ weights! {
     tt_pv_lmr  | TT_PV_LMR:  i32 => 1024 | 512..=3072;
     cut_lmr    | CUT_LMR:    i32 => 1024 | 512..=3072;
     imp_lmr    | IMP_LMR:    i32 => 1024 | 512..=3072;
+    
+    qfp_margin | QFP_MARGIN: i32 => 150 | 0..=300;
 
     asp_window_initial | ASP_WINDOW_INITIAL: i32 => 20 | 10..=64;
     asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 64 | 32..=128;
