@@ -784,6 +784,11 @@ fn q_search<Node: NodeType>(
             if move_picker.stage() >= Stage::YieldQuiets {
                 break;
             }
+
+            if !in_check && static_eval + W::qfp_margin() <= alpha && !pos.cmp_see(mv, 1) {
+                best_score = best_score.max(static_eval + W::qfp_margin());
+                continue;
+            }
         }
 
         pos.make_move(mv);
