@@ -809,6 +809,10 @@ fn q_search<Node: NodeType>(
 
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         if !best_score.is_loss() {
+            if moves_seen >= 3 {
+                break;
+            }
+
             move_picker.skip_quiets();
             move_picker.skip_bad_tactics();
             if move_picker.stage() >= Stage::YieldQuiets {
