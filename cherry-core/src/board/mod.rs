@@ -197,6 +197,63 @@ impl Board {
         !self.checkers().is_empty()
     }
 
+    #[inline]
+    pub fn gives_check(&self, mv: Move) -> bool {
+        let mut new_board = self.inner.clone();
+        let (src, dest, flag) = (mv.src(), mv.dest(), mv.flag());
+        let (src_place, dest_place) = (new_board.get(src), new_board.get(dest));
+
+        match flag {
+            MoveFlag::Normal | MoveFlag::DoublePush | MoveFlag::Capture => {
+                new_board.set(src, Place::EMPTY);
+                new_board.set(dest, src_place);
+            }
+            MoveFlag::EnPassant => {
+                let ep_sq = Square::new(dest.file(), src.rank());
+                new_board.set(src, Place::EMPTY);
+                new_board.set(ep_sq, Place::EMPTY);
+                new_board.set(dest, src_place);
+            }
+            _ if mv.is_castling() => {
+                let our_backrank = Rank::First.relative_to(self.stm);
+                let (king_dest, rook_dest) = if flag == MoveFlag::ShortCastling {
+                    (File::G, File::F)
+                } else {
+                    (File::C, File::D)
+                };
+
+                let king_dest = Square::new(king_dest, our_backrank);
+                let rook_dest = Square::new(rook_dest, our_backrank);
+
+                new_board.set(src, Place::EMPTY);
+                new_board.set(dest, Place::EMPTY);
+                new_board.set(king_dest, src_place);
+                new_board.set(rook_dest, dest_place);
+            }
+            _ =>
+                if let Some(piece) = mv.promotion() {
+                    new_board.set(src, Place::EMPTY);
+                    new_board.set(
+                        dest,
+                        Place::from_piece(piece, self.stm, src_place.index().unwrap()),
+                    );
+                },
+        }
+        let their_king = self.king(!self.stm);
+        let (ray_perm, ray_valid) = ray_perm(their_king);
+        let ray_places = new_board.permute(ray_perm).mask(Mask8x64::from(ray_valid));
+        let our_color = match self.stm {
+            Color::White => !ray_places.msb(),
+            Color::Black => ray_places.msb(),
+        };
+        let blockers = ray_places.nonzero().to_bitmask();
+        let attackers = ray_attackers(ray_places);
+        let closest = extend_bitrays(blockers, ray_valid) & blockers;
+        let our_attackers = our_color & attackers & closest;
+
+        our_attackers.to_bitmask() != 0
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]

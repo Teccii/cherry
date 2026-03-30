@@ -42,7 +42,8 @@ pub enum UciCommand {
         name: String,
         value: String,
     },
-    #[cfg(feature="tune")] Spsa,
+    #[cfg(feature = "tune")]
+    Spsa,
     Wait,
     Stop,
     Quit,
@@ -127,7 +128,8 @@ impl UciCommand {
             "ponderhit" => Ok(PonderHit),
             "eval" => Ok(Eval),
             "display" | "d" => Ok(Display),
-            #[cfg(feature="tune")] "spsa" => Ok(Spsa),
+            #[cfg(feature = "tune")]
+            "spsa" => Ok(Spsa),
             "wait" => Ok(Wait),
             "stop" => Ok(Stop),
             "quit" | "q" => Ok(Quit),

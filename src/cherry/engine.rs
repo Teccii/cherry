@@ -107,7 +107,8 @@ impl Engine {
                 dfrc,
                 moves,
             } => self.gen_fens(num, seed, dfrc, moves),
-            #[cfg(feature="tune")] UciCommand::Spsa => W::print_spsa(),
+            #[cfg(feature = "tune")]
+            UciCommand::Spsa => W::print_spsa(),
             UciCommand::Wait => self.wait(),
             UciCommand::Stop => self.stop(),
             UciCommand::Quit => return self.quit(),
@@ -130,7 +131,8 @@ impl Engine {
         println!("option name SoftTarget type check default false");
         println!("option name Ponder type check default false");
         println!("option name UCI_Chess960 type check default false");
-        #[cfg(feature = "tune")] W::print_uci();
+        #[cfg(feature = "tune")]
+        W::print_uci();
         println!("uciok");
     }
 
@@ -378,7 +380,7 @@ impl Engine {
 
                 self.options.frc = value;
                 println!("info string Set UCI_Chess960 to {value}");
-            },
+            }
             #[cfg(feature = "tune")]
             name if W::is_weight(name) => W::set_weight(name, value),
             _ => println!("info string Unknown Option: `{name}`"),

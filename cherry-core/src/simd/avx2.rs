@@ -178,9 +178,7 @@ impl Mask16x8 {
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
-        unsafe {
-            _pext_u32(_mm_movemask_epi8(self.0.0) as u32, 0xAAAAAAAAu32) as u8
-        }
+        unsafe { _pext_u32(_mm_movemask_epi8(self.0.0) as u32, 0xAAAAAAAAu32) as u8 }
     }
 }
 
@@ -206,9 +204,7 @@ impl Mask32x4 {
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
-        unsafe {
-            _pext_u32(_mm_movemask_epi8(self.0.0) as u32, 0x88888888u32) as u8
-        }
+        unsafe { _pext_u32(_mm_movemask_epi8(self.0.0) as u32, 0x88888888u32) as u8 }
     }
 }
 
@@ -226,9 +222,7 @@ impl Mask64x2 {
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
-        unsafe {
-            _pext_u32(_mm_movemask_epi8(self.0.0) as u32, 0x80808080u32) as u8
-        }
+        unsafe { _pext_u32(_mm_movemask_epi8(self.0.0) as u32, 0x80808080u32) as u8 }
     }
 }
 
@@ -298,9 +292,7 @@ impl Mask16x16 {
 
     #[inline]
     pub fn to_bitmask(self) -> u16 {
-        unsafe {
-            _pext_u32(_mm256_movemask_epi8(self.0.0) as u32, 0xAAAAAAAAu32) as u16
-        }
+        unsafe { _pext_u32(_mm256_movemask_epi8(self.0.0) as u32, 0xAAAAAAAAu32) as u16 }
     }
 }
 
@@ -329,9 +321,7 @@ impl Mask32x8 {
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
-        unsafe {
-            _pext_u32(_mm256_movemask_epi8(self.0.0) as u32, 0x88888888u32) as u8
-        }
+        unsafe { _pext_u32(_mm256_movemask_epi8(self.0.0) as u32, 0x88888888u32) as u8 }
     }
 }
 
@@ -349,9 +339,7 @@ impl Mask64x4 {
 
     #[inline]
     pub fn to_bitmask(self) -> u8 {
-        unsafe {
-            _pext_u32(_mm256_movemask_epi8(self.0.0) as u32, 0x80808080u32) as u8
-        }
+        unsafe { _pext_u32(_mm256_movemask_epi8(self.0.0) as u32, 0x80808080u32) as u8 }
     }
 }
 
@@ -393,7 +381,6 @@ impl Mask8x64 {
     pub fn widen(self) -> Mask16x64 {
         let vec = self.0.zero_ext();
         (vec | (vec.shl::<8>())).into()
-
     }
 
     #[inline]
@@ -455,10 +442,8 @@ impl Mask64x8 {
             let and_mask0 = _mm256_setr_epi64x(0x01, 0x02, 0x04, 0x08);
             let and_mask1 = _mm256_setr_epi64x(0x10, 0x20, 0x40, 0x80);
 
-            let lo =
-                _mm256_cmpeq_epi64(and_mask0, _mm256_and_si256(mask_vec, and_mask0)).into();
-            let hi =
-                _mm256_cmpeq_epi64(and_mask1, _mm256_and_si256(mask_vec, and_mask1)).into();
+            let lo = _mm256_cmpeq_epi64(and_mask0, _mm256_and_si256(mask_vec, and_mask0)).into();
+            let hi = _mm256_cmpeq_epi64(and_mask1, _mm256_and_si256(mask_vec, and_mask1)).into();
             Mask64x8(u64x8([lo, hi]))
         }
     }

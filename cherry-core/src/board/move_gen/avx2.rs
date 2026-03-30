@@ -1,4 +1,5 @@
 use core::ops::{Deref, DerefMut};
+
 use arrayvec::ArrayVec;
 
 use crate::*;
@@ -141,9 +142,9 @@ impl Board {
                     MoveFlag::CapturePromotionQueen,
                     MoveFlag::CapturePromotionRook,
                     MoveFlag::CapturePromotionBishop,
-                    MoveFlag::CapturePromotionKnight
+                    MoveFlag::CapturePromotionKnight,
                 ],
-                pawn_dest & their_pieces & their_backrank
+                pawn_dest & their_pieces & their_backrank,
             );
 
             moves.write(
@@ -151,7 +152,7 @@ impl Board {
                 &masked_attacks,
                 pawn_mask,
                 [MoveFlag::Capture],
-                pawn_dest & their_pieces & !their_backrank
+                pawn_dest & their_pieces & !their_backrank,
             );
 
             if let Some(ep_sq) = self.ep_square() {
@@ -173,7 +174,7 @@ impl Board {
                 &masked_attacks,
                 non_pawn_mask,
                 [MoveFlag::Capture],
-                non_pawn_dest & their_pieces
+                non_pawn_dest & their_pieces,
             );
 
             if KING_MOVES {
@@ -182,7 +183,7 @@ impl Board {
                     &masked_attacks,
                     PieceMask::KING,
                     [MoveFlag::Capture],
-                    king_dest & their_pieces
+                    king_dest & their_pieces,
                 );
             }
         }
