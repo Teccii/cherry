@@ -313,6 +313,8 @@ pub fn search<Node: NodeType>(
         Some(_) => None,
         None => shared.ttable.fetch(pos.board(), ply),
     };
+    let tt_move = tt_entry.and_then(|e| e.mv);
+    let _tt_tactic = tt_move.is_some_and(|mv| mv.is_tactic());
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
     if !Node::PV
@@ -329,7 +331,7 @@ pub fn search<Node: NodeType>(
                 if entry.score >= beta {
                     return entry.score;
                 },
-            TTFlag::None => unreachable!(),
+            TTFlag::None => { },
         }
     }
 
@@ -343,6 +345,19 @@ pub fn search<Node: NodeType>(
             .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
         let corr = thread.history.corr(pos, &cont_corr_indices);
         let static_eval = adjust_eval(raw_eval, corr);
+
+        if tt_entry.is_none() {
+            shared.ttable.store(
+                pos.board(),
+                0,
+                ply,
+                raw_eval,
+                Score::NONE,
+                None,
+                TTFlag::None,
+                tt_pv,
+            );
+        }
 
         (raw_eval, static_eval, corr)
     } else {
@@ -432,7 +447,7 @@ pub fn search<Node: NodeType>(
     let mut best_move = None;
     let mut best_score = -Score::INFINITE;
     let mut flag = TTFlag::UpperBound;
-    let mut move_picker = MovePicker::new(tt_entry.and_then(|e| e.mv));
+    let mut move_picker = MovePicker::new(tt_move);
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
 
@@ -730,6 +745,8 @@ fn q_search<Node: NodeType>(
     thread.nodes.inc();
 
     let tt_entry = shared.ttable.fetch(pos.board(), ply);
+    let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
+
     if !Node::PV
         && let Some(entry) = tt_entry
     {
@@ -743,7 +760,7 @@ fn q_search<Node: NodeType>(
                 if entry.score >= beta {
                     return entry.score;
                 },
-            TTFlag::None => unreachable!(),
+            TTFlag::None => { },
         }
     }
 
@@ -758,6 +775,19 @@ fn q_search<Node: NodeType>(
             .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
         let corr = thread.history.corr(pos, &ContCorrIndices::new(&pos));
         static_eval = adjust_eval(raw_eval, corr);
+
+        if tt_entry.is_none() {
+            shared.ttable.store(
+                pos.board(),
+                0,
+                ply,
+                raw_eval,
+                Score::NONE,
+                None,
+                TTFlag::None,
+                tt_pv,
+            );
+        }
 
         if static_eval >= beta {
             return static_eval;

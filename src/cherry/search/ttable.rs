@@ -220,12 +220,8 @@ impl TTable {
         for i in 0..CLUSTER_SIZE {
             let mut entry = cluster.load(i);
             if entry.key == partial_key {
-                return if entry.flag != TTFlag::None {
-                    entry.score = score_from_tt(entry.score, ply);
-                    Some(entry)
-                } else {
-                    None
-                };
+                entry.score = score_from_tt(entry.score, ply);
+                return Some(entry);
             }
         }
 
