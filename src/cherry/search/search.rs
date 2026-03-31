@@ -331,7 +331,7 @@ pub fn search<Node: NodeType>(
                 if entry.score >= beta {
                     return entry.score;
                 },
-            TTFlag::None => { },
+            TTFlag::None => {}
         }
     }
 
@@ -447,7 +447,7 @@ pub fn search<Node: NodeType>(
     let mut best_move = None;
     let mut best_score = -Score::INFINITE;
     let mut flag = TTFlag::UpperBound;
-    let mut move_picker = MovePicker::new(tt_move);
+    let mut move_picker = MovePicker::new(tt_move, W::mp_see_margin());
     let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
 
@@ -474,8 +474,8 @@ pub fn search<Node: NodeType>(
             if is_tactic {
                 let see_margin = W::see_tactic_margin(depth);
                 if depth <= W::see_tactic_depth()
-                    && move_picker.stage() > Stage::YieldGoodTactics
-                    && !pos.cmp_see(mv, see_margin)
+                    && move_picker.stage() == Stage::YieldBadTactics
+                    && (see_margin >= W::mp_see_margin() || !pos.cmp_see(mv, see_margin))
                 {
                     continue;
                 }
@@ -760,7 +760,7 @@ fn q_search<Node: NodeType>(
                 if entry.score >= beta {
                     return entry.score;
                 },
-            TTFlag::None => { },
+            TTFlag::None => {}
         }
     }
 
@@ -800,7 +800,7 @@ fn q_search<Node: NodeType>(
 
     let mut moves_seen = 0;
     let mut best_score = static_eval;
-    let mut move_picker = MovePicker::new(None);
+    let mut move_picker = MovePicker::new(None, W::mp_qs_see_margin());
     let cont_indices = ContIndices::new(&pos);
 
     if !in_check {

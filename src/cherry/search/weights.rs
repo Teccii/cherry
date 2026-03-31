@@ -235,6 +235,9 @@ weights! {
     cut_lmr    | CUT_LMR:    i32 => 1024 | 512..=3072;
     imp_lmr    | IMP_LMR:    i32 => 1024 | 512..=3072;
 
+    mp_see_margin    | MP_SEE_MARGIN:    i32 => 0 | -200..=200;
+    mp_qs_see_margin | MP_QS_SEE_MARGIN: i32 => 0 | -200..=200;
+
     qfp_margin | QFP_MARGIN: i32 => 150 | 0..=300;
 
     asp_window_initial | ASP_WINDOW_INITIAL: i32 => 20 | 10..=64;
