@@ -41,6 +41,7 @@ pub enum Stage {
 
 pub struct MovePicker {
     stage: Stage,
+    see_margin: i32,
     skip_quiets: bool,
     skip_bad_tactics: bool,
     tt_move: Option<Move>,
@@ -51,9 +52,10 @@ pub struct MovePicker {
 
 impl MovePicker {
     #[inline]
-    pub fn new(tt_move: Option<Move>) -> MovePicker {
+    pub fn new(tt_move: Option<Move>, see_margin: i32) -> MovePicker {
         MovePicker {
             stage: Stage::TTMove,
+            see_margin,
             skip_quiets: false,
             skip_bad_tactics: false,
             tt_move,
@@ -119,7 +121,7 @@ impl MovePicker {
             while let Some(index) = select_next(&self.good_tactics) {
                 let mv = swap_pop(&mut self.good_tactics, index).unwrap();
 
-                if pos.cmp_see(mv.0, 0) {
+                if pos.cmp_see(mv.0, self.see_margin) {
                     return Some(mv);
                 } else {
                     if !self.skip_bad_tactics {

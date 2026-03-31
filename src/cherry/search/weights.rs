@@ -214,6 +214,7 @@ weights! {
 
     se_depth        | SE_DEPTH:        i32 => 6144 | 2048..=12288;
     se_tt_depth     | SE_TT_DEPTH:     i32 => 3072 | 1024..=6144;
+    se_search_depth | SE_SEARCH_DEPTH: i64 => 512  | 0..=1024;
     se_beta_margin  | SE_BETA_MARGIN:  i32 => 96   | 0..=128;
     se_dext_margin  | SE_DEXT_MARGIN:  i32 => 30   | 0..=60;
     se_text_margin  | SE_TEXT_MARGIN:  i32 => 67   | 0..=120;
@@ -234,6 +235,9 @@ weights! {
     tt_pv_lmr  | TT_PV_LMR:  i32 => 1024 | 512..=3072;
     cut_lmr    | CUT_LMR:    i32 => 1024 | 512..=3072;
     imp_lmr    | IMP_LMR:    i32 => 1024 | 512..=3072;
+
+    mp_see_margin    | MP_SEE_MARGIN:    i32 => 0 | -200..=200;
+    mp_qs_see_margin | MP_QS_SEE_MARGIN: i32 => 0 | -200..=200;
 
     qfp_margin | QFP_MARGIN: i32 => 150 | 0..=300;
 
