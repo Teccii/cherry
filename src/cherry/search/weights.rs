@@ -200,6 +200,12 @@ weights! {
     fp_imp_base  | FP_IMP_BASE:  i32 => 93   | 0..=300;
     fp_imp_scale | FP_IMP_SCALE: i32 => 79   | 0..=300;
 
+    nfp_depth     | NFP_DEPTH:     i32 => 8192 | 4096..=16384;
+    nfp_base      | NFP_BASE:      i32 => 150   | 0..=300;
+    nfp_scale     | NFP_SCALE:     i32 => 90   | 0..=300;
+    nfp_imp_base  | NFP_IMP_BASE:  i32 => 150   | 0..=300;
+    nfp_imp_scale | NFP_IMP_SCALE: i32 => 90   | 0..=300;
+
     hist_depth | HIST_DEPTH: i32 => 6144   | 2048..=12288;
     hist_base  | HIST_BASE:  i32 => 0      | -3000..=500;
     hist_scale | HIST_SCALE: i32 => -2000  | -5000..=-1000;
@@ -318,6 +324,17 @@ impl W {
             (W::fp_imp_base(), W::fp_imp_scale())
         } else {
             (W::fp_base(), W::fp_scale())
+        };
+
+        base + scale * depth / DEPTH_SCALE
+    }
+
+    #[inline]
+    pub const fn nfp_margin(improving: bool, depth: i32) -> i32 {
+        let (base, scale) = if improving {
+            (W::nfp_imp_base(), W::nfp_imp_scale())
+        } else {
+            (W::nfp_base(), W::nfp_scale())
         };
 
         base + scale * depth / DEPTH_SCALE

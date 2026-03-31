@@ -479,6 +479,19 @@ pub fn search<Node: NodeType>(
                 {
                     continue;
                 }
+                
+                let nfp_margin = W::nfp_margin(improving, depth);
+                if !in_check
+                    && depth <= W::nfp_depth()
+                    && move_picker.stage() == Stage::YieldBadTactics
+                    && static_eval + nfp_margin <= alpha
+                {
+                    if !best_score.is_decisive() {
+                        best_score = best_score.max(static_eval + nfp_margin);
+                    }
+
+                    break;
+                }
             } else {
                 let lmp_margin = W::lmp_margin(improving, depth);
                 if moves_seen as i64 * 1024 >= lmp_margin {
