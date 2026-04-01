@@ -204,13 +204,10 @@ weights! {
     hist_base  | HIST_BASE:  i32 => 0      | -3000..=500;
     hist_scale | HIST_SCALE: i32 => -2000  | -5000..=-1000;
 
-    see_quiet_depth | SEE_QUIET_DEPTH: i32 => 10240 | 4096..=20480;
-    see_quiet_base  | SEE_QUIET_BASE:  i32 => 0     | -150..=150;
-    see_quiet_scale | SEE_QUIET_SCALE: i32 => -89   | -300..=0;
-
-    see_tactic_depth | SEE_TACTIC_DEPTH: i32 => 10240 | 4096..=20480;
-    see_tactic_base  | SEE_TACTIC_BASE:  i32 => 0     | -150..=150;
-    see_tactic_scale | SEE_TACTIC_SCALE: i32 => -62   | -300..=0;
+    see_quiet_base   | SEE_QUIET_BASE:  i32 => 0    | -150..=150;
+    see_quiet_scale  | SEE_QUIET_SCALE: i32 => -89  | -300..=0;
+    see_tactic_base  | SEE_TACTIC_BASE:  i32 => 0   | -150..=150;
+    see_tactic_scale | SEE_TACTIC_SCALE: i32 => -62 | -300..=0;
 
     se_depth        | SE_DEPTH:        i32 => 6144 | 2048..=12288;
     se_tt_depth     | SE_TT_DEPTH:     i32 => 3072 | 1024..=6144;
