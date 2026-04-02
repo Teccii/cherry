@@ -172,6 +172,9 @@ weights! {
     queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973   | 500..=1500;
     base_mat_scale   | BASE_MAT_SCALE:   i32 => 25100 | 20000..=30000;
 
+    hindsight_ext_red | HINDSIGHT_EXT_RED: i32 => 3072 | 1024..=6144;
+    hindsight_ext_ext | HINDSIGHT_EXT_EXT: i32 => 1024 | 0..=2048;
+
     rfp_depth      | RFP_DEPTH:      i32 => 6144 | 2048..=12288;
     rfp_base       | RFP_BASE:       i64 => 0    | -150..=150;
     rfp_scale1     | RFP_SCALE1:     i64 => 50   | 0..=300;

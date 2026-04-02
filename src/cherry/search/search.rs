@@ -275,7 +275,7 @@ pub fn search<Node: NodeType>(
     pos: &mut Position,
     thread: &mut ThreadData,
     shared: &SharedData,
-    depth: i32,
+    mut depth: i32,
     ply: u16,
     mut alpha: Score,
     beta: Score,
@@ -402,6 +402,13 @@ pub fn search<Node: NodeType>(
     thread.search_stack[ply as usize].estimated_score = estimated_score;
 
     if !Node::PV && !in_check && skip_move.is_none() {
+        let prev_stack = &thread.search_stack[ply as usize - 1];
+        if prev_stack.reduction >= W::hindsight_ext_red()
+            && prev_stack.static_eval != Score::NONE
+            && prev_stack.static_eval > -static_eval {
+            depth = (depth + W::hindsight_ext_ext()).min(MAX_FRAC_DEPTH);
+        }
+
         let rfp_margin = W::rfp_margin(improving, depth) as i32;
         if depth < W::rfp_depth() && estimated_score - rfp_margin >= beta {
             return if !estimated_score.is_win() && !beta.is_win() {
@@ -598,6 +605,7 @@ pub fn search<Node: NodeType>(
 
             let lmr_depth = (new_depth - lmr).max(1 * DEPTH_SCALE).min(new_depth);
 
+            thread.search_stack[ply as usize].reduction = lmr;
             score = -search::<NonPV>(
                 pos,
                 thread,
@@ -608,6 +616,7 @@ pub fn search<Node: NodeType>(
                 -alpha,
                 true,
             );
+            thread.search_stack[ply as usize].reduction = 0;
 
             if lmr_depth < new_depth && score > alpha {
                 score = -search::<NonPV>(

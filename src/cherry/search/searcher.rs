@@ -164,6 +164,7 @@ impl Default for PrincipalVariation {
 
 #[derive(Clone, Default)]
 pub struct SearchStack {
+    pub reduction: i32,
     pub raw_eval: Score,
     pub static_eval: Score,
     pub estimated_score: Score,
