@@ -635,9 +635,9 @@ pub fn search<Node: NodeType>(
         }
 
         if score > alpha {
-            alpha = score;
-            best_move = Some(mv);
             flag = TTFlag::Exact;
+            best_move = Some(mv);
+            alpha = score;
 
             if Node::PV {
                 let (parent, child) = thread.search_stack.split_at_mut(ply as usize + 1);
@@ -765,16 +765,14 @@ fn q_search<Node: NodeType>(
     }
 
     let in_check = pos.board().in_check();
-    let static_eval;
-
-    if in_check {
-        static_eval = Score::mated(ply);
+    let (raw_eval, static_eval) = if in_check {
+        (Score::NONE, Score::mated(ply))
     } else {
         let raw_eval = tt_entry
             .map(|e| e.eval)
             .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
         let corr = thread.history.corr(pos, &ContCorrIndices::new(&pos));
-        static_eval = adjust_eval(raw_eval, corr);
+        let static_eval = adjust_eval(raw_eval, corr);
 
         if tt_entry.is_none() {
             shared.ttable.store(
@@ -796,10 +794,14 @@ fn q_search<Node: NodeType>(
         if static_eval >= alpha {
             alpha = static_eval;
         }
-    }
+
+        (raw_eval, static_eval)
+    };
 
     let mut moves_seen = 0;
+    let mut best_move = None;
     let mut best_score = static_eval;
+    let mut flag = TTFlag::UpperBound;
     let mut move_picker = MovePicker::new(None, W::mp_qs_see_margin());
     let cont_indices = ContIndices::new(&pos);
 
@@ -843,10 +845,13 @@ fn q_search<Node: NodeType>(
         }
 
         if score > alpha {
+            flag = TTFlag::Exact;
+            best_move = Some(mv);
             alpha = score;
         }
 
         if score >= beta {
+            flag = TTFlag::LowerBound;
             break;
         }
     }
@@ -854,6 +859,17 @@ fn q_search<Node: NodeType>(
     if moves_seen == 0 && in_check {
         return Score::mated(ply);
     }
+
+    shared.ttable.store(
+        pos.board(),
+        0,
+        ply,
+        raw_eval,
+        best_score,
+        best_move,
+        flag,
+        tt_pv,
+    );
 
     best_score
 }
