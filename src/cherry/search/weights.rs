@@ -231,12 +231,13 @@ weights! {
     lmr_tactic_base | LMR_TACTIC_BASE: i32 => 450  | -512..=1024;
     lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688 | 1024..=6144;
 
-    lmr_depth  | LMR_DEPTH:  i32 => 2048 | 1024..=8192;
-    check_lmr  | CHECK_LMR:  i32 => 1024 | 512..=3072;
-    non_pv_lmr | NON_PV_LMR: i32 => 1024 | 512..=3072;
-    tt_pv_lmr  | TT_PV_LMR:  i32 => 1024 | 512..=3072;
-    cut_lmr    | CUT_LMR:    i32 => 1024 | 512..=3072;
-    imp_lmr    | IMP_LMR:    i32 => 1024 | 512..=3072;
+    lmr_depth      | LMR_DEPTH:      i32 => 2048 | 1024..=8192;
+    quiet_hist_lmr | QUIET_HIST_LMR: i32 => 1024 | 512..=3072;
+    check_lmr      | CHECK_LMR:      i32 => 1024 | 512..=3072;
+    non_pv_lmr     | NON_PV_LMR:     i32 => 1024 | 512..=3072;
+    tt_pv_lmr      | TT_PV_LMR:      i32 => 1024 | 512..=3072;
+    cut_lmr        | CUT_LMR:        i32 => 1024 | 512..=3072;
+    imp_lmr        | IMP_LMR:        i32 => 1024 | 512..=3072;
 
     mp_see_margin    | MP_SEE_MARGIN:    i32 => 0 | -200..=200;
     mp_qs_see_margin | MP_QS_SEE_MARGIN: i32 => 0 | -200..=200;
