@@ -172,12 +172,14 @@ weights! {
     queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973   | 500..=1500;
     base_mat_scale   | BASE_MAT_SCALE:   i32 => 25100 | 20000..=30000;
 
-    rfp_depth     | RFP_DEPTH:     i32 => 6144 | 2048..=12288;
-    rfp_base      | RFP_BASE:      i32 => 0    | -150..=150;
-    rfp_scale     | RFP_SCALE:     i32 => 80   | 0..=300;
-    rfp_imp_base  | RFP_IMP_BASE:  i32 => -80  | -300..=0;
-    rfp_imp_scale | RFP_IMP_SCALE: i32 => 80   | 0..=300;
-    rfp_lerp      | RFP_LERP:      i32 => 512  | 0..=1024;
+    rfp_depth      | RFP_DEPTH:      i32 => 6144 | 2048..=12288;
+    rfp_base       | RFP_BASE:       i64 => 0    | -150..=150;
+    rfp_scale1     | RFP_SCALE1:     i64 => 50   | 0..=300;
+    rfp_scale2     | RFP_SCALE2:     i64 => 6    | 0..=300;
+    rfp_imp_base   | RFP_IMP_BASE:   i64 => -44  | -300..=0;
+    rfp_imp_scale1 | RFP_IMP_SCALE1: i64 => 38   | 0..=300;
+    rfp_imp_scale2 | RFP_IMP_SCALE2: i64 => 6    | 0..=300;
+    rfp_lerp       | RFP_LERP:       i32 => 512  | 0..=1024;
 
     razor_base      | RAZOR_BASE:      i64 => 320 | 100..=500;
     razor_scale     | RAZOR_SCALE:     i64 => 270 | 100..=500;
@@ -276,14 +278,18 @@ impl W {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub const fn rfp_margin(improving: bool, depth: i32) -> i32 {
-        let (base, scale) = if improving {
-            (W::rfp_imp_base(), W::rfp_imp_scale())
+    pub const fn rfp_margin(improving: bool, depth: i32) -> i64 {
+        let depth = depth as i64;
+        let (base, scale1, scale2) = if improving {
+            (W::rfp_imp_base(), W::rfp_imp_scale1(), W::rfp_imp_scale2())
         } else {
-            (W::rfp_base(), W::rfp_scale())
+            (W::rfp_base(), W::rfp_scale1(), W::rfp_scale2())
         };
 
-        base + scale * depth / DEPTH_SCALE
+        let scale1 = scale1 * depth / DEPTH_SCALE as i64;
+        let scale2 = scale2 * depth * depth / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64);
+
+        base + scale1 + scale2
     }
 
     #[inline]

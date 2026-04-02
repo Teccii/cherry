@@ -380,7 +380,7 @@ pub fn search<Node: NodeType>(
 
     thread.search_stack[ply as usize].static_eval = static_eval;
     if !Node::PV && !in_check && skip_move.is_none() {
-        let rfp_margin = W::rfp_margin(improving, depth);
+        let rfp_margin = W::rfp_margin(improving, depth) as i32;
         if depth < W::rfp_depth() && static_eval - rfp_margin >= beta {
             return if !static_eval.is_win() && !beta.is_win() {
                 Score(static_eval.0 + W::rfp_lerp() * (beta.0 - static_eval.0) / 1024)
