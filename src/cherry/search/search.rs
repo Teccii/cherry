@@ -745,6 +745,7 @@ fn q_search<Node: NodeType>(
     thread.nodes.inc();
 
     let tt_entry = shared.ttable.fetch(pos.board(), ply);
+    let tt_move = tt_entry.and_then(|e| e.mv);
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
     if !Node::PV
@@ -802,7 +803,7 @@ fn q_search<Node: NodeType>(
     let mut best_move = None;
     let mut best_score = static_eval;
     let mut flag = TTFlag::UpperBound;
-    let mut move_picker = MovePicker::new(None, W::mp_qs_see_margin());
+    let mut move_picker = MovePicker::new(tt_move, W::mp_qs_see_margin());
     let cont_indices = ContIndices::new(&pos);
 
     if !in_check {
