@@ -309,10 +309,7 @@ pub fn search<Node: NodeType>(
     }
 
     let skip_move = thread.search_stack[ply as usize].skip_move;
-    let tt_entry = match skip_move {
-        Some(_) => None,
-        None => shared.ttable.fetch(pos.board(), ply),
-    };
+    let tt_entry = skip_move.is_none().then(|| shared.ttable.fetch(pos.board(), ply)).flatten();
     let tt_move = tt_entry.and_then(|e| e.mv);
     let _tt_tactic = tt_move.is_some_and(|mv| mv.is_tactic());
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
@@ -339,14 +336,19 @@ pub fn search<Node: NodeType>(
     let cont_corr_indices = ContCorrIndices::new(&pos);
 
     let in_check = pos.board().in_check();
-    let (raw_eval, static_eval, _corr) = if !in_check && skip_move.is_none() {
-        let raw_eval = tt_entry
-            .map(|e| e.eval)
-            .unwrap_or_else(|| scale_eval(pos.eval(), pos.board(), thread.eval_scaling));
+    let (raw_eval, static_eval, _corr) = if !in_check {
+        let raw_eval = if skip_move.is_some() {
+            thread.search_stack[ply as usize].raw_eval
+        } else if let Some(entry) = tt_entry {
+            entry.eval
+        } else {
+            scale_eval(pos.eval(), pos.board(), thread.eval_scaling)
+        };
+
         let corr = thread.history.corr(pos, &cont_corr_indices);
         let static_eval = adjust_eval(raw_eval, corr);
 
-        if tt_entry.is_none() {
+        if skip_move.is_none() && tt_entry.is_none() {
             shared.ttable.store(
                 pos.board(),
                 0,
@@ -378,7 +380,9 @@ pub fn search<Node: NodeType>(
         }
     };
 
+    thread.search_stack[ply as usize].raw_eval = raw_eval;
     thread.search_stack[ply as usize].static_eval = static_eval;
+
     if !Node::PV && !in_check && skip_move.is_none() {
         let rfp_margin = W::rfp_margin(improving, depth) as i32;
         if depth < W::rfp_depth() && static_eval - rfp_margin >= beta {
