@@ -346,7 +346,7 @@ impl W {
     pub const fn see_tactic_margin(depth: i32) -> i32 {
         W::see_tactic_base() + W::see_tactic_scale() * depth / DEPTH_SCALE
     }
-    
+
     #[inline]
     pub fn hist_lmr(is_tactic: bool) -> i32 {
         if is_tactic {

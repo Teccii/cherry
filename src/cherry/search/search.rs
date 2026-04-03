@@ -309,7 +309,10 @@ pub fn search<Node: NodeType>(
     }
 
     let skip_move = thread.search_stack[ply as usize].skip_move;
-    let tt_entry = skip_move.is_none().then(|| shared.ttable.fetch(pos.board(), ply)).flatten();
+    let tt_entry = skip_move
+        .is_none()
+        .then(|| shared.ttable.fetch(pos.board(), ply))
+        .flatten();
     let tt_move = tt_entry.and_then(|e| e.mv);
     let _tt_tactic = tt_move.is_some_and(|mv| mv.is_tactic());
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
@@ -366,6 +369,20 @@ pub fn search<Node: NodeType>(
         (Score::NONE, Score::NONE, 0)
     };
 
+    let mut estimated_score = static_eval;
+    if !in_check
+        && skip_move.is_none()
+        && let Some(entry) = tt_entry
+        && match entry.flag {
+            TTFlag::Exact => true,
+            TTFlag::UpperBound => entry.score < static_eval,
+            TTFlag::LowerBound => entry.score > static_eval,
+            TTFlag::None => false,
+        }
+    {
+        estimated_score = entry.score;
+    }
+
     let improving = !in_check && {
         let ss = &thread.search_stack;
         let prev2 = ply.wrapping_sub(2) as usize;
@@ -382,14 +399,15 @@ pub fn search<Node: NodeType>(
 
     thread.search_stack[ply as usize].raw_eval = raw_eval;
     thread.search_stack[ply as usize].static_eval = static_eval;
+    thread.search_stack[ply as usize].estimated_score = estimated_score;
 
     if !Node::PV && !in_check && skip_move.is_none() {
         let rfp_margin = W::rfp_margin(improving, depth) as i32;
-        if depth < W::rfp_depth() && static_eval - rfp_margin >= beta {
-            return if !static_eval.is_win() && !beta.is_win() {
-                Score(static_eval.0 + W::rfp_lerp() * (beta.0 - static_eval.0) / 1024)
+        if depth < W::rfp_depth() && estimated_score - rfp_margin >= beta {
+            return if !estimated_score.is_win() && !beta.is_win() {
+                Score(estimated_score.0 + W::rfp_lerp() * (beta.0 - estimated_score.0) / 1024)
             } else {
-                static_eval
+                estimated_score
             };
         }
 

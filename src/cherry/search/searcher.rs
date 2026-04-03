@@ -166,6 +166,7 @@ impl Default for PrincipalVariation {
 pub struct SearchStack {
     pub raw_eval: Score,
     pub static_eval: Score,
+    pub estimated_score: Score,
     pub skip_move: Option<Move>,
     pub pv: PrincipalVariation,
 }
