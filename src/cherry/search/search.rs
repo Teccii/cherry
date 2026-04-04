@@ -810,16 +810,31 @@ fn q_search<Node: NodeType>(
             );
         }
 
-        if static_eval >= beta {
-            return static_eval;
-        }
-
-        if static_eval >= alpha {
-            alpha = static_eval;
-        }
-
         (raw_eval, static_eval)
     };
+
+    let mut estimated_score = static_eval;
+    if !in_check
+        && let Some(entry) = tt_entry
+        && match entry.flag {
+            TTFlag::Exact => true,
+            TTFlag::UpperBound => entry.score < static_eval,
+            TTFlag::LowerBound => entry.score > static_eval,
+            TTFlag::None => false,
+        }
+    {
+        estimated_score = entry.score;
+    }
+
+    if !in_check {
+        if estimated_score >= beta {
+            return estimated_score;
+        }
+
+        if estimated_score >= alpha {
+            alpha = estimated_score;
+        }
+    }
 
     let mut moves_seen = 0;
     let mut best_move = None;
