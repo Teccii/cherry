@@ -412,7 +412,7 @@ pub fn search<Node: NodeType>(
         }
 
         let razor_margin = W::razor_margin(improving, depth) as i32;
-        if static_eval + razor_margin <= alpha {
+        if estimated_score + razor_margin <= alpha {
             let score = q_search::<NonPV>(pos, thread, shared, ply, alpha, alpha + 1);
             if score <= alpha {
                 return score;
