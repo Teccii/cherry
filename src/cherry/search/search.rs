@@ -314,7 +314,6 @@ pub fn search<Node: NodeType>(
         .then(|| shared.ttable.fetch(pos.board(), ply))
         .flatten();
     let tt_move = tt_entry.and_then(|e| e.mv);
-    let _tt_tactic = tt_move.is_some_and(|mv| mv.is_tactic());
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
     if !Node::PV
@@ -412,7 +411,7 @@ pub fn search<Node: NodeType>(
         }
 
         let razor_margin = W::razor_margin(improving, depth) as i32;
-        if static_eval + razor_margin <= alpha {
+        if static_eval + razor_margin <= alpha && tt_move.is_none_or(|mv| mv.is_tactic()) {
             let score = q_search::<NonPV>(pos, thread, shared, ply, alpha, alpha + 1);
             if score <= alpha {
                 return score;
