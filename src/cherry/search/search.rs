@@ -388,10 +388,10 @@ pub fn search<Node: NodeType>(
         let prev2 = ply.wrapping_sub(2) as usize;
         let prev4 = ply.wrapping_sub(4) as usize;
 
-        if ply >= 2 && ss[prev2].static_eval != Score::NONE {
-            static_eval > ss[prev2].static_eval
-        } else if ply >= 4 && ss[prev4].static_eval != Score::NONE {
-            static_eval > ss[prev4].static_eval
+        if ply >= 2 && ss[prev2].estimated_score != Score::NONE {
+            estimated_score > ss[prev2].estimated_score
+        } else if ply >= 4 && ss[prev4].estimated_score != Score::NONE {
+            estimated_score > ss[prev4].estimated_score
         } else {
             true
         }
