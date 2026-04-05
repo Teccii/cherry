@@ -339,7 +339,7 @@ pub fn search<Node: NodeType>(
     let cont_corr_indices = ContCorrIndices::new(&pos);
 
     let in_check = pos.board().in_check();
-    let (raw_eval, static_eval, _corr) = if !in_check {
+    let (raw_eval, static_eval, corr) = if !in_check {
         let raw_eval = if skip_move.is_some() {
             thread.search_stack[ply as usize].raw_eval
         } else if let Some(entry) = tt_entry {
@@ -364,7 +364,7 @@ pub fn search<Node: NodeType>(
             );
         }
 
-        (raw_eval, static_eval, corr)
+        (raw_eval, static_eval, corr.abs())
     } else {
         (Score::NONE, Score::NONE, 0)
     };
@@ -402,7 +402,7 @@ pub fn search<Node: NodeType>(
     thread.search_stack[ply as usize].estimated_score = estimated_score;
 
     if !Node::PV && !in_check && skip_move.is_none() {
-        let rfp_margin = W::rfp_margin(improving, depth) as i32;
+        let rfp_margin = W::rfp_margin(improving, depth, corr) as i32;
         if depth < W::rfp_depth() && estimated_score - rfp_margin >= beta {
             return if !estimated_score.is_win() && !beta.is_win() {
                 Score(estimated_score.0 + W::rfp_lerp() * (beta.0 - estimated_score.0) / 1024)
