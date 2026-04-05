@@ -12,6 +12,7 @@ pub struct ContIndices {
     pub cont1: Option<MoveData>,
     pub cont2: Option<MoveData>,
     pub cont4: Option<MoveData>,
+    pub cont6: Option<MoveData>,
 }
 
 impl ContIndices {
@@ -21,6 +22,7 @@ impl ContIndices {
             cont1: pos.prev_move(1),
             cont2: pos.prev_move(2),
             cont4: pos.prev_move(4),
+            cont6: pos.prev_move(6),
         }
     }
 }
@@ -302,6 +304,11 @@ impl ContHistory {
                 W::cont4_bonus_scale(),
                 W::cont4_bonus_max(),
             ),
+            6 => (
+                W::cont6_bonus_base(),
+                W::cont6_bonus_scale(),
+                W::cont6_bonus_max(),
+            ),
             _ => unreachable!(),
         };
 
@@ -325,6 +332,11 @@ impl ContHistory {
                 W::cont4_malus_base(),
                 W::cont4_malus_scale(),
                 W::cont4_malus_max(),
+            ),
+            6 => (
+                W::cont6_malus_base(),
+                W::cont6_malus_scale(),
+                W::cont6_malus_max(),
             ),
             _ => unreachable!(),
         };
@@ -531,6 +543,10 @@ impl History {
             .cont_even
             .entry(board, mv, indices.cont4)
             .unwrap_or_default();
+        result += self
+            .cont_even
+            .entry(board, mv, indices.cont6)
+            .unwrap_or_default();
         result
     }
 
@@ -612,6 +628,8 @@ impl History {
             .update::<2>(board, depth, mv, indices.cont2, total_cont, bonus);
         self.cont_even
             .update::<4>(board, depth, mv, indices.cont4, total_cont, bonus);
+        self.cont_even
+            .update::<6>(board, depth, mv, indices.cont6, total_cont, bonus);
     }
 
     #[inline]

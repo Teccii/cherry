@@ -165,6 +165,13 @@ weights! {
     cont4_malus_base  | CONT4_MALUS_BASE:  i32 => 128  | 0..=256;
     cont4_malus_scale | CONT4_MALUS_SCALE: i32 => 128  | 0..=256;
     cont4_malus_max   | CONT4_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    
+    cont6_bonus_base  | CONT6_BONUS_BASE:  i32 => 128  | 0..=256;
+    cont6_bonus_scale | CONT6_BONUS_SCALE: i32 => 128  | 0..=256;
+    cont6_bonus_max   | CONT6_BONUS_MAX:   i32 => 2048 | 1024..=4096;
+    cont6_malus_base  | CONT6_MALUS_BASE:  i32 => 128  | 0..=256;
+    cont6_malus_scale | CONT6_MALUS_SCALE: i32 => 128  | 0..=256;
+    cont6_malus_max   | CONT6_MALUS_MAX:   i32 => 2048 | 1024..=4096;
 
     pawn_see_value   | PAWN_SEE_VALUE:   i32 => 101 | 0..=200;
     knight_see_value | KNIGHT_SEE_VALUE: i32 => 324 | 100..=500;
