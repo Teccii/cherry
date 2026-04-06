@@ -494,7 +494,7 @@ pub fn search<Node: NodeType>(
 
         if !Node::ROOT && !best_score.is_loss() {
             if is_tactic {
-                let see_margin = W::see_tactic_margin(depth);
+                let see_margin = W::see_tactic_margin(depth, hist_score);
                 if depth <= W::see_tactic_depth()
                     && move_picker.stage() == Stage::YieldBadTactics
                     && (see_margin >= W::mp_see_margin() || !pos.cmp_see(mv, see_margin))

@@ -218,9 +218,10 @@ weights! {
     see_quiet_base  | SEE_QUIET_BASE:  i32 => 0     | -150..=150;
     see_quiet_scale | SEE_QUIET_SCALE: i32 => -89   | -300..=0;
 
-    see_tactic_depth | SEE_TACTIC_DEPTH: i32 => 10240 | 4096..=20480;
-    see_tactic_base  | SEE_TACTIC_BASE:  i32 => 0     | -150..=150;
-    see_tactic_scale | SEE_TACTIC_SCALE: i32 => -62   | -300..=0;
+    see_tactic_depth      | SEE_TACTIC_DEPTH:      i32 => 10240 | 4096..=20480;
+    see_tactic_base       | SEE_TACTIC_BASE:       i32 => 0     | -150..=150;
+    see_tactic_scale      | SEE_TACTIC_SCALE:      i32 => -62   | -300..=0;
+    see_tactic_hist_scale | SEE_TACTIC_HIST_SCALE: i32 => 256   | 0..=1024;
 
     se_depth        | SE_DEPTH:        i32 => 6144 | 2048..=12288;
     se_tt_depth     | SE_TT_DEPTH:     i32 => 3072 | 1024..=6144;
@@ -336,8 +337,10 @@ impl W {
         } else {
             (W::fp_base(), W::fp_scale())
         };
+        let scale = scale * depth / DEPTH_SCALE;
+        let hist_scale = W::fp_hist_scale() * hist_score / MAX_HISTORY;
 
-        base + scale * depth / DEPTH_SCALE + W::fp_hist_scale() * hist_score / MAX_HISTORY
+        base + scale + hist_scale
     }
 
     #[inline]
@@ -351,8 +354,11 @@ impl W {
     }
 
     #[inline]
-    pub const fn see_tactic_margin(depth: i32) -> i32 {
-        W::see_tactic_base() + W::see_tactic_scale() * depth / DEPTH_SCALE
+    pub const fn see_tactic_margin(depth: i32, hist_score: i32) -> i32 {
+        let scale = W::see_tactic_scale() * depth / DEPTH_SCALE;
+        let hist_scale = W::see_tactic_hist_scale() * hist_score / MAX_HISTORY;
+
+        W::see_tactic_base() + scale - hist_scale
     }
 
     #[inline]
