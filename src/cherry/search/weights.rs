@@ -198,6 +198,11 @@ weights! {
     nmp_scale       | NMP_SCALE:       i64 => 205   | 0..=1024;
     nmp_verif_depth | NMP_VERIF_DEPTH: i32 => 14336 | 10240..=20480;
 
+    probcut_depth       | PROBCUT_DEPTH:       i32 => 6144 | 0..=12288;
+    probcut_tt_depth    | PROBCUT_TT_DEPTH:    i32 => 3072 | 0..=6144;
+    probcut_beta_margin | PROBCUT_BETA_MARGIN: i32 => 300  | 0..=600;
+    probcut_red         | PROBCUT_RED:         i32 => 4096 | 2048..=8192;
+
     lmp_base      | LMP_BASE:      i64 => 2048 | 0..=4096;
     lmp_scale     | LMP_SCALE:     i64 => 512  | 0..=1024;
     lmp_imp_base  | LMP_IMP_BASE:  i64 => 4096 | 2048..=8192;
@@ -222,7 +227,7 @@ weights! {
     see_tactic_scale | SEE_TACTIC_SCALE: i32 => -62   | -300..=0;
 
     se_depth        | SE_DEPTH:        i32 => 6144 | 2048..=12288;
-    se_tt_depth     | SE_TT_DEPTH:     i32 => 3072 | 1024..=6144;
+    se_tt_depth     | SE_TT_DEPTH:     i32 => 3072 | 0..=6144;
     se_search_depth | SE_SEARCH_DEPTH: i64 => 512  | 0..=1024;
     se_beta_margin  | SE_BETA_MARGIN:  i32 => 96   | 0..=128;
     se_dext_margin  | SE_DEXT_MARGIN:  i32 => 30   | 0..=60;

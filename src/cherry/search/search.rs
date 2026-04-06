@@ -463,6 +463,70 @@ pub fn search<Node: NodeType>(
                 }
             }
         }
+
+        let probcut_beta = beta + W::probcut_beta_margin();
+        if depth >= W::probcut_depth()
+            && !beta.is_win()
+            && tt_move.is_none_or(|mv| mv.is_tactic())
+            && !tt_entry.is_some_and(|e| {
+                e.depth as i32 * DEPTH_SCALE + W::probcut_tt_depth() >= depth
+                    && e.score < probcut_beta
+            })
+        {
+            let probcut_see_margin = (probcut_beta - static_eval).0;
+            let mut move_picker = MovePicker::new(tt_move, probcut_see_margin);
+            move_picker.skip_quiets();
+            move_picker.skip_bad_tactics();
+
+            while let Some(ScoredMove(mv, _)) =
+                move_picker.next(pos, &thread.history, &cont_indices)
+            {
+                pos.make_move(mv);
+                shared.ttable.prefetch(pos.board());
+
+                let probcut_depth = (depth - W::probcut_red()).max(0);
+                let mut score = -q_search::<NonPV>(
+                    pos,
+                    thread,
+                    shared,
+                    ply + 1,
+                    -probcut_beta,
+                    -probcut_beta + 1,
+                );
+                if score >= probcut_beta && probcut_depth > 0 {
+                    score = -search::<NonPV>(
+                        pos,
+                        thread,
+                        shared,
+                        probcut_depth,
+                        ply + 1,
+                        -probcut_beta,
+                        -probcut_beta + 1,
+                        !cut_node,
+                    );
+                }
+                pos.unmake_move();
+
+                if thread.abort_now {
+                    return Score::ZERO;
+                }
+
+                if score >= probcut_beta {
+                    shared.ttable.store(
+                        pos.board(),
+                        (probcut_depth / DEPTH_SCALE) as u8 + 1,
+                        ply,
+                        raw_eval,
+                        score,
+                        Some(mv),
+                        TTFlag::LowerBound,
+                        tt_pv,
+                    );
+
+                    return score;
+                }
+            }
+        }
     }
 
     let mut moves_seen = 0;
