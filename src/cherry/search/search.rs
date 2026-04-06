@@ -508,7 +508,7 @@ pub fn search<Node: NodeType>(
                 }
 
                 let lmr_depth = (depth - lmr).max(0);
-                let fp_margin = W::fp_margin(improving, lmr_depth);
+                let fp_margin = W::fp_margin(improving, lmr_depth, hist_score);
                 if !in_check && lmr_depth <= W::fp_depth() && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }
