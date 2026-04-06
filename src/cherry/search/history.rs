@@ -30,6 +30,7 @@ pub struct ContCorrIndices {
     pub prev_move: Option<MoveData>,
     pub cont1: Option<MoveData>,
     pub cont2: Option<MoveData>,
+    pub cont4: Option<MoveData>,
 }
 
 impl ContCorrIndices {
@@ -39,6 +40,7 @@ impl ContCorrIndices {
             prev_move: pos.prev_move(1),
             cont1: pos.prev_move(2),
             cont2: pos.prev_move(3),
+            cont4: pos.prev_move(4),
         }
     }
 }
@@ -564,6 +566,11 @@ impl History {
                 .cont_corr_even
                 .entry(stm, indices.prev_move, indices.cont2)
                 .unwrap_or_default();
+        corr += W::cont4_corr()
+            * self
+            .cont_corr_even
+            .entry(stm, indices.prev_move, indices.cont4)
+            .unwrap_or_default();
         corr / MAX_CORR
     }
 
@@ -641,5 +648,7 @@ impl History {
             .update(stm, indices.prev_move, indices.cont1, depth, diff);
         self.cont_corr_even
             .update(stm, indices.prev_move, indices.cont2, depth, diff);
+        self.cont_corr_even
+            .update(stm, indices.prev_move, indices.cont4, depth, diff);
     }
 }

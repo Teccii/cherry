@@ -122,6 +122,7 @@ weights! {
     ntm_corr   | NTM_CORR:   i32 => 64  | 0..=128;
     cont1_corr | CONT1_CORR: i32 => 64  | 0..=128;
     cont2_corr | CONT2_CORR: i32 => 64  | 0..=128;
+    cont4_corr | CONT4_CORR: i32 => 64  | 0..=128;
     corr_bonus | CORR_BONUS: i64 => 128 | 0..=256;
 
     quiet_bonus_base  | QUIET_BONUS_BASE:  i32 => 128  | 0..=256;
