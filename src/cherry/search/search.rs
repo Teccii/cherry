@@ -518,7 +518,7 @@ pub fn search<Node: NodeType>(
                     move_picker.skip_quiets();
                 }
 
-                let see_margin = W::see_quiet_margin(lmr_depth);
+                let see_margin = W::see_quiet_margin(lmr_depth, hist_score);
                 if lmr_depth <= W::see_quiet_depth() && !pos.cmp_see(mv, see_margin) {
                     continue;
                 }

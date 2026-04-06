@@ -214,9 +214,10 @@ weights! {
     hist_base  | HIST_BASE:  i32 => 0      | -3000..=500;
     hist_scale | HIST_SCALE: i32 => -2000  | -5000..=-1000;
 
-    see_quiet_depth | SEE_QUIET_DEPTH: i32 => 10240 | 4096..=20480;
-    see_quiet_base  | SEE_QUIET_BASE:  i32 => 0     | -150..=150;
-    see_quiet_scale | SEE_QUIET_SCALE: i32 => -89   | -300..=0;
+    see_quiet_depth       | SEE_QUIET_DEPTH:       i32 => 10240 | 4096..=20480;
+    see_quiet_base        | SEE_QUIET_BASE:        i32 => 0     | -150..=150;
+    see_quiet_scale       | SEE_QUIET_SCALE:       i32 => -89   | -300..=0;
+    see_quiet_hist_scale  | SEE_QUIET_HIST_SCALE:  i32 => 256   | 0..=1024;
 
     see_tactic_depth      | SEE_TACTIC_DEPTH:      i32 => 10240 | 4096..=20480;
     see_tactic_base       | SEE_TACTIC_BASE:       i32 => 0     | -150..=150;
@@ -349,8 +350,11 @@ impl W {
     }
 
     #[inline]
-    pub const fn see_quiet_margin(depth: i32) -> i32 {
-        W::see_quiet_base() + W::see_quiet_scale() * depth / DEPTH_SCALE
+    pub const fn see_quiet_margin(depth: i32, hist_score: i32) -> i32 {
+        let scale = W::see_quiet_scale() * depth / DEPTH_SCALE;
+        let hist_scale = W::see_quiet_hist_scale() * hist_score / MAX_HISTORY;
+
+        W::see_quiet_base() + scale - hist_scale
     }
 
     #[inline]
