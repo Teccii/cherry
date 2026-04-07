@@ -98,7 +98,7 @@ macro_rules! weights {
             #[cfg(feature = "tune")]
             pub fn print_spsa() {
                 $(
-                    println!("{}, int, {:.1}, {:.1}, {:.1}, {:.2}, 0.002", stringify!($tunable), $default as f32, $min as f32, $max as f32, ($max as f32 - $min as f32).abs() / 20.0);
+                    println!("{}, int, {:.1}, {:.1}, {:.1}, {:.2}, 0.002", stringify!($tunable), $default as f32, $min as f32, $max as f32, ($max as f32 - $min as f32).abs() / 25.0);
                 )*
             }
 
@@ -115,162 +115,183 @@ macro_rules! weights {
 /*----------------------------------------------------------------*/
 
 weights! {
-    pawn_corr  | PAWN_CORR:  i32 => 64  | 0..=128;
-    minor_corr | MINOR_CORR: i32 => 64  | 0..=128;
-    major_corr | MAJOR_CORR: i32 => 64  | 0..=128;
-    stm_corr   | STM_CORR:   i32 => 64  | 0..=128;
-    ntm_corr   | NTM_CORR:   i32 => 64  | 0..=128;
-    cont1_corr | CONT1_CORR: i32 => 64  | 0..=128;
-    cont2_corr | CONT2_CORR: i32 => 64  | 0..=128;
-    corr_bonus | CORR_BONUS: i64 => 128 | 0..=256;
+    pawn_corr    | PAWN_CORR:    i32 => 64  | 32..=96;
+    minor_corr   | MINOR_CORR:   i32 => 64  | 32..=96;
+    major_corr   | MAJOR_CORR:   i32 => 64  | 32..=96;
+    nonpawn_corr | NONPAWN_CORR: i32 => 64  | 32..=96;
+    cont1_corr   | CONT1_CORR:   i32 => 64  | 32..=96;
+    cont2_corr   | CONT2_CORR:   i32 => 64  | 32..=96;
+    corr_bonus   | CORR_BONUS:   i64 => 128 | 96..=192;
 
-    quiet_bonus_base  | QUIET_BONUS_BASE:  i32 => 128  | 0..=256;
-    quiet_bonus_scale | QUIET_BONUS_SCALE: i32 => 128  | 0..=256;
-    quiet_bonus_max   | QUIET_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    quiet_malus_base  | QUIET_MALUS_BASE:  i32 => 128  | 0..=256;
-    quiet_malus_scale | QUIET_MALUS_SCALE: i32 => 128  | 0..=256;
-    quiet_malus_max   | QUIET_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    quiet_bonus_base   | QUIET_BONUS_BASE:   i64 => 128  | 64..=256;
+    quiet_bonus_scale1 | QUIET_BONUS_SCALE1: i64 => 128  | 64..=256;
+    quiet_bonus_scale2 | QUIET_BONUS_SCALE2: i64 => 0    | 0..=128;
+    quiet_bonus_max    | QUIET_BONUS_MAX:    i64 => 2048 | 1024..=4096;
+    quiet_malus_base   | QUIET_MALUS_BASE:   i64 => 128  | 64..=256;
+    quiet_malus_scale1 | QUIET_MALUS_SCALE1: i64 => 128  | 64..=256;
+    quiet_malus_scale2 | QUIET_MALUS_SCALE2: i64 => 0    | 0..=128;
+    quiet_malus_max    | QUIET_MALUS_MAX:    i64 => 2048 | 1024..=4096;
 
-    tactic_bonus_base  | TACTIC_BONUS_BASE:  i32 => 128  | 0..=256;
-    tactic_bonus_scale | TACTIC_BONUS_SCALE: i32 => 128  | 0..=256;
-    tactic_bonus_max   | TACTIC_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    tactic_malus_base  | TACTIC_MALUS_BASE:  i32 => 128  | 0..=256;
-    tactic_malus_scale | TACTIC_MALUS_SCALE: i32 => 128  | 0..=256;
-    tactic_malus_max   | TACTIC_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    tactic_bonus_base   | TACTIC_BONUS_BASE:   i64 => 128  | 64..=256;
+    tactic_bonus_scale1 | TACTIC_BONUS_SCALE1: i64 => 128  | 64..=256;
+    tactic_bonus_scale2 | TACTIC_BONUS_SCALE2: i64 => 0    | 0..=128;
+    tactic_bonus_max    | TACTIC_BONUS_MAX:    i64 => 2048 | 1024..=4096;
+    tactic_malus_base   | TACTIC_MALUS_BASE:   i64 => 128  | 64..=256;
+    tactic_malus_scale1 | TACTIC_MALUS_SCALE1: i64 => 128  | 64..=256;
+    tactic_malus_scale2 | TACTIC_MALUS_SCALE2: i64 => 0    | 0..=128;
+    tactic_malus_max    | TACTIC_MALUS_MAX:    i64 => 2048 | 1024..=4096;
 
-    pawn_bonus_base  | PAWN_BONUS_BASE:  i32 => 128  | 0..=256;
-    pawn_bonus_scale | PAWN_BONUS_SCALE: i32 => 128  | 0..=256;
-    pawn_bonus_max   | PAWN_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    pawn_malus_base  | PAWN_MALUS_BASE:  i32 => 128  | 0..=256;
-    pawn_malus_scale | PAWN_MALUS_SCALE: i32 => 128  | 0..=256;
-    pawn_malus_max   | PAWN_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    pawn_bonus_base   | PAWN_BONUS_BASE:   i64 => 128  | 64..=256;
+    pawn_bonus_scale1 | PAWN_BONUS_SCALE1: i64 => 128  | 64..=256;
+    pawn_bonus_scale2 | PAWN_BONUS_SCALE2: i64 => 0    | 0..=128;
+    pawn_bonus_max    | PAWN_BONUS_MAX:    i64 => 2048 | 1024..=4096;
+    pawn_malus_base   | PAWN_MALUS_BASE:   i64 => 128  | 64..=256;
+    pawn_malus_scale1 | PAWN_MALUS_SCALE1: i64 => 128  | 64..=256;
+    pawn_malus_scale2 | PAWN_MALUS_SCALE2: i64 => 0    | 0..=128;
+    pawn_malus_max    | PAWN_MALUS_MAX:    i64 => 2048 | 1024..=4096;
 
-    cont1_bonus_base  | CONT1_BONUS_BASE:  i32 => 128  | 0..=256;
-    cont1_bonus_scale | CONT1_BONUS_SCALE: i32 => 128  | 0..=256;
-    cont1_bonus_max   | CONT1_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    cont1_malus_base  | CONT1_MALUS_BASE:  i32 => 128  | 0..=256;
-    cont1_malus_scale | CONT1_MALUS_SCALE: i32 => 128  | 0..=256;
-    cont1_malus_max   | CONT1_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    cont1_bonus_base   | CONT1_BONUS_BASE:   i64 => 128  | 64..=256;
+    cont1_bonus_scale1 | CONT1_BONUS_SCALE1: i64 => 128  | 64..=256;
+    cont1_bonus_scale2 | CONT1_BONUS_SCALE2: i64 => 0    | 0..=128;
+    cont1_bonus_max    | CONT1_BONUS_MAX:    i64 => 2048 | 1024..=4096;
+    cont1_malus_base   | CONT1_MALUS_BASE:   i64 => 128  | 64..=256;
+    cont1_malus_scale1 | CONT1_MALUS_SCALE1: i64 => 128  | 64..=256;
+    cont1_malus_scale2 | CONT1_MALUS_SCALE2: i64 => 0    | 0..=128;
+    cont1_malus_max    | CONT1_MALUS_MAX:    i64 => 2048 | 1024..=4096;
 
-    cont2_bonus_base  | CONT2_BONUS_BASE:  i32 => 128  | 0..=256;
-    cont2_bonus_scale | CONT2_BONUS_SCALE: i32 => 128  | 0..=256;
-    cont2_bonus_max   | CONT2_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    cont2_malus_base  | CONT2_MALUS_BASE:  i32 => 128  | 0..=256;
-    cont2_malus_scale | CONT2_MALUS_SCALE: i32 => 128  | 0..=256;
-    cont2_malus_max   | CONT2_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    cont2_bonus_base   | CONT2_BONUS_BASE:   i64 => 128  | 64..=256;
+    cont2_bonus_scale1 | CONT2_BONUS_SCALE1: i64 => 128  | 64..=256;
+    cont2_bonus_scale2 | CONT2_BONUS_SCALE2: i64 => 0    | 0..=128;
+    cont2_bonus_max    | CONT2_BONUS_MAX:    i64 => 2048 | 1024..=4096;
+    cont2_malus_base   | CONT2_MALUS_BASE:   i64 => 128  | 64..=256;
+    cont2_malus_scale1 | CONT2_MALUS_SCALE1: i64 => 128  | 64..=256;
+    cont2_malus_scale2 | CONT2_MALUS_SCALE2: i64 => 0    | 0..=128;
+    cont2_malus_max    | CONT2_MALUS_MAX:    i64 => 2048 | 1024..=4096;
 
-    cont4_bonus_base  | CONT4_BONUS_BASE:  i32 => 128  | 0..=256;
-    cont4_bonus_scale | CONT4_BONUS_SCALE: i32 => 128  | 0..=256;
-    cont4_bonus_max   | CONT4_BONUS_MAX:   i32 => 2048 | 1024..=4096;
-    cont4_malus_base  | CONT4_MALUS_BASE:  i32 => 128  | 0..=256;
-    cont4_malus_scale | CONT4_MALUS_SCALE: i32 => 128  | 0..=256;
-    cont4_malus_max   | CONT4_MALUS_MAX:   i32 => 2048 | 1024..=4096;
+    cont4_bonus_base   | CONT4_BONUS_BASE:   i64 => 128  | 64..=256;
+    cont4_bonus_scale1 | CONT4_BONUS_SCALE1: i64 => 128  | 64..=256;
+    cont4_bonus_scale2 | CONT4_BONUS_SCALE2: i64 => 0    | 0..=128;
+    cont4_bonus_max    | CONT4_BONUS_MAX:    i64 => 2048 | 1024..=4096;
+    cont4_malus_base   | CONT4_MALUS_BASE:   i64 => 128  | 64..=256;
+    cont4_malus_scale1 | CONT4_MALUS_SCALE1: i64 => 128  | 64..=256;
+    cont4_malus_scale2 | CONT4_MALUS_SCALE2: i64 => 0    | 0..=128;
+    cont4_malus_max    | CONT4_MALUS_MAX:    i64 => 2048 | 1024..=4096;
 
-    pawn_see_value   | PAWN_SEE_VALUE:   i32 => 101 | 0..=200;
-    knight_see_value | KNIGHT_SEE_VALUE: i32 => 324 | 100..=500;
-    bishop_see_value | BISHOP_SEE_VALUE: i32 => 332 | 100..=500;
-    rook_see_value   | ROOK_SEE_VALUE:   i32 => 578 | 300..=1000;
-    queen_see_value  | QUEEN_SEE_VALUE:  i32 => 981 | 500..=1500;
+    pawn_see_value   | PAWN_SEE_VALUE:   i32 => 101 | 50..=150;
+    knight_see_value | KNIGHT_SEE_VALUE: i32 => 324 | 150..=400;
+    bishop_see_value | BISHOP_SEE_VALUE: i32 => 332 | 150..=400;
+    rook_see_value   | ROOK_SEE_VALUE:   i32 => 578 | 400..=700;
+    queen_see_value  | QUEEN_SEE_VALUE:  i32 => 981 | 700..=1100;
 
-    pawn_mat_scale   | PAWN_MAT_SCALE:   i32 => 111   | 0..=200;
-    knight_mat_scale | KNIGHT_MAT_SCALE: i32 => 349   | 100..=500;
-    bishop_mat_scale | BISHOP_MAT_SCALE: i32 => 338   | 100..=500;
-    rook_mat_scale   | ROOK_MAT_SCALE:   i32 => 590   | 300..=1000;
-    queen_mat_scale  | QUEEN_MAT_SCALE:  i32 => 973   | 500..=1500;
-    base_mat_scale   | BASE_MAT_SCALE:   i32 => 25100 | 20000..=30000;
+    mat_scale_pawn   | MAT_SCALE_PAWN:   i32 => 111   | 50..=150;
+    mat_scale_knight | MAT_SCALE_KNIGHT: i32 => 349   | 150..=400;
+    mat_scale_bishop | MAT_SCALE_BISHOP: i32 => 338   | 150..=400;
+    mat_scale_rook   | MAT_SCALE_ROOK:   i32 => 590   | 400..=700;
+    mat_scale_queen  | MAT_SCALE_QUEEN:  i32 => 973   | 700..=1100;
+    mat_scale_base   | MAT_SCALE_BASE:   i32 => 25100 | 24000..=26000;
 
-    rfp_depth      | RFP_DEPTH:      i32 => 6144 | 2048..=12288;
-    rfp_base       | RFP_BASE:       i64 => 0    | -150..=150;
-    rfp_scale1     | RFP_SCALE1:     i64 => 50   | 0..=300;
-    rfp_scale2     | RFP_SCALE2:     i64 => 6    | 0..=300;
-    rfp_imp_base   | RFP_IMP_BASE:   i64 => -44  | -300..=0;
-    rfp_imp_scale1 | RFP_IMP_SCALE1: i64 => 38   | 0..=300;
-    rfp_imp_scale2 | RFP_IMP_SCALE2: i64 => 6    | 0..=300;
-    rfp_lerp       | RFP_LERP:       i32 => 512  | 0..=1024;
+    rfp_depth      | RFP_DEPTH:      i32 => 6144 | 4096..=8192;
+    rfp_base       | RFP_BASE:       i64 => 0    | -100..=100;
+    rfp_scale1     | RFP_SCALE1:     i64 => 50   | 0..=200;
+    rfp_scale2     | RFP_SCALE2:     i64 => 768  | 384..=1280;
+    rfp_imp_base   | RFP_IMP_BASE:   i64 => -44  | -100..=100;
+    rfp_imp_scale1 | RFP_IMP_SCALE1: i64 => 38   | 0..=200;
+    rfp_imp_scale2 | RFP_IMP_SCALE2: i64 => 768  | 384..=1280;
+    rfp_lerp       | RFP_LERP:       i32 => 512  | 256..=768;
 
-    razor_base      | RAZOR_BASE:      i64 => 320 | 100..=500;
-    razor_scale     | RAZOR_SCALE:     i64 => 270 | 100..=500;
-    razor_imp_base  | RAZOR_IMP_BASE:  i64 => 320 | 100..=500;
-    razor_imp_scale | RAZOR_IMP_SCALE: i64 => 270 | 100..=500;
+    razor_base       | RAZOR_BASE:       i64 => 320 | 150..=400;
+    razor_scale1     | RAZOR_SCALE1:     i64 => 0   | 0..=200;
+    razor_scale2     | RAZOR_SCALE2:     i64 => 270 | 150..=400;
+    razor_imp_base   | RAZOR_IMP_BASE:   i64 => 320 | 150..=400;
+    razor_imp_scale1 | RAZOR_IMP_SCALE1: i64 => 0   | 0..=200;
+    razor_imp_scale2 | RAZOR_IMP_SCALE2: i64 => 270 | 150..=400;
 
-    nmp_depth       | NMP_DEPTH:       i32 => 3072  | 0..=6144;
-    nmp_base        | NMP_BASE:        i64 => 6144  | 2048..=16384;
-    nmp_scale       | NMP_SCALE:       i64 => 205   | 0..=1024;
-    nmp_verif_depth | NMP_VERIF_DEPTH: i32 => 14336 | 10240..=20480;
+    nmp_depth       | NMP_DEPTH:       i32 => 3072  | 2048..=4096;
+    nmp_base        | NMP_BASE:        i64 => 6144  | 4096..=8192;
+    nmp_scale1      | NMP_SCALE1:      i64 => 205   | 0..=512;
+    nmp_scale2      | NMP_SCALE2:      i64 => 0     | 0..=256;
+    nmp_verif_depth | NMP_VERIF_DEPTH: i32 => 14336 | 12288..=16384;
 
-    lmp_base      | LMP_BASE:      i64 => 2048 | 0..=4096;
-    lmp_scale     | LMP_SCALE:     i64 => 512  | 0..=1024;
-    lmp_imp_base  | LMP_IMP_BASE:  i64 => 4096 | 2048..=8192;
-    lmp_imp_scale | LMP_IMP_SCALE: i64 => 1024 | 512..=2048;
+    lmp_base       | LMP_BASE:       i64 => 2048 | 1024..=3072;
+    lmp_scale1     | LMP_SCALE1:     i64 => 0    | 0..=512;
+    lmp_scale2     | LMP_SCALE2:     i64 => 512  | 256..=768;
+    lmp_imp_base   | LMP_IMP_BASE:   i64 => 4096 | 3072..=5120;
+    lmp_imp_scale1 | LMP_IMP_SCALE1: i64 => 0    | 0..=512;
+    lmp_imp_scale2 | LMP_IMP_SCALE2: i64 => 1024 | 512..=1536;
 
-    fp_depth      | FP_DEPTH:      i32 => 8192 | 4096..=16384;
-    fp_base       | FP_BASE:       i32 => 93   | 0..=300;
-    fp_scale      | FP_SCALE:      i32 => 79   | 0..=300;
-    fp_imp_base   | FP_IMP_BASE:   i32 => 93   | 0..=300;
-    fp_imp_scale  | FP_IMP_SCALE:  i32 => 79   | 0..=300;
-    fp_hist_scale | FP_HIST_SCALE: i32 => 256  | 0..=1024;
+    fp_depth      | FP_DEPTH:      i32 => 8192 | 6144..=10240;
+    fp_base       | FP_BASE:       i64 => 93   | 0..=200;
+    fp_scale1     | FP_SCALE1:     i64 => 79   | 0..=200;
+    fp_scale2     | FP_SCALE2:     i64 => 0    | 0..=1280;
+    fp_imp_base   | FP_IMP_BASE:   i64 => 93   | 0..=200;
+    fp_imp_scale1 | FP_IMP_SCALE1: i64 => 79   | 0..=200;
+    fp_imp_scale2 | FP_IMP_SCALE2: i64 => 0    | 0..=1280;
+    fp_hist_scale | FP_HIST_SCALE: i64 => 256  | 0..=512;
 
-    hist_depth | HIST_DEPTH: i32 => 6144   | 2048..=12288;
-    hist_base  | HIST_BASE:  i32 => 0      | -3000..=500;
-    hist_scale | HIST_SCALE: i32 => -2000  | -5000..=-1000;
+    hist_depth  | HIST_DEPTH:  i32 => 6144  | 4096..=8192;
+    hist_base   | HIST_BASE:   i64 => 0     | -1000..=0;
+    hist_scale1 | HIST_SCALE1: i64 => -2000 | -5000..=-1000;
+    hist_scale2 | HIST_SCALE2: i64 => 0     | -500..=0;
 
-    see_quiet_depth | SEE_QUIET_DEPTH: i32 => 10240 | 4096..=20480;
-    see_quiet_base  | SEE_QUIET_BASE:  i32 => 0     | -150..=150;
-    see_quiet_scale | SEE_QUIET_SCALE: i32 => -89   | -300..=0;
+    see_quiet_depth  | SEE_QUIET_DEPTH:  i32 => 10240 | 8192..=12288;
+    see_quiet_base   | SEE_QUIET_BASE:   i64 => 0     | -200..=0;
+    see_quiet_scale1 | SEE_QUIET_SCALE1: i64 => -89   | -200..=0;
+    see_quiet_scale2 | SEE_QUIET_SCALE2: i64 => 0     | -100..=0;
 
-    see_tactic_depth      | SEE_TACTIC_DEPTH:      i32 => 10240 | 4096..=20480;
-    see_tactic_base       | SEE_TACTIC_BASE:       i32 => 0     | -150..=150;
-    see_tactic_scale      | SEE_TACTIC_SCALE:      i32 => -62   | -300..=0;
-    see_tactic_hist_scale | SEE_TACTIC_HIST_SCALE: i32 => 256   | 0..=1024;
+    see_tactic_depth      | SEE_TACTIC_DEPTH:      i32 => 10240 | 8192..=12288;
+    see_tactic_base       | SEE_TACTIC_BASE:       i64 => 0     | -200..=0;
+    see_tactic_scale1     | SEE_TACTIC_SCALE1:     i64 => -62   | -200..=0;
+    see_tactic_scale2     | SEE_TACTIC_SCALE2:     i64 => 0     | -100..=0;
+    see_tactic_hist_scale | SEE_TACTIC_HIST_SCALE: i64 => 256   | 0..=512;
 
-    se_depth        | SE_DEPTH:        i32 => 6144 | 2048..=12288;
-    se_tt_depth     | SE_TT_DEPTH:     i32 => 3072 | 1024..=6144;
-    se_search_depth | SE_SEARCH_DEPTH: i64 => 512  | 0..=1024;
-    se_beta_margin  | SE_BETA_MARGIN:  i32 => 96   | 0..=128;
-    se_dext_margin  | SE_DEXT_MARGIN:  i32 => 30   | 0..=60;
-    se_text_margin  | SE_TEXT_MARGIN:  i32 => 67   | 0..=120;
-    se_ext          | SE_EXT:          i32 => 1024 | 512..=2048;
-    se_dext         | SE_DEXT:         i32 => 2048 | 1536..=3072;
-    se_text         | SE_TEXT:         i32 => 3072 | 2560..=4096;
-    se_tt_ext       | SE_TT_EXT:       i32 => -1024 | -3072..=-512;
-    se_cut_ext      | SE_CUT_EXT:      i32 => -1024 | -3072..=-512;
+    se_depth             | SE_DEPTH:             i32 => 6144  | 4096..=6144;
+    se_tt_depth          | SE_TT_DEPTH:          i32 => 3072  | 2560..=3584;
+    se_search_depth      | SE_SEARCH_DEPTH:      i64 => 512   | 256..=768;
+    se_beta_margin       | SE_BETA_MARGIN:       i32 => 96    | 64..=96;
+    se_double_ext_margin | SE_DOUBLE_EXT_MARGIN: i32 => 30    | 0..=40;
+    se_triple_ext_margin | SE_TRIPLE_EXT_MARGIN: i32 => 67    | 40..=80;
+    se_ext               | SE_EXT:               i32 => 1024  | 512..=1536;
+    se_double_ext        | SE_DOUBLE_EXT:        i32 => 2048  | 1536..=2560;
+    se_triple_ext        | SE_TRIPLE_EXT:        i32 => 3072  | 2560..=3584;
+    se_beta_ext          | SE_BETA_EXT:          i32 => -1024 | -1536..=-768;
+    se_cut_ext           | SE_CUT_EXT:           i32 => -1024 | -1536..=-768;
 
-    lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 579  | -512..=1024;
-    lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1626 | 512..=3072;
-    lmr_tactic_base | LMR_TACTIC_BASE: i32 => 450  | -512..=1024;
-    lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688 | 1024..=6144;
+    lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 579  | 256..=768;
+    lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1626 | 1024..=2048;
+    lmr_tactic_base | LMR_TACTIC_BASE: i32 => 450  | 256..=768;
+    lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3688 | 3072..=4096;
 
-    lmr_depth       | LMR_DEPTH:       i32 => 2048 | 1024..=8192;
-    tactic_hist_lmr | TACTIC_HIST_LMR: i32 => 1024 | 512..=3072;
-    quiet_hist_lmr  | QUIET_HIST_LMR:  i32 => 1024 | 512..=3072;
-    check_lmr       | CHECK_LMR:       i32 => 1024 | 512..=3072;
-    non_pv_lmr      | NON_PV_LMR:      i32 => 1024 | 512..=3072;
-    tt_pv_lmr       | TT_PV_LMR:       i32 => 1024 | 512..=3072;
-    cut_lmr         | CUT_LMR:         i32 => 1024 | 512..=3072;
-    imp_lmr         | IMP_LMR:         i32 => 1024 | 512..=3072;
+    lmr_depth       | LMR_DEPTH:       i32 => 2048 | 1536..=2560;
+    tactic_hist_lmr | TACTIC_HIST_LMR: i32 => 1024 | 512..=1536;
+    quiet_hist_lmr  | QUIET_HIST_LMR:  i32 => 1024 | 512..=1536;
+    check_lmr       | CHECK_LMR:       i32 => 1024 | 512..=1536;
+    non_pv_lmr      | NON_PV_LMR:      i32 => 1024 | 512..=1536;
+    tt_pv_lmr       | TT_PV_LMR:       i32 => 1024 | 512..=1536;
+    cut_lmr         | CUT_LMR:         i32 => 1024 | 512..=1536;
+    imp_lmr         | IMP_LMR:         i32 => 1024 | 512..=1536;
 
-    mp_see_margin    | MP_SEE_MARGIN:    i32 => 0 | -200..=200;
-    mp_qs_see_margin | MP_QS_SEE_MARGIN: i32 => 0 | -200..=200;
+    mp_see_margin    | MP_SEE_MARGIN:    i32 => 0 | -200..=100;
+    mp_qs_see_margin | MP_QS_SEE_MARGIN: i32 => 0 | -200..=100;
 
-    qfp_margin | QFP_MARGIN: i32 => 150 | 0..=300;
+    qfp_margin | QFP_MARGIN: i32 => 150 | 50..=300;
 
-    asp_window_initial | ASP_WINDOW_INITIAL: i32 => 20 | 10..=64;
-    asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 64 | 32..=128;
+    asp_window_initial | ASP_WINDOW_INITIAL: i32 => 20 | 10..=40;
+    asp_window_expand  | ASP_WINDOW_EXPAND:  i32 => 64 | 48..=96;
 
-    soft_time_div         | SOFT_TIME_DIV:         u64 => 262144 | 81920..=327680;
-    soft_time_inc         | SOFT_TIME_INC:         u64 => 4096   | 0..=4096;
-    hard_time_div         | HARD_TIME_DIV:         u64 => 12288  | 4096..=20480;
-    hard_time_inc         | HARD_TIME_INC:         u64 => 4096   | 0..=4096;
-    subtree_base          | SUBTREE_BASE:          i64 => 10240  | 4096..=16384;
-    subtree_scale         | SUBTREE_SCALE:         i64 => 6144   | 4096..=16384;
-    subtree_min           | SUBTREE_MIN:           i64 => 4096   | 0..=4096;
-    move_stability_base   | MOVE_STABILITY_BASE:   i64 => 7373   | 4096..=16384;
-    move_stability_scale  | MOVE_STABILITY_SCALE:  i64 => 410    | 0..=4096;
-    move_stability_min    | MOVE_STABILITY_MIN:    i64 => 3686   | 0..=4096;
-    score_stability_edge  | SCORE_STABILITY_EDGE:  i32 => 20     | 0..=60;
-    score_stability_base  | SCORE_STABILITY_BASE:  i64 => 7373   | 4096..=16384;
-    score_stability_scale | SCORE_STABILITY_SCALE: i64 => 410    | 0..=4096;
-    score_stability_min   | SCORE_STABILITY_MIN:   i64 => 3686   | 0..=4096;
+    soft_time_div         | SOFT_TIME_DIV:         u64 => 262144 | 196608..=294912;
+    soft_time_inc         | SOFT_TIME_INC:         u64 => 4096   | 2048..=4096;
+    hard_time_div         | HARD_TIME_DIV:         u64 => 12288  | 8192..=16384;
+    hard_time_inc         | HARD_TIME_INC:         u64 => 4096   | 2048..=4096;
+    subtree_base          | SUBTREE_BASE:          i64 => 10240  | 8192..=12288;
+    subtree_scale         | SUBTREE_SCALE:         i64 => 6144   | 4096..=8192;
+    subtree_min           | SUBTREE_MIN:           i64 => 4096   | 2048..=4096;
+    move_stability_base   | MOVE_STABILITY_BASE:   i64 => 7373   | 6144..=9216;
+    move_stability_scale  | MOVE_STABILITY_SCALE:  i64 => 410    | 256..=768;
+    move_stability_min    | MOVE_STABILITY_MIN:    i64 => 3686   | 2048..=4096;
+    score_stability_edge  | SCORE_STABILITY_EDGE:  i32 => 20     | 10..=40;
+    score_stability_base  | SCORE_STABILITY_BASE:  i64 => 7373   | 6144..=9216;
+    score_stability_scale | SCORE_STABILITY_SCALE: i64 => 410    | 256..=768;
+    score_stability_min   | SCORE_STABILITY_MIN:   i64 => 3686   | 2048..=4096;
 }
 
 impl W {
@@ -291,74 +312,108 @@ impl W {
     #[inline]
     pub const fn rfp_margin(improving: bool, depth: i32) -> i64 {
         let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
         let (base, scale1, scale2) = if improving {
             (W::rfp_imp_base(), W::rfp_imp_scale1(), W::rfp_imp_scale2())
         } else {
             (W::rfp_base(), W::rfp_scale1(), W::rfp_scale2())
         };
 
-        let scale1 = scale1 * depth / DEPTH_SCALE as i64;
-        let scale2 = scale2 * depth * depth / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64);
+        let scale1 = scale1 * depth / depth_scale;
+        let scale2 = scale2 * depth * depth / (depth_scale * depth_scale * 128);
 
         base + scale1 + scale2
     }
 
     #[inline]
     pub const fn razor_margin(improving: bool, depth: i32) -> i64 {
-        let (base, scale) = if improving {
-            (W::razor_imp_base(), W::razor_imp_scale())
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let (base, scale1, scale2) = if improving {
+            (
+                W::razor_imp_base(),
+                W::razor_imp_scale1(),
+                W::razor_imp_scale2(),
+            )
         } else {
-            (W::razor_base(), W::razor_scale())
+            (W::razor_base(), W::razor_scale1(), W::razor_scale2())
         };
+        let scale1 = scale1 * depth / depth_scale;
+        let scale2 = scale2 * depth * depth / (depth_scale * depth_scale);
 
-        base + scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)
+        base + scale1 + scale2
     }
 
     #[inline]
-    pub const fn nmp_reduction(depth: i32) -> i32 {
-        (W::nmp_base() + W::nmp_scale() * depth as i64 / DEPTH_SCALE as i64) as i32
+    pub const fn nmp_reduction(depth: i32) -> i64 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let scale1 = W::nmp_scale1() * depth / depth_scale;
+        let scale2 = W::nmp_scale2() * depth * depth / (depth_scale * depth_scale);
+
+        W::nmp_base() + scale1 + scale2
     }
 
     #[inline]
     pub const fn lmp_margin(improving: bool, depth: i32) -> i64 {
-        let (base, scale) = if improving {
-            (W::lmp_imp_base(), W::lmp_imp_scale())
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let (base, scale1, scale2) = if improving {
+            (W::lmp_imp_base(), W::lmp_imp_scale1(), W::lmp_imp_scale2())
         } else {
-            (W::lmp_base(), W::lmp_scale())
+            (W::lmp_base(), W::lmp_scale1(), W::lmp_scale2())
         };
+        let scale1 = scale1 * depth / depth_scale;
+        let scale2 = scale2 * depth * depth / (depth_scale * depth_scale);
 
-        base + scale * depth as i64 * depth as i64 / (DEPTH_SCALE as i64 * DEPTH_SCALE as i64)
+        base + scale1 + scale2
     }
 
     #[inline]
-    pub const fn fp_margin(improving: bool, depth: i32, hist_score: i32) -> i32 {
-        let (base, scale) = if improving {
-            (W::fp_imp_base(), W::fp_imp_scale())
+    pub const fn fp_margin(improving: bool, depth: i32, hist_score: i32) -> i64 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let (base, scale1, scale2) = if improving {
+            (W::fp_imp_base(), W::fp_imp_scale1(), W::fp_imp_scale2())
         } else {
-            (W::fp_base(), W::fp_scale())
+            (W::fp_base(), W::fp_scale1(), W::fp_scale2())
         };
-        let scale = scale * depth / DEPTH_SCALE;
-        let hist_scale = W::fp_hist_scale() * hist_score / MAX_HISTORY;
+        let scale1 = scale1 * depth / depth_scale;
+        let scale2 = scale2 * depth * depth / (depth_scale * depth_scale * 128);
+        let hist_scale = W::fp_hist_scale() * hist_score as i64 / MAX_HISTORY as i64;
 
-        base + scale + hist_scale
+        base + scale1 + scale2 + hist_scale
     }
 
     #[inline]
-    pub const fn hist_margin(depth: i32) -> i32 {
-        W::hist_base() + W::hist_scale() * depth / DEPTH_SCALE
+    pub const fn hist_margin(depth: i32) -> i64 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let scale1 = W::hist_scale1() * depth / depth_scale;
+        let scale2 = W::hist_scale2() * depth * depth / (depth_scale * depth_scale);
+
+        W::hist_base() + scale1 + scale2
     }
 
     #[inline]
-    pub const fn see_quiet_margin(depth: i32) -> i32 {
-        W::see_quiet_base() + W::see_quiet_scale() * depth / DEPTH_SCALE
+    pub const fn see_quiet_margin(depth: i32) -> i64 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let scale1 = W::see_quiet_scale1() * depth / depth_scale;
+        let scale2 = W::see_quiet_scale2() * depth / (depth_scale * depth_scale);
+
+        W::see_quiet_base() + scale1 + scale2
     }
 
     #[inline]
-    pub const fn see_tactic_margin(depth: i32, hist_score: i32) -> i32 {
-        let scale = W::see_tactic_scale() * depth / DEPTH_SCALE;
-        let hist_scale = W::see_tactic_hist_scale() * hist_score / MAX_HISTORY;
+    pub const fn see_tactic_margin(depth: i32, hist_score: i32) -> i64 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let scale1 = W::see_tactic_scale1() * depth / depth_scale;
+        let scale2 = W::see_tactic_scale2() * depth * depth / (depth_scale * depth_scale);
+        let hist_scale = W::see_tactic_hist_scale() * hist_score as i64 / MAX_HISTORY as i64;
 
-        W::see_tactic_base() + scale - hist_scale
+        W::see_tactic_base() + scale1 + scale2 - hist_scale
     }
 
     #[inline]
