@@ -90,20 +90,28 @@ pub struct QuietHistory {
 impl QuietHistory {
     #[inline]
     pub fn bonus(depth: i32) -> i32 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+
         let base = W::quiet_bonus_base();
-        let scale = W::quiet_bonus_scale();
+        let scale1 = W::quiet_bonus_scale1() * depth / depth_scale;
+        let scale2 = W::quiet_bonus_scale2() * depth * depth / (depth_scale * depth_scale);
         let max = W::quiet_bonus_max();
 
-        (base + scale * depth / DEPTH_SCALE).min(max)
+        (base + scale1 + scale2).min(max) as i32
     }
 
     #[inline]
     pub fn malus(depth: i32) -> i32 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+
         let base = W::quiet_malus_base();
-        let scale = W::quiet_malus_scale();
+        let scale1 = W::quiet_malus_scale1() * depth / depth_scale;
+        let scale2 = W::quiet_malus_scale2() * depth * depth / (depth_scale * depth_scale);
         let max = W::quiet_malus_max();
 
-        (base + scale * depth / DEPTH_SCALE).min(max)
+        (base + scale1 + scale2).min(max) as i32
     }
 
     /*----------------------------------------------------------------*/
@@ -157,22 +165,29 @@ pub struct TacticHistory {
 impl TacticHistory {
     #[inline]
     pub fn bonus(depth: i32) -> i32 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+
         let base = W::tactic_bonus_base();
-        let scale = W::tactic_bonus_scale();
+        let scale1 = W::tactic_bonus_scale1() * depth / depth_scale;
+        let scale2 = W::tactic_bonus_scale2() * depth * depth / (depth_scale * depth_scale);
         let max = W::tactic_bonus_max();
 
-        (base + scale * depth / DEPTH_SCALE).min(max)
+        (base + scale1 + scale2).min(max) as i32
     }
 
     #[inline]
     pub fn malus(depth: i32) -> i32 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+
         let base = W::tactic_malus_base();
-        let scale = W::tactic_malus_scale();
+        let scale1 = W::tactic_malus_scale1() * depth / depth_scale;
+        let scale2 = W::tactic_malus_scale2() * depth * depth / (depth_scale * depth_scale);
         let max = W::tactic_malus_max();
 
-        (base + scale * depth / DEPTH_SCALE).min(max)
+        (base + scale1 + scale2).min(max) as i32
     }
-
     /*----------------------------------------------------------------*/
 
     #[inline]
@@ -220,20 +235,28 @@ pub struct PawnHistory<const SIZE: usize> {
 impl<const SIZE: usize> PawnHistory<SIZE> {
     #[inline]
     pub fn bonus(depth: i32) -> i32 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+
         let base = W::pawn_bonus_base();
-        let scale = W::pawn_bonus_scale();
+        let scale1 = W::pawn_bonus_scale1() * depth / depth_scale;
+        let scale2 = W::pawn_bonus_scale2() * depth * depth / (depth_scale * depth_scale);
         let max = W::pawn_bonus_max();
 
-        (base + scale * depth / DEPTH_SCALE).min(max)
+        (base + scale1 + scale2).min(max) as i32
     }
 
     #[inline]
     pub fn malus(depth: i32) -> i32 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+
         let base = W::pawn_malus_base();
-        let scale = W::pawn_malus_scale();
+        let scale1 = W::pawn_malus_scale1() * depth / depth_scale;
+        let scale2 = W::pawn_malus_scale2() * depth * depth / (depth_scale * depth_scale);
         let max = W::pawn_malus_max();
 
-        (base + scale * depth / DEPTH_SCALE).min(max)
+        (base + scale1 + scale2).min(max) as i32
     }
 
     /*----------------------------------------------------------------*/
@@ -286,50 +309,64 @@ pub struct ContHistory {
 impl ContHistory {
     #[inline]
     pub fn bonus<const PLY: usize>(depth: i32) -> i32 {
-        let (base, scale, max) = match PLY {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let (base, scale1, scale2, max) = match PLY {
             1 => (
                 W::cont1_bonus_base(),
-                W::cont1_bonus_scale(),
+                W::cont1_bonus_scale1(),
+                W::cont1_bonus_scale2(),
                 W::cont1_bonus_max(),
             ),
             2 => (
                 W::cont2_bonus_base(),
-                W::cont2_bonus_scale(),
+                W::cont2_bonus_scale1(),
+                W::cont2_bonus_scale2(),
                 W::cont2_bonus_max(),
             ),
             4 => (
                 W::cont4_bonus_base(),
-                W::cont4_bonus_scale(),
+                W::cont4_bonus_scale1(),
+                W::cont4_bonus_scale2(),
                 W::cont4_bonus_max(),
             ),
             _ => unreachable!(),
         };
+        let scale1 = scale1 * depth / depth_scale;
+        let scale2 = scale2 * depth * depth / (depth_scale * depth_scale);
 
-        (base + scale * depth / DEPTH_SCALE).min(max)
+        (base + scale1 + scale2).min(max) as i32
     }
 
     #[inline]
     pub fn malus<const PLY: usize>(depth: i32) -> i32 {
-        let (base, scale, max) = match PLY {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let (base, scale1, scale2, max) = match PLY {
             1 => (
                 W::cont1_malus_base(),
-                W::cont1_malus_scale(),
+                W::cont1_malus_scale1(),
+                W::cont1_malus_scale2(),
                 W::cont1_malus_max(),
             ),
             2 => (
                 W::cont2_malus_base(),
-                W::cont2_malus_scale(),
+                W::cont2_malus_scale1(),
+                W::cont2_malus_scale2(),
                 W::cont2_malus_max(),
             ),
             4 => (
                 W::cont4_malus_base(),
-                W::cont4_malus_scale(),
+                W::cont4_malus_scale1(),
+                W::cont4_malus_scale2(),
                 W::cont4_malus_max(),
             ),
             _ => unreachable!(),
         };
+        let scale1 = scale1 * depth / depth_scale;
+        let scale2 = scale2 * depth * depth / (depth_scale * depth_scale);
 
-        (base + scale * depth / DEPTH_SCALE).min(max)
+        (base + scale1 + scale2).min(max) as i32
     }
 
     /*----------------------------------------------------------------*/
