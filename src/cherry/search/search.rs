@@ -46,12 +46,12 @@ impl NodeType for NonPV {
 #[inline]
 pub fn scale_eval(mut raw_eval: Score, board: &Board, scale: bool) -> Score {
     if scale {
-        let material = W::pawn_mat_scale() * board.pieces(Piece::Pawn).popcnt() as i32
-            + W::knight_mat_scale() * board.pieces(Piece::Knight).popcnt() as i32
-            + W::bishop_mat_scale() * board.pieces(Piece::Bishop).popcnt() as i32
-            + W::rook_mat_scale() * board.pieces(Piece::Rook).popcnt() as i32
-            + W::queen_mat_scale() * board.pieces(Piece::Queen).popcnt() as i32;
-        raw_eval = raw_eval * (W::base_mat_scale() + material) / 32768;
+        let material = W::mat_scale_pawn() * board.pieces(Piece::Pawn).popcnt() as i32
+            + W::mat_scale_knight() * board.pieces(Piece::Knight).popcnt() as i32
+            + W::mat_scale_bishop() * board.pieces(Piece::Bishop).popcnt() as i32
+            + W::mat_scale_rook() * board.pieces(Piece::Rook).popcnt() as i32
+            + W::mat_scale_queen() * board.pieces(Piece::Queen).popcnt() as i32;
+        raw_eval = raw_eval * (W::mat_scale_base() + material) / 32768;
     }
 
     raw_eval
@@ -427,7 +427,7 @@ pub fn search<Node: NodeType>(
         {
             shared.ttable.prefetch(pos.board());
 
-            let nmp_depth = depth - W::nmp_reduction(depth);
+            let nmp_depth = depth - W::nmp_reduction(depth) as i32;
             let score = -search::<NonPV>(
                 pos,
                 thread,
@@ -494,7 +494,7 @@ pub fn search<Node: NodeType>(
 
         if !Node::ROOT && !best_score.is_loss() {
             if is_tactic {
-                let see_margin = W::see_tactic_margin(depth, hist_score);
+                let see_margin = W::see_tactic_margin(depth, hist_score) as i32;
                 if depth <= W::see_tactic_depth()
                     && move_picker.stage() == Stage::YieldBadTactics
                     && (see_margin >= W::mp_see_margin() || !pos.cmp_see(mv, see_margin))
@@ -508,17 +508,17 @@ pub fn search<Node: NodeType>(
                 }
 
                 let lmr_depth = (depth - lmr).max(0);
-                let fp_margin = W::fp_margin(improving, lmr_depth, hist_score);
+                let fp_margin = W::fp_margin(improving, lmr_depth, hist_score) as i32;
                 if !in_check && lmr_depth <= W::fp_depth() && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }
 
-                let hist_margin = W::hist_margin(depth);
+                let hist_margin = W::hist_margin(depth) as i32;
                 if depth <= W::hist_depth() && hist_score < hist_margin {
                     move_picker.skip_quiets();
                 }
 
-                let see_margin = W::see_quiet_margin(lmr_depth);
+                let see_margin = W::see_quiet_margin(lmr_depth) as i32;
                 if lmr_depth <= W::see_quiet_depth() && !pos.cmp_see(mv, see_margin) {
                     continue;
                 }
