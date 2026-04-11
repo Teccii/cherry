@@ -563,9 +563,11 @@ pub fn search<Node: NodeType>(
             } else if s_beta >= beta {
                 return s_beta;
             } else if entry.score >= beta {
-                ext = W::se_tt_ext();
+                ext = W::se_beta_ext();
             } else if cut_node {
                 ext = W::se_cut_ext();
+            } else if entry.score <= alpha {
+                ext = W::se_alpha_ext();
             }
         }
 

@@ -253,7 +253,8 @@ weights! {
     se_ext          | SE_EXT:          i32 => 1024 | 512..=2048;
     se_dext         | SE_DEXT:         i32 => 2048 | 1536..=3072;
     se_text         | SE_TEXT:         i32 => 3072 | 2560..=4096;
-    se_tt_ext       | SE_TT_EXT:       i32 => -1024 | -3072..=-512;
+    se_alpha_ext    | SE_ALPHA_EXT:    i32 => -1024 | -3072..=-512;
+    se_beta_ext     | SE_BETA_EXT:     i32 => -1024 | -3072..=-512;
     se_cut_ext      | SE_CUT_EXT:      i32 => -1024 | -3072..=-512;
 
     lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 579  | -512..=1024;
