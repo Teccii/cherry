@@ -10,4 +10,4 @@ native:
 ifndef EVALFILE
 	python3 ./scripts/download_net.py
 endif
-	cargo rustc --release -p cherry -- --emit link=$(NAME)
+	cargo rustc --release -p cherry --features tune -- --emit link=$(NAME)
