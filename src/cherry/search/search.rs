@@ -314,7 +314,7 @@ pub fn search<Node: NodeType>(
         .then(|| shared.ttable.fetch(pos.board(), ply))
         .flatten();
     let tt_move = tt_entry.and_then(|e| e.mv);
-    let _tt_tactic = tt_move.is_some_and(|mv| mv.is_tactic());
+    let _tt_noisy = tt_move.is_some_and(|mv| mv.is_noisy());
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
     if !Node::PV
@@ -402,6 +402,7 @@ pub fn search<Node: NodeType>(
     thread.search_stack[ply as usize].estimated_score = estimated_score;
 
     if !Node::PV && !in_check && skip_move.is_none() {
+        //Reverse Futility Pruning (RFP), also known as Static Null Move Pruning
         let rfp_margin = W::rfp_margin(improving, depth) as i32;
         if depth < W::rfp_depth() && estimated_score - rfp_margin >= beta {
             return if !estimated_score.is_win() && !beta.is_win() {
@@ -411,6 +412,7 @@ pub fn search<Node: NodeType>(
             };
         }
 
+        //Razoring
         let razor_margin = W::razor_margin(improving, depth) as i32;
         if static_eval + razor_margin <= alpha {
             let score = q_search::<NonPV>(pos, thread, shared, ply, alpha, alpha + 1);
@@ -419,6 +421,7 @@ pub fn search<Node: NodeType>(
             }
         }
 
+        //Null Move Pruning (NMP)
         if depth >= W::nmp_depth()
             && ply >= thread.nmp_min_ply
             && pos.prev_move(1).is_some()
@@ -444,6 +447,7 @@ pub fn search<Node: NodeType>(
                 return Score::ZERO;
             }
 
+            //NMP Verification Search
             if score >= beta {
                 if depth <= W::nmp_verif_depth() || thread.nmp_min_ply > 0 {
                     return if score.is_win() { beta } else { score };
@@ -470,7 +474,7 @@ pub fn search<Node: NodeType>(
     let mut best_score = -Score::INFINITE;
     let mut flag = TTFlag::UpperBound;
     let mut move_picker = MovePicker::new(tt_move, W::mp_see_margin());
-    let mut tactics: SmallVec<[Move; 64]> = SmallVec::new();
+    let mut noisies: SmallVec<[Move; 64]> = SmallVec::new();
     let mut quiets: SmallVec<[Move; 64]> = SmallVec::new();
 
     while let Some(ScoredMove(mv, hist_score)) =
@@ -487,37 +491,43 @@ pub fn search<Node: NodeType>(
             continue;
         }
 
-        let is_tactic = mv.is_tactic();
+        let is_noisy = mv.is_noisy();
         let nodes = thread.nodes.local();
-        let mut lmr = W::lmr(is_tactic, depth, moves_seen);
+        let mut lmr = W::lmr(is_noisy, depth, moves_seen);
         let mut score;
 
+        //Move Loop Pruning
         if !Node::ROOT && !best_score.is_loss() {
-            if is_tactic {
-                let see_margin = W::see_tactic_margin(depth, hist_score) as i32;
-                if depth <= W::see_tactic_depth()
-                    && move_picker.stage() == Stage::YieldBadTactics
+            if is_noisy {
+                //Noisy SEE Pruning
+                let see_margin = W::see_noisy_margin(depth, hist_score) as i32;
+                if depth <= W::see_noisy_depth()
+                    && move_picker.stage() == Stage::YieldBadNoisies
                     && (see_margin >= W::mp_see_margin() || !pos.cmp_see(mv, see_margin))
                 {
                     continue;
                 }
             } else {
+                //Late Move Pruning (LMP)
                 let lmp_margin = W::lmp_margin(improving, depth);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
 
+                //Futility Pruning (FP)
                 let lmr_depth = (depth - lmr).max(0);
                 let fp_margin = W::fp_margin(improving, lmr_depth, hist_score) as i32;
                 if !in_check && lmr_depth <= W::fp_depth() && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }
 
+                //History Pruning
                 let hist_margin = W::hist_margin(depth) as i32;
                 if depth <= W::hist_depth() && hist_score < hist_margin {
                     move_picker.skip_quiets();
                 }
 
+                //Quiet SEE Pruning
                 let see_margin = W::see_quiet_margin(lmr_depth) as i32;
                 if lmr_depth <= W::see_quiet_depth() && !pos.cmp_see(mv, see_margin) {
                     continue;
@@ -525,6 +535,7 @@ pub fn search<Node: NodeType>(
             }
         }
 
+        //Singular Extensions
         let mut ext = 0;
         if !Node::ROOT
             && depth >= W::se_depth()
@@ -591,7 +602,7 @@ pub fn search<Node: NodeType>(
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
                 lmr += W::cut_lmr() * cut_node as i32;
                 lmr -= W::imp_lmr() * improving as i32;
-                lmr -= W::hist_lmr(is_tactic) * hist_score / MAX_HISTORY;
+                lmr -= W::hist_lmr(is_noisy) * hist_score / MAX_HISTORY;
             } else {
                 lmr = 0;
             }
@@ -674,13 +685,13 @@ pub fn search<Node: NodeType>(
             flag = TTFlag::LowerBound;
             thread
                 .history
-                .update(pos.board(), &cont_indices, depth, mv, &quiets, &tactics);
+                .update(pos.board(), &cont_indices, depth, mv, &quiets, &noisies);
             break;
         }
 
         if best_move != Some(mv) {
-            if is_tactic {
-                tactics.push(mv);
+            if is_noisy {
+                noisies.push(mv);
             } else {
                 quiets.push(mv);
             }
@@ -716,7 +727,7 @@ pub fn search<Node: NodeType>(
         };
 
         if !in_check
-            && best_move.is_none_or(|mv| !mv.is_tactic())
+            && best_move.is_none_or(|mv| !mv.is_noisy())
             && match flag {
                 TTFlag::Exact => true,
                 TTFlag::LowerBound => best_score > static_eval,
@@ -835,11 +846,12 @@ fn q_search<Node: NodeType>(
     while let Some(ScoredMove(mv, _)) = move_picker.next(pos, &thread.history, &cont_indices) {
         if !best_score.is_loss() {
             move_picker.skip_quiets();
-            move_picker.skip_bad_tactics();
+            move_picker.skip_bad_noisies();
             if move_picker.stage() >= Stage::YieldQuiets {
                 break;
             }
 
+            //Quiescent Futility Pruning (QFP)
             if !in_check && static_eval + W::qfp_margin() <= alpha && !pos.cmp_see(mv, 1) {
                 best_score = best_score.max(static_eval + W::qfp_margin());
                 continue;

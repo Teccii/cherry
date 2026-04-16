@@ -153,25 +153,25 @@ impl QuietHistory {
 /*----------------------------------------------------------------*/
 
 #[derive(Debug, Copy, Clone)]
-pub struct TacticEntry {
+pub struct NoisyEntry {
     buckets: ThreatBuckets<i16>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct TacticHistory {
-    entries: [[[TacticEntry; Square::COUNT]; Square::COUNT]; Color::COUNT], // [stm][src][dest][threat bucket]
+pub struct NoisyHistory {
+    entries: [[[NoisyEntry; Square::COUNT]; Square::COUNT]; Color::COUNT], // [stm][src][dest][threat bucket]
 }
 
-impl TacticHistory {
+impl NoisyHistory {
     #[inline]
     pub fn bonus(depth: i32) -> i32 {
         let depth = depth as i64;
         let depth_scale = DEPTH_SCALE as i64;
 
-        let base = W::tactic_bonus_base();
-        let scale1 = W::tactic_bonus_scale1() * depth / depth_scale;
-        let scale2 = W::tactic_bonus_scale2() * depth * depth / (depth_scale * depth_scale);
-        let max = W::tactic_bonus_max();
+        let base = W::noisy_bonus_base();
+        let scale1 = W::noisy_bonus_scale1() * depth / depth_scale;
+        let scale2 = W::noisy_bonus_scale2() * depth * depth / (depth_scale * depth_scale);
+        let max = W::noisy_bonus_max();
 
         (base + scale1 + scale2).min(max) as i32
     }
@@ -181,10 +181,10 @@ impl TacticHistory {
         let depth = depth as i64;
         let depth_scale = DEPTH_SCALE as i64;
 
-        let base = W::tactic_malus_base();
-        let scale1 = W::tactic_malus_scale1() * depth / depth_scale;
-        let scale2 = W::tactic_malus_scale2() * depth * depth / (depth_scale * depth_scale);
-        let max = W::tactic_malus_max();
+        let base = W::noisy_malus_base();
+        let scale1 = W::noisy_malus_scale1() * depth / depth_scale;
+        let scale2 = W::noisy_malus_scale2() * depth * depth / (depth_scale * depth_scale);
+        let max = W::noisy_malus_max();
 
         (base + scale1 + scale2).min(max) as i32
     }
@@ -532,7 +532,7 @@ pub const NONPAWN_CORR_SIZE: usize = 16384;
 #[derive(Debug, Copy, Clone)]
 pub struct History {
     quiet: QuietHistory,
-    tactic: TacticHistory,
+    noisy: NoisyHistory,
     pawn: PawnHistory<PAWN_HIST_SIZE>,
     cont_odd: ContHistory,
     cont_even: ContHistory,
@@ -572,8 +572,8 @@ impl History {
     }
 
     #[inline]
-    pub fn tactic(&self, board: &Board, mv: Move) -> i32 {
-        self.tactic.entry(board, mv)
+    pub fn noisy(&self, board: &Board, mv: Move) -> i32 {
+        self.noisy.entry(board, mv)
     }
 
     #[inline]
@@ -610,10 +610,10 @@ impl History {
         depth: i32,
         best_move: Move,
         quiets: &[Move],
-        tactics: &[Move],
+        noisies: &[Move],
     ) {
-        if best_move.is_tactic() {
-            self.update_tactic(board, depth, best_move, true);
+        if best_move.is_noisy() {
+            self.update_noisy(board, depth, best_move, true);
         } else {
             self.update_quiet(board, indices, depth, best_move, true);
             for &quiet in quiets {
@@ -621,8 +621,8 @@ impl History {
             }
         }
 
-        for &tactic in tactics {
-            self.update_tactic(board, depth, tactic, false);
+        for &noisy in noisies {
+            self.update_noisy(board, depth, noisy, false);
         }
     }
 
@@ -648,8 +648,8 @@ impl History {
     }
 
     #[inline]
-    pub fn update_tactic(&mut self, board: &Board, depth: i32, mv: Move, bonus: bool) {
-        self.tactic.update(board, depth, mv, bonus);
+    pub fn update_noisy(&mut self, board: &Board, depth: i32, mv: Move, bonus: bool) {
+        self.noisy.update(board, depth, mv, bonus);
     }
 
     #[inline]

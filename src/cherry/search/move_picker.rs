@@ -31,11 +31,11 @@ pub struct ScoredMove(pub Move, pub i32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Stage {
     TTMove,
-    GenTactics,
-    YieldGoodTactics,
+    GenNoisies,
+    YieldGoodNoisies,
     GenQuiets,
     YieldQuiets,
-    YieldBadTactics,
+    YieldBadNoisies,
     Finished,
 }
 
@@ -43,10 +43,10 @@ pub struct MovePicker {
     stage: Stage,
     see_margin: i32,
     skip_quiets: bool,
-    skip_bad_tactics: bool,
+    skip_bad_noisies: bool,
     tt_move: Option<Move>,
-    good_tactics: SmallVec<[ScoredMove; 64]>,
-    bad_tactics: SmallVec<[ScoredMove; 32]>,
+    good_noisies: SmallVec<[ScoredMove; 64]>,
+    bad_noisies: SmallVec<[ScoredMove; 32]>,
     quiets: SmallVec<[ScoredMove; 64]>,
 }
 
@@ -57,10 +57,10 @@ impl MovePicker {
             stage: Stage::TTMove,
             see_margin,
             skip_quiets: false,
-            skip_bad_tactics: false,
+            skip_bad_noisies: false,
             tt_move,
-            good_tactics: SmallVec::new(),
-            bad_tactics: SmallVec::new(),
+            good_noisies: SmallVec::new(),
+            bad_noisies: SmallVec::new(),
             quiets: SmallVec::new(),
         }
     }
@@ -76,8 +76,8 @@ impl MovePicker {
     }
 
     #[inline]
-    pub fn skip_bad_tactics(&mut self) {
-        self.skip_bad_tactics = true;
+    pub fn skip_bad_noisies(&mut self) {
+        self.skip_bad_noisies = true;
     }
 
     pub fn next(
@@ -87,13 +87,13 @@ impl MovePicker {
         indices: &ContIndices,
     ) -> Option<ScoredMove> {
         if self.stage == Stage::TTMove {
-            self.stage = Stage::GenTactics;
+            self.stage = Stage::GenNoisies;
 
             if let Some(mv) = self.tt_move
                 && pos.board().is_legal(mv)
             {
-                let score = if mv.is_tactic() {
-                    history.tactic(pos.board(), mv)
+                let score = if mv.is_noisy() {
+                    history.noisy(pos.board(), mv)
                 } else {
                     history.quiet(pos.board(), indices, mv)
                 };
@@ -102,30 +102,30 @@ impl MovePicker {
             }
         }
 
-        if self.stage == Stage::GenTactics {
-            self.stage = Stage::YieldGoodTactics;
+        if self.stage == Stage::GenNoisies {
+            self.stage = Stage::YieldGoodNoisies;
 
-            for &mv in pos.board().gen_tactics().iter() {
+            for &mv in pos.board().gen_noisies().iter() {
                 if self.tt_move == Some(mv) {
                     continue;
                 }
 
-                self.good_tactics
-                    .push(ScoredMove(mv, history.tactic(pos.board(), mv)));
+                self.good_noisies
+                    .push(ScoredMove(mv, history.noisy(pos.board(), mv)));
             }
         }
 
         /*----------------------------------------------------------------*/
 
-        if self.stage == Stage::YieldGoodTactics {
-            while let Some(index) = select_next(&self.good_tactics) {
-                let mv = swap_pop(&mut self.good_tactics, index).unwrap();
+        if self.stage == Stage::YieldGoodNoisies {
+            while let Some(index) = select_next(&self.good_noisies) {
+                let mv = swap_pop(&mut self.good_noisies, index).unwrap();
 
                 if pos.cmp_see(mv.0, self.see_margin) {
                     return Some(mv);
                 } else {
-                    if !self.skip_bad_tactics {
-                        self.bad_tactics.push(mv);
+                    if !self.skip_bad_noisies {
+                        self.bad_noisies.push(mv);
                     }
 
                     continue;
@@ -135,7 +135,7 @@ impl MovePicker {
             if !self.skip_quiets {
                 self.stage = Stage::GenQuiets;
             } else {
-                self.stage = Stage::YieldBadTactics;
+                self.stage = Stage::YieldBadNoisies;
             }
         }
 
@@ -143,7 +143,7 @@ impl MovePicker {
 
         if self.stage == Stage::GenQuiets {
             if self.skip_quiets {
-                self.stage = Stage::YieldBadTactics;
+                self.stage = Stage::YieldBadNoisies;
             } else {
                 self.stage = Stage::YieldQuiets;
 
@@ -162,24 +162,24 @@ impl MovePicker {
 
         if self.stage == Stage::YieldQuiets {
             if self.skip_quiets {
-                self.stage = Stage::YieldBadTactics;
+                self.stage = Stage::YieldBadNoisies;
             } else {
                 if let Some(index) = select_next(&self.quiets) {
                     return swap_pop(&mut self.quiets, index);
                 }
 
-                self.stage = Stage::YieldBadTactics;
+                self.stage = Stage::YieldBadNoisies;
             }
         }
 
         /*----------------------------------------------------------------*/
 
-        if self.stage == Stage::YieldBadTactics {
-            if self.skip_bad_tactics {
+        if self.stage == Stage::YieldBadNoisies {
+            if self.skip_bad_noisies {
                 self.stage = Stage::Finished;
             } else {
-                if let Some(index) = select_next(&self.bad_tactics) {
-                    return swap_pop(&mut self.bad_tactics, index);
+                if let Some(index) = select_next(&self.bad_noisies) {
+                    return swap_pop(&mut self.bad_noisies, index);
                 }
 
                 self.stage = Stage::Finished;

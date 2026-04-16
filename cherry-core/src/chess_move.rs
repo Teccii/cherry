@@ -141,7 +141,7 @@ impl Move {
     }
 
     #[inline]
-    pub const fn is_tactic(self) -> bool {
+    pub const fn is_noisy(self) -> bool {
         (self.bits.get() & 0xC000) != 0
     }
 

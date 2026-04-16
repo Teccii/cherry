@@ -56,7 +56,7 @@ impl DerefMut for MoveList {
 
 impl Board {
     #[inline]
-    pub fn gen_tactics(&self) -> MoveList {
+    pub fn gen_noisies(&self) -> MoveList {
         let mut moves = MoveList::empty();
         let checkers = self.checkers();
 
@@ -112,7 +112,7 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    fn gen_moves_to<const KING_MOVES: bool, const TACTICS: bool>(
+    fn gen_moves_to<const KING_MOVES: bool, const NOISIES: bool>(
         &self,
         moves: &mut MoveList,
         valid: Bitboard,
@@ -133,7 +133,7 @@ impl Board {
         let king_dest = valid & masked_attacks.for_mask(PieceMask::KING) & !their_attacks;
 
         let index_sq = &self.index_to_square[self.stm];
-        if TACTICS {
+        if NOISIES {
             moves.write(
                 index_sq,
                 &masked_attacks,
@@ -195,7 +195,7 @@ impl Board {
         let pawn_normal = valid_pawns & normal_empty;
         let pawn_double = valid_pawns & double_empty;
 
-        if TACTICS {
+        if NOISIES {
             let mut promo_mask = (pawn_normal >> PAWN_PROMO_SHIFT[self.stm]).0 as u8;
             while promo_mask != 0 {
                 let index = promo_mask.trailing_zeros() as usize * 4;
@@ -272,7 +272,7 @@ impl Board {
     }
 
     #[inline]
-    fn gen_king_moves<const CHECKERS: usize, const TACTICS: bool>(
+    fn gen_king_moves<const CHECKERS: usize, const NOISIES: bool>(
         &self,
         moves: &mut MoveList,
         checkers: PieceMask,
@@ -292,7 +292,7 @@ impl Board {
             }
         }
 
-        let flag = if TACTICS {
+        let flag = if NOISIES {
             valid &= their_pieces;
             MoveFlag::Capture
         } else {
@@ -306,12 +306,12 @@ impl Board {
     }
 
     #[inline]
-    fn gen_no_check<const TACTICS: bool>(&self, moves: &mut MoveList) {
-        self.gen_moves_to::<true, TACTICS>(moves, Bitboard::FULL)
+    fn gen_no_check<const NOISIES: bool>(&self, moves: &mut MoveList) {
+        self.gen_moves_to::<true, NOISIES>(moves, Bitboard::FULL)
     }
 
     #[inline]
-    fn gen_check<const TACTICS: bool>(&self, moves: &mut MoveList, checkers: PieceMask) {
+    fn gen_check<const NOISIES: bool>(&self, moves: &mut MoveList, checkers: PieceMask) {
         let king = self.king(self.stm);
         let checker = checkers.next().unwrap();
         let checker_piece = self.index_to_piece[!self.stm][checker].unwrap();
@@ -322,13 +322,13 @@ impl Board {
             between(king, checker_sq) | checker_sq
         };
 
-        self.gen_moves_to::<false, TACTICS>(moves, valid);
-        self.gen_king_moves::<1, TACTICS>(moves, checkers);
+        self.gen_moves_to::<false, NOISIES>(moves, valid);
+        self.gen_king_moves::<1, NOISIES>(moves, checkers);
     }
 
     #[inline]
-    fn gen_double_check<const TACTICS: bool>(&self, moves: &mut MoveList, checkers: PieceMask) {
-        self.gen_king_moves::<2, TACTICS>(moves, checkers);
+    fn gen_double_check<const NOISIES: bool>(&self, moves: &mut MoveList, checkers: PieceMask) {
+        self.gen_king_moves::<2, NOISIES>(moves, checkers);
     }
 }
 

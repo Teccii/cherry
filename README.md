@@ -33,10 +33,12 @@ and for writing [an amazing blog series][attack-table-blog] about it.
 - Aspiration Windows
 - Principal Variation Search (PVS)
 - Quiescence Search (QS)
-- Transposition Table
+  - Futility Pruning (QFP)
+- Transposition Table (TT)
 - Reverse Futility Pruning (RFP)
 - Null Move Pruning (NMP)
   - Verification Search
+- Razoring
 - Move Loop Pruning
   - SEE Pruning
   - Late Move Pruning (LMP)
@@ -44,17 +46,18 @@ and for writing [an amazing blog series][attack-table-blog] about it.
   - History Pruning
 - Singular Extensions (SE)
   - Double Extensions
+  - Triple Extensions
   - Negative Extensions
   - Multi-Cut
 - Late Move Reductions (LMR)
 - Syzygy Endgame Tablebases
 
 ### Move Ordering
-- Hash Move
+- TT Move
 - Quiet History
-- Tactic History
+- Noisy History
 - Pawn History
-- Continuation History (1 and 2 plies)
+- Continuation History (1, 2, and 4 plies)
 - Static Exchange Evaluation (SEE)
 
 ### Static Evaluation

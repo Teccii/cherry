@@ -132,14 +132,14 @@ weights! {
     quiet_malus_scale2 | QUIET_MALUS_SCALE2: i64 => 6    | 0..=128;
     quiet_malus_max    | QUIET_MALUS_MAX:    i64 => 1845 | 1024..=4096;
 
-    tactic_bonus_base   | TACTIC_BONUS_BASE:   i64 => 127  | 64..=256;
-    tactic_bonus_scale1 | TACTIC_BONUS_SCALE1: i64 => 122  | 64..=256;
-    tactic_bonus_scale2 | TACTIC_BONUS_SCALE2: i64 => 12   | 0..=128;
-    tactic_bonus_max    | TACTIC_BONUS_MAX:    i64 => 2047 | 1024..=4096;
-    tactic_malus_base   | TACTIC_MALUS_BASE:   i64 => 131  | 64..=256;
-    tactic_malus_scale1 | TACTIC_MALUS_SCALE1: i64 => 119  | 64..=256;
-    tactic_malus_scale2 | TACTIC_MALUS_SCALE2: i64 => 10   | 0..=128;
-    tactic_malus_max    | TACTIC_MALUS_MAX:    i64 => 2020 | 1024..=4096;
+    noisy_bonus_base   | NOISY_BONUS_BASE:   i64 => 127  | 64..=256;
+    noisy_bonus_scale1 | NOISY_BONUS_SCALE1: i64 => 122  | 64..=256;
+    noisy_bonus_scale2 | NOISY_BONUS_SCALE2: i64 => 12   | 0..=128;
+    noisy_bonus_max    | NOISY_BONUS_MAX:    i64 => 2047 | 1024..=4096;
+    noisy_malus_base   | NOISY_MALUS_BASE:   i64 => 131  | 64..=256;
+    noisy_malus_scale1 | NOISY_MALUS_SCALE1: i64 => 119  | 64..=256;
+    noisy_malus_scale2 | NOISY_MALUS_SCALE2: i64 => 10   | 0..=128;
+    noisy_malus_max    | NOISY_MALUS_MAX:    i64 => 2020 | 1024..=4096;
 
     pawn_bonus_base   | PAWN_BONUS_BASE:   i64 => 136  | 64..=256;
     pawn_bonus_scale1 | PAWN_BONUS_SCALE1: i64 => 126  | 64..=256;
@@ -238,11 +238,11 @@ weights! {
     see_quiet_scale1 | SEE_QUIET_SCALE1: i64 => -80   | -200..=0;
     see_quiet_scale2 | SEE_QUIET_SCALE2: i64 => -6    | -100..=0;
 
-    see_tactic_depth      | SEE_TACTIC_DEPTH:      i32 => 10409 | 8192..=12288;
-    see_tactic_base       | SEE_TACTIC_BASE:       i64 => -3    | -200..=0;
-    see_tactic_scale1     | SEE_TACTIC_SCALE1:     i64 => -49   | -200..=0;
-    see_tactic_scale2     | SEE_TACTIC_SCALE2:     i64 => -10   | -100..=0;
-    see_tactic_hist_scale | SEE_TACTIC_HIST_SCALE: i64 => 233   | 0..=512;
+    see_noisy_depth      | SEE_NOISY_DEPTH:      i32 => 10409 | 8192..=12288;
+    see_noisy_base       | SEE_NOISY_BASE:       i64 => -3    | -200..=0;
+    see_noisy_scale1     | SEE_NOISY_SCALE1:     i64 => -49   | -200..=0;
+    see_noisy_scale2     | SEE_NOISY_SCALE2:     i64 => -10   | -100..=0;
+    see_noisy_hist_scale | SEE_NOISY_HIST_SCALE: i64 => 233   | 0..=512;
 
     se_depth             | SE_DEPTH:             i32 => 6037 | 4096..=6144;
     se_tt_depth          | SE_TT_DEPTH:          i32 => 3018 | 2560..=3584;
@@ -256,14 +256,14 @@ weights! {
     se_beta_ext          | SE_BETA_EXT:          i32 => -983 | -1536..=-768;
     se_cut_ext           | SE_CUT_EXT:           i32 => -945 | -1536..=-768;
 
-    lmr_quiet_base  | LMR_QUIET_BASE:  i32 => 690  | 256..=768;
-    lmr_quiet_div   | LMR_QUIET_DIV:   i32 => 1588 | 1024..=2048;
-    lmr_tactic_base | LMR_TACTIC_BASE: i32 => 492  | 256..=768;
-    lmr_tactic_div  | LMR_TACTIC_DIV:  i32 => 3675 | 3072..=4096;
+    lmr_quiet_base | LMR_QUIET_BASE: i32 => 690  | 256..=768;
+    lmr_quiet_div  | LMR_QUIET_DIV:  i32 => 1588 | 1024..=2048;
+    lmr_noisy_base | LMR_NOISY_BASE: i32 => 492  | 256..=768;
+    lmr_noisy_div  | LMR_NOISY_DIV:  i32 => 3675 | 3072..=4096;
 
     lmr_depth       | LMR_DEPTH:       i32 => 2029 | 1536..=2560;
-    tactic_hist_lmr | TACTIC_HIST_LMR: i32 => 1040 | 512..=1536;
     quiet_hist_lmr  | QUIET_HIST_LMR:  i32 => 960  | 512..=1536;
+    noisy_hist_lmr  | NOISY_HIST_LMR:  i32 => 1040 | 512..=1536;
     check_lmr       | CHECK_LMR:       i32 => 1110 | 512..=1536;
     non_pv_lmr      | NON_PV_LMR:      i32 => 1070 | 512..=1536;
     tt_pv_lmr       | TT_PV_LMR:       i32 => 1021 | 512..=1536;
@@ -406,30 +406,30 @@ impl W {
     }
 
     #[inline]
-    pub const fn see_tactic_margin(depth: i32, hist_score: i32) -> i64 {
+    pub const fn see_noisy_margin(depth: i32, hist_score: i32) -> i64 {
         let depth = depth as i64;
         let depth_scale = DEPTH_SCALE as i64;
-        let scale1 = W::see_tactic_scale1() * depth / depth_scale;
-        let scale2 = W::see_tactic_scale2() * depth * depth / (depth_scale * depth_scale);
-        let hist_scale = W::see_tactic_hist_scale() * hist_score as i64 / MAX_HISTORY as i64;
+        let scale1 = W::see_noisy_scale1() * depth / depth_scale;
+        let scale2 = W::see_noisy_scale2() * depth * depth / (depth_scale * depth_scale);
+        let hist_scale = W::see_noisy_hist_scale() * hist_score as i64 / MAX_HISTORY as i64;
 
-        W::see_tactic_base() + scale1 + scale2 - hist_scale
+        W::see_noisy_base() + scale1 + scale2 - hist_scale
     }
 
     #[inline]
-    pub fn hist_lmr(is_tactic: bool) -> i32 {
-        if is_tactic {
-            W::tactic_hist_lmr()
+    pub fn hist_lmr(is_noisy: bool) -> i32 {
+        if is_noisy {
+            W::noisy_hist_lmr()
         } else {
             W::quiet_hist_lmr()
         }
     }
 
     #[inline]
-    pub fn lmr(is_tactic: bool, depth: i32, moves_seen: u8) -> i32 {
+    pub fn lmr(is_noisy: bool, depth: i32, moves_seen: u8) -> i32 {
         let depth = (depth / DEPTH_SCALE) as u8;
-        let (base, div) = if is_tactic {
-            (W::lmr_tactic_base(), W::lmr_tactic_div())
+        let (base, div) = if is_noisy {
+            (W::lmr_noisy_base(), W::lmr_noisy_div())
         } else {
             (W::lmr_quiet_base(), W::lmr_quiet_div())
         };
