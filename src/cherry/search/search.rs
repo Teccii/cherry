@@ -412,7 +412,7 @@ pub fn search<Node: NodeType>(
         beta even more.
         */
         let rfp_margin = W::rfp_margin(improving, depth) as i32;
-        if depth < W::rfp_depth() && estimated_score - rfp_margin >= beta {
+        if !tt_pv && depth < W::rfp_depth() && estimated_score - rfp_margin >= beta {
             return if !estimated_score.is_win() && !beta.is_win() {
                 Score(estimated_score.0 + W::rfp_lerp() * (beta.0 - estimated_score.0) / 1024)
             } else {
