@@ -402,7 +402,15 @@ pub fn search<Node: NodeType>(
     thread.search_stack[ply as usize].estimated_score = estimated_score;
 
     if !Node::PV && !in_check && skip_move.is_none() {
-        //Reverse Futility Pruning (RFP), also known as Static Null Move Pruning
+        /*
+        Reverse Futility Pruning (RFP), also known as Static Null Move Pruning:
+        If static eval is above beta by a significant margin,
+        we can prune this node.
+
+        Qsearch is not required because static eval gives a lower bound,
+        so qsearch is a wasted effort, because it will likely just exceed
+        beta even more.
+        */
         let rfp_margin = W::rfp_margin(improving, depth) as i32;
         if depth < W::rfp_depth() && estimated_score - rfp_margin >= beta {
             return if !estimated_score.is_win() && !beta.is_win() {
@@ -412,7 +420,15 @@ pub fn search<Node: NodeType>(
             };
         }
 
-        //Razoring
+        /*
+        Razoring:
+        If static eval is below alpha by a significant margin,
+        we can prune this node.
+
+        Qsearch is required because static eval gives a lower bound,
+        assuming that the best move is not noisy, and at this point,
+        we don't know if any available noisy moves allow us to exceed alpha.
+        */
         let razor_margin = W::razor_margin(improving, depth) as i32;
         if static_eval + razor_margin <= alpha {
             let score = q_search::<NonPV>(pos, thread, shared, ply, alpha, alpha + 1);
@@ -421,7 +437,13 @@ pub fn search<Node: NodeType>(
             }
         }
 
-        //Null Move Pruning (NMP)
+        /*
+        Null Move Pruning (NMP):
+        There is almost* always a better move than doing nothing.
+        Therefore, if we do nothing (Null Move) and perform a reduced depth
+        search, and our score is still high enough to cause a beta cutoff,
+        we can prune this node.
+        */
         if depth >= W::nmp_depth()
             && ply >= thread.nmp_min_ply
             && pos.prev_move(1).is_some()
@@ -448,7 +470,14 @@ pub fn search<Node: NodeType>(
                 return Score::ZERO;
             }
 
-            //NMP Verification Search
+            /*
+            NMP Verification Search:
+            In certain positions, NMP can get it
+            very, very wrong. Therefore, at higher depths,
+            NMP results are verified through a shallow search.
+
+            This is elo neutral.
+            */
             if score >= beta {
                 if depth <= W::nmp_verif_depth() || thread.nmp_min_ply > 0 {
                     return if score.is_win() { beta } else { score };
@@ -494,13 +523,24 @@ pub fn search<Node: NodeType>(
 
         let is_noisy = mv.is_noisy();
         let nodes = thread.nodes.local();
+
+        /*
+        Late Move Reductions (LMR):
+        Our move ordering is probably based,
+        so we should spend less time the more moves
+        we search.
+        */
         let mut lmr = W::lmr(is_noisy, depth, moves_seen);
         let mut score;
 
         //Move Loop Pruning
         if !Node::ROOT && !best_score.is_loss() {
             if is_noisy {
-                //Noisy SEE Pruning
+                /*
+                Noisy SEE Pruning:
+                Prune noisy moves (captures and promotions)
+                that don't pass SEE by a margin.
+                */
                 let see_margin = W::see_noisy_margin(depth, hist_score) as i32;
                 if depth <= W::see_noisy_depth()
                     && move_picker.stage() == Stage::YieldBadNoisies
@@ -509,26 +549,50 @@ pub fn search<Node: NodeType>(
                     continue;
                 }
             } else {
-                //Late Move Pruning (LMP)
+                /*
+                Late Move Pruning (LMP):
+                Our move ordering is probably quite based
+                so we should start skipping quiet moves after
+                searching a certain number of them, as the rest
+                are not likely to be good.
+                */
                 let lmp_margin = W::lmp_margin(improving, depth);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
 
-                //Futility Pruning (FP)
+                /*
+                Futility Pruning (FP):
+                If static eval is below alpha by a significant margin,
+                we can prune quiet moves because they are not likely to
+                raise alpha.
+
+                Noisy moves should still be considered, though, because
+                static eval gives a lower bound, assuming that the best move
+                is not noisy.
+                */
                 let lmr_depth = (depth - lmr).max(0);
                 let fp_margin = W::fp_margin(improving, lmr_depth, hist_score) as i32;
                 if !in_check && lmr_depth <= W::fp_depth() && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }
 
-                //History Pruning
+                /*
+                History Pruning:
+                Prune moves with history scores
+                that are below a depth-dependent
+                margin.
+                */
                 let hist_margin = W::hist_margin(depth) as i32;
                 if depth <= W::hist_depth() && hist_score < hist_margin {
                     move_picker.skip_quiets();
                 }
 
-                //Quiet SEE Pruning
+                /*
+                Quiet SEE Pruning:
+                Prune quiet moves that don't
+                pass SEE by a margin.
+                */
                 let see_margin = W::see_quiet_margin(lmr_depth) as i32;
                 if lmr_depth <= W::see_quiet_depth() && !pos.cmp_see(mv, see_margin) {
                     continue;
@@ -536,7 +600,12 @@ pub fn search<Node: NodeType>(
             }
         }
 
-        //Singular Extensions
+        /*
+        Singular Extensions:
+        If a single move (the TT move) is
+        so overwhelmingly superior to all the
+        alternatives, we should extend that move.
+        */
         let mut ext = 0;
         if !Node::ROOT
             && depth >= W::se_depth()
@@ -573,6 +642,13 @@ pub fn search<Node: NodeType>(
                     ext = W::se_triple_ext();
                 }
             } else if s_beta >= beta {
+                /*
+                Multi-Cut:
+                If multiple moves fail high in
+                the singular search (i.e. s_score >= s_beta),
+                and its bounds were greater than or equal to beta,
+                the TT move likely also fails high.
+                */
                 return s_beta;
             } else if entry.score >= beta {
                 ext = W::se_beta_ext();
@@ -584,6 +660,16 @@ pub fn search<Node: NodeType>(
         pos.make_move(mv);
         shared.ttable.prefetch(pos.board());
 
+        /*
+        Principal Variation Search (PVS):
+        Our move ordering is probably quite based,
+        so we search the first move with a full window,
+        and the rest are searched first with a null window around alpha.
+
+        This search functions as a test for if the move can be better than
+        what we already have. If the score of this search is higher than alpha,
+        and we are in a PV-node, we search it with a full window.
+        */
         let new_depth = (depth + ext - 1 * DEPTH_SCALE).min(MAX_FRAC_DEPTH);
         if moves_seen == 0 {
             score = -search::<Node::Next>(
@@ -608,6 +694,7 @@ pub fn search<Node: NodeType>(
                 lmr = 0;
             }
 
+            //Note: LMR does NOT like dropping into qsearch
             let lmr_depth = (new_depth - lmr).max(1 * DEPTH_SCALE).min(new_depth);
 
             score = -search::<NonPV>(
@@ -684,6 +771,20 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             flag = TTFlag::LowerBound;
+
+            /*
+            History Heuristic:
+            The ubiquitous Alpha-Beta move ordering technique.
+            When a move causes a beta cutoff, we give it a bonus.
+            Conversely, every move that doesn't cause a beta cutoff
+            gets a malus. Moves that were good in their own positions
+            tend to do well in other, unrelated positions.
+
+            Continuation History Heuristic (ContHist):
+            It's like history, but also indexed by a previous
+            move (N plies ago). Basically how good or how bad is
+            a move as a response to another move.
+            */
             thread
                 .history
                 .update(pos.board(), &cont_indices, depth, mv, &quiets, &noisies);
@@ -727,6 +828,16 @@ pub fn search<Node: NodeType>(
             Score::NONE
         };
 
+        /*
+        Static Evaluation Correction History (CorrHist):
+        Static eval is nudged in the direction of the true score
+        of the position depending on a variety of board features,
+        such as the pawns, the minor pieces, the major pieces, etc.
+
+        CorrHist is only updated when we're not in check, and the
+        best move is not noisy. These are the same conditions that
+        the evaluation function was trained in.
+        */
         if !in_check
             && best_move.is_none_or(|mv| !mv.is_noisy())
             && match flag {
@@ -747,6 +858,13 @@ pub fn search<Node: NodeType>(
 
 /*----------------------------------------------------------------*/
 
+/*
+Quiescence Search (QS, qsearch):
+After the main search, a limited search is performed
+so that only quiet positions are evaluated. Noisy moves
+and check evasions (if need be) are searched until
+none are left. Stand-Pat is also a huge part of QS.
+*/
 fn q_search<Node: NodeType>(
     pos: &mut Position,
     thread: &mut ThreadData,
@@ -822,6 +940,15 @@ fn q_search<Node: NodeType>(
             );
         }
 
+        /*
+        Stand-Pat:
+        Static eval gives a lower bound. If the lower bound
+        is greater than or equal to beta, we can return early.
+        If the lower bound is greater than or equal to alpha,
+        we can raise alpha to the new lower bound.
+
+        This is required(?) for QS to stabilise.
+        */
         if static_eval >= beta {
             return static_eval;
         }
@@ -852,7 +979,11 @@ fn q_search<Node: NodeType>(
                 break;
             }
 
-            //Quiescent Futility Pruning (QFP)
+            /*
+            Quiescent Futility Pruning (QFP):
+            If the static eval is below alpha by a significant margin,
+            we can prune moves that don't have a positive SEE score.
+            */
             if !in_check && static_eval + W::qfp_margin() <= alpha && !pos.cmp_see(mv, 1) {
                 best_score = best_score.max(static_eval + W::qfp_margin());
                 continue;
