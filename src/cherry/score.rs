@@ -103,6 +103,11 @@ impl Score {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub fn clamp_nomate(self) -> Score {
+        self.clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+    }
+
+    #[inline]
     pub fn saturating_add(self, rhs: Score) -> Score {
         Score(self.0.saturating_add(rhs.0)).clamp(-Score::INFINITE, Score::INFINITE)
     }

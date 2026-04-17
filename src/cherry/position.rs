@@ -105,7 +105,7 @@ impl Position {
     #[inline]
     pub fn eval(&mut self) -> Score {
         self.nnue.apply_updates(&self.current);
-        Score(self.nnue.eval(&self.current)).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+        Score(self.nnue.eval(&self.current)).clamp_nomate()
     }
 
     #[inline]

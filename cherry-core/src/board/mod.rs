@@ -257,6 +257,15 @@ impl Board {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub fn classic_material(&self) -> i16 {
+        self.pieces(Piece::Pawn).popcnt() as i16
+            + 3 * self.pieces(Piece::Knight).popcnt() as i16
+            + 3 * self.pieces(Piece::Bishop).popcnt() as i16
+            + 5 * self.pieces(Piece::Rook).popcnt() as i16
+            + 9 * self.pieces(Piece::Queen).popcnt() as i16
+    }
+
+    #[inline]
     pub fn status(&self) -> BoardStatus {
         if !self.gen_moves().is_empty() {
             if self.halfmove_clock < 100 {

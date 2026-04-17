@@ -55,6 +55,7 @@ mod position;
 mod score;
 mod syzygy;
 mod uci;
+mod wdl;
 
 pub use attacks::*;
 pub use engine::*;
@@ -65,3 +66,4 @@ pub use search::*;
 pub use syzygy::*;
 pub use uci::*;
 pub use util::*;
+pub use wdl::*;

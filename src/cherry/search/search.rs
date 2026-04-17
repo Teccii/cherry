@@ -54,12 +54,12 @@ pub fn scale_eval(mut raw_eval: Score, board: &Board, scale: bool) -> Score {
         raw_eval = raw_eval * (W::mat_scale_base() + material) / 32768;
     }
 
-    raw_eval
+    raw_eval.clamp_nomate()
 }
 
 #[inline]
 fn adjust_eval(eval: Score, corr: i32) -> Score {
-    (eval + corr).clamp(-Score::MAX_TB_WIN + 1, Score::MAX_TB_WIN - 1)
+    (eval + corr).clamp_nomate()
 }
 
 /*----------------------------------------------------------------*/

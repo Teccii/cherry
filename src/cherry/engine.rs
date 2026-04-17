@@ -41,9 +41,11 @@ pub struct EngineOptions {
     pub multipv: u8,
     pub minimal: bool,
     pub eval_scaling: bool,
+    pub score_normalisation: bool,
     pub move_overhead: u64,
     pub soft_target: bool,
     pub ponder: bool,
+    pub wdl: bool,
     pub frc: bool,
 }
 
@@ -54,9 +56,11 @@ impl Default for EngineOptions {
             multipv: 1,
             minimal: false,
             eval_scaling: true,
+            score_normalisation: true,
             move_overhead: DEFAULT_OVERHEAD,
             soft_target: false,
             ponder: false,
+            wdl: true,
             frc: false,
         }
     }
@@ -126,10 +130,12 @@ impl Engine {
         println!("option name MultiPV type spin default 1 min 1 max 218");
         println!("option name Minimal type check default false");
         println!("option name EvalScaling type check default true");
+        println!("option name ScoreNormalisation type check default true");
         println!("option name SyzygyPath type string default <empty>");
         println!("option name MoveOverhead type spin default {DEFAULT_OVERHEAD} min 0 max 5000");
         println!("option name SoftTarget type check default false");
         println!("option name Ponder type check default false");
+        println!("option name UCI_ShowWDL type check default true");
         println!("option name UCI_Chess960 type check default false");
         #[cfg(feature = "tune")]
         W::print_uci();
@@ -171,8 +177,10 @@ impl Engine {
             limits,
             self.options,
             SearchInfo::Uci {
-                frc: self.options.frc,
                 minimal: self.options.minimal,
+                normalisation: self.options.score_normalisation,
+                wdl: self.options.wdl,
+                frc: self.options.frc,
             },
         );
     }
@@ -327,6 +335,18 @@ impl Engine {
                 self.options.eval_scaling = value;
                 println!("info string Set EvalScaling to {value}");
             }
+            "ScoreNormalisation" => {
+                let value = match value.parse::<bool>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidBoolean(e));
+                        return;
+                    }
+                };
+
+                self.options.score_normalisation = value;
+                println!("info string Set ScoreNormalisation to {value}");
+            }
             "SyzygyPath" => set_syzygy_path(value.as_str()),
             "MoveOverhead" => {
                 let value = match value.parse::<u64>() {
@@ -368,6 +388,18 @@ impl Engine {
 
                 self.options.ponder = value;
                 println!("info string Set Ponder to {value}");
+            }
+            "UCI_ShowWDL" => {
+                let value = match value.parse::<bool>() {
+                    Ok(value) => value,
+                    Err(e) => {
+                        println!("info string {:?}", UciParseError::InvalidBoolean(e));
+                        return;
+                    }
+                };
+
+                self.options.wdl = value;
+                println!("info string Set UCI_ShowWDL to {value}");
             }
             "UCI_Chess960" => {
                 let value = match value.parse::<bool>() {
