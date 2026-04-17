@@ -426,6 +426,7 @@ pub fn search<Node: NodeType>(
             && ply >= thread.nmp_min_ply
             && pos.prev_move(1).is_some()
             && static_eval >= beta
+            && tt_entry.is_none_or(|e| e.flag != TTFlag::UpperBound)
             && pos.null_move()
         {
             shared.ttable.prefetch(pos.board());
