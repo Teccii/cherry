@@ -61,12 +61,13 @@ and for writing [an amazing blog series][attack-table-blog] about it.
 - Static Exchange Evaluation (SEE)
 
 ### Static Evaluation
-- NNUE `(768hm->1024)x2->1x8`
+- NNUE `(768hmx4->1024)x2->1x8`
   - Dual Perspective
   - Horizontal Mirroring
+  - Four King Input Buckets
   - Eight Output Buckets
   - Self-generated training data (8 random moves, 5000 soft nodes per move)
-  - Trained with [`bullet`][bullet] on 930 million positions
+  - Trained with [`bullet`][bullet] on ~1.87 billion positions (pre-filtering)
 - Correction History
   - Pawn Structure
   - Minor Pieces
