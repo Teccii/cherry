@@ -319,7 +319,7 @@ pub fn search<Node: NodeType>(
 
     if !Node::PV
         && let Some(entry) = tt_entry
-        && entry.depth as i32 >= depth / DEPTH_SCALE
+        && entry.depth as i32 >= (depth - W::tt_depth_bias()) / DEPTH_SCALE
     {
         match entry.flag {
             TTFlag::Exact => return entry.score,

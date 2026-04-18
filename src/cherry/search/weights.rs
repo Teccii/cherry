@@ -270,6 +270,7 @@ weights! {
     cut_lmr         | CUT_LMR:         i32 => 992  | 512..=1536;
     imp_lmr         | IMP_LMR:         i32 => 966  | 512..=1536;
 
+    tt_depth_bias    | TT_DEPTH_BIAS:    i32 => 512 | 256..=768;
     mp_see_margin    | MP_SEE_MARGIN:    i32 => -31 | -200..=100;
     mp_qs_see_margin | MP_QS_SEE_MARGIN: i32 => -18 | -200..=100;
 
