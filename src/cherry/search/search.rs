@@ -444,7 +444,8 @@ pub fn search<Node: NodeType>(
         search, and our score is still high enough to cause a beta cutoff,
         we can prune this node.
         */
-        if depth >= W::nmp_depth()
+        if cut_node
+            && depth >= W::nmp_depth()
             && ply >= thread.nmp_min_ply
             && pos.prev_move(1).is_some()
             && static_eval >= beta
