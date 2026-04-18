@@ -578,13 +578,13 @@ pub fn search<Node: NodeType>(
                 }
 
                 /*
-                History Pruning:
-                Prune moves with history scores
+                Quiet History Pruning:
+                Prune quiet moves with history scores
                 that are below a depth-dependent
                 margin.
                 */
-                let hist_margin = W::hist_margin(depth) as i32;
-                if depth <= W::hist_depth() && hist_score < hist_margin {
+                let hp_margin = W::hp_quiet_margin(depth) as i32;
+                if depth <= W::hp_quiet_depth() && hist_score < hp_margin {
                     move_picker.skip_quiets();
                 }
 

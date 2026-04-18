@@ -228,10 +228,10 @@ weights! {
     fp_imp_scale2 | FP_IMP_SCALE2: i64 => 75   | 0..=1280;
     fp_hist_scale | FP_HIST_SCALE: i64 => 257  | 0..=512;
 
-    hist_depth  | HIST_DEPTH:  i32 => 5810  | 4096..=8192;
-    hist_base   | HIST_BASE:   i64 => -67   | -1000..=0;
-    hist_scale1 | HIST_SCALE1: i64 => -1849 | -5000..=-1000;
-    hist_scale2 | HIST_SCALE2: i64 => -11   | -500..=0;
+    hp_quiet_depth  | HP_QUIET_DEPTH:  i32 => 5810  | 4096..=8192;
+    hp_quiet_base   | HP_QUIET_BASE:   i64 => -67   | -1000..=0;
+    hp_quiet_scale1 | HP_QUIET_SCALE1: i64 => -1849 | -5000..=-1000;
+    hp_quiet_scale2 | HP_QUIET_SCALE2: i64 => -11   | -500..=0;
 
     see_quiet_depth  | SEE_QUIET_DEPTH:  i32 => 10311 | 8192..=12288;
     see_quiet_base   | SEE_QUIET_BASE:   i64 => -6    | -200..=0;
@@ -386,13 +386,13 @@ impl W {
     }
 
     #[inline]
-    pub const fn hist_margin(depth: i32) -> i64 {
+    pub const fn hp_quiet_margin(depth: i32) -> i64 {
         let depth = depth as i64;
         let depth_scale = DEPTH_SCALE as i64;
-        let scale1 = W::hist_scale1() * depth / depth_scale;
-        let scale2 = W::hist_scale2() * depth * depth / (depth_scale * depth_scale);
+        let scale1 = W::hp_quiet_scale1() * depth / depth_scale;
+        let scale2 = W::hp_quiet_scale2() * depth * depth / (depth_scale * depth_scale);
 
-        W::hist_base() + scale1 + scale2
+        W::hp_quiet_base() + scale1 + scale2
     }
 
     #[inline]
