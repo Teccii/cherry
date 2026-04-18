@@ -634,7 +634,7 @@ pub fn search<Node: NodeType>(
             if s_score < s_beta {
                 ext = W::se_ext();
 
-                if !Node::PV && s_score + W::se_double_ext_margin() < s_beta {
+                if s_score + W::se_double_ext_base() + Node::PV as i32 * W::se_double_ext_pv() < s_beta {
                     ext = W::se_double_ext();
                 }
 
