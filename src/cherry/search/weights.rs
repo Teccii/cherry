@@ -190,7 +190,7 @@ weights! {
     mat_scale_queen  | MAT_SCALE_QUEEN:  i32 => 981   | 700..=1100;
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 25242 | 24000..=26000;
 
-    rfp_depth      | RFP_DEPTH:      i32 => 6550 | 4096..=8192;
+    rfp_depth      | RFP_DEPTH:      i32 => 8192 | 6144..=10240;
     rfp_base       | RFP_BASE:       i64 => 5    | -100..=100;
     rfp_scale1     | RFP_SCALE1:     i64 => 75   | 0..=200;
     rfp_scale2     | RFP_SCALE2:     i64 => 741  | 384..=1280;
