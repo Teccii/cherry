@@ -280,6 +280,13 @@ weights! {
     cut_lmr         | CUT_LMR:         i32 => 992  | 512..=1536;
     imp_lmr         | IMP_LMR:         i32 => 966  | 512..=1536;
 
+    lmr_deeper_base     | LMR_DEEPER_BASE:     i32 => 40   | 20..=80;
+    lmr_deeper_scale    | LMR_DEEPER_SCALE:    i32 => 768  | 512..=1024;
+    lmr_deeper_ext      | LMR_DEEPER_EXT:      i32 => 1024 | 512..=1536;
+    lmr_shallower_base  | LMR_SHALLOWER_BASE:  i32 => 0    | 0..=40;
+    lmr_shallower_scale | LMR_SHALLOWER_SCALE: i32 => 128  | 0..=256;
+    lmr_shallower_red   | LMR_SHALLOWER_RED:   i32 => 1024 | 512..=1536;
+
     mp_see_margin    | MP_SEE_MARGIN:    i32 => -31 | -200..=100;
     mp_qs_see_margin | MP_QS_SEE_MARGIN: i32 => -18 | -200..=100;
 
@@ -447,6 +454,18 @@ impl W {
         let hist_scale = W::see_noisy_hist_scale() * hist_score as i64 / MAX_HISTORY as i64;
 
         W::see_noisy_base() + scale1 + scale2 - hist_scale
+    }
+
+    #[inline]
+    pub fn lmr_deeper_margin(depth: i32) -> i32 {
+        let scale = W::lmr_deeper_scale() * depth / (DEPTH_SCALE * 128);
+        W::lmr_deeper_base() + scale
+    }
+
+    #[inline]
+    pub fn lmr_shallower_margin(depth: i32) -> i32 {
+        let scale = W::lmr_shallower_scale() * depth / (DEPTH_SCALE * 128);
+        W::lmr_shallower_base() + scale
     }
 
     #[inline]

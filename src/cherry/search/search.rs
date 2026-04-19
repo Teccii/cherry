@@ -686,7 +686,7 @@ pub fn search<Node: NodeType>(
         what we already have. If the score of this search is higher than alpha,
         and we are in a PV-node, we search it with a full window.
         */
-        let new_depth = (depth + ext - 1 * DEPTH_SCALE).min(MAX_FRAC_DEPTH);
+        let mut new_depth = (depth + ext - 1 * DEPTH_SCALE).min(MAX_FRAC_DEPTH);
         if moves_seen == 0 {
             score = -search::<Node::Next>(
                 pos,
@@ -726,17 +726,25 @@ pub fn search<Node: NodeType>(
             );
             thread.search_stack[ply as usize].reduction = 0;
 
-            if lmr_depth < new_depth && score > alpha {
-                score = -search::<NonPV>(
-                    pos,
-                    thread,
-                    shared,
-                    new_depth,
-                    ply + 1,
-                    -alpha - 1,
-                    -alpha,
-                    !cut_node,
-                );
+            if score > alpha {
+                let do_deeper = score > (best_score + W::lmr_deeper_margin(new_depth));
+                let do_shallower = score < (best_score + W::lmr_shallower_margin(new_depth));
+
+                new_depth = (new_depth + W::lmr_deeper_ext() * do_deeper as i32).min(MAX_FRAC_DEPTH);
+                new_depth -= W::lmr_shallower_red() * do_shallower as i32;
+                
+                if lmr_depth < new_depth {
+                    score = -search::<NonPV>(
+                        pos,
+                        thread,
+                        shared,
+                        new_depth,
+                        ply + 1,
+                        -alpha - 1,
+                        -alpha,
+                        !cut_node,
+                    );
+                }
             }
 
             if Node::PV && score > alpha {
