@@ -189,6 +189,9 @@ weights! {
     mat_scale_rook   | MAT_SCALE_ROOK:   i32 => 565   | 400..=700;
     mat_scale_queen  | MAT_SCALE_QUEEN:  i32 => 981   | 700..=1100;
     mat_scale_base   | MAT_SCALE_BASE:   i32 => 25242 | 24000..=26000;
+    
+    hindsight_ext_red | HINDSIGHT_EXT_RED: i32 => 3072 | 2048..=4096;
+    hindsight_ext_ext | HINDSIGHT_EXT_EXT: i32 => 1024 | 512..=1536;
 
     rfp_depth      | RFP_DEPTH:      i32 => 6550 | 4096..=8192;
     rfp_base       | RFP_BASE:       i64 => 5    | -100..=100;
