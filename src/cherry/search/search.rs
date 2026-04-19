@@ -339,7 +339,7 @@ pub fn search<Node: NodeType>(
     let cont_corr_indices = ContCorrIndices::new(&pos);
 
     let in_check = pos.board().in_check();
-    let (raw_eval, static_eval, _corr) = if !in_check {
+    let (raw_eval, static_eval, corr) = if !in_check {
         let raw_eval = if skip_move.is_some() {
             thread.search_stack[ply as usize].raw_eval
         } else if let Some(entry) = tt_entry {
@@ -689,6 +689,7 @@ pub fn search<Node: NodeType>(
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
                 lmr += W::cut_lmr() * cut_node as i32;
                 lmr -= W::imp_lmr() * improving as i32;
+                lmr -= W::corr_lmr() * (corr.abs() > W::corr_lmr_edge()) as i32;
                 lmr -= W::hist_lmr(is_noisy) * hist_score / MAX_HISTORY;
             } else {
                 lmr = 0;
