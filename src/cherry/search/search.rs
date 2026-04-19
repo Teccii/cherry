@@ -275,7 +275,7 @@ pub fn search<Node: NodeType>(
     pos: &mut Position,
     thread: &mut ThreadData,
     shared: &SharedData,
-    depth: i32,
+    mut depth: i32,
     ply: u16,
     mut alpha: Score,
     beta: Score,
@@ -402,6 +402,19 @@ pub fn search<Node: NodeType>(
     thread.search_stack[ply as usize].estimated_score = estimated_score;
 
     if !Node::PV && !in_check && skip_move.is_none() {
+        /*
+        Hindsight Extension:
+        If this node was heavily reduced by the parent,
+        but the node is improving static eval, then extend
+        this node.
+        */
+        let prev_stack = &thread.search_stack[ply as usize - 1];
+        if prev_stack.reduction >= W::hindsight_ext_red()
+            && prev_stack.static_eval != Score::NONE
+            && static_eval <= -prev_stack.static_eval {
+            depth = (depth + W::hindsight_ext_ext()).min(MAX_FRAC_DEPTH);
+        }
+
         /*
         Reverse Futility Pruning (RFP), also known as Static Null Move Pruning:
         If static eval is above beta by a significant margin,
@@ -697,6 +710,7 @@ pub fn search<Node: NodeType>(
             //Note: LMR does NOT like dropping into qsearch
             let lmr_depth = (new_depth - lmr).max(1 * DEPTH_SCALE).min(new_depth);
 
+            thread.search_stack[ply as usize].reduction = lmr;
             score = -search::<NonPV>(
                 pos,
                 thread,
@@ -707,6 +721,7 @@ pub fn search<Node: NodeType>(
                 -alpha,
                 true,
             );
+            thread.search_stack[ply as usize].reduction = 0;
 
             if lmr_depth < new_depth && score > alpha {
                 score = -search::<NonPV>(
