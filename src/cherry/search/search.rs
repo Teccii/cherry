@@ -339,7 +339,7 @@ pub fn search<Node: NodeType>(
     let cont_corr_indices = ContCorrIndices::new(&pos);
 
     let in_check = pos.board().in_check();
-    let (raw_eval, static_eval, _corr) = if !in_check {
+    let (raw_eval, static_eval, corr) = if !in_check {
         let raw_eval = if skip_move.is_some() {
             thread.search_stack[ply as usize].raw_eval
         } else if let Some(entry) = tt_entry {
@@ -411,7 +411,7 @@ pub fn search<Node: NodeType>(
         so qsearch is a wasted effort, because it will likely just exceed
         beta even more.
         */
-        let rfp_margin = W::rfp_margin(improving, depth) as i32;
+        let rfp_margin = W::rfp_margin(depth, corr, improving) as i32;
         if depth < W::rfp_depth() && estimated_score - rfp_margin >= beta {
             return if !estimated_score.is_win() && !beta.is_win() {
                 Score(estimated_score.0 + W::rfp_lerp() * (beta.0 - estimated_score.0) / 1024)
@@ -429,7 +429,7 @@ pub fn search<Node: NodeType>(
         assuming that the best move is not noisy, and at this point,
         we don't know if any available noisy moves allow us to exceed alpha.
         */
-        let razor_margin = W::razor_margin(improving, depth) as i32;
+        let razor_margin = W::razor_margin(depth, improving) as i32;
         if static_eval + razor_margin <= alpha {
             let score = q_search::<NonPV>(pos, thread, shared, ply, alpha, alpha + 1);
             if score <= alpha {
@@ -556,7 +556,7 @@ pub fn search<Node: NodeType>(
                 searching a certain number of them, as the rest
                 are not likely to be good.
                 */
-                let lmp_margin = W::lmp_margin(improving, depth);
+                let lmp_margin = W::lmp_margin(depth, improving);
                 if moves_seen as i64 * 1024 >= lmp_margin {
                     move_picker.skip_quiets();
                 }
@@ -572,7 +572,7 @@ pub fn search<Node: NodeType>(
                 is not noisy.
                 */
                 let lmr_depth = (depth - lmr).max(0);
-                let fp_margin = W::fp_margin(improving, lmr_depth, hist_score) as i32;
+                let fp_margin = W::fp_margin(lmr_depth, hist_score, improving) as i32;
                 if !in_check && lmr_depth <= W::fp_depth() && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }
