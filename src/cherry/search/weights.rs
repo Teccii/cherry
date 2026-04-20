@@ -247,7 +247,8 @@ weights! {
     se_depth             | SE_DEPTH:             i32 => 6037 | 4096..=6144;
     se_tt_depth          | SE_TT_DEPTH:          i32 => 3018 | 2560..=3584;
     se_search_depth      | SE_SEARCH_DEPTH:      i64 => 480  | 256..=768;
-    se_beta_margin       | SE_BETA_MARGIN:       i32 => 95   | 64..=96;
+    se_beta_base         | SE_BETA_BASE:         i32 => 95   | 64..=96;
+    se_beta_prev_pv      | SE_BETA_PREV_PV:      i32 => 64   | 32..=96;
     se_double_ext_margin | SE_DOUBLE_EXT_MARGIN: i32 => 32   | 0..=40;
     se_triple_ext_margin | SE_TRIPLE_EXT_MARGIN: i32 => 69   | 40..=80;
     se_ext               | SE_EXT:               i32 => 1064 | 512..=1536;
@@ -414,6 +415,14 @@ impl W {
         let hist_scale = W::see_noisy_hist_scale() * hist_score as i64 / MAX_HISTORY as i64;
 
         W::see_noisy_base() + scale1 + scale2 - hist_scale
+    }
+
+    #[inline]
+    pub fn se_beta_margin(depth: i32, prev_pv: bool) -> i32 {
+        let mut scale = W::se_beta_base();
+        scale += W::se_beta_prev_pv() * prev_pv as i32;
+        
+        scale * depth / (DEPTH_SCALE * 64)
     }
 
     #[inline]

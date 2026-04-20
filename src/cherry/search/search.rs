@@ -615,7 +615,7 @@ pub fn search<Node: NodeType>(
             && entry.depth as i32 * DEPTH_SCALE + W::se_tt_depth() >= depth
             && entry.flag != TTFlag::UpperBound
         {
-            let s_beta = entry.score - depth * W::se_beta_margin() / (DEPTH_SCALE * 64);
+            let s_beta = entry.score - W::se_beta_margin(depth, tt_pv && !Node::PV);
             let s_depth = (depth as i64 * W::se_search_depth() / DEPTH_SCALE as i64) as i32;
 
             thread.search_stack[ply as usize].skip_move = Some(mv);
