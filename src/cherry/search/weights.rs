@@ -206,11 +206,17 @@ weights! {
     razor_imp_scale1 | RAZOR_IMP_SCALE1: i64 => 10  | 0..=200;
     razor_imp_scale2 | RAZOR_IMP_SCALE2: i64 => 240 | 150..=400;
 
-    nmp_depth       | NMP_DEPTH:       i32 => 3080  | 2048..=4096;
-    nmp_base        | NMP_BASE:        i64 => 6151  | 4096..=8192;
-    nmp_scale1      | NMP_SCALE1:      i64 => 219   | 0..=512;
-    nmp_scale2      | NMP_SCALE2:      i64 => 0     | 0..=256;
-    nmp_verif_depth | NMP_VERIF_DEPTH: i32 => 14535 | 12288..=16384;
+    nmp_depth           | NMP_DEPTH:           i32 => 3080  | 2048..=4096;
+    nmp_beta_base       | NMP_BETA_BASE:       i64 => 200   | 100..=500;
+    nmp_beta_scale1     | NMP_BETA_SCALE1:     i64 => 1920  | 1280..=2560;
+    nmp_beta_scale2     | NMP_BETA_SCALE2:     i64 => 0     | 0..=512;
+    nmp_imp_beta_base   | NMP_IMP_BETA_BASE:   i64 => 200   | 100..=500;
+    nmp_imp_beta_scale1 | NMP_IMP_BETA_SCALE1: i64 => 1920  | 1280..=2560;
+    nmp_imp_beta_scale2 | NMP_IMP_BETA_SCALE2: i64 => 0     | 0..=512;
+    nmp_base            | NMP_BASE:            i64 => 6151  | 4096..=8192;
+    nmp_scale1          | NMP_SCALE1:          i64 => 219   | 0..=512;
+    nmp_scale2          | NMP_SCALE2:          i64 => 0     | 0..=256;
+    nmp_verif_depth     | NMP_VERIF_DEPTH:     i32 => 14535 | 12288..=16384;
 
     lmp_base       | LMP_BASE:       i64 => 2176 | 1024..=3072;
     lmp_scale1     | LMP_SCALE1:     i64 => 16   | 0..=512;
@@ -342,6 +348,29 @@ impl W {
         let scale2 = scale2 * depth * depth / (depth_scale * depth_scale);
 
         base + scale1 + scale2
+    }
+
+    #[inline]
+    pub const fn nmp_margin(improving: bool, depth: i32) -> i64 {
+        let depth = depth as i64;
+        let depth_scale = DEPTH_SCALE as i64;
+        let (base, scale1, scale2) = if improving {
+            (
+                W::nmp_imp_beta_base(),
+                W::nmp_imp_beta_scale1(),
+                W::nmp_imp_beta_scale2(),
+            )
+        } else {
+            (
+                W::nmp_beta_base(),
+                W::nmp_beta_scale1(),
+                W::nmp_beta_scale2()
+            )
+        };
+        let scale1 = scale1 * depth / (depth_scale * 128);
+        let scale2 = scale2 * depth * depth / (depth_scale * depth_scale * 128);
+
+        base - scale1 - scale2
     }
 
     #[inline]
