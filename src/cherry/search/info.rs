@@ -23,7 +23,7 @@ impl SearchInfo {
         pv_index: usize,
         pv: &PrincipalVariation,
         bound: TTFlag,
-        score: Score,
+        mut score: Score,
         depth: u8,
         last: bool,
     ) {
@@ -52,6 +52,10 @@ impl SearchInfo {
 
                 if multipv > 1 {
                     output.push_str(format!("multipv {} ", pv_index + 1).as_str());
+                }
+
+                if score.abs() <= 2 {
+                    score = Score::ZERO;
                 }
 
                 let out_score = if *normalisation {

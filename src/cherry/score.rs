@@ -28,6 +28,11 @@ impl Score {
         -Score::MIN_TB_WIN + ply as i32
     }
 
+    #[inline]
+    pub fn draw(nodes: u64) -> Score {
+        Score((nodes % 5) as i32 - 2)
+    }
+
     /*----------------------------------------------------------------*/
 
     #[inline]

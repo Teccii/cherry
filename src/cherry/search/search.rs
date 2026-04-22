@@ -295,7 +295,7 @@ pub fn search<Node: NodeType>(
     }
 
     if !Node::ROOT && pos.is_draw() {
-        return Score::ZERO;
+        return Score::draw(thread.nodes.local());
     }
 
     if depth <= 0 || ply >= MAX_PLY {
@@ -885,7 +885,7 @@ fn q_search<Node: NodeType>(
     }
 
     if pos.is_draw() {
-        return Score::ZERO;
+        return Score::draw(thread.nodes.local());
     }
 
     if ply >= MAX_PLY {
