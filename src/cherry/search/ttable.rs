@@ -77,10 +77,10 @@ impl TTData {
     #[inline]
     pub fn pack(self) -> TTPackedData {
         TTPackedData {
-            depth: self.depth,
+            mv: self.mv,
             eval: self.eval.0 as i16,
             score: self.score.0 as i16,
-            mv: self.mv,
+            depth: self.depth,
             other: self.flag as u8 | ((self.pv as u8) << 2) | (self.age << 3),
         }
     }
@@ -92,11 +92,12 @@ impl TTData {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[repr(C)]
 pub struct TTPackedData {
-    depth: u8,
+    mv: Option<Move>,
     eval: i16,
     score: i16,
-    mv: Option<Move>,
+    depth: u8,
     other: u8,
 }
 
@@ -123,6 +124,7 @@ const AGE_BITS: usize = 5;
 const AGE_CYCLE: u8 = 1u8 << AGE_BITS;
 const AGE_MASK: u8 = AGE_CYCLE - 1;
 
+#[repr(C, align(32))]
 pub struct TTCluster {
     data: [AtomicU64; CLUSTER_SIZE],
     key: [AtomicU16; CLUSTER_SIZE],

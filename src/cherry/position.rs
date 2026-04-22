@@ -232,6 +232,16 @@ impl Position {
     /*----------------------------------------------------------------*/
 
     #[inline]
+    pub fn non_pawns(&self) -> bool {
+        let board = self.board();
+        let stm = board.stm();
+
+        !board.colors(stm).is_subset(board.pieces(Piece::Pawn) | board.pieces(Piece::King))
+    }
+
+    /*----------------------------------------------------------------*/
+
+    #[inline]
     pub fn is_draw(&self) -> bool {
         self.insufficient_material()
             || self.repetition()

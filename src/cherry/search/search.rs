@@ -450,6 +450,7 @@ pub fn search<Node: NodeType>(
             && pos.prev_move(1).is_some()
             && static_eval - nmp_margin >= beta
             && tt_entry.is_none_or(|e| e.flag != TTFlag::UpperBound)
+            && pos.non_pawns()
             && pos.null_move()
         {
             shared.ttable.prefetch(pos.board());
