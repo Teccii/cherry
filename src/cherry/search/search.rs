@@ -616,6 +616,7 @@ pub fn search<Node: NodeType>(
             && entry.mv == Some(mv)
             && entry.depth as i32 * DEPTH_SCALE + W::se_tt_depth() >= depth
             && entry.flag != TTFlag::UpperBound
+            && !entry.score.is_decisive()
         {
             let s_beta = entry.score - depth * W::se_beta_margin() / (DEPTH_SCALE * 64);
             let s_depth = (depth as i64 * W::se_search_depth() / DEPTH_SCALE as i64) as i32;
