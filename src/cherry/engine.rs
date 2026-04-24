@@ -144,11 +144,15 @@ impl Engine {
 
     #[inline]
     fn eval(&mut self) {
+        let material = self.pos.board().classic_material();
+
         let raw_eval = self.pos.eval();
-        let static_eval = scale_eval(raw_eval, self.pos.board(), self.options.eval_scaling);
+        let scaled_eval = scale_eval(raw_eval, self.pos.board(), self.options.eval_scaling);
+        let normalised_eval = scaled_eval.normalise(material);
 
         println!("Raw Eval: {}", raw_eval);
-        println!("Static Eval: {}", static_eval);
+        println!("Scaled Eval: {}", scaled_eval);
+        println!("Normalised Eval: {}", normalised_eval);
     }
 
     #[inline]
