@@ -364,7 +364,7 @@ impl W {
             (
                 W::nmp_beta_base(),
                 W::nmp_beta_scale1(),
-                W::nmp_beta_scale2()
+                W::nmp_beta_scale2(),
             )
         };
         let scale1 = scale1 * depth / (depth_scale * 128);

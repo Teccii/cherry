@@ -236,7 +236,9 @@ impl Position {
         let board = self.board();
         let stm = board.stm();
 
-        !board.colors(stm).is_subset(board.pieces(Piece::Pawn) | board.pieces(Piece::King))
+        !board
+            .colors(stm)
+            .is_subset(board.pieces(Piece::Pawn) | board.pieces(Piece::King))
     }
 
     /*----------------------------------------------------------------*/
