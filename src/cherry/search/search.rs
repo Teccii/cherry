@@ -339,7 +339,7 @@ pub fn search<Node: NodeType>(
     let cont_corr_indices = ContCorrIndices::new(&pos);
 
     let in_check = pos.board().in_check();
-    let (raw_eval, static_eval, _corr) = if !in_check {
+    let (raw_eval, static_eval, corr) = if !in_check {
         let raw_eval = if skip_move.is_some() {
             thread.search_stack[ply as usize].raw_eval
         } else if let Some(entry) = tt_entry {
@@ -411,7 +411,7 @@ pub fn search<Node: NodeType>(
         so qsearch is a wasted effort, because it will likely just exceed
         beta even more.
         */
-        let rfp_margin = W::rfp_margin(improving, depth).max(0) as i32;
+        let rfp_margin = W::rfp_margin(improving, depth, corr).max(0) as i32;
         if depth < W::rfp_depth()
             && estimated_score - rfp_margin >= beta
             && !estimated_score.is_win()

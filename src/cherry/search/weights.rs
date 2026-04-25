@@ -197,6 +197,7 @@ weights! {
     rfp_imp_base   | RFP_IMP_BASE:   i64 => -29  | -100..=100;
     rfp_imp_scale1 | RFP_IMP_SCALE1: i64 => 40   | 0..=200;
     rfp_imp_scale2 | RFP_IMP_SCALE2: i64 => 800  | 384..=1280;
+    rfp_corr_scale | RFP_CORR_SCALE: i64 => 512  | 256..=768;
     rfp_lerp       | RFP_LERP:       i32 => 571  | 256..=768;
 
     razor_base       | RAZOR_BASE:       i64 => 335 | 150..=400;
@@ -316,7 +317,8 @@ impl W {
     /*----------------------------------------------------------------*/
 
     #[inline]
-    pub const fn rfp_margin(improving: bool, depth: i32) -> i64 {
+    pub const fn rfp_margin(improving: bool, depth: i32, corr: i32) -> i64 {
+        let corr = corr.abs() as i64;
         let depth = depth as i64;
         let depth_scale = DEPTH_SCALE as i64;
         let (base, scale1, scale2) = if improving {
@@ -327,8 +329,9 @@ impl W {
 
         let scale1 = scale1 * depth / depth_scale;
         let scale2 = scale2 * depth * depth / (depth_scale * depth_scale * 128);
+        let corr_scale = W::rfp_corr_scale() * corr / 1024;
 
-        base + scale1 + scale2
+        base + scale1 + scale2 + corr_scale
     }
 
     #[inline]
