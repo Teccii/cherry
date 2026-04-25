@@ -411,7 +411,7 @@ pub fn search<Node: NodeType>(
         so qsearch is a wasted effort, because it will likely just exceed
         beta even more.
         */
-        let rfp_margin = W::rfp_margin(improving, depth) as i32;
+        let rfp_margin = W::rfp_margin(improving, depth).max(0) as i32;
         if depth < W::rfp_depth()
             && estimated_score - rfp_margin >= beta
             && !estimated_score.is_win()
