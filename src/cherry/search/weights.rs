@@ -254,8 +254,10 @@ weights! {
     se_tt_depth          | SE_TT_DEPTH:          i32 => 3018 | 2560..=3584;
     se_search_depth      | SE_SEARCH_DEPTH:      i64 => 480  | 256..=768;
     se_beta_margin       | SE_BETA_MARGIN:       i32 => 95   | 64..=96;
-    se_double_ext_margin | SE_DOUBLE_EXT_MARGIN: i32 => 32   | 0..=40;
-    se_triple_ext_margin | SE_TRIPLE_EXT_MARGIN: i32 => 69   | 40..=80;
+    se_double_ext_base   | SE_DOUBLE_EXT_BASE:   i32 => 32   | 0..=40;
+    se_double_ext_pv     | SE_DOUBLE_EXT_PV:     i32 => 200  | 150..=300;
+    se_triple_ext_base   | SE_TRIPLE_EXT_BASE:   i32 => 69   | 40..=80;
+    se_triple_ext_pv     | SE_TRIPLE_EXT_PV:     i32 => 300  | 250..=400;
     se_ext               | SE_EXT:               i32 => 1064 | 512..=1536;
     se_double_ext        | SE_DOUBLE_EXT:        i32 => 2176 | 1536..=2560;
     se_triple_ext        | SE_TRIPLE_EXT:        i32 => 3100 | 2560..=3584;
@@ -443,6 +445,16 @@ impl W {
         let hist_scale = W::see_noisy_hist_scale() * hist_score as i64 / MAX_HISTORY as i64;
 
         W::see_noisy_base() + scale1 + scale2 - hist_scale
+    }
+
+    #[inline]
+    pub const fn se_double_ext_margin(pv: bool) -> i32 {
+        W::se_double_ext_base() + W::se_double_ext_pv() * pv as i32
+    }
+
+    #[inline]
+    pub const fn se_triple_ext_margin(pv: bool) -> i32 {
+        W::se_triple_ext_base() + W::se_triple_ext_pv() * pv as i32
     }
 
     #[inline]

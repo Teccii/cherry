@@ -637,11 +637,11 @@ pub fn search<Node: NodeType>(
             if s_score < s_beta {
                 ext = W::se_ext();
 
-                if !Node::PV && s_score + W::se_double_ext_margin() < s_beta {
+                if s_score + W::se_double_ext_margin(Node::PV) < s_beta {
                     ext = W::se_double_ext();
                 }
 
-                if !Node::PV && s_score + W::se_triple_ext_margin() < s_beta {
+                if s_score + W::se_triple_ext_margin(Node::PV) < s_beta {
                     ext = W::se_triple_ext();
                 }
             } else if s_beta >= beta {
