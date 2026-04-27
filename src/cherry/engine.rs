@@ -147,12 +147,26 @@ impl Engine {
         let material = self.pos.board().classic_material();
 
         let raw_eval = self.pos.eval();
-        let scaled_eval = scale_eval(raw_eval, self.pos.board(), self.options.eval_scaling);
+        let scaled_eval = scale_eval(raw_eval, self.pos.board(), true);
         let normalised_eval = scaled_eval.normalise(material);
 
-        println!("Raw Eval: {}", raw_eval);
-        println!("Scaled Eval: {}", scaled_eval);
-        println!("Normalised Eval: {}", normalised_eval);
+        let (w, l) = wdl_model(scaled_eval, material);
+        let d = 1000 - w - l;
+
+        let to_pct = |x: i16| x as f32 / 10.0;
+        let w_pct = to_pct(w);
+        let d_pct = to_pct(d);
+        let l_pct = to_pct(l);
+
+        println!("Raw Eval: {:#}", raw_eval);
+        println!("Scaled Eval: {:#}", scaled_eval);
+        println!("Normalised Eval: {:#}", normalised_eval);
+        println!(
+            "WDL: {} {} {}",
+            format!("{w_pct:.2}% W").green(),
+            format!("{d_pct:.2}% D").dimmed(),
+            format!("{l_pct:.2}% L").red()
+        );
     }
 
     #[inline]

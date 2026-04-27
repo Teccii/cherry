@@ -156,7 +156,7 @@ impl fmt::Display for Score {
             } else if let Some(ply) = self.decisive_in() {
                 write!(f, "#{}", (ply + ply.signum()) / 2)
             } else {
-                write!(f, "{:+.1}", self.0 as f32 / 100.0)
+                write!(f, "{:+.2}", self.0 as f32 / 100.0)
             }
         } else {
             if let Some(ply) = self.mate_in() {
