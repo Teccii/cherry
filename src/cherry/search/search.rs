@@ -448,7 +448,7 @@ pub fn search<Node: NodeType>(
         if depth >= W::nmp_depth()
             && ply >= thread.nmp_min_ply
             && pos.prev_move(1).is_some()
-            && static_eval - nmp_margin >= beta
+            && estimated_score - nmp_margin >= beta
             && tt_entry.is_none_or(|e| e.flag != TTFlag::UpperBound)
             && pos.non_pawns()
             && pos.null_move()
