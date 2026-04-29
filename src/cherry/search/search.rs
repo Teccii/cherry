@@ -411,8 +411,23 @@ pub fn search<Node: NodeType>(
         let prev_stack = &thread.search_stack[ply as usize - 1];
         if prev_stack.reduction >= W::hindsight_ext_red()
             && prev_stack.static_eval != Score::NONE
-            && static_eval < -prev_stack.static_eval {
-            depth = (depth + W::hindsight_ext_ext()).min(MAX_FRAC_DEPTH);
+            && static_eval + prev_stack.static_eval < W::hindsight_ext_eval()
+        {
+            depth = (depth + W::hindsight_ext()).min(MAX_FRAC_DEPTH);
+        }
+
+        /*
+        Hindsight Reduction:
+        If this node was heavily reduced by the parent,
+        but the node isn't improving static eval, then reduce
+        this node.
+        */
+        if depth >= W::hindsight_red_depth()
+            && prev_stack.reduction >= W::hindsight_red_red()
+            && prev_stack.static_eval != Score::NONE
+            && static_eval + prev_stack.static_eval > W::hindsight_red_eval()
+        {
+            depth -= W::hindsight_red();
         }
 
         /*
