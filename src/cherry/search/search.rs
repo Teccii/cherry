@@ -339,7 +339,7 @@ pub fn search<Node: NodeType>(
     let cont_corr_indices = ContCorrIndices::new(&pos);
 
     let in_check = pos.board().in_check();
-    let (raw_eval, static_eval, _corr) = if !in_check {
+    let (raw_eval, static_eval, corr) = if !in_check {
         let raw_eval = if skip_move.is_some() {
             thread.search_stack[ply as usize].raw_eval
         } else if let Some(entry) = tt_entry {
@@ -587,7 +587,7 @@ pub fn search<Node: NodeType>(
                 is not noisy.
                 */
                 let lmr_depth = (depth - lmr).max(0);
-                let fp_margin = W::fp_margin(improving, lmr_depth, hist_score) as i32;
+                let fp_margin = W::fp_margin(improving, lmr_depth, corr, hist_score) as i32;
                 if !in_check && lmr_depth <= W::fp_depth() && static_eval + fp_margin <= alpha {
                     move_picker.skip_quiets();
                 }

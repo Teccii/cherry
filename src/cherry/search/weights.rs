@@ -235,6 +235,7 @@ weights! {
     fp_imp_base   | FP_IMP_BASE:   i64 => 87   | 0..=200;
     fp_imp_scale1 | FP_IMP_SCALE1: i64 => 83   | 0..=200;
     fp_imp_scale2 | FP_IMP_SCALE2: i64 => 75   | 0..=1280;
+    fp_corr_scale | FP_CORR_SCALE: i64 => 512  | 256..=768;
     fp_hist_scale | FP_HIST_SCALE: i64 => 257  | 0..=512;
 
     hp_quiet_depth  | HP_QUIET_DEPTH:  i32 => 5810  | 4096..=8192;
@@ -402,7 +403,7 @@ impl W {
     }
 
     #[inline]
-    pub const fn fp_margin(improving: bool, depth: i32, hist_score: i32) -> i64 {
+    pub const fn fp_margin(improving: bool, depth: i32, corr: i32, hist_score: i32) -> i64 {
         let depth = depth as i64;
         let depth_scale = DEPTH_SCALE as i64;
         let (base, scale1, scale2) = if improving {
@@ -413,8 +414,9 @@ impl W {
         let scale1 = scale1 * depth / depth_scale;
         let scale2 = scale2 * depth * depth / (depth_scale * depth_scale * 128);
         let hist_scale = W::fp_hist_scale() * hist_score as i64 / MAX_HISTORY as i64;
+        let corr_scale = W::fp_corr_scale() * corr.abs() as i64 / MAX_CORR as i64;
 
-        base + scale1 + scale2 + hist_scale
+        base + scale1 + scale2 + hist_scale + corr_scale
     }
 
     #[inline]
