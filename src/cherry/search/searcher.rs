@@ -79,7 +79,7 @@ impl ThreadData {
         ThreadData {
             abort_now: false,
             nodes: BatchedAtomicCounter::new(nodes),
-            search_stack: vec![SearchStack::default(); MAX_PLY as usize + 1],
+            search_stack: vec![SearchStack::default(); MAX_PLY as usize + 2],
             windows: Vec::new(),
             root_moves: MoveList::empty(),
             exclude_moves: MoveList::empty(),
@@ -164,6 +164,7 @@ impl Default for PrincipalVariation {
 
 #[derive(Clone, Default)]
 pub struct SearchStack {
+    pub cutoffs: u16,
     pub reduction: i32,
     pub raw_eval: Score,
     pub static_eval: Score,

@@ -400,6 +400,7 @@ pub fn search<Node: NodeType>(
     thread.search_stack[ply as usize].raw_eval = raw_eval;
     thread.search_stack[ply as usize].static_eval = static_eval;
     thread.search_stack[ply as usize].estimated_score = estimated_score;
+    thread.search_stack[ply as usize + 2].cutoffs = 0;
 
     if !Node::PV && !in_check && skip_move.is_none() {
         /*
@@ -705,6 +706,7 @@ pub fn search<Node: NodeType>(
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
                 lmr += W::cut_lmr() * cut_node as i32;
                 lmr -= W::imp_lmr() * improving as i32;
+                lmr += W::beta_lmr() * (thread.search_stack[ply as usize + 1].cutoffs > 3) as i32;
                 lmr -= W::hist_lmr(is_noisy) * hist_score / MAX_HISTORY;
             } else {
                 lmr = 0;
@@ -789,6 +791,7 @@ pub fn search<Node: NodeType>(
 
         if score >= beta {
             flag = TTFlag::LowerBound;
+            thread.search_stack[ply as usize].cutoffs += 1;
 
             /*
             History Heuristic:
