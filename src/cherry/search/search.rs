@@ -314,7 +314,7 @@ pub fn search<Node: NodeType>(
         .then(|| shared.ttable.fetch(pos.board(), ply))
         .flatten();
     let tt_move = tt_entry.and_then(|e| e.mv);
-    let _tt_noisy = tt_move.is_some_and(|mv| mv.is_noisy());
+    let tt_noisy = tt_move.is_some_and(|mv| mv.is_noisy());
     let tt_pv = Node::PV || tt_entry.is_some_and(|e| e.pv);
 
     if !Node::PV
@@ -700,6 +700,7 @@ pub fn search<Node: NodeType>(
             );
         } else {
             if depth >= W::lmr_depth() {
+                lmr += W::tt_noisy_lmr() * (tt_noisy && !mv.is_noisy()) as i32;
                 lmr -= W::check_lmr() * pos.board().in_check() as i32;
                 lmr += W::non_pv_lmr() * !Node::PV as i32;
                 lmr -= W::tt_pv_lmr() * tt_pv as i32;
