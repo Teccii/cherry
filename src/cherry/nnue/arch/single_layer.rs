@@ -13,17 +13,17 @@ pub const HL: usize = 1024;
 pub const HORIZONTAL_MIRRORING: bool = true;
 pub const PAIRWISE_MUL: bool = false;
 
-pub const NUM_INPUT_BUCKETS: usize = 4;
+pub const NUM_INPUT_BUCKETS: usize = 8;
 #[rustfmt::skip]
 pub const INPUT_BUCKETS: [usize; Square::COUNT] = [
-    0, 0, 1, 1, 1, 1, 0, 0,
-    2, 2, 2, 2, 2, 2, 2, 2,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 3, 3, 3, 3, 3, 3,
+    0, 1, 2, 3, 3, 2, 1, 0,
+    4, 4, 5, 5, 5, 5, 4, 4,
+    6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6,
+    7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7,
 ];
 
 pub const NUM_OUTPUT_BUCKETS: usize = 8;
