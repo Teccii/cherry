@@ -112,7 +112,7 @@ pub fn id_loop(
                 );
                 thread.nodes.flush();
 
-                if depth > 1 && thread.abort_now {
+                if depth > 1 && thread.stop {
                     break 'id;
                 }
 
@@ -172,7 +172,7 @@ pub fn id_loop(
                     (beta, TTFlag::LowerBound)
                 };
 
-                if thread.id == 0 && shared.time_man.elapsed() >= 1000 {
+                if thread.id == 0 && shared.time_man.elapsed().as_millis() >= 1000 {
                     info.update(
                         pos.board(),
                         &thread,
@@ -194,11 +194,8 @@ pub fn id_loop(
         depth += 1;
         completed_depth += 1;
 
-        if shared.time_man.abort_id(depth - 1, thread.nodes.global()) {
-            if thread.id == 0 {
-                shared.time_man.set_abort(true);
-            }
-
+        if thread.id == 0 && shared.time_man.stop_id(depth - 1, thread.nodes.global()) {
+            shared.time_man.set_stop(true);
             break 'id;
         }
 
@@ -217,8 +214,8 @@ pub fn id_loop(
         }
     }
 
-    if shared.time_man.is_infinite() {
-        shared.time_man.wait_for_abort();
+    if shared.time_man.infinite() {
+        shared.time_man.wait_for_stop();
     }
 
     let last_thread = shared.num_searching.fetch_sub(1, Ordering::Relaxed) == 2;
@@ -281,12 +278,12 @@ pub fn search<Node: NodeType>(
     beta: Score,
     cut_node: bool,
 ) -> Score {
-    if !Node::ROOT && (thread.abort_now || shared.time_man.abort_search(&thread.nodes)) {
+    if !Node::ROOT && (thread.stop || shared.time_man.stop_search(&thread)) {
         if thread.id == 0 {
-            shared.time_man.set_abort(true);
+            shared.time_man.set_stop(true);
         }
 
-        thread.abort_now = true;
+        thread.stop = true;
         return Score::ZERO;
     }
 
@@ -411,7 +408,8 @@ pub fn search<Node: NodeType>(
         let prev_stack = &thread.search_stack[ply as usize - 1];
         if prev_stack.reduction >= W::hindsight_ext_red()
             && prev_stack.static_eval != Score::NONE
-            && static_eval + prev_stack.static_eval < W::hindsight_ext_eval() {
+            && static_eval + prev_stack.static_eval < W::hindsight_ext_eval()
+        {
             depth = (depth + W::hindsight_ext()).min(MAX_FRAC_DEPTH);
         }
 
@@ -481,7 +479,7 @@ pub fn search<Node: NodeType>(
             );
             pos.unmake_null_move();
 
-            if thread.abort_now {
+            if thread.stop {
                 return Score::ZERO;
             }
 
@@ -503,7 +501,7 @@ pub fn search<Node: NodeType>(
                     search::<NonPV>(pos, thread, shared, nmp_depth, ply, beta - 1, beta, true);
                 thread.nmp_min_ply = 0;
 
-                if thread.abort_now {
+                if thread.stop {
                     return Score::ZERO;
                 }
 
@@ -762,7 +760,7 @@ pub fn search<Node: NodeType>(
             parent.pv.update(mv, &child.pv);
         }
 
-        if thread.abort_now {
+        if thread.stop {
             return Score::ZERO;
         }
 
@@ -891,8 +889,8 @@ fn q_search<Node: NodeType>(
     mut alpha: Score,
     beta: Score,
 ) -> Score {
-    if thread.abort_now || shared.time_man.abort_search(&thread.nodes) {
-        thread.abort_now = true;
+    if thread.stop || shared.time_man.stop_search(&thread) {
+        thread.stop = true;
 
         return Score::ZERO;
     }
@@ -1014,7 +1012,7 @@ fn q_search<Node: NodeType>(
         pos.unmake_move();
         moves_seen += 1;
 
-        if thread.abort_now {
+        if thread.stop {
             return Score::ZERO;
         }
 

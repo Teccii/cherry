@@ -15,109 +15,118 @@ pub enum SearchLimit {
     BlackInc(u64),
     MoveTime(u64),
     MovesToGo(u16),
-    MaxDepth(u8),
-    MaxNodes(u64),
-    Ponder,
+    Nodes(u64),
+    Depth(u8),
 }
+
+/*----------------------------------------------------------------*/
 
 pub struct TimeManager {
     start: AtomicInstant,
-    abort_now: AtomicU32,
-    no_manage: AtomicBool,
     infinite: AtomicBool,
+    check_time: AtomicBool,
+    no_manage: AtomicBool,
+    stop: AtomicU32,
 
     base_time: AtomicU64,
     soft_time: AtomicU64,
     hard_time: AtomicU64,
+
     soft_nodes: AtomicU64,
     hard_nodes: AtomicU64,
-    max_depth: AtomicU8,
+    depth: AtomicU8,
 }
 
 impl TimeManager {
     #[inline]
-    pub fn new() -> TimeManager {
+    pub fn new() -> Self {
         TimeManager {
-            start: AtomicInstant::new(Instant::now()),
-            abort_now: AtomicU32::new(0),
-            no_manage: AtomicBool::new(true),
+            start: AtomicInstant::now(),
             infinite: AtomicBool::new(true),
+            check_time: AtomicBool::new(false),
+            no_manage: AtomicBool::new(false),
+            stop: AtomicU32::new(0),
+
             base_time: AtomicU64::new(0),
             soft_time: AtomicU64::new(0),
             hard_time: AtomicU64::new(0),
+
             soft_nodes: AtomicU64::new(u64::MAX),
             hard_nodes: AtomicU64::new(u64::MAX),
-            max_depth: AtomicU8::new(MAX_DEPTH),
+            depth: AtomicU8::new(MAX_DEPTH),
         }
     }
 
-    /*----------------------------------------------------------------*/
-
+    #[inline]
     pub fn init(&self, stm: Color, limits: &[SearchLimit], overhead: u64, soft_target: bool) {
-        self.set_abort(false);
+        self.set_stop(false);
 
-        let mut w_time = u64::MAX;
-        let mut b_time = u64::MAX;
-        let mut w_inc = 0;
-        let mut b_inc = 0;
-        let mut move_time = None;
+        let mut inc = [0; Color::COUNT];
+        let mut time = [u64::MAX; Color::COUNT];
         let mut moves_to_go = None;
-        let mut max_depth = MAX_DEPTH;
-        let mut max_nodes = u64::MAX;
+        let mut move_time = None;
+        let mut nodes = u64::MAX;
+        let mut depth = MAX_DEPTH;
         let mut infinite = true;
-        let mut ponder = false;
+        let mut check_time = false;
+        let mut no_manage = false;
 
         for limit in limits {
-            match limit {
-                SearchLimit::SearchMoves(_) => {}
-                SearchLimit::WhiteTime(time) => w_time = *time,
-                SearchLimit::BlackTime(time) => b_time = *time,
-                SearchLimit::WhiteInc(inc) => w_inc = *inc,
-                SearchLimit::BlackInc(inc) => b_inc = *inc,
-                SearchLimit::MoveTime(time) => move_time = Some(*time),
-                SearchLimit::MovesToGo(num) => moves_to_go = Some(*num),
-                SearchLimit::MaxDepth(depth) => max_depth = (*depth).min(MAX_DEPTH),
-                SearchLimit::MaxNodes(nodes) => max_nodes = *nodes,
-                SearchLimit::Ponder => ponder = true,
+            use SearchLimit::*;
+
+            match *limit {
+                SearchMoves(_) => {}
+                WhiteTime(t) => time[Color::White] = t,
+                BlackTime(t) => time[Color::Black] = t,
+                WhiteInc(i) => inc[Color::White] = i,
+                BlackInc(i) => inc[Color::Black] = i,
+                MoveTime(t) => move_time = Some(t),
+                MovesToGo(n) => moves_to_go = Some(n),
+                Nodes(n) => nodes = nodes.min(n),
+                Depth(d) => depth = depth.min(d),
             }
 
             if matches!(
                 limit,
-                SearchLimit::WhiteTime(_)
-                    | SearchLimit::BlackTime(_)
-                    | SearchLimit::WhiteInc(_)
-                    | SearchLimit::BlackInc(_)
-                    | SearchLimit::MoveTime(_)
+                WhiteTime(..) | BlackTime(..) | MoveTime(..) | Depth(..) | Nodes(..)
             ) {
                 infinite = false;
             }
+
+            if matches!(limit, WhiteTime(..) | BlackTime(..) | MoveTime(..)) {
+                check_time = true;
+            }
+            
+            if matches!(limit, MoveTime(..)) {
+                no_manage = true;
+            }
         }
 
-        self.infinite.store(infinite | ponder, Ordering::Relaxed);
-        self.no_manage
-            .store(soft_target | infinite, Ordering::Relaxed);
+        self.infinite.store(infinite, Ordering::Relaxed);
+        self.check_time.store(check_time, Ordering::Relaxed);
+        self.no_manage.store(no_manage, Ordering::Relaxed);
 
-        self.max_depth.store(max_depth, Ordering::Relaxed);
-        self.soft_nodes.store(max_nodes, Ordering::Relaxed);
+        self.depth.store(depth, Ordering::Relaxed);
+        self.soft_nodes.store(nodes, Ordering::Relaxed);
         if soft_target {
             self.hard_nodes
-                .store(max_nodes.saturating_mul(2000), Ordering::Relaxed);
+                .store(nodes.saturating_mul(2000), Ordering::Relaxed);
         } else {
-            self.hard_nodes.store(max_nodes, Ordering::Relaxed);
+            self.hard_nodes.store(nodes, Ordering::Relaxed);
         }
 
         if let Some(time) = move_time {
-            let hard_time = if soft_target { u64::MAX } else { time };
-
             self.base_time.store(time, Ordering::Relaxed);
             self.soft_time.store(time, Ordering::Relaxed);
-            self.hard_time.store(hard_time, Ordering::Relaxed);
-        } else if let Some(moves_to_go) = moves_to_go {
-            let (time, inc) = match stm {
-                Color::White => (w_time.saturating_sub(overhead), w_inc),
-                Color::Black => (b_time.saturating_sub(overhead), b_inc),
-            };
 
+            if soft_target {
+                self.hard_time
+                    .store(time.saturating_mul(2).max(time + 2000), Ordering::Relaxed);
+            } else {
+                self.hard_time.store(time, Ordering::Relaxed);
+            }
+        } else if let Some(moves_to_go) = moves_to_go {
+            let (time, inc) = (time[stm].saturating_sub(overhead), inc[stm]);
             let hard_time =
                 ((time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64 + inc).min(time);
             let soft_time = (time / moves_to_go as u64 + inc).min(hard_time);
@@ -126,11 +135,7 @@ impl TimeManager {
             self.soft_time.store(soft_time, Ordering::Relaxed);
             self.hard_time.store(hard_time, Ordering::Relaxed);
         } else {
-            let (time, inc) = match stm {
-                Color::White => (w_time.saturating_sub(overhead), w_inc),
-                Color::Black => (b_time.saturating_sub(overhead), b_inc),
-            };
-
+            let (time, inc) = (time[stm].saturating_sub(overhead), inc[stm]);
             let hard_time = ((time as f64 / (W::hard_time_div() as f64 / 4096.0)) as u64
                 + inc * W::hard_time_inc() / 4096)
                 .min(time);
@@ -146,6 +151,7 @@ impl TimeManager {
         self.start.store(Instant::now(), Ordering::Relaxed);
     }
 
+    #[inline]
     pub fn deepen(
         &self,
         depth: u8,
@@ -183,56 +189,51 @@ impl TimeManager {
     }
 
     #[inline]
-    pub fn set_abort(&self, value: bool) {
-        self.abort_now.store(value as u32, Ordering::Relaxed);
-        if self.is_infinite() {
-            atomic_wait::wake_all(&self.abort_now);
+    pub fn set_stop(&self, stop: bool) {
+        self.stop.store(stop as u32, Ordering::Relaxed);
+        if self.infinite() {
+            atomic_wait::wake_all(&self.stop);
         }
     }
 
     #[inline]
-    pub fn wait_for_abort(&self) {
-        while !self.should_abort() {
-            atomic_wait::wait(&self.abort_now, 0);
+    pub fn wait_for_stop(&self) {
+        while !self.should_stop() {
+            atomic_wait::wait(&self.stop, 0);
         }
     }
 
     #[inline]
-    pub fn ponderhit(&self) {
-        self.infinite.store(false, Ordering::Relaxed);
-    }
-
-    /*----------------------------------------------------------------*/
-
-    #[inline]
-    pub fn should_abort(&self) -> bool {
-        self.abort_now.load(Ordering::Relaxed) != 0
-    }
-
-    #[inline]
-    pub fn is_infinite(&self) -> bool {
-        self.infinite.load(Ordering::Relaxed)
+    pub fn stop_search(&self, thread: &ThreadData) -> bool {
+        self.should_stop()
+            || thread.nodes.global() >= self.hard_nodes.load(Ordering::Relaxed)
+            || (thread.nodes.local().is_multiple_of(1024)
+            && thread.id == 0
+            && self.check_time.load(Ordering::Relaxed)
+            && self.elapsed().as_millis() as u64 > self.hard_time.load(Ordering::Relaxed))
     }
 
     #[inline]
-    pub fn elapsed(&self) -> u64 {
-        self.start.load(Ordering::Relaxed).elapsed().as_millis() as u64
-    }
-
-    #[inline]
-    pub fn abort_id(&self, depth: u8, nodes: u64) -> bool {
-        self.should_abort()
-            || depth >= self.max_depth.load(Ordering::Relaxed)
+    pub fn stop_id(&self, depth: u8, nodes: u64) -> bool {
+        self.should_stop()
+            || depth >= self.depth.load(Ordering::Relaxed)
             || nodes >= self.soft_nodes.load(Ordering::Relaxed)
-            || (!self.is_infinite() && self.elapsed() >= self.soft_time.load(Ordering::Relaxed))
+            || (self.check_time.load(Ordering::Relaxed)
+            && self.elapsed().as_millis() as u64 > self.soft_time.load(Ordering::Relaxed))
     }
 
     #[inline]
-    pub fn abort_search(&self, nodes: &BatchedAtomicCounter) -> bool {
-        self.should_abort()
-            || nodes.global() >= self.hard_nodes.load(Ordering::Relaxed)
-            || (!self.is_infinite()
-                && nodes.local().is_multiple_of(1024)
-                && self.elapsed() >= self.hard_time.load(Ordering::Relaxed))
+    pub fn elapsed(&self) -> Duration {
+        self.start.load(Ordering::Relaxed).elapsed()
+    }
+
+    #[inline]
+    pub fn should_stop(&self) -> bool {
+        self.stop.load(Ordering::Relaxed) != 0
+    }
+
+    #[inline]
+    pub fn infinite(&self) -> bool {
+        self.infinite.load(Ordering::Relaxed)
     }
 }

@@ -95,7 +95,6 @@ and for writing [an amazing blog series][attack-table-blog] about it.
 | SyzygyPath         | String  | `<empty>` | Any Path          | File path of Syzygy Tablebases (Can only be configured once during the runtime of the program)         |
 | MoveOverhead       | Integer | 100       | `0..=5000`        | Time in milliseconds used to compensate for the delay between engine and interface communication       |
 | SoftTarget         | Boolean | `false`   | `true` or `false` | When enabled, `go nodes <n>` and `go movetime <ms>` will only stop after a completed depth             |
-| Ponder             | Boolean | `false`   | `true` or `false` | When enabled, Cherry will think on the opponent's time                                                 |
 | UCI_ShowWDL        | Boolean | `true`    | `true` or `false` | When enabled, Cherry will also output WDL probabilities.                                               |
 | UCI_Chess960       | Boolean | `false`   | `true` or `false` | Whether to output UCI moves using standard notation (e1g1/e1c1) or Chess960 notation (e.g. e1h1, e1a1) |
 

@@ -42,7 +42,7 @@ impl Engine {
                     self.pos.set_board(board.clone());
                     self.searcher.search(
                         self.pos.clone(),
-                        vec![SearchLimit::MaxNodes(1000)],
+                        vec![SearchLimit::Nodes(1000)],
                         self.options,
                         SearchInfo::None,
                     );

@@ -55,7 +55,7 @@ impl Default for SharedData {
 
 #[derive(Clone)]
 pub struct ThreadData {
-    pub abort_now: bool,
+    pub stop: bool,
     pub nodes: BatchedAtomicCounter,
     pub search_stack: Vec<SearchStack>,
     pub root_nodes: [[u64; Square::COUNT]; Square::COUNT],
@@ -77,7 +77,7 @@ impl ThreadData {
     #[inline]
     pub fn new(nodes: Arc<AtomicU64>, id: usize) -> ThreadData {
         ThreadData {
-            abort_now: false,
+            stop: false,
             nodes: BatchedAtomicCounter::new(nodes),
             search_stack: vec![SearchStack::default(); MAX_PLY as usize + 1],
             windows: Vec::new(),
@@ -98,7 +98,7 @@ impl ThreadData {
 
     #[inline]
     pub fn reset(&mut self) {
-        self.abort_now = false;
+        self.stop = false;
         self.nodes.reset();
         self.search_stack = vec![SearchStack::default(); MAX_PLY as usize + 1];
         self.root_nodes = [[0; Square::COUNT]; Square::COUNT];
@@ -339,15 +339,6 @@ impl Searcher {
     }
 
     #[inline]
-    pub fn ponderhit(&mut self) {
-        assert!(
-            self.is_searching(),
-            "Called `ponderhit()` while not searching"
-        );
-        self.shared.time_man.ponderhit();
-    }
-
-    #[inline]
     pub fn newgame(&mut self) {
         assert!(!self.is_searching(), "Called `newgame()` while searching");
 
@@ -357,7 +348,7 @@ impl Searcher {
 
     #[inline]
     pub fn quit(&mut self) {
-        self.shared.time_man.set_abort(true);
+        self.shared.time_man.set_stop(true);
         self.command_sender.send(ThreadCommand::Quit);
         self.search_threads
             .drain(..)
@@ -367,7 +358,7 @@ impl Searcher {
     #[inline]
     pub fn stop(&self) {
         assert!(self.is_searching(), "Called `stop()` while not searching");
-        self.shared.time_man.set_abort(true);
+        self.shared.time_man.set_stop(true);
     }
 
     #[inline]

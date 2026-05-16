@@ -34,9 +34,6 @@ impl SearchInfo {
                 wdl,
                 frc,
             } => {
-                let nodes = thread.nodes.global();
-                let time = shared.time_man.elapsed();
-
                 if *minimal && !last {
                     return;
                 }
@@ -78,13 +75,21 @@ impl SearchInfo {
                     output.push_str(format!("wdl {} {} {} ", w, d, l).as_str());
                 }
 
+                let nodes = thread.nodes.global();
+                let time = shared.time_man.elapsed();
+                let nps = if time.as_nanos() > 0 {
+                    (nodes as u128 * 1_000_000_000) / time.as_nanos()
+                } else {
+                    0
+                };
+
                 output.push_str(
                     format!(
                         "hashfull {} time {} nodes {} nps {} pv {}",
                         shared.ttable.hash_usage(),
-                        time,
+                        time.as_millis(),
                         nodes,
-                        ((nodes as f64) / (time.max(1) as f64) * 1000.0) as u64,
+                        nps,
                         pv.display(board, *frc)
                     )
                     .as_str(),

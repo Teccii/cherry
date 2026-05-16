@@ -58,7 +58,7 @@ const BENCH_FENS: &[&str] = &[
 impl Engine {
     #[inline]
     pub fn bench(&mut self, depth: u8) {
-        let limits = vec![SearchLimit::MaxDepth(depth)];
+        let limits = vec![SearchLimit::Depth(depth)];
         let mut total_time = Duration::ZERO;
         let mut total_nodes = 0u64;
 

@@ -13,7 +13,6 @@ pub enum UciCommand {
     Uci,
     NewGame,
     IsReady,
-    PonderHit,
     Eval,
     Display,
     Position {
@@ -125,7 +124,6 @@ impl UciCommand {
             "uci" => Ok(Uci),
             "ucinewgame" => Ok(NewGame),
             "isready" => Ok(IsReady),
-            "ponderhit" => Ok(PonderHit),
             "eval" => Ok(Eval),
             "display" | "d" => Ok(Display),
             #[cfg(feature = "tune")]
@@ -309,7 +307,6 @@ impl UciCommand {
             "depth",
             "nodes",
             "infinite",
-            "ponder",
         ];
 
         let mut reader = reader.peekable();
@@ -329,7 +326,6 @@ impl UciCommand {
         while let Some(token) = reader.next() {
             match token {
                 "infinite" => {}
-                "ponder" => limits.push(Ponder),
                 "wtime" => limits.push(WhiteTime(
                     parse_int::<i64>(&mut reader, token)?.max(0) as u64
                 )),
@@ -340,8 +336,8 @@ impl UciCommand {
                 "binc" => limits.push(BlackInc(parse_int(&mut reader, token)?)),
                 "movetime" => limits.push(MoveTime(parse_int(&mut reader, token)?)),
                 "movestogo" => limits.push(MovesToGo(parse_int(&mut reader, token)?)),
-                "depth" => limits.push(MaxDepth(parse_int(&mut reader, token)?)),
-                "nodes" => limits.push(MaxNodes(parse_int(&mut reader, token)?)),
+                "depth" => limits.push(Depth(parse_int(&mut reader, token)?)),
+                "nodes" => limits.push(Nodes(parse_int(&mut reader, token)?)),
                 "searchmoves" => {
                     let mut moves = MoveList::empty();
                     while let Some(token) = reader.peek()

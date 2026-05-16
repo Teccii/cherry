@@ -96,7 +96,6 @@ impl Engine {
             UciCommand::Uci => self.uci(),
             UciCommand::NewGame => self.searcher.newgame(),
             UciCommand::IsReady => println!("readyok"),
-            UciCommand::PonderHit => self.searcher.ponderhit(),
             UciCommand::Eval => self.eval(),
             UciCommand::Display => self.display(),
             UciCommand::Position { board, moves } => self.set_position(board, moves),
