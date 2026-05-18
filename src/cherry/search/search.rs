@@ -279,10 +279,7 @@ pub fn search<Node: NodeType>(
     cut_node: bool,
 ) -> Score {
     if !Node::ROOT && (thread.stop || shared.time_man.stop_search(&thread)) {
-        if thread.id == 0 {
-            shared.time_man.set_stop(true);
-        }
-
+        shared.time_man.set_stop(true);
         thread.stop = true;
         return Score::ZERO;
     }
@@ -890,6 +887,7 @@ fn q_search<Node: NodeType>(
     beta: Score,
 ) -> Score {
     if thread.stop || shared.time_man.stop_search(&thread) {
+        shared.time_man.set_stop(true);
         thread.stop = true;
 
         return Score::ZERO;

@@ -96,7 +96,7 @@ impl TimeManager {
             if matches!(limit, WhiteTime(..) | BlackTime(..) | MoveTime(..)) {
                 check_time = true;
             }
-            
+
             if matches!(limit, MoveTime(..)) {
                 no_manage = true;
             }
@@ -208,9 +208,9 @@ impl TimeManager {
         self.should_stop()
             || thread.nodes.global() >= self.hard_nodes.load(Ordering::Relaxed)
             || (thread.nodes.local().is_multiple_of(1024)
-            && thread.id == 0
-            && self.check_time.load(Ordering::Relaxed)
-            && self.elapsed().as_millis() as u64 > self.hard_time.load(Ordering::Relaxed))
+                && thread.id == 0
+                && self.check_time.load(Ordering::Relaxed)
+                && self.elapsed().as_millis() as u64 > self.hard_time.load(Ordering::Relaxed))
     }
 
     #[inline]
@@ -219,7 +219,7 @@ impl TimeManager {
             || depth >= self.depth.load(Ordering::Relaxed)
             || nodes >= self.soft_nodes.load(Ordering::Relaxed)
             || (self.check_time.load(Ordering::Relaxed)
-            && self.elapsed().as_millis() as u64 > self.soft_time.load(Ordering::Relaxed))
+                && self.elapsed().as_millis() as u64 > self.soft_time.load(Ordering::Relaxed))
     }
 
     #[inline]
