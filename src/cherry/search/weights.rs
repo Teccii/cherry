@@ -257,7 +257,7 @@ weights! {
     se_depth             | SE_DEPTH:             i32 => 6080 | 4096..=6144;
     se_tt_depth          | SE_TT_DEPTH:          i32 => 3097 | 2560..=3584;
     se_search_depth      | SE_SEARCH_DEPTH:      i64 => 468  | 256..=768;
-    se_beta_margin       | SE_BETA_MARGIN:       i32 => 96   | 64..=96;
+    se_beta_margin       | SE_BETA_MARGIN:       i32 => 76   | 64..=96;
     se_double_ext_margin | SE_DOUBLE_EXT_MARGIN: i32 => 31   | 0..=40;
     se_triple_ext_margin | SE_TRIPLE_EXT_MARGIN: i32 => 69   | 40..=80;
     se_ext               | SE_EXT:               i32 => 1135 | 512..=1536;
