@@ -194,6 +194,11 @@ weights! {
     hindsight_ext_red  | HINDSIGHT_EXT_RED:  i32 => 3074 | 2048..=4096;
     hindsight_ext      | HINDSIGHT_EXT:      i32 => 1053 | 512..=1536;
 
+    hindsight_red_depth | HINDSIGHT_RED_DEPTH: i32 => 2048 | 1024..=3072;
+    hindsight_red_eval  | HINDSIGHT_RED_EVAL:  i32 => 200  | 100..=300;
+    hindsight_red_red   | HINDSIGHT_RED_RED:   i32 => 2048 | 1024..=3072;
+    hindsight_red       | HINDSIGHT_RED:       i32 => 1024 | 512..=1536;
+
     rfp_depth      | RFP_DEPTH:      i32 => 6670 | 4096..=8192;
     rfp_base       | RFP_BASE:       i64 => 10   | -100..=100;
     rfp_scale1     | RFP_SCALE1:     i64 => 85   | 0..=200;

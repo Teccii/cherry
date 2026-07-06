@@ -411,6 +411,20 @@ pub fn search<Node: NodeType>(
         }
 
         /*
+        Hindsight Reduction:
+        If this node was heavily reduced by the parent,
+        but the node isn't improving static eval, then reduce
+        this node.
+        */
+        if depth >= W::hindsight_red_depth()
+            && prev_stack.reduction >= W::hindsight_red_red()
+            && prev_stack.static_eval != Score::NONE
+            && static_eval + prev_stack.static_eval > W::hindsight_red_eval()
+        {
+            depth -= W::hindsight_red();
+        }
+
+        /*
         Reverse Futility Pruning (RFP), also known as Static Null Move Pruning:
         If static eval is above beta by a significant margin,
         we can prune this node.
