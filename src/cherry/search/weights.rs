@@ -254,17 +254,19 @@ weights! {
     see_noisy_scale2     | SEE_NOISY_SCALE2:     i64 => -9    | -100..=0;
     see_noisy_hist_scale | SEE_NOISY_HIST_SCALE: i64 => 223   | 0..=512;
 
-    se_depth             | SE_DEPTH:             i32 => 6080 | 4096..=6144;
-    se_tt_depth          | SE_TT_DEPTH:          i32 => 3097 | 2560..=3584;
-    se_search_depth      | SE_SEARCH_DEPTH:      i64 => 468  | 256..=768;
-    se_beta_margin       | SE_BETA_MARGIN:       i32 => 96   | 64..=96;
-    se_double_ext_margin | SE_DOUBLE_EXT_MARGIN: i32 => 31   | 0..=40;
-    se_triple_ext_margin | SE_TRIPLE_EXT_MARGIN: i32 => 69   | 40..=80;
-    se_ext               | SE_EXT:               i32 => 1135 | 512..=1536;
-    se_double_ext        | SE_DOUBLE_EXT:        i32 => 2207 | 1536..=2560;
-    se_triple_ext        | SE_TRIPLE_EXT:        i32 => 3090 | 2560..=3584;
-    se_beta_ext          | SE_BETA_EXT:          i32 => -970 | -1536..=-768;
-    se_cut_ext           | SE_CUT_EXT:           i32 => -945 | -1536..=-768;
+    se_depth           | SE_DEPTH:           i32 => 6080 | 4096..=6144;
+    se_tt_depth        | SE_TT_DEPTH:        i32 => 3097 | 2560..=3584;
+    se_search_depth    | SE_SEARCH_DEPTH:    i64 => 468  | 256..=768;
+    se_beta_margin     | SE_BETA_MARGIN:     i32 => 96   | 64..=96;
+    se_double_ext_pv   | SE_DOUBLE_EXT_PV:   i32 => 200  | 0..=40;
+    se_double_ext_base | SE_DOUBLE_EXT_BASE: i32 => 31   | 0..=40;
+    se_triple_ext_pv   | SE_TRIPLE_EXT_PV:   i32 => 300  | 0..=40;
+    se_triple_ext_base | SE_TRIPLE_EXT_BASE: i32 => 69   | 40..=80;
+    se_ext             | SE_EXT:             i32 => 1135 | 512..=1536;
+    se_double_ext      | SE_DOUBLE_EXT:      i32 => 2207 | 1536..=2560;
+    se_triple_ext      | SE_TRIPLE_EXT:      i32 => 3090 | 2560..=3584;
+    se_beta_ext        | SE_BETA_EXT:        i32 => -970 | -1536..=-768;
+    se_cut_ext         | SE_CUT_EXT:         i32 => -945 | -1536..=-768;
 
     lmr_quiet_base | LMR_QUIET_BASE: i32 => 706  | 256..=768;
     lmr_quiet_div  | LMR_QUIET_DIV:  i32 => 1620 | 1024..=2048;
@@ -447,6 +449,16 @@ impl W {
         let hist_scale = W::see_noisy_hist_scale() * hist_score as i64 / MAX_HISTORY as i64;
 
         W::see_noisy_base() + scale1 + scale2 - hist_scale
+    }
+    
+    #[inline]
+    pub fn se_double_ext_margin(pv: bool) -> i32 {
+        W::se_double_ext_base() + pv as i32 * W::se_double_ext_pv()
+    }
+
+    #[inline]
+    pub fn se_triple_ext_margin(pv: bool) -> i32 {
+        W::se_triple_ext_base() + pv as i32 * W::se_triple_ext_pv()
     }
 
     #[inline]
