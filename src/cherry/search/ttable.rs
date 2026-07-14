@@ -279,7 +279,7 @@ impl TTable {
                 depth,
                 eval,
                 score_to_tt(score, ply),
-                mv.or(old_entry.mv),
+                mv.or(old_entry.mv.filter(|_| old_entry.key == partial_key)),
                 flag,
                 pv,
                 age,
