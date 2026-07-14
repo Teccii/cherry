@@ -100,7 +100,7 @@ impl ThreadData {
     pub fn reset(&mut self) {
         self.stop = false;
         self.nodes.reset();
-        self.search_stack = vec![SearchStack::default(); MAX_PLY as usize + 1];
+        self.search_stack = vec![SearchStack::default(); MAX_PLY as usize + 2];
         self.root_nodes = [[0; Square::COUNT]; Square::COUNT];
         self.root_pv = PrincipalVariation::default();
         self.exclude_moves.clear();
@@ -119,7 +119,7 @@ impl ThreadData {
 
 #[derive(Clone)]
 pub struct PrincipalVariation {
-    pub moves: [Option<Move>; MAX_PLY as usize + 1],
+    pub moves: [Option<Move>; MAX_PLY as usize + 2],
     pub len: usize,
 }
 
@@ -154,7 +154,7 @@ impl Default for PrincipalVariation {
     #[inline]
     fn default() -> Self {
         PrincipalVariation {
-            moves: [None; MAX_PLY as usize + 1],
+            moves: [None; MAX_PLY as usize + 2],
             len: 0,
         }
     }
@@ -164,6 +164,7 @@ impl Default for PrincipalVariation {
 
 #[derive(Clone, Default)]
 pub struct SearchStack {
+    pub cutoffs: u16,
     pub reduction: i32,
     pub raw_eval: Score,
     pub static_eval: Score,

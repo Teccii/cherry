@@ -277,6 +277,7 @@ weights! {
     check_lmr       | CHECK_LMR:       i32 => 1123 | 512..=1536;
     non_pv_lmr      | NON_PV_LMR:      i32 => 1048 | 512..=1536;
     tt_pv_lmr       | TT_PV_LMR:       i32 => 986  | 512..=1536;
+    beta_lmr        | BETA_LMR:        i32 => 1024 | 512..=1536;
     cut_lmr         | CUT_LMR:         i32 => 1022 | 512..=1536;
     imp_lmr         | IMP_LMR:         i32 => 1001 | 512..=1536;
 
