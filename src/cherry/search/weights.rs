@@ -274,6 +274,7 @@ weights! {
     lmr_depth       | LMR_DEPTH:       i32 => 2009 | 1536..=2560;
     quiet_hist_lmr  | QUIET_HIST_LMR:  i32 => 981  | 512..=1536;
     noisy_hist_lmr  | NOISY_HIST_LMR:  i32 => 1059 | 512..=1536;
+    corr_lmr        | CORR_LMR:        i32 => 3417 | 3072..=4096;
     check_lmr       | CHECK_LMR:       i32 => 1123 | 512..=1536;
     non_pv_lmr      | NON_PV_LMR:      i32 => 1048 | 512..=1536;
     tt_pv_lmr       | TT_PV_LMR:       i32 => 986  | 512..=1536;
